@@ -1,0 +1,26 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Pion",
+	"patterns": [
+		{ "include": "#keywords" },
+		{ "include": "#strings" }
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.pion",
+				"match": "\\b(if|match)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.pion",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [{
+				"name": "constant.character.escape.pion",
+				"match": "\\\\."
+			}]
+		}
+	},
+	"scopeName": "source.pion"
+}

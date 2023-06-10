@@ -1,0 +1,24 @@
+{
+  "name": "pion",
+  "displayName": "pion",
+  "description": "",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.79.0"
+  },
+  "keywords": ["pion"],
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "pion",
+      "aliases": ["Pion", "pion"],
+      "extensions": [".pion"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "pion",
+      "scopeName": "source.pion",
+      "path": "./syntaxes/pion.tmLanguage.json"
+    }]
+  }
+}
