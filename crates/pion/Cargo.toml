@@ -5,3 +5,10 @@ edition.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+anyhow = { version = "1.0.71", features = ["backtrace"] }
+clap = { version = "4.3.3", features = ["derive"] }
+lsp-server = { version = "0.7.0" }
+lsp-types = { version = "0.94.0" }
+serde_json = {version = "1.0.96" }
