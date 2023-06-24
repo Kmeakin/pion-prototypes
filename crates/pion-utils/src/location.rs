@@ -4,6 +4,7 @@ use std::ops::Range;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BytePos(u32);
 
+#[allow(clippy::cast_possible_truncation)]
 impl BytePos {
     pub fn new(value: u32) -> Self { Self(value) }
 

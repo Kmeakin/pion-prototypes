@@ -6,6 +6,7 @@ use expect_test::{expect, Expect};
 use super::*;
 
 #[track_caller]
+#[allow(clippy::needless_pass_by_value)]
 fn check(src: &str, expected: Expect) {
     let string32 = String32::try_from(src).unwrap();
     let iter = lex(string32);
@@ -20,7 +21,7 @@ fn check(src: &str, expected: Expect) {
         }
     }
 
-    expected.assert_eq(&output)
+    expected.assert_eq(&output);
 }
 
 #[test]
@@ -34,7 +35,7 @@ fn unknown() {
             0..1: Err(UnknownCharacter("~"))
             1..2: Err(UnknownCharacter("#"))
         "##]],
-    )
+    );
 }
 
 #[test]

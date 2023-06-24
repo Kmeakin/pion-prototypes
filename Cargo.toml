@@ -12,4 +12,9 @@ unused_qualifications = "warn"
 [workspace.lints.clippy]
 all = "warn"
 nursery = "warn"
+pedantic = "warn"
+
 missing_const_for_fn = "allow"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+must_use_candidate = "allow"

@@ -1,7 +1,7 @@
 use std::num::NonZeroU32;
 
 use logos::Logos;
-use pion_utils::location::ByteSpan;
+use pion_utils::location::{BytePos, ByteSpan};
 use pion_utils::string32::String32;
 
 #[cfg(test)]
@@ -69,8 +69,8 @@ pub enum TokenError {
 
     BlockComment {
         depth: NonZeroU32,
-        first_open_pos: u32,
-        last_close_pos: u32,
+        first_open_pos: BytePos,
+        last_close_pos: BytePos,
     },
 }
 
@@ -78,7 +78,7 @@ fn block_comment(lexer: &mut logos::Lexer<'_, TokenKind>) -> Result<(), TokenErr
     const OPEN: &str = "/*";
     const CLOSE: &str = "*/";
 
-    let start = lexer.span().start as u32;
+    let start = lexer.span().start;
     let first_open_pos = start;
     let mut last_close_pos = start;
     let mut pos = start;
@@ -90,12 +90,12 @@ fn block_comment(lexer: &mut logos::Lexer<'_, TokenKind>) -> Result<(), TokenErr
     while let Some(c) = lexer.remainder().chars().next() {
         if lexer.remainder().starts_with(OPEN) {
             lexer.bump(OPEN.len());
-            pos += OPEN.len() as u32;
+            pos += OPEN.len();
 
             depth += 1;
         } else if lexer.remainder().starts_with(CLOSE) {
             lexer.bump(CLOSE.len());
-            pos += CLOSE.len() as u32;
+            pos += CLOSE.len();
             last_close_pos = pos;
 
             depth -= 1;
@@ -105,15 +105,15 @@ fn block_comment(lexer: &mut logos::Lexer<'_, TokenKind>) -> Result<(), TokenErr
         } else {
             let len = c.len_utf8();
             lexer.bump(len);
-            pos += len as u32;
+            pos += len;
         }
     }
 
     if let Some(depth) = NonZeroU32::new(depth) {
         return Err(TokenError::BlockComment {
             depth,
-            first_open_pos,
-            last_close_pos,
+            first_open_pos: BytePos::truncate_usize(first_open_pos),
+            last_close_pos: BytePos::truncate_usize(last_close_pos),
         });
     }
 

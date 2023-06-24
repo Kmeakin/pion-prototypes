@@ -1,7 +1,7 @@
 #[derive(clap::Args)]
 pub struct Args {}
 
-pub fn run(_args: Args) -> anyhow::Result<()> {
+pub fn run(_args: &Args) -> anyhow::Result<()> {
     eprintln!("starting server");
 
     let (connection, io_threads) = lsp_server::Connection::stdio();
@@ -18,7 +18,7 @@ fn main_loop(connection: lsp_server::Connection, params: serde_json::Value) -> a
     let params: lsp_types::InitializeParams = serde_json::from_value(params)?;
     eprintln!("params: {params:?}");
 
-    for msg in &connection.receiver {
+    for msg in connection.receiver {
         eprintln!("message recieved: {msg:?}");
     }
     Ok(())

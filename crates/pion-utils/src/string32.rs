@@ -28,7 +28,7 @@ pub struct TooLong {
 }
 
 fn check_len(len: usize) -> Result<(), TooLong> {
-    if len as u64 > MAX as u64 {
+    if len as u64 > u64::from(MAX) {
         Err(TooLong { len })
     } else {
         Ok(())
