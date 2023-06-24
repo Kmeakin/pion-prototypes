@@ -1,0 +1,15 @@
+[package]
+name = "pion-lexer"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pion-utils = { path = "../pion-utils" }
+
+logos = { version = "0.13.0" }
+
+[dev-dependencies]
+expect-test = { version = "1.4.1" }
+
+[lints]
+workspace = true

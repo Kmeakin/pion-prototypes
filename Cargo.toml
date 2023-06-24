@@ -12,3 +12,4 @@ unused_qualifications = "warn"
 [workspace.lints.clippy]
 all = "warn"
 nursery = "warn"
+missing_const_for_fn = "allow"
