@@ -36,8 +36,8 @@ impl fmt::Display for BytePos {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ByteSpan {
-    start: BytePos,
-    end: BytePos,
+    pub start: BytePos,
+    pub end: BytePos,
 }
 
 impl ByteSpan {

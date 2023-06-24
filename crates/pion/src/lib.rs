@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+pub mod check;
 pub mod language_server;
 
 #[derive(Parser)]
@@ -10,5 +11,6 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Command {
+    Check(check::Args),
     LanguageServer(language_server::Args),
 }

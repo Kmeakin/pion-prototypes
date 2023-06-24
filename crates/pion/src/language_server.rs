@@ -1,7 +1,7 @@
 #[derive(clap::Args)]
 pub struct Args {}
 
-pub fn run(_args: &Args) -> anyhow::Result<()> {
+pub fn run(_args: Args) -> anyhow::Result<()> {
     eprintln!("starting server");
 
     let (connection, io_threads) = lsp_server::Connection::stdio();

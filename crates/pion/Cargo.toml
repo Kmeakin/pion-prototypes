@@ -7,8 +7,14 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-anyhow = { version = "1.0.71", features = ["backtrace"] }
-clap = { version = "4.3.3", features = ["derive"] }
+pion-utils = { path = "../pion-utils" }
+pion-lexer = { path = "../pion-lexer" }
+
+anyhow     = { version = "1.0.71", features = ["backtrace"] }
+clap       = { version = "4.3.3",  features = ["derive"] }
+fxhash     = { version = "0.2.1" }
 lsp-server = { version = "0.7.0" }
-lsp-types = { version = "0.94.0" }
-serde_json = {version = "1.0.96" }
+lsp-types  = { version = "0.94.0" }
+serde_json = { version = "1.0.96" }
+triomphe   = { version = "0.1.8" }
+ariadne = "0.3.0"
