@@ -3,6 +3,8 @@ use clap::{Parser, Subcommand};
 pub mod check;
 pub mod language_server;
 
+mod source;
+
 #[derive(Parser)]
 pub struct Args {
     #[clap(subcommand)]

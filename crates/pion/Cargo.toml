@@ -17,4 +17,5 @@ lsp-server = { version = "0.7.0" }
 lsp-types  = { version = "0.94.0" }
 serde_json = { version = "1.0.96" }
 triomphe   = { version = "0.1.8" }
-ariadne = "0.3.0"
+ariadne    = { version = "0.3.0" }
+line-index = { version = "0.1.0-pre.1" }
