@@ -8,22 +8,19 @@
   },
   "keywords": ["pion"],
   "categories": ["Programming Languages"],
-  "activationEvents": [
-    "onLanguage:pion"
-  ],
   "main": "./out/extension",
   "contributes": {
     "languages": [{
-      "id": "pion",
-      "aliases": ["Pion", "pion"],
-      "extensions": [".pion"],
-      "configuration": "./language-configuration.json"
-    }],
+        "id": "pion",
+        "aliases": ["Pion", "pion"],
+        "extensions": [".pion"],
+        "configuration": "./language-configuration.json"
+      }],
     "grammars": [{
-      "language": "pion",
-      "scopeName": "source.pion",
-      "path": "./syntaxes/pion.tmLanguage.json"
-    }]
+        "language": "pion",
+        "scopeName": "source.pion",
+        "path": "./syntaxes/pion.tmLanguage.json"
+      }]
   },
   "dependencies": {
     "vscode-languageclient": "^8.0.2"

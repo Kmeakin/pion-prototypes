@@ -49,8 +49,7 @@ pub enum TokenKind {
     #[token("=>")] FatArrow,
 
     // identifiers
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_-]*")]
-    #[regex(r"r#[a-zA-Z_][a-zA-Z0-9_-]*")]
+    #[regex(r"(r#)?[a-zA-Z_][a-zA-Z0-9_-]*")]
     Ident,
 
     // literals

@@ -134,7 +134,6 @@ impl Server {
                 let file = SourceFile::read(path)?;
                 self.source_map.insert_file(file);
                 self.report_diagnostics()?;
-                self.report_diagnostics()?;
             }
             _ => eprintln!("TODO: handle notification {notification:?}"),
         }
