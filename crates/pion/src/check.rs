@@ -1,8 +1,7 @@
 use anyhow::bail;
 use ariadne::{Label, Report, ReportKind, Source};
 use pion_lexer::token::TokenError;
-
-use crate::source::{SourceFile, SourceMap};
+use pion_utils::source::{SourceFile, SourceMap};
 
 #[derive(clap::Args)]
 pub struct Args {

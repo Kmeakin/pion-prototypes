@@ -1,8 +1,10 @@
 use anyhow::{anyhow, bail};
 use fxhash::FxHashMap;
+pub use line_index;
 use line_index::LineIndex;
-use pion_utils::string32::String32;
 use triomphe::Arc;
+
+use crate::string32::String32;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(u32);

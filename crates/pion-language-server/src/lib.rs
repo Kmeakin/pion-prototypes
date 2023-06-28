@@ -1,9 +1,8 @@
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::{DiagnosticSeverity, ServerCapabilities, TextDocumentSyncKind};
+use pion_utils::source::{line_index, SourceFile, SourceMap};
 
-use crate::source::{SourceFile, SourceMap};
-
-pub fn run(_args: Args) -> anyhow::Result<()> {
+pub fn run() -> anyhow::Result<()> {
     eprintln!("starting server");
 
     let (connection, io_threads) = lsp_server::Connection::stdio();
@@ -20,9 +19,6 @@ pub fn run(_args: Args) -> anyhow::Result<()> {
     eprintln!("shutting down server");
     Ok(())
 }
-
-#[derive(clap::Args)]
-pub struct Args {}
 
 pub struct Server {
     connection: Connection,

@@ -1,5 +1,5 @@
 [package]
-name = "pion"
+name = "pion-language-server"
 version.workspace = true
 edition.workspace = true
 
@@ -9,8 +9,8 @@ workspace = true
 [dependencies]
 pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
-pion-language-server = { path = "../pion-language-server" }
 
 anyhow     = { version = "1.0.71", features = ["backtrace"] }
-clap       = { version = "4.3.3",  features = ["derive"] }
-ariadne    = { version = "0.3.0" }
+lsp-server = { version = "0.7.0" }
+lsp-types  = { version = "0.94.0" }
+serde_json = { version = "1.0.96" }
