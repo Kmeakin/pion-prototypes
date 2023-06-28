@@ -10,7 +10,7 @@ workspace = true
 pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
 
-anyhow     = { version = "1.0.71", features = ["backtrace"] }
+anyhow     = { workspace = true }
 lsp-server = { version = "0.7.0" }
 lsp-types  = { version = "0.94.0" }
 serde_json = { version = "1.0.96" }

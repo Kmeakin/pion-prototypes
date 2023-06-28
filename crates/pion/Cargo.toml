@@ -11,6 +11,6 @@ pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
 pion-language-server = { path = "../pion-language-server" }
 
-anyhow     = { version = "1.0.71", features = ["backtrace"] }
+anyhow     = { workspace = true }
 clap       = { version = "4.3.3",  features = ["derive"] }
 ariadne    = { version = "0.3.0" }
