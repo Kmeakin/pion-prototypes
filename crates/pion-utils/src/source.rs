@@ -14,6 +14,7 @@ impl From<FileId> for u32 {
 }
 
 impl From<FileId> for usize {
+    #[allow(clippy::use_self)]
     fn from(val: FileId) -> Self { val.0 as usize }
 }
 
@@ -62,10 +63,13 @@ impl SourceFile {
         let contents = std::fs::read_to_string(path)
             .map_err(|err| anyhow!("cannot read file {path:?}: {err}"))?;
 
+        let contents = String32::try_from(contents)
+            .map_err(|_| anyhow!("pion source files must be 4GB or less"))?;
+
         Ok(Self {
             line_index: LineIndex::new(&contents),
             path: path.into(),
-            contents: contents.try_into().unwrap(),
+            contents,
         })
     }
 }
@@ -75,14 +79,15 @@ impl SourceMap {
 
     /// Ok if file was not present, Err if it was
     pub fn insert_file(&mut self, file: SourceFile) -> Option<FileId> {
-        match self.path_to_file_id.get(&file.path) {
-            Some(file_id) => {
+        match self.path_to_file_id.entry(file.path.clone()) {
+            std::collections::hash_map::Entry::Occupied(entry) => {
+                let file_id = entry.get();
                 self.file_id_to_files[usize::from(*file_id)] = file;
                 Some(*file_id)
             }
-            None => {
+            std::collections::hash_map::Entry::Vacant(entry) => {
                 let file_id = FileId(self.next_file_id);
-                self.path_to_file_id.insert(file.path.clone(), file_id);
+                entry.insert(file_id);
                 self.file_id_to_files.push(file);
                 self.next_file_id += 1;
                 None
