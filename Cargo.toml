@@ -21,3 +21,4 @@ must_use_candidate = "allow"
 
 [workspace.dependencies]
 anyhow     = { version = "1.0.71", features = ["backtrace"] }
+string32   = { version = "0.2.0" }

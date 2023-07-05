@@ -156,7 +156,7 @@ impl Server {
             let uri = Url::from_file_path(file.path.as_ref())
                 .map_err(|_| anyhow::anyhow!("cannot convert path to url: {:?}", file.path))?;
 
-            let tokens = pion_lexer::token::lex(file.contents.as_deref());
+            let tokens = pion_lexer::token::lex(&file.contents);
             for (result, span) in tokens {
                 if let Err(error) = result {
                     let start = file.line_index.line_col(u32::from(span.start).into());

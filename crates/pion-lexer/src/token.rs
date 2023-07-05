@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use logos::Logos;
 use pion_utils::location::{BytePos, ByteSpan};
-use pion_utils::string32::String32;
+use string32::Str32 as str32;
 
 #[cfg(test)]
 mod tests;
@@ -119,10 +119,8 @@ fn block_comment(lexer: &mut logos::Lexer<'_, TokenKind>) -> Result<(), TokenErr
     Ok(())
 }
 
-pub fn lex(
-    src: String32<&str>,
-) -> impl Iterator<Item = (Result<TokenKind, TokenError>, ByteSpan)> + '_ {
-    logos::Lexer::new(*src)
+pub fn lex(src: &str32) -> impl Iterator<Item = (Result<TokenKind, TokenError>, ByteSpan)> + '_ {
+    logos::Lexer::new(src.as_str())
         .spanned()
         .map(|(result, range)| (result, ByteSpan::truncate_usize(range)))
 }

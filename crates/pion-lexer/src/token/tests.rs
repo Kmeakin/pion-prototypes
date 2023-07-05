@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::ops::Range;
 
 use expect_test::{expect, Expect};
+use string32::String32;
 
 use super::*;
 
@@ -9,11 +10,11 @@ use super::*;
 #[allow(clippy::needless_pass_by_value)]
 fn check(src: &str, expected: Expect) {
     let string32 = String32::try_from(src).unwrap();
-    let iter = lex(string32);
-    let mut output = String::with_capacity(string32.len());
+    let iter = lex(&string32);
+    let mut output = String::with_capacity(src.len());
 
     for (result, span) in iter {
-        let text: &str = &string32[Range::<usize>::from(span)];
+        let text: &str = &string32.as_str()[Range::<usize>::from(span)];
 
         match result {
             Ok(kind) => writeln!(&mut output, "{span}: {kind:?}({text:?})").unwrap(),

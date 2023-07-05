@@ -35,7 +35,7 @@ pub fn run(args: Args) -> anyhow::Result<()> {
     stop_if_errors(error_count)?;
 
     for (_file_id, file) in source_map.iter() {
-        let tokens = pion_lexer::token::lex(file.contents.as_deref());
+        let tokens = pion_lexer::token::lex(&file.contents);
         for (result, span) in tokens {
             if let Err(error) = result {
                 let offset = span.start.into();

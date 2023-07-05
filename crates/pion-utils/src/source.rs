@@ -4,10 +4,9 @@ use anyhow::{anyhow, bail};
 use camino::Utf8Path;
 use fxhash::FxHashMap;
 use line_index::LineIndex;
+use string32::String32;
 use triomphe::Arc;
 pub use {camino, line_index};
-
-use crate::string32::String32;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(u32);
@@ -31,12 +30,12 @@ pub struct SourceMap {
 pub struct SourceFile {
     /// path (absolute)
     pub path: Arc<Utf8Path>,
-    pub contents: String32<String>,
+    pub contents: String32,
     pub line_index: LineIndex,
 }
 
 impl SourceFile {
-    pub fn new(path: Arc<Utf8Path>, contents: String32<String>, line_index: LineIndex) -> Self {
+    pub fn new(path: Arc<Utf8Path>, contents: String32, line_index: LineIndex) -> Self {
         Self {
             path,
             contents,
@@ -80,7 +79,7 @@ impl SourceFile {
 
         Ok(Self {
             path,
-            line_index: LineIndex::new(&contents),
+            line_index: LineIndex::new(contents.as_str()),
             contents,
         })
     }
