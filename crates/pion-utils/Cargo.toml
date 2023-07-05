@@ -8,6 +8,7 @@ workspace = true
 
 [dependencies]
 anyhow     = { workspace = true }
+camino     = { version = "1.1.4" }
 fxhash     = { version = "0.2.1" }
-triomphe   = { version = "0.1.8" }
 line-index = { version = "0.1.0-pre.1" }
+triomphe   = { version = "0.1.8" }

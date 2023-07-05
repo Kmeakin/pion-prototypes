@@ -1,8 +1,11 @@
+use std::io::Read;
+
 use anyhow::{anyhow, bail};
+use camino::Utf8Path;
 use fxhash::FxHashMap;
-pub use line_index;
 use line_index::LineIndex;
 use triomphe::Arc;
+pub use {camino, line_index};
 
 use crate::string32::String32;
 
@@ -21,19 +24,19 @@ impl From<FileId> for usize {
 #[derive(Default)]
 pub struct SourceMap {
     next_file_id: u32,
-    path_to_file_id: FxHashMap<Arc<str>, FileId>,
+    path_to_file_id: FxHashMap<Arc<Utf8Path>, FileId>,
     file_id_to_files: Vec<SourceFile>,
 }
 
 pub struct SourceFile {
     /// path (absolute)
-    pub path: Arc<str>,
+    pub path: Arc<Utf8Path>,
     pub contents: String32<String>,
     pub line_index: LineIndex,
 }
 
 impl SourceFile {
-    pub fn new(path: Arc<str>, contents: String32<String>, line_index: LineIndex) -> Self {
+    pub fn new(path: Arc<Utf8Path>, contents: String32<String>, line_index: LineIndex) -> Self {
         Self {
             path,
             contents,
@@ -42,15 +45,14 @@ impl SourceFile {
     }
 
     pub fn read(path: &str) -> anyhow::Result<Self> {
-        let path = std::fs::canonicalize(path)
-            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
+        let path = Utf8Path::new(path);
 
         let path = path
-            .to_str()
-            .ok_or_else(|| anyhow!("path {path:?} is not utf8"))?;
+            .canonicalize_utf8()
+            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
 
-        let file =
-            std::fs::File::open(path).map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
+        let mut file = std::fs::File::open(&path)
+            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
 
         let metadata = file
             .metadata()
@@ -60,15 +62,25 @@ impl SourceFile {
             bail!("pion source files must be 4GB or less")
         }
 
-        let contents = std::fs::read_to_string(path)
-            .map_err(|err| anyhow!("cannot read file {path:?}: {err}"))?;
+        let contents = {
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)
+                .map_err(|err| anyhow!("cannot read file {path:?}: {err}"))?;
+            contents
+        };
+
+        drop(file);
 
         let contents = String32::try_from(contents)
             .map_err(|_| anyhow!("pion source files must be 4GB or less"))?;
 
+        let path: Arc<str> = Arc::from(String::from(path));
+        // SAFETY: `Utf8Path` has the same representation as `str`
+        let path: Arc<Utf8Path> = unsafe { std::mem::transmute(path) };
+
         Ok(Self {
+            path,
             line_index: LineIndex::new(&contents),
-            path: path.into(),
             contents,
         })
     }
