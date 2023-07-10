@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail};
 use camino::Utf8Path;
 use fxhash::FxHashMap;
 use line_index::LineIndex;
-use string32::String32;
+pub use string32::{Str32 as str32, String32};
 use triomphe::Arc;
 pub use {camino, line_index};
 

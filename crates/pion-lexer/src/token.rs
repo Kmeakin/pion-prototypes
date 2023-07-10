@@ -2,7 +2,7 @@ use std::num::NonZeroU32;
 
 use logos::Logos;
 use pion_utils::location::{BytePos, ByteSpan};
-use string32::Str32 as str32;
+use pion_utils::source::str32;
 
 #[cfg(test)]
 mod tests;
@@ -59,6 +59,51 @@ pub enum TokenKind {
     BinInt,
     #[regex(r"(?i)0x[0-9A-F][0-9A-F_]*")]
     HexInt,
+}
+
+impl TokenKind {
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::BlockComment => "block comment",
+            Self::LineComment => "line comment",
+            Self::Whitespace => "whitespace",
+            Self::KwDef => "`def`",
+            Self::KwElse => "`else`",
+            Self::KwFalse => "`false`",
+            Self::KwFun => "`fun`",
+            Self::KwIf => "`if`",
+            Self::KwLet => "`let`",
+            Self::KwMatch => "`match`",
+            Self::KwThen => "`then`",
+            Self::KwTrue => "`true`",
+            Self::LParen => "`(`",
+            Self::RParen => "`)`",
+            Self::LCurly => "`{`",
+            Self::RCurly => "`}`",
+            Self::LSquare => "`[`",
+            Self::RSquare => "`]`",
+            Self::Underscore => "`_`",
+            Self::Comma => "`,`",
+            Self::Semicolon => "`;`",
+            Self::Colon => "`:`",
+            Self::Dot => "`.`",
+            Self::At => "`@`",
+            Self::Eq => "`=`",
+            Self::ThinArrow => "`->`",
+            Self::FatArrow => "`=>`",
+            Self::Ident => "identiifer",
+            Self::DecInt => "decimal integer",
+            Self::BinInt => "binary integer",
+            Self::HexInt => "hexadecimal integer",
+        }
+    }
+
+    pub fn is_trivia(&self) -> bool {
+        matches!(
+            self,
+            Self::Whitespace | Self::LineComment | Self::BlockComment
+        )
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]

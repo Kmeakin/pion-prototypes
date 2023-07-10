@@ -1,7 +1,7 @@
 use std::fmt;
 use std::ops::Range;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct BytePos(u32);
 
 #[allow(clippy::cast_possible_truncation)]
@@ -34,7 +34,7 @@ impl fmt::Display for BytePos {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct ByteSpan {
     pub start: BytePos,
     pub end: BytePos,

@@ -1,0 +1,211 @@
+use pion_lexer::token::{TokenKind, TokenError};
+use pion_utils::interner::{Interner, Symbol};
+use pion_utils::location::{BytePos, ByteSpan};
+
+use bumpalo::Bump;
+
+use crate::syntax::*;
+use crate::reporting::SyntaxError;
+
+grammar<'source, 'a>(
+    source: &'source str,
+    bump: &'a Bump,
+    interner: &Interner,
+    errors: &mut Vec<SyntaxError>,
+);
+
+extern {
+    type Location = BytePos;
+    type Error = (ByteSpan, TokenError);
+
+    enum TokenKind {
+        "Ident" => TokenKind::Ident,
+        "DecInt" => TokenKind::DecInt,
+        "BinInt" => TokenKind::BinInt,
+        "HexInt" => TokenKind::HexInt,
+
+        "def" => TokenKind::KwDef,
+        "else" => TokenKind::KwElse,
+        "false" => TokenKind::KwFalse,
+        "fun" => TokenKind::KwFun,
+        "if" => TokenKind::KwIf,
+        "let" => TokenKind::KwLet,
+        "match" => TokenKind::KwMatch,
+        "then" => TokenKind::KwThen,
+        "true" => TokenKind::KwTrue,
+
+        "_" => TokenKind::Underscore,
+        "->" => TokenKind::ThinArrow,
+        "," => TokenKind::Comma,
+        ";" => TokenKind::Semicolon,
+        ":" => TokenKind::Colon,
+        "." => TokenKind::Dot,
+        "(" => TokenKind::LParen,
+        ")" => TokenKind::RParen,
+        "{" => TokenKind::LCurly,
+        "}" => TokenKind::RCurly,
+        "@" => TokenKind::At,
+        "=" => TokenKind::Eq,
+        "=>" => TokenKind::FatArrow,
+    }
+}
+
+
+// ==== Items ====
+pub Module: Module<'a, ByteSpan> = {
+    <items: Item*> => Module {items: bump.alloc_slice_copy(&items)},
+}
+
+pub Item: Item<'a, ByteSpan> = {
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Item::Error(ByteSpan::new(start, end)) },
+    Def => Item::Def(<>),
+}
+
+Def: Def<'a, ByteSpan> = {
+    <start: @L> "def" <name: SpannedIdent> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: None, expr},
+    <start: @L> "def" <name: SpannedIdent> ":" <r#type: Expr> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: Some(r#type), expr},
+}
+
+// ==== Expressions ====
+
+pub Expr: Expr<'a, ByteSpan> = {
+    FunExpr => <>,
+}
+
+FunExpr: Expr<'a, ByteSpan> = {
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: FunExpr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: FunExpr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::Arrow(ByteSpan::new(start, end), bump.alloc((param, body))),
+    ProjExpr => <>,
+}
+
+ProjExpr: Expr<'a, ByteSpan> = {
+    <start: @L> <head: CallExpr> "." <label: FieldLabel> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
+    CallExpr => <>,
+}
+
+CallExpr: Expr<'a, ByteSpan> = {
+    <start: @L> <fun: ProjExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
+    AtomExpr => <>,
+}
+
+AtomExpr: Expr<'a, ByteSpan> = {
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Expr::Error(ByteSpan::new(start, end)) },
+    <start: @L> <lit: Lit> <end: @R> => Expr::Lit(ByteSpan::new(start, end), lit),
+    <start: @L> "_" <end: @R> => Expr::Underscore(ByteSpan::new(start, end)),
+    <start: @L> <ident: Ident> <end: @R> => Expr::Ident(ByteSpan::new(start, end), ident),
+    <start: @L> "(" <expr: Expr> ":" <r#type: Expr> ")" <end: @R> => Expr::Ann(ByteSpan::new(start, end), bump.alloc((expr, r#type))),
+    <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(ByteSpan::new(start, end), bump.alloc(expr)),
+    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::Tuple(ByteSpan::new(start, end), exprs),
+}
+
+FunArg: FunArg<'a, ByteSpan> = {
+    <start: @L> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), expr},
+}
+
+FunParam: FunParam<'a, ByteSpan> = {
+    <start: @L> <pat: Pat> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: None},
+    <start: @L> <pat: Pat> ":" <r#type: Expr> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: Some(r#type)},
+}
+
+FieldLabel: (ByteSpan, FieldLabel) = {
+    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), FieldLabel::Ident(ident)),
+    <start: @L> <int: DecInt>  <end: @R> => (ByteSpan::new(start, end), FieldLabel::DecInt(int)),
+}
+
+// ==== Patterns ====
+
+pub Pat: Pat<'a, ByteSpan> = {
+    AtomPat => <>,
+}
+
+AtomPat: Pat<'a, ByteSpan> = {
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Pat::Error(ByteSpan::new(start, end)) },
+    <start: @L> <lit: Lit> <end: @R> => Pat::Lit(ByteSpan::new(start, end), lit),
+    <start: @L> "_" <end: @R> => Pat::Underscore(ByteSpan::new(start, end)),
+    <start: @L> <ident: Ident> <end: @R> => Pat::Ident(ByteSpan::new(start, end), ident),
+    <start: @L> "(" <pat: Pat> ")" <end: @R> => Pat::Paren(ByteSpan::new(start, end), bump.alloc(pat)),
+    <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::Tuple(ByteSpan::new(start, end), pats),
+}
+
+// ==== Literals ====
+
+Lit: Lit = {
+    "true" => Lit::Bool(true),
+    "false" => Lit::Bool(false),
+    Int => Lit::Int(<>),
+}
+
+Int: IntLit = {
+    <int: DecInt> => IntLit::Dec(int),
+    <int: BinInt> => IntLit::Bin(int),
+    <int: HexInt> => IntLit::Hex(int),
+}
+
+// ==== Generic parsers ====
+
+Tuple<Elem>: &'a [Elem] = {
+    "(" ")" => &[],
+    "(" <elem: Elem> "," ")" => std::slice::from_ref(bump.alloc(elem)),
+    "(" <elems: Seq2<Elem, ",">> ")" => elems,
+};
+
+// ==== Generic helpers ====
+
+Seq<Elem, Sep>: &'a [Elem] = {
+    <elems: (<Elem> Sep)*> <last: Elem?> => {
+        let len = elems.len() + last.is_some() as usize;
+        let mut iter = elems.into_iter().chain(last);
+        bump.alloc_slice_fill_with(len, |_| iter.next().unwrap())
+    }
+};
+
+Seq1<Elem, Sep>: &'a [Elem] = {
+    <first: Elem> <elems: (Sep <Elem>)*> Sep? => {
+        let len = elems.len() + 1;
+        let mut iter = std::iter::once(first).chain(elems);
+        bump.alloc_slice_fill_with(len, |_| iter.next().unwrap())
+    },
+};
+
+Seq2<Elem, Sep>: &'a [Elem] = {
+    <first: Elem> Sep <second: Elem> <elems: (Sep <Elem>)*> Sep? => {
+        let len = elems.len() + 2;
+        let mut iter = std::iter::once(first).chain(std::iter::once(second)).chain(elems);
+        bump.alloc_slice_fill_with(len, |_| iter.next().unwrap())
+    },
+};
+
+// ==== Tokens ====
+
+Ident: Symbol = {
+    <start: @L> "Ident" <end: @R> => {
+        let s = &source[usize::from(start)..usize::from(end)];
+        interner.get_or_intern(s)
+    }
+}
+
+SpannedIdent: (ByteSpan, Symbol) = {
+    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), ident),
+}
+
+DecInt: Symbol = {
+    <start: @L> "DecInt" <end: @R> => {
+        let s = &source[usize::from(start)..usize::from(end)];
+        interner.get_or_intern(s)
+    }
+}
+
+BinInt: Symbol = {
+    <start: @L> "BinInt" <end: @R> => {
+        let s = &source[usize::from(start)..usize::from(end)];
+        interner.get_or_intern(s)
+    }
+}
+
+HexInt: Symbol = {
+    <start: @L> "HexInt" <end: @R> => {
+        let s = &source[usize::from(start)..usize::from(end)];
+        interner.get_or_intern(s)
+    }
+}
