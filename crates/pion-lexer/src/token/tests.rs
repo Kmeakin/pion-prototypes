@@ -191,9 +191,9 @@ fn literals() {
         expect![[r#"
             0..13: DecInt("1234_5678__90")
             13..22: Whitespace("\n        ")
-            22..33: BintInt("0b1111_0000")
+            22..33: BinInt("0b1111_0000")
             33..42: Whitespace("\n        ")
-            42..54: BintInt("0B0000__1111")
+            42..54: BinInt("0B0000__1111")
             54..63: Whitespace("\n        ")
             63..84: HexInt("0x1234_5678_9abc_def0")
             84..93: Whitespace("\n        ")

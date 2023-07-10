@@ -56,7 +56,7 @@ pub enum TokenKind {
     #[regex(r"[0-9][0-9_]*")]
     DecInt,
     #[regex(r"(?i)0b[0-1][0-1_]*")]
-    BintInt,
+    BinInt,
     #[regex(r"(?i)0x[0-9A-F][0-9A-F_]*")]
     HexInt,
 }
