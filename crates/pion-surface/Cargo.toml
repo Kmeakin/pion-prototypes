@@ -11,7 +11,7 @@ pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
 
 lalrpop-util    = { version = "0.20.0" }
-bumpalo         = { version = "3.13.0" }
+bumpalo         = { workspace = true }
 
 [build-dependencies]
 lalrpop         = { version = "0.20.0", default-features = false } # disable regex support

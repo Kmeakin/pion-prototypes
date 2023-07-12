@@ -9,8 +9,10 @@ workspace = true
 [dependencies]
 pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
+pion-surface = { path = "../pion-surface" }
 pion-language-server = { path = "../pion-language-server" }
 
 anyhow     = { workspace = true }
-clap       = { version = "4.3.3",  features = ["derive"] }
 ariadne    = { version = "0.3.0" }
+bumpalo    = { workspace = true }
+clap       = { version = "4.3.3",  features = ["derive"] }

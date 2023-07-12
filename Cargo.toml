@@ -21,4 +21,5 @@ must_use_candidate = "allow"
 
 [workspace.dependencies]
 anyhow     = { version = "1.0.71", features = ["backtrace"] }
+bumpalo    = { version = "3.13.0" }
 string32   = { version = "0.2.0" }
