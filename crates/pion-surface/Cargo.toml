@@ -10,8 +10,10 @@ workspace = true
 pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
 
-lalrpop-util    = { version = "0.20.0" }
-bumpalo         = { workspace = true }
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+lalrpop-util       = { version = "0.20.0" }
+string32           = { workspace = true }
 
 [build-dependencies]
 lalrpop         = { version = "0.20.0", default-features = false } # disable regex support

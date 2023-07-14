@@ -2,10 +2,12 @@ use std::num::NonZeroU32;
 
 use logos::Logos;
 use pion_utils::location::{BytePos, ByteSpan};
-use pion_utils::source::str32;
+use string32::Str32 as str32;
 
 #[cfg(test)]
 mod tests;
+
+mod reporting;
 
 #[rustfmt::skip]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

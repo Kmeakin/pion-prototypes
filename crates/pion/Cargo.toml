@@ -7,12 +7,12 @@ edition = { workspace = true }
 workspace = true
 
 [dependencies]
-pion-utils = { path = "../pion-utils" }
-pion-lexer = { path = "../pion-lexer" }
-pion-surface = { path = "../pion-surface" }
 pion-language-server = { path = "../pion-language-server" }
+pion-lexer           = { path = "../pion-lexer" }
+pion-surface         = { path = "../pion-surface" }
+pion-utils           = { path = "../pion-utils" }
 
-anyhow     = { workspace = true }
-ariadne    = { version = "0.3.0" }
-bumpalo    = { workspace = true }
-clap       = { version = "4.3.3",  features = ["derive"] }
+anyhow             = { workspace = true }
+bumpalo            = { workspace = true }
+clap               = { version = "4.3.3",  features = ["derive"] }
+codespan-reporting = { workspace = true }

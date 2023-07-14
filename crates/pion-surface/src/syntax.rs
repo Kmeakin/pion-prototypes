@@ -1,6 +1,6 @@
 use pion_utils::interner::{Interner, Symbol};
 use pion_utils::location::ByteSpan;
-use pion_utils::source::str32;
+use string32::Str32 as str32;
 
 use crate::reporting::SyntaxError;
 

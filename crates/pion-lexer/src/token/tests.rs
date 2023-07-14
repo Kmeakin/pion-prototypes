@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::ops::Range;
 
 use expect_test::{expect, Expect};
-use pion_utils::source::String32;
+use string32::String32;
 
 use super::*;
 

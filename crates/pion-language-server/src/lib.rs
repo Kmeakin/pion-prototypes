@@ -1,6 +1,11 @@
+use anyhow::anyhow;
+use camino::{Utf8Path, Utf8PathBuf};
+use codespan_reporting::diagnostic::LabelStyle;
+use codespan_reporting::files::Files;
 use lsp_server::{Connection, Message, Notification, Request, Response};
-use lsp_types::{DiagnosticSeverity, ServerCapabilities, TextDocumentSyncKind};
-use pion_utils::source::{line_index, SourceFile, SourceMap};
+use lsp_types::{ServerCapabilities, TextDocumentSyncKind};
+use pion_utils::interner::Interner;
+use pion_utils::source::{FileId, SourceFile, SourceMap};
 
 pub fn run() -> anyhow::Result<()> {
     eprintln!("starting server");
@@ -107,12 +112,7 @@ impl Server {
                 let params =
                     serde_json::from_value::<DidOpenTextDocumentParams>(notification.params)?;
                 let url = params.text_document.uri;
-                let path = url
-                    .to_file_path()
-                    .map_err(|_| anyhow::anyhow!("cannot convert url to path: {url}"))?;
-                let path = path
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("non-utf8 path: {}", path.display()))?;
+                let path = url_to_path(&url)?;
                 let file = SourceFile::read(path)?;
                 self.source_map.insert_file(file);
                 self.report_diagnostics()?;
@@ -121,12 +121,7 @@ impl Server {
                 let params =
                     serde_json::from_value::<DidChangeTextDocumentParams>(notification.params)?;
                 let url = params.text_document.uri;
-                let path = url
-                    .to_file_path()
-                    .map_err(|_| anyhow::anyhow!("cannot convert url to path: {url}"))?;
-                let path = path
-                    .to_str()
-                    .ok_or_else(|| anyhow::anyhow!("non-utf8 path: {}", path.display()))?;
+                let path = url_to_path(&url)?;
                 let file = SourceFile::read(path)?;
                 self.source_map.insert_file(file);
                 self.report_diagnostics()?;
@@ -149,54 +144,20 @@ impl Server {
 
     fn report_diagnostics(&mut self) -> anyhow::Result<()> {
         use lsp_types::notification::{Notification as _, PublishDiagnostics};
-        use lsp_types::{PublishDiagnosticsParams, Url};
+        use lsp_types::PublishDiagnosticsParams;
 
-        for (_file_id, file) in self.source_map.iter() {
-            let mut diagnostics = Vec::new();
-            let uri = Url::from_file_path(file.path.as_ref())
-                .map_err(|_| anyhow::anyhow!("cannot convert path to url: {:?}", file.path))?;
+        let interner = Interner::new();
+        let bump = bumpalo::Bump::new();
 
-            let tokens = pion_lexer::token::lex(&file.contents);
-            for (result, span) in tokens {
-                if let Err(error) = result {
-                    let start = file.line_index.line_col(u32::from(span.start).into());
-                    let start = file
-                        .line_index
-                        .to_wide(line_index::WideEncoding::Utf16, start)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("cannot convert utf8 LineCol to utf16: {start:?}")
-                        })?;
+        for (file_id, file) in self.source_map.iter() {
+            let uri = path_to_url(file.path.as_ref())?;
 
-                    let end = file.line_index.line_col(u32::from(span.end).into());
-                    let end = file
-                        .line_index
-                        .to_wide(line_index::WideEncoding::Utf16, end)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("cannot convert utf8 LineCol to utf16: {end:?}")
-                        })?;
-
-                    let start = lsp_types::Position::new(start.line, start.col);
-                    let end = lsp_types::Position::new(end.line, end.col);
-
-                    let message = match error {
-                        pion_lexer::token::TokenError::UnknownCharacter => "unknown character",
-                        pion_lexer::token::TokenError::BlockComment { .. } => {
-                            "unclosed block comment"
-                        }
-                    };
-                    let diag = lsp_types::Diagnostic {
-                        range: lsp_types::Range { start, end },
-                        severity: Some(DiagnosticSeverity::ERROR),
-                        code: None,
-                        code_description: None,
-                        source: Some("pion".into()),
-                        message: message.into(),
-                        related_information: None,
-                        tags: None,
-                        data: None,
-                    };
-                    diagnostics.push(diag);
-                }
+            let (_, errors) = pion_surface::syntax::parse_module(&file.contents, &bump, &interner);
+            let mut diagnostics = Vec::with_capacity(errors.len());
+            for error in errors {
+                let diagnostic = error.to_diagnostic(file_id);
+                let diagnostic = diagnostic_to_lsp(diagnostic, file);
+                diagnostics.push(diagnostic);
             }
 
             self.connection
@@ -213,4 +174,67 @@ impl Server {
 
         Ok(())
     }
+}
+
+fn range_to_lsp(range: std::ops::Range<usize>, file: &SourceFile) -> lsp_types::Range {
+    let start = file.location((), range.start).unwrap();
+    let end = file.location((), range.end).unwrap();
+    lsp_types::Range {
+        start: lsp_types::Position {
+            line: start.line_number as u32,
+            character: start.column_number as u32,
+        },
+        end: lsp_types::Position {
+            line: end.line_number as u32,
+            character: end.column_number as u32,
+        },
+    }
+}
+
+fn diagnostic_to_lsp(
+    diagnostic: codespan_reporting::diagnostic::Diagnostic<FileId>,
+    file: &SourceFile,
+) -> lsp_types::Diagnostic {
+    lsp_types::Diagnostic {
+        range: {
+            let primary_label = diagnostic
+                .labels
+                .iter()
+                .find(|label| label.style == LabelStyle::Primary)
+                .unwrap();
+            let range = primary_label.range.clone();
+            range_to_lsp(range, file)
+        },
+        severity: Some(match diagnostic.severity {
+            codespan_reporting::diagnostic::Severity::Bug
+            | codespan_reporting::diagnostic::Severity::Error => {
+                lsp_types::DiagnosticSeverity::ERROR
+            }
+            codespan_reporting::diagnostic::Severity::Warning => {
+                lsp_types::DiagnosticSeverity::WARNING
+            }
+            codespan_reporting::diagnostic::Severity::Note => {
+                lsp_types::DiagnosticSeverity::INFORMATION
+            }
+            codespan_reporting::diagnostic::Severity::Help => lsp_types::DiagnosticSeverity::HINT,
+        }),
+        code: None,
+        code_description: None,
+        source: Some("pion".into()),
+        message: diagnostic.message,
+        related_information: None,
+        tags: None,
+        data: None,
+    }
+}
+
+fn path_to_url(path: &Utf8Path) -> anyhow::Result<lsp_types::Url> {
+    lsp_types::Url::from_file_path(path).map_err(|_| anyhow!("cannot convert path {path:?} to URL"))
+}
+
+fn url_to_path(url: &lsp_types::Url) -> anyhow::Result<Utf8PathBuf> {
+    let path = url
+        .to_file_path()
+        .map_err(|_| anyhow::anyhow!("cannot convert url to path: {url}"))?;
+    Ok(Utf8PathBuf::try_from(path)?)
 }
