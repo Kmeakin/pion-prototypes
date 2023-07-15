@@ -99,6 +99,7 @@ AtomExpr: Expr<'a, ByteSpan> = {
     <start: @L> "(" <expr: Expr> ":" <r#type: Expr> ")" <end: @R> => Expr::Ann(ByteSpan::new(start, end), bump.alloc((expr, r#type))),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(ByteSpan::new(start, end), bump.alloc(expr)),
     <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::Tuple(ByteSpan::new(start, end), exprs),
+    <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
 }
 
 FunArg: FunArg<'a, ByteSpan> = {

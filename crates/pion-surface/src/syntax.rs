@@ -65,6 +65,7 @@ pub enum Expr<'a, Span> {
     FunType(Span, &'a [FunParam<'a, Span>], &'a Self),
     FunLit(Span, &'a [FunParam<'a, Span>], &'a Self),
     FunCall(Span, &'a Self, &'a [FunArg<'a, Span>]),
+    ArrayLit(Span, &'a [Self]),
 }
 
 #[derive(Debug, Copy, Clone)]
