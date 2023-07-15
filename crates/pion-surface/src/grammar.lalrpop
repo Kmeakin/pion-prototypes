@@ -77,7 +77,7 @@ pub Expr: Expr<'a, ByteSpan> = {
 FunExpr: Expr<'a, ByteSpan> = {
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: FunExpr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: FunExpr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
-    <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::Arrow(ByteSpan::new(start, end), bump.alloc((param, body))),
+    <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
     ProjExpr => <>,
 }
 
@@ -98,7 +98,7 @@ AtomExpr: Expr<'a, ByteSpan> = {
     <start: @L> <ident: Ident> <end: @R> => Expr::Ident(ByteSpan::new(start, end), ident),
     <start: @L> "(" <expr: Expr> ":" <r#type: Expr> ")" <end: @R> => Expr::Ann(ByteSpan::new(start, end), bump.alloc((expr, r#type))),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(ByteSpan::new(start, end), bump.alloc(expr)),
-    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::Tuple(ByteSpan::new(start, end), exprs),
+    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), exprs),
     <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
 }
 
@@ -128,7 +128,7 @@ AtomPat: Pat<'a, ByteSpan> = {
     <start: @L> "_" <end: @R> => Pat::Underscore(ByteSpan::new(start, end)),
     <start: @L> <ident: Ident> <end: @R> => Pat::Ident(ByteSpan::new(start, end), ident),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => Pat::Paren(ByteSpan::new(start, end), bump.alloc(pat)),
-    <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::Tuple(ByteSpan::new(start, end), pats),
+    <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::TupleLit(ByteSpan::new(start, end), pats),
 }
 
 // ==== Literals ====

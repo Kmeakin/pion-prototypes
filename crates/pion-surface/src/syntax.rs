@@ -59,9 +59,9 @@ pub enum Expr<'a, Span> {
     Ident(Span, Symbol),
     Ann(Span, &'a (Self, Self)),
     Paren(Span, &'a Self),
-    Tuple(Span, &'a [Self]),
+    TupleLit(Span, &'a [Self]),
     FieldProj(Span, &'a Self, (Span, FieldLabel)),
-    Arrow(Span, &'a (Self, Self)),
+    FunArrow(Span, &'a (Self, Self)),
     FunType(Span, &'a [FunParam<'a, Span>], &'a Self),
     FunLit(Span, &'a [FunParam<'a, Span>], &'a Self),
     FunCall(Span, &'a Self, &'a [FunArg<'a, Span>]),
@@ -94,7 +94,7 @@ pub enum Pat<'a, Span> {
     Underscore(Span),
     Ident(Span, Symbol),
     Paren(Span, &'a Self),
-    Tuple(Span, &'a [Self]),
+    TupleLit(Span, &'a [Self]),
 }
 
 #[derive(Debug, Copy, Clone)]
