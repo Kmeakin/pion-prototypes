@@ -3,8 +3,9 @@ use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::diagnostic::LabelStyle;
 use codespan_reporting::files::Files;
 use lsp_server::{Connection, Message, Notification, Request, Response};
-use lsp_types::{ServerCapabilities, TextDocumentSyncKind};
+use lsp_types::{DocumentSymbol, ServerCapabilities, SymbolKind, TextDocumentSyncKind};
 use pion_utils::interner::Interner;
+use pion_utils::location::ByteSpan;
 use pion_utils::source::{FileId, SourceFile, SourceMap};
 
 pub fn run() -> anyhow::Result<()> {
@@ -52,7 +53,7 @@ impl Server {
             implementation_provider: None,
             references_provider: None,
             document_highlight_provider: None,
-            document_symbol_provider: None,
+            document_symbol_provider: Some(lsp_types::OneOf::Left(true)),
             workspace_symbol_provider: None,
             code_action_provider: None,
             code_lens_provider: None,
@@ -133,7 +134,58 @@ impl Server {
     }
 
     fn handle_request(&mut self, request: Request) -> anyhow::Result<()> {
-        eprintln!("TODO: handle request {request:?}");
+        use lsp_types::request::{DocumentSymbolRequest, Request};
+
+        match request.method.as_str() {
+            DocumentSymbolRequest::METHOD => {
+                use lsp_types::{DocumentSymbolParams, DocumentSymbolResponse};
+
+                let params = serde_json::from_value::<DocumentSymbolParams>(request.params)?;
+                let url = params.text_document.uri;
+                let path = url_to_path(&url)?;
+                let file = SourceFile::read(path)?;
+
+                let interner = Interner::new();
+                let bump = bumpalo::Bump::new();
+
+                let mut symbols = Vec::new();
+                let (module, _) =
+                    pion_surface::syntax::parse_module(&file.contents, &bump, &interner);
+                for item in module.items {
+                    let symbol = match item {
+                        pion_surface::syntax::Item::Error(_) => continue,
+                        pion_surface::syntax::Item::Def(def) => {
+                            let name = file.contents[def.name.0].into();
+                            let range = bytespan_to_lsp(def.span, &file)?;
+                            let selection_range = bytespan_to_lsp(def.name.0, &file)?;
+
+                            #[allow(deprecated)]
+                            DocumentSymbol {
+                                name,
+                                detail: None,
+                                kind: SymbolKind::CONSTANT,
+                                tags: None,
+                                deprecated: None,
+                                range,
+                                selection_range,
+                                children: None,
+                            }
+                        }
+                    };
+                    symbols.push(symbol);
+                }
+
+                let response = DocumentSymbolResponse::Nested(symbols);
+
+                self.connection.sender.send(Message::Response(Response {
+                    id: request.id,
+                    result: Some(serde_json::to_value(response)?),
+                    error: None,
+                }))?;
+            }
+            _ => eprintln!("TODO: handle request {request:?}"),
+        }
+
         Ok(())
     }
 
@@ -156,7 +208,7 @@ impl Server {
             let mut diagnostics = Vec::with_capacity(errors.len());
             for error in errors {
                 let diagnostic = error.to_diagnostic(file_id);
-                let diagnostic = diagnostic_to_lsp(diagnostic, file);
+                let diagnostic = diagnostic_to_lsp(diagnostic, file)?;
                 diagnostics.push(diagnostic);
             }
 
@@ -176,26 +228,35 @@ impl Server {
     }
 }
 
-fn range_to_lsp(range: std::ops::Range<usize>, file: &SourceFile) -> lsp_types::Range {
-    let start = file.location((), range.start).unwrap();
-    let end = file.location((), range.end).unwrap();
-    lsp_types::Range {
+fn bytespan_to_lsp(span: ByteSpan, file: &SourceFile) -> anyhow::Result<lsp_types::Range> {
+    range_to_lsp(span.into(), file)
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn range_to_lsp(
+    range: std::ops::Range<usize>,
+    file: &SourceFile,
+) -> anyhow::Result<lsp_types::Range> {
+    let start = file.location((), range.start)?;
+    let end = file.location((), range.end)?;
+
+    Ok(lsp_types::Range {
         start: lsp_types::Position {
-            line: start.line_number as u32,
+            line: (start.line_number - 1) as u32,
             character: start.column_number as u32,
         },
         end: lsp_types::Position {
-            line: end.line_number as u32,
+            line: (end.line_number - 1) as u32,
             character: end.column_number as u32,
         },
-    }
+    })
 }
 
 fn diagnostic_to_lsp(
     diagnostic: codespan_reporting::diagnostic::Diagnostic<FileId>,
     file: &SourceFile,
-) -> lsp_types::Diagnostic {
-    lsp_types::Diagnostic {
+) -> anyhow::Result<lsp_types::Diagnostic> {
+    Ok(lsp_types::Diagnostic {
         range: {
             let primary_label = diagnostic
                 .labels
@@ -203,7 +264,7 @@ fn diagnostic_to_lsp(
                 .find(|label| label.style == LabelStyle::Primary)
                 .unwrap();
             let range = primary_label.range.clone();
-            range_to_lsp(range, file)
+            range_to_lsp(range, file)?
         },
         severity: Some(match diagnostic.severity {
             codespan_reporting::diagnostic::Severity::Bug
@@ -225,7 +286,7 @@ fn diagnostic_to_lsp(
         related_information: None,
         tags: None,
         data: None,
-    }
+    })
 }
 
 fn path_to_url(path: &Utf8Path) -> anyhow::Result<lsp_types::Url> {

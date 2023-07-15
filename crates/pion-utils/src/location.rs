@@ -1,5 +1,7 @@
 use std::fmt;
-use std::ops::Range;
+use std::ops::{Index, Range};
+
+use string32::{Str32 as str32, String32};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct BytePos(u32);
@@ -40,6 +42,26 @@ pub struct ByteSpan {
     pub end: BytePos,
 }
 
+impl Index<ByteSpan> for str {
+    type Output = Self;
+    fn index(&self, span: ByteSpan) -> &Self::Output { &self[Range::<usize>::from(span)] }
+}
+
+impl Index<ByteSpan> for String {
+    type Output = str;
+    fn index(&self, span: ByteSpan) -> &Self::Output { &self[Range::<usize>::from(span)] }
+}
+
+impl Index<ByteSpan> for str32 {
+    type Output = str;
+    fn index(&self, span: ByteSpan) -> &Self::Output { &self.as_str()[span] }
+}
+
+impl Index<ByteSpan> for String32 {
+    type Output = str;
+    fn index(&self, span: ByteSpan) -> &Self::Output { &self.as_str()[span] }
+}
+
 impl ByteSpan {
     pub const fn new(start: BytePos, end: BytePos) -> Self { Self { start, end } }
 
@@ -59,7 +81,11 @@ impl ByteSpan {
 }
 
 impl From<ByteSpan> for Range<usize> {
-    fn from(value: ByteSpan) -> Self { value.start.into()..value.end.into() }
+    fn from(span: ByteSpan) -> Self { span.start.into()..span.end.into() }
+}
+
+impl From<ByteSpan> for Range<u32> {
+    fn from(span: ByteSpan) -> Self { span.start.into()..span.end.into() }
 }
 
 impl fmt::Debug for ByteSpan {
