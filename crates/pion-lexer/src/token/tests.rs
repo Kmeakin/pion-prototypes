@@ -31,11 +31,11 @@ fn empty() { check("", expect![[""]]) }
 #[test]
 fn unknown() {
     check(
-        "~#",
-        expect![[r##"
+        "~`",
+        expect![[r#"
             0..1: Err(UnknownCharacter("~"))
-            1..2: Err(UnknownCharacter("#"))
-        "##]],
+            1..2: Err(UnknownCharacter("`"))
+        "#]],
     );
 }
 
