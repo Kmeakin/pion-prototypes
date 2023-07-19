@@ -1,4 +1,3 @@
-use pion_surface::syntax::FieldLabel;
 use pion_utils::interner::Symbol;
 
 #[derive(Debug, Copy, Clone)]
@@ -45,6 +44,12 @@ pub struct FunArg<'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub enum FieldLabel {
+    Int(Result<u32, ()>),
+    Ident(Symbol),
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum Pat<'a> {
     Error,
     Lit(Lit),
@@ -55,9 +60,8 @@ pub enum Pat<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Lit {
-    Error,
     Bool(bool),
-    Int(u32),
+    Int(Result<u32, ()>),
 }
 
 #[cfg(test)]
