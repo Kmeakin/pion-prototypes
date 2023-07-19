@@ -155,7 +155,7 @@ impl Server {
                     let symbol = match item {
                         pion_surface::syntax::Item::Error(_) => continue,
                         pion_surface::syntax::Item::Def(def) => {
-                            let name = file.contents[def.name.0].into();
+                            let name = file.contents[def.name.0].to_owned().into();
                             let range = bytespan_to_lsp(def.span, &file)?;
                             let selection_range = bytespan_to_lsp(def.name.0, &file)?;
 

@@ -53,13 +53,13 @@ impl Index<ByteSpan> for String {
 }
 
 impl Index<ByteSpan> for str32 {
-    type Output = str;
-    fn index(&self, span: ByteSpan) -> &Self::Output { &self.as_str()[span] }
+    type Output = str32;
+    fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
 }
 
 impl Index<ByteSpan> for String32 {
-    type Output = str;
-    fn index(&self, span: ByteSpan) -> &Self::Output { &self.as_str()[span] }
+    type Output = str32;
+    fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
 }
 
 impl ByteSpan {

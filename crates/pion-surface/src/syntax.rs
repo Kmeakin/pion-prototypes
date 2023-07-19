@@ -17,13 +17,7 @@ pub fn parse_module<'a>(
 
     let mut errors = Vec::new();
 
-    match crate::grammar::ModuleParser::new().parse(
-        src.as_str(),
-        bump,
-        interner,
-        &mut errors,
-        tokens,
-    ) {
+    match crate::grammar::ModuleParser::new().parse(src, bump, interner, &mut errors, tokens) {
         Ok(module) => (module, errors),
         Err(error) => {
             errors.push(SyntaxError::from_lalrpop(error));
