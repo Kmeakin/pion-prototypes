@@ -1,6 +1,5 @@
 use anyhow::bail;
 use codespan_reporting::diagnostic::Severity;
-use pion_utils::interner::Interner;
 use pion_utils::source::{SourceFile, SourceMap};
 
 #[derive(clap::Args)]
@@ -34,7 +33,6 @@ pub fn run(args: Args) -> anyhow::Result<()> {
 
     stop_if_errors(error_count)?;
 
-    let interner = Interner::new();
     let bump = bumpalo::Bump::new();
     let mut writer = codespan_reporting::term::termcolor::StandardStream::stderr(
         codespan_reporting::term::termcolor::ColorChoice::Auto,
@@ -43,7 +41,7 @@ pub fn run(args: Args) -> anyhow::Result<()> {
 
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
-        let (_module, errors) = pion_surface::syntax::parse_module(src32, &bump, &interner);
+        let (_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
 
         for error in errors {
             let diagnostic = error.to_diagnostic(file_id);

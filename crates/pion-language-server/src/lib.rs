@@ -4,7 +4,6 @@ use codespan_reporting::diagnostic::LabelStyle;
 use codespan_reporting::files::Files;
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::{DocumentSymbol, ServerCapabilities, SymbolKind, TextDocumentSyncKind};
-use pion_utils::interner::Interner;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::{FileId, SourceFile, SourceMap};
 
@@ -145,12 +144,10 @@ impl Server {
                 let path = url_to_path(&url)?;
                 let file = SourceFile::read(path)?;
 
-                let interner = Interner::new();
                 let bump = bumpalo::Bump::new();
 
                 let mut symbols = Vec::new();
-                let (module, _) =
-                    pion_surface::syntax::parse_module(&file.contents, &bump, &interner);
+                let (module, _) = pion_surface::syntax::parse_module(&file.contents, &bump);
                 for item in module.items {
                     let symbol = match item {
                         pion_surface::syntax::Item::Error(_) => continue,
@@ -198,13 +195,12 @@ impl Server {
         use lsp_types::notification::{Notification as _, PublishDiagnostics};
         use lsp_types::PublishDiagnosticsParams;
 
-        let interner = Interner::new();
         let bump = bumpalo::Bump::new();
 
         for (file_id, file) in self.source_map.iter() {
             let uri = path_to_url(file.path.as_ref())?;
 
-            let (_, errors) = pion_surface::syntax::parse_module(&file.contents, &bump, &interner);
+            let (_, errors) = pion_surface::syntax::parse_module(&file.contents, &bump);
             let mut diagnostics = Vec::with_capacity(errors.len());
             for error in errors {
                 let diagnostic = error.to_diagnostic(file_id);

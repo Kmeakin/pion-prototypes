@@ -14,3 +14,4 @@ camino             = { workspace = true }
 fxhash             = { workspace = true }
 lasso              = { workspace = true }
 triomphe           = { workspace = true }
+once_cell          = { version = "1.18.0", features = ["parking_lot"] }

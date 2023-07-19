@@ -1,4 +1,4 @@
-use pion_utils::interner::{Interner, Symbol};
+use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 use string32::Str32 as str32;
 
@@ -7,7 +7,6 @@ use crate::reporting::SyntaxError;
 pub fn parse_module<'a>(
     src: &str32,
     bump: &'a bumpalo::Bump,
-    interner: &Interner,
 ) -> (Module<'a, ByteSpan>, Vec<SyntaxError>) {
     let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
         Ok(token) if token.is_trivia() => None,
@@ -17,7 +16,7 @@ pub fn parse_module<'a>(
 
     let mut errors = Vec::new();
 
-    match crate::grammar::ModuleParser::new().parse(src, bump, interner, &mut errors, tokens) {
+    match crate::grammar::ModuleParser::new().parse(src, bump, &mut errors, tokens) {
         Ok(module) => (module, errors),
         Err(error) => {
             errors.push(SyntaxError::from_lalrpop(error));

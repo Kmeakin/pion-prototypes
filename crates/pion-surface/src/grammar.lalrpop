@@ -1,5 +1,5 @@
 use pion_lexer::token::{TokenKind, TokenError};
-use pion_utils::interner::{Interner, Symbol};
+use pion_utils::interner::Symbol;
 use pion_utils::location::{BytePos, ByteSpan};
 
 use bumpalo::Bump;
@@ -11,7 +11,6 @@ use crate::reporting::SyntaxError;
 grammar<'source, 'a>(
     source: &'source str32,
     bump: &'a Bump,
-    interner: &Interner,
     errors: &mut Vec<SyntaxError>,
 );
 
@@ -185,7 +184,7 @@ Seq2<Elem, Sep>: &'a [Elem] = {
 Ident: Symbol = {
     <start: @L> "Ident" <end: @R> => {
         let s = &source[ByteSpan::new(start, end)];
-        interner.get_or_intern(s)
+        Symbol::intern(s)
     }
 }
 
@@ -196,20 +195,20 @@ SpannedIdent: (ByteSpan, Symbol) = {
 DecInt: Symbol = {
     <start: @L> "DecInt" <end: @R> => {
         let s = &source[ByteSpan::new(start, end)];
-        interner.get_or_intern(s)
+        Symbol::intern(s)
     }
 }
 
 BinInt: Symbol = {
     <start: @L> "BinInt" <end: @R> => {
         let s = &source[ByteSpan::new(start, end)];
-        interner.get_or_intern(s)
+        Symbol::intern(s)
     }
 }
 
 HexInt: Symbol = {
     <start: @L> "HexInt" <end: @R> => {
         let s = &source[ByteSpan::new(start, end)];
-        interner.get_or_intern(s)
+        Symbol::intern(s)
     }
 }
