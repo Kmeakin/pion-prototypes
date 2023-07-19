@@ -1,0 +1,15 @@
+[package]
+name = "hir"
+version = { workspace = true }
+edition = { workspace = true }
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-utils   = { path = "../pion-utils" }
+pion-lexer   = { path = "../pion-lexer" }
+pion-surface = { path = "../pion-surface" }
+
+bumpalo             = { workspace = true }
+codespan-reporting  = { workspace = true }
