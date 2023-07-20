@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 
-use crate::syntax::{Expr, FieldLabel, FunArg, FunParam, Lit, Pat};
+use crate::syntax::{Def, Expr, FieldLabel, FunArg, FunParam, Item, Lit, Module, Pat};
 
 pub struct Ctx<'a> {
     bump: &'a bumpalo::Bump,
@@ -15,6 +15,30 @@ pub enum LowerError {
 }
 
 impl<'a> Ctx<'a> {
+    pub fn lower_module(&mut self, surface: &surface::Module<'_, ByteSpan>) -> Module<'a> {
+        let items = self
+            .bump
+            .alloc_slice_fill_iter(surface.items.iter().map(|item| self.lower_item(item)));
+        Module { items }
+    }
+
+    pub fn lower_item(&mut self, surface: &surface::Item<'_, ByteSpan>) -> Item<'a> {
+        match surface {
+            surface::Item::Error(_) => Item::Error,
+            surface::Item::Def(def) => Item::Def(self.lower_def(def)),
+        }
+    }
+
+    fn lower_def(&mut self, surface: &surface::Def<'_, ByteSpan>) -> Def<'a> {
+        let r#type = surface.r#type.map(|r#type| self.lower_expr(&r#type));
+        let expr = self.lower_expr(&surface.expr);
+        Def {
+            name: surface.name.1,
+            r#type,
+            expr,
+        }
+    }
+
     pub fn lower_expr(&mut self, surface: &surface::Expr<'_, ByteSpan>) -> Expr<'a> {
         match surface {
             surface::Expr::Error(_) => Expr::Error,

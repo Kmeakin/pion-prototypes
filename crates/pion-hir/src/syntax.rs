@@ -1,6 +1,24 @@
 use pion_utils::interner::Symbol;
 
 #[derive(Debug, Copy, Clone)]
+pub struct Module<'a> {
+    pub items: &'a [Item<'a>],
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Item<'a> {
+    Error,
+    Def(Def<'a>),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Def<'a> {
+    pub name: Symbol,
+    pub r#type: Option<Expr<'a>>,
+    pub expr: Expr<'a>,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum Expr<'a> {
     Error,
     Lit(Lit),
