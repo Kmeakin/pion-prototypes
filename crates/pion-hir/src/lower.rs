@@ -15,32 +15,32 @@ pub enum LowerError {
 }
 
 impl<'alloc> Ctx<'alloc> {
-    pub fn lower_module(&mut self, surface: &surface::Module<'_, ByteSpan>) -> Module<'alloc> {
+    pub fn lower_module(&mut self, module: &surface::Module<'_, ByteSpan>) -> Module<'alloc> {
         let items = self
             .bump
-            .alloc_slice_fill_iter(surface.items.iter().map(|item| self.lower_item(item)));
+            .alloc_slice_fill_iter(module.items.iter().map(|item| self.lower_item(item)));
         Module { items }
     }
 
-    pub fn lower_item(&mut self, surface: &surface::Item<'_, ByteSpan>) -> Item<'alloc> {
-        match surface {
+    pub fn lower_item(&mut self, item: &surface::Item<'_, ByteSpan>) -> Item<'alloc> {
+        match item {
             surface::Item::Error(_) => Item::Error,
             surface::Item::Def(def) => Item::Def(self.lower_def(def)),
         }
     }
 
-    fn lower_def(&mut self, surface: &surface::Def<'_, ByteSpan>) -> Def<'alloc> {
-        let r#type = surface.r#type.map(|r#type| self.lower_expr(&r#type));
-        let expr = self.lower_expr(&surface.expr);
+    fn lower_def(&mut self, def: &surface::Def<'_, ByteSpan>) -> Def<'alloc> {
+        let r#type = def.r#type.map(|r#type| self.lower_expr(&r#type));
+        let expr = self.lower_expr(&def.expr);
         Def {
-            name: surface.name.1,
+            name: def.name.1,
             r#type,
             expr,
         }
     }
 
-    pub fn lower_expr(&mut self, surface: &surface::Expr<'_, ByteSpan>) -> Expr<'alloc> {
-        match surface {
+    pub fn lower_expr(&mut self, expr: &surface::Expr<'_, ByteSpan>) -> Expr<'alloc> {
+        match expr {
             surface::Expr::Error(_) => Expr::Error,
             surface::Expr::Lit(span, lit) => Expr::Lit(self.lower_lit(*span, *lit)),
             surface::Expr::Underscore(_) => Expr::Underscore,
@@ -95,10 +95,7 @@ impl<'alloc> Ctx<'alloc> {
                 let fun = self.lower_expr(fun);
                 let args = self
                     .bump
-                    .alloc_slice_fill_iter(args.iter().map(|arg| FunArg {
-                        plicity: arg.plicity.into(),
-                        expr: self.lower_expr(&arg.expr),
-                    }));
+                    .alloc_slice_fill_iter(args.iter().map(|arg| self.lower_fun_arg(arg)));
                 Expr::FunCall {
                     fun: self.bump.alloc(fun),
                     args,
@@ -123,22 +120,29 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    fn lower_fun_param(&mut self, surface: &surface::FunParam<ByteSpan>) -> FunParam<'alloc> {
+    fn lower_fun_param(&mut self, param: &surface::FunParam<ByteSpan>) -> FunParam<'alloc> {
         FunParam {
-            plicity: surface.plicity.into(),
-            pat: self.lower_pat(&surface.pat),
-            r#type: surface.r#type.map(|r#type| self.lower_expr(&r#type)),
+            plicity: param.plicity.into(),
+            pat: self.lower_pat(&param.pat),
+            r#type: param.r#type.map(|r#type| self.lower_expr(&r#type)),
         }
     }
 
-    fn lower_match_case(&mut self, surface: &surface::MatchCase<ByteSpan>) -> MatchCase<'alloc> {
-        let pat = self.lower_pat(&surface.pat);
-        let expr = self.lower_expr(&surface.expr);
+    fn lower_fun_arg(&mut self, arg: &surface::FunArg<ByteSpan>) -> FunArg<'alloc> {
+        FunArg {
+            plicity: arg.plicity.into(),
+            expr: self.lower_expr(&arg.expr),
+        }
+    }
+
+    fn lower_match_case(&mut self, case: &surface::MatchCase<ByteSpan>) -> MatchCase<'alloc> {
+        let pat = self.lower_pat(&case.pat);
+        let expr = self.lower_expr(&case.expr);
         MatchCase { pat, expr }
     }
 
-    fn lower_field_label(&mut self, span: ByteSpan, surface: surface::FieldLabel) -> FieldLabel {
-        match surface {
+    fn lower_field_label(&mut self, span: ByteSpan, label: surface::FieldLabel) -> FieldLabel {
+        match label {
             surface::FieldLabel::DecInt(int) => {
                 FieldLabel::Int(self.lower_int_lit(span, surface::IntLit::Dec(int)))
             }
@@ -146,8 +150,8 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    pub fn lower_pat(&mut self, surface: &surface::Pat<ByteSpan>) -> Pat<'alloc> {
-        match surface {
+    pub fn lower_pat(&mut self, pat: &surface::Pat<ByteSpan>) -> Pat<'alloc> {
+        match pat {
             surface::Pat::Error(_) => Pat::Error,
             surface::Pat::Lit(span, lit) => Pat::Lit(self.lower_lit(*span, *lit)),
             surface::Pat::Underscore(_) => Pat::Underscore,
@@ -162,8 +166,8 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    fn lower_lit(&mut self, span: ByteSpan, surface: surface::Lit) -> Lit {
-        match surface {
+    fn lower_lit(&mut self, span: ByteSpan, lit: surface::Lit) -> Lit {
+        match lit {
             surface::Lit::Bool(b) => Lit::Bool(b),
             surface::Lit::Int(symbol) => Lit::Int(self.lower_int_lit(span, symbol)),
         }
