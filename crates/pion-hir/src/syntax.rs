@@ -26,50 +26,22 @@ pub enum Expr<'alloc> {
     Underscore,
     Ident(Symbol),
     Ann(&'alloc (Self, Self)),
-    TupleLit {
-        exprs: &'alloc [Self],
-    },
-    FieldProj {
-        scrut: &'alloc Self,
-        label: Symbol,
-    },
+
+    Let(&'alloc (Pat<'alloc>, Option<Self>, Self, Self)),
+
+    ArrayLit(&'alloc [Self]),
+    TupleLit(&'alloc [Self]),
+    RecordType(&'alloc [TypeField<'alloc>]),
+    RecordLit(&'alloc [ExprField<'alloc>]),
+    FieldProj(&'alloc Self, Symbol),
+
     FunArrow(&'alloc (Self, Self)),
-    FunType {
-        params: &'alloc [FunParam<'alloc>],
-        codomain: &'alloc Self,
-    },
-    FunLit {
-        params: &'alloc [FunParam<'alloc>],
-        body: &'alloc Self,
-    },
-    FunCall {
-        fun: &'alloc Self,
-        args: &'alloc [FunArg<'alloc>],
-    },
-    ArrayLit {
-        exprs: &'alloc [Self],
-    },
-    Match {
-        scrut: &'alloc Self,
-        cases: &'alloc [MatchCase<'alloc>],
-    },
-    If {
-        scrut: &'alloc Self,
-        then: &'alloc Self,
-        r#else: &'alloc Self,
-    },
-    Let {
-        pat: &'alloc Pat<'alloc>,
-        r#type: Option<&'alloc Expr<'alloc>>,
-        init: &'alloc Expr<'alloc>,
-        body: &'alloc Expr<'alloc>,
-    },
-    RecordType {
-        fields: &'alloc [TypeField<'alloc>],
-    },
-    RecordLit {
-        fields: &'alloc [ExprField<'alloc>],
-    },
+    FunType(&'alloc [FunParam<'alloc>], &'alloc Self),
+    FunLit(&'alloc [FunParam<'alloc>], &'alloc Self),
+    FunCall(&'alloc Self, &'alloc [FunArg<'alloc>]),
+
+    Match(&'alloc Self, &'alloc [MatchCase<'alloc>]),
+    If(&'alloc (Self, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -139,8 +111,8 @@ pub enum Pat<'alloc> {
     Lit(Lit),
     Underscore,
     Ident(Symbol),
-    TupleLit { pats: &'alloc [Self] },
-    RecordLit { fields: &'alloc [PatField<'alloc>] },
+    TupleLit(&'alloc [Self]),
+    RecordLit(&'alloc [PatField<'alloc>]),
 }
 
 #[derive(Debug, Copy, Clone)]

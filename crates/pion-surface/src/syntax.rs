@@ -50,20 +50,24 @@ pub enum Expr<'alloc, Span> {
     Lit(Span, Lit),
     Underscore(Span),
     Ident(Span, Symbol),
-    Ann(Span, &'alloc (Self, Self)),
     Paren(Span, &'alloc Self),
+    Ann(Span, &'alloc (Self, Self)),
+
+    Let(Span, &'alloc (Pat<'alloc, Span>, Option<Self>, Self, Self)),
+
+    ArrayLit(Span, &'alloc [Self]),
+    RecordType(Span, &'alloc [TypeField<'alloc, Span>]),
+    RecordLit(Span, &'alloc [ExprField<'alloc, Span>]),
     TupleLit(Span, &'alloc [Self]),
     FieldProj(Span, &'alloc Self, (Span, Symbol)),
+
     FunArrow(Span, &'alloc (Self, Self)),
     FunType(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
     FunLit(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
     FunCall(Span, &'alloc Self, &'alloc [FunArg<'alloc, Span>]),
-    ArrayLit(Span, &'alloc [Self]),
-    RecordType(Span, &'alloc [TypeField<'alloc, Span>]),
-    RecordLit(Span, &'alloc [ExprField<'alloc, Span>]),
+
     Match(Span, &'alloc Self, &'alloc [MatchCase<'alloc, Span>]),
     If(Span, &'alloc (Self, Self, Self)),
-    Let(Span, &'alloc (Pat<'alloc, Span>, Option<Self>, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]

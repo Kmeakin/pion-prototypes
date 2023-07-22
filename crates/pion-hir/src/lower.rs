@@ -41,33 +41,63 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn lower_expr(&mut self, expr: &surface::Expr<'_, ByteSpan>) -> Expr<'alloc> {
         match expr {
             surface::Expr::Error(_) => Expr::Error,
             surface::Expr::Lit(span, lit) => Expr::Lit(self.lower_lit(*span, *lit)),
             surface::Expr::Underscore(_) => Expr::Underscore,
             surface::Expr::Ident(_, symbol) => Expr::Ident(*symbol),
+            surface::Expr::Paren(_, expr) => self.lower_expr(expr),
             surface::Expr::Ann(_, (expr, r#type)) => {
                 let expr = self.lower_expr(expr);
                 let r#type = self.lower_expr(r#type);
                 let expr = self.bump.alloc((expr, r#type));
                 Expr::Ann(expr)
             }
-            surface::Expr::Paren(_, expr) => self.lower_expr(expr),
+
+            surface::Expr::Let(.., (pat, r#type, init, body)) => {
+                let pat = self.lower_pat(pat);
+                let r#type = r#type.map(|r#type| self.lower_expr(&r#type));
+                let init = self.lower_expr(init);
+                let body = self.lower_expr(body);
+                Expr::Let(self.bump.alloc((pat, r#type, init, body)))
+            }
+
+            surface::Expr::ArrayLit(.., exprs) => {
+                let exprs = self
+                    .bump
+                    .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
+                Expr::ArrayLit(exprs)
+            }
             surface::Expr::TupleLit(.., exprs) => {
                 let exprs = self
                     .bump
                     .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
-                Expr::TupleLit { exprs }
+                Expr::TupleLit(exprs)
+            }
+            surface::Expr::RecordType(_, fields) => {
+                let fields =
+                    self.bump
+                        .alloc_slice_fill_iter(fields.iter().map(|field| TypeField {
+                            label: field.label.1,
+                            r#type: self.lower_expr(&field.r#type),
+                        }));
+                Expr::RecordType(fields)
+            }
+            surface::Expr::RecordLit(_, fields) => {
+                let fields =
+                    self.bump
+                        .alloc_slice_fill_iter(fields.iter().map(|field| ExprField {
+                            label: field.label.1,
+                            expr: self.lower_expr(&field.expr),
+                        }));
+                Expr::RecordLit(fields)
             }
             surface::Expr::FieldProj(.., scrut, label) => {
                 let scrut = self.lower_expr(scrut);
-                Expr::FieldProj {
-                    scrut: self.bump.alloc(scrut),
-                    label: label.1,
-                }
+                Expr::FieldProj(self.bump.alloc(scrut), label.1)
             }
+
             surface::Expr::FunArrow(.., (domain, codomain)) => {
                 let domain = self.lower_expr(domain);
                 let codomain = self.lower_expr(codomain);
@@ -78,86 +108,35 @@ impl<'alloc> Ctx<'alloc> {
                     .bump
                     .alloc_slice_fill_iter(params.iter().map(|param| self.lower_fun_param(param)));
                 let codomain = self.lower_expr(codomain);
-                Expr::FunType {
-                    params,
-                    codomain: self.bump.alloc(codomain),
-                }
+                Expr::FunType(params, self.bump.alloc(codomain))
             }
             surface::Expr::FunLit(.., params, body) => {
                 let params = self
                     .bump
                     .alloc_slice_fill_iter(params.iter().map(|param| self.lower_fun_param(param)));
                 let body = self.lower_expr(body);
-                Expr::FunLit {
-                    params,
-                    body: self.bump.alloc(body),
-                }
+                Expr::FunLit(params, self.bump.alloc(body))
             }
             surface::Expr::FunCall(_, fun, args) => {
                 let fun = self.lower_expr(fun);
                 let args = self
                     .bump
                     .alloc_slice_fill_iter(args.iter().map(|arg| self.lower_fun_arg(arg)));
-                Expr::FunCall {
-                    fun: self.bump.alloc(fun),
-                    args,
-                }
+                Expr::FunCall(self.bump.alloc(fun), args)
             }
-            surface::Expr::ArrayLit(.., exprs) => {
-                let exprs = self
-                    .bump
-                    .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
-                Expr::ArrayLit { exprs }
-            }
+
             surface::Expr::Match(_, scrut, cases) => {
                 let scrut = self.lower_expr(scrut);
                 let cases = self
                     .bump
                     .alloc_slice_fill_iter(cases.iter().map(|case| self.lower_match_case(case)));
-                Expr::Match {
-                    scrut: self.bump.alloc(scrut),
-                    cases,
-                }
-            }
-            surface::Expr::RecordType(_, fields) => {
-                let fields =
-                    self.bump
-                        .alloc_slice_fill_iter(fields.iter().map(|field| TypeField {
-                            label: field.label.1,
-                            r#type: self.lower_expr(&field.r#type),
-                        }));
-                Expr::RecordType { fields }
-            }
-            surface::Expr::RecordLit(_, fields) => {
-                let fields =
-                    self.bump
-                        .alloc_slice_fill_iter(fields.iter().map(|field| ExprField {
-                            label: field.label.1,
-                            expr: self.lower_expr(&field.expr),
-                        }));
-                Expr::RecordLit { fields }
+                Expr::Match(self.bump.alloc(scrut), cases)
             }
             surface::Expr::If(_, (scrut, then, r#else)) => {
                 let scrut = self.lower_expr(scrut);
                 let then = self.lower_expr(then);
                 let r#else = self.lower_expr(r#else);
-                Expr::If {
-                    scrut: self.bump.alloc(scrut),
-                    then: self.bump.alloc(then),
-                    r#else: self.bump.alloc(r#else),
-                }
-            }
-            surface::Expr::Let(.., (pat, r#type, init, body)) => {
-                let pat = self.lower_pat(pat);
-                let r#type = r#type.map(|r#type| self.lower_expr(&r#type));
-                let init = self.lower_expr(init);
-                let body = self.lower_expr(body);
-                Expr::Let {
-                    pat: self.bump.alloc(pat),
-                    r#type: r#type.map(|r#type| self.bump.alloc(r#type) as &_),
-                    init: self.bump.alloc(init),
-                    body: self.bump.alloc(body),
-                }
+                Expr::If(self.bump.alloc((scrut, then, r#else)))
             }
         }
     }
@@ -194,7 +173,7 @@ impl<'alloc> Ctx<'alloc> {
                 let pats = self
                     .bump
                     .alloc_slice_fill_iter(pats.iter().map(|pat| self.lower_pat(pat)));
-                Pat::TupleLit { pats }
+                Pat::TupleLit(pats)
             }
             surface::Pat::RecordLit(_, fields) => {
                 let fields = self
@@ -203,7 +182,7 @@ impl<'alloc> Ctx<'alloc> {
                         label: field.label.1,
                         pat: self.lower_pat(&field.pat),
                     }));
-                Pat::RecordLit { fields }
+                Pat::RecordLit(fields)
             }
         }
     }
