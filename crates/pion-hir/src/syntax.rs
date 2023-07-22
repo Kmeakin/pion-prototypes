@@ -49,6 +49,10 @@ pub enum Expr<'alloc> {
     ArrayLit {
         exprs: &'alloc [Self],
     },
+    Match {
+        scrut: &'alloc Self,
+        cases: &'alloc [MatchCase<'alloc>],
+    },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -61,6 +65,12 @@ pub struct FunParam<'alloc> {
 #[derive(Debug, Copy, Clone)]
 pub struct FunArg<'alloc> {
     pub plicity: Plicity,
+    pub expr: Expr<'alloc>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct MatchCase<'alloc> {
+    pub pat: Pat<'alloc>,
     pub expr: Expr<'alloc>,
 }
 

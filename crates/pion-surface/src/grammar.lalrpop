@@ -100,6 +100,7 @@ AtomExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(ByteSpan::new(start, end), bump.alloc(expr)),
     <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), exprs),
     <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
+    <start: @L> "match" <scrut: Expr> "{" <cases: Seq<MatchCase, ",">> "}" <end: @R> => Expr::Match(ByteSpan::new(start, end), bump.alloc(scrut), cases),
 }
 
 FunArg: FunArg<'alloc, ByteSpan> = {
@@ -118,6 +119,10 @@ Plicity: Plicity = {
 FieldLabel: (ByteSpan, FieldLabel) = {
     <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), FieldLabel::Ident(ident)),
     <start: @L> <int: DecInt>  <end: @R> => (ByteSpan::new(start, end), FieldLabel::DecInt(int)),
+}
+
+MatchCase: MatchCase<'alloc, ByteSpan> = {
+    <pat: Pat> "=>" <expr: Expr> => MatchCase {pat, expr},
 }
 
 // ==== Patterns ====

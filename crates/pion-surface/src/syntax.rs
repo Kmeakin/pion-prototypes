@@ -59,6 +59,7 @@ pub enum Expr<'alloc, Span> {
     FunLit(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
     FunCall(Span, &'alloc Self, &'alloc [FunArg<'alloc, Span>]),
     ArrayLit(Span, &'alloc [Self]),
+    Match(Span, &'alloc Self, &'alloc [MatchCase<'alloc, Span>]),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -86,6 +87,12 @@ pub enum Plicity {
 pub enum FieldLabel {
     DecInt(Symbol),
     Ident(Symbol),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct MatchCase<'alloc, Span> {
+    pub pat: Pat<'alloc, Span>,
+    pub expr: Expr<'alloc, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 
-use crate::syntax::{Def, Expr, FieldLabel, FunArg, FunParam, Item, Lit, Module, Pat};
+use crate::syntax::{Def, Expr, FieldLabel, FunArg, FunParam, Item, Lit, MatchCase, Module, Pat};
 
 pub struct Ctx<'alloc> {
     bump: &'alloc bumpalo::Bump,
@@ -110,6 +110,16 @@ impl<'alloc> Ctx<'alloc> {
                     .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
                 Expr::ArrayLit { exprs }
             }
+            surface::Expr::Match(_, scrut, cases) => {
+                let scrut = self.lower_expr(scrut);
+                let cases = self
+                    .bump
+                    .alloc_slice_fill_iter(cases.iter().map(|case| self.lower_match_case(case)));
+                Expr::Match {
+                    scrut: self.bump.alloc(scrut),
+                    cases,
+                }
+            }
         }
     }
 
@@ -119,6 +129,12 @@ impl<'alloc> Ctx<'alloc> {
             pat: self.lower_pat(&surface.pat),
             r#type: surface.r#type.map(|r#type| self.lower_expr(&r#type)),
         }
+    }
+
+    fn lower_match_case(&mut self, surface: &surface::MatchCase<ByteSpan>) -> MatchCase<'alloc> {
+        let pat = self.lower_pat(&surface.pat);
+        let expr = self.lower_expr(&surface.expr);
+        MatchCase { pat, expr }
     }
 
     fn lower_field_label(&mut self, span: ByteSpan, surface: surface::FieldLabel) -> FieldLabel {
