@@ -82,7 +82,7 @@ FunExpr: Expr<'alloc, ByteSpan> = {
 }
 
 ProjExpr: Expr<'alloc, ByteSpan> = {
-    <start: @L> <head: CallExpr> "." <label: FieldLabel> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
+    <start: @L> <head: CallExpr> "." <label: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
     CallExpr => <>,
 }
 
@@ -114,11 +114,6 @@ FunParam: FunParam<'alloc, ByteSpan> = {
 Plicity: Plicity = {
     () =>  Plicity::Explicit,
     "@" => Plicity::Implicit,
-}
-
-FieldLabel: (ByteSpan, FieldLabel) = {
-    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), FieldLabel::Ident(ident)),
-    <start: @L> <int: DecInt>  <end: @R> => (ByteSpan::new(start, end), FieldLabel::DecInt(int)),
 }
 
 MatchCase: MatchCase<'alloc, ByteSpan> = {

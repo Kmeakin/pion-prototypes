@@ -31,7 +31,7 @@ pub enum Expr<'alloc> {
     },
     FieldProj {
         scrut: &'alloc Self,
-        field: FieldLabel,
+        label: Symbol,
     },
     FunArrow(&'alloc (Self, Self)),
     FunType {
@@ -52,6 +52,12 @@ pub enum Expr<'alloc> {
     Match {
         scrut: &'alloc Self,
         cases: &'alloc [MatchCase<'alloc>],
+    },
+    RecordType {
+        fields: &'alloc [TypeField<'alloc>],
+    },
+    RecordLit {
+        fields: &'alloc [ExprField<'alloc>],
     },
 }
 
@@ -99,9 +105,21 @@ impl From<Plicity> for surface::Plicity {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum FieldLabel {
-    Int(Result<u32, ()>),
-    Ident(Symbol),
+pub struct TypeField<'alloc> {
+    pub label: Symbol,
+    pub r#type: Expr<'alloc>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ExprField<'alloc> {
+    pub label: Symbol,
+    pub expr: Expr<'alloc>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct PatField<'alloc> {
+    pub label: Symbol,
+    pub pat: Pat<'alloc>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -111,6 +129,7 @@ pub enum Pat<'alloc> {
     Underscore,
     Ident(Symbol),
     TupleLit { pats: &'alloc [Self] },
+    RecordLit { fields: &'alloc [PatField<'alloc>] },
 }
 
 #[derive(Debug, Copy, Clone)]

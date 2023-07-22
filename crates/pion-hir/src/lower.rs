@@ -3,7 +3,9 @@ use std::num::ParseIntError;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 
-use crate::syntax::{Def, Expr, FieldLabel, FunArg, FunParam, Item, Lit, MatchCase, Module, Pat};
+use crate::syntax::{
+    Def, Expr, ExprField, FunArg, FunParam, Item, Lit, MatchCase, Module, Pat, PatField, TypeField,
+};
 
 pub struct Ctx<'alloc> {
     bump: &'alloc bumpalo::Bump,
@@ -60,10 +62,9 @@ impl<'alloc> Ctx<'alloc> {
             }
             surface::Expr::FieldProj(.., scrut, label) => {
                 let scrut = self.lower_expr(scrut);
-                let field = self.lower_field_label(label.0, label.1);
                 Expr::FieldProj {
                     scrut: self.bump.alloc(scrut),
-                    field,
+                    label: label.1,
                 }
             }
             surface::Expr::FunArrow(.., (domain, codomain)) => {
@@ -117,6 +118,24 @@ impl<'alloc> Ctx<'alloc> {
                     cases,
                 }
             }
+            surface::Expr::RecordType(_, fields) => {
+                let fields =
+                    self.bump
+                        .alloc_slice_fill_iter(fields.iter().map(|field| TypeField {
+                            label: field.label.1,
+                            r#type: self.lower_expr(&field.r#type),
+                        }));
+                Expr::RecordType { fields }
+            }
+            surface::Expr::RecordLit(_, fields) => {
+                let fields =
+                    self.bump
+                        .alloc_slice_fill_iter(fields.iter().map(|field| ExprField {
+                            label: field.label.1,
+                            expr: self.lower_expr(&field.expr),
+                        }));
+                Expr::RecordLit { fields }
+            }
         }
     }
 
@@ -141,15 +160,6 @@ impl<'alloc> Ctx<'alloc> {
         MatchCase { pat, expr }
     }
 
-    fn lower_field_label(&mut self, span: ByteSpan, label: surface::FieldLabel) -> FieldLabel {
-        match label {
-            surface::FieldLabel::DecInt(int) => {
-                FieldLabel::Int(self.lower_int_lit(span, surface::IntLit::Dec(int)))
-            }
-            surface::FieldLabel::Ident(symbol) => FieldLabel::Ident(symbol),
-        }
-    }
-
     pub fn lower_pat(&mut self, pat: &surface::Pat<ByteSpan>) -> Pat<'alloc> {
         match pat {
             surface::Pat::Error(_) => Pat::Error,
@@ -162,6 +172,15 @@ impl<'alloc> Ctx<'alloc> {
                     .bump
                     .alloc_slice_fill_iter(pats.iter().map(|pat| self.lower_pat(pat)));
                 Pat::TupleLit { pats }
+            }
+            surface::Pat::RecordLit(_, fields) => {
+                let fields = self
+                    .bump
+                    .alloc_slice_fill_iter(fields.iter().map(|field| PatField {
+                        label: field.label.1,
+                        pat: self.lower_pat(&field.pat),
+                    }));
+                Pat::RecordLit { fields }
             }
         }
     }

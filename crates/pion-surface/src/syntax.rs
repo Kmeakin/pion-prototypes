@@ -53,12 +53,14 @@ pub enum Expr<'alloc, Span> {
     Ann(Span, &'alloc (Self, Self)),
     Paren(Span, &'alloc Self),
     TupleLit(Span, &'alloc [Self]),
-    FieldProj(Span, &'alloc Self, (Span, FieldLabel)),
+    FieldProj(Span, &'alloc Self, (Span, Symbol)),
     FunArrow(Span, &'alloc (Self, Self)),
     FunType(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
     FunLit(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
     FunCall(Span, &'alloc Self, &'alloc [FunArg<'alloc, Span>]),
     ArrayLit(Span, &'alloc [Self]),
+    RecordType(Span, &'alloc [TypeField<'alloc, Span>]),
+    RecordLit(Span, &'alloc [ExprField<'alloc, Span>]),
     Match(Span, &'alloc Self, &'alloc [MatchCase<'alloc, Span>]),
 }
 
@@ -84,9 +86,21 @@ pub enum Plicity {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum FieldLabel {
-    DecInt(Symbol),
-    Ident(Symbol),
+pub struct TypeField<'alloc, Span> {
+    pub label: (Span, Symbol),
+    pub r#type: Expr<'alloc, Span>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ExprField<'alloc, Span> {
+    pub label: (Span, Symbol),
+    pub expr: Expr<'alloc, Span>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct PatField<'alloc, Span> {
+    pub label: (Span, Symbol),
+    pub pat: Pat<'alloc, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -103,6 +117,7 @@ pub enum Pat<'alloc, Span> {
     Ident(Span, Symbol),
     Paren(Span, &'alloc Self),
     TupleLit(Span, &'alloc [Self]),
+    RecordLit(Span, &'alloc [PatField<'alloc, Span>]),
 }
 
 #[derive(Debug, Copy, Clone)]
