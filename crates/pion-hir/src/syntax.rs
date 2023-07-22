@@ -1,64 +1,64 @@
 use pion_utils::interner::Symbol;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'a> {
-    pub items: &'a [Item<'a>],
+pub struct Module<'alloc> {
+    pub items: &'alloc [Item<'alloc>],
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Item<'a> {
+pub enum Item<'alloc> {
     Error,
-    Def(Def<'a>),
+    Def(Def<'alloc>),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Def<'a> {
+pub struct Def<'alloc> {
     pub name: Symbol,
-    pub r#type: Option<Expr<'a>>,
-    pub expr: Expr<'a>,
+    pub r#type: Option<Expr<'alloc>>,
+    pub expr: Expr<'alloc>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'a> {
+pub enum Expr<'alloc> {
     Error,
     Lit(Lit),
     Underscore,
     Ident(Symbol),
-    Ann(&'a (Self, Self)),
+    Ann(&'alloc (Self, Self)),
     TupleLit {
-        exprs: &'a [Self],
+        exprs: &'alloc [Self],
     },
     FieldProj {
-        scrut: &'a Self,
+        scrut: &'alloc Self,
         field: FieldLabel,
     },
-    FunArrow(&'a (Self, Self)),
+    FunArrow(&'alloc (Self, Self)),
     FunType {
-        params: &'a [FunParam<'a>],
-        codomain: &'a Self,
+        params: &'alloc [FunParam<'alloc>],
+        codomain: &'alloc Self,
     },
     FunLit {
-        params: &'a [FunParam<'a>],
-        body: &'a Self,
+        params: &'alloc [FunParam<'alloc>],
+        body: &'alloc Self,
     },
     FunCall {
-        fun: &'a Self,
-        args: &'a [FunArg<'a>],
+        fun: &'alloc Self,
+        args: &'alloc [FunArg<'alloc>],
     },
     ArrayLit {
-        exprs: &'a [Self],
+        exprs: &'alloc [Self],
     },
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'a> {
-    pub pat: Pat<'a>,
-    pub r#type: Option<Expr<'a>>,
+pub struct FunParam<'alloc> {
+    pub pat: Pat<'alloc>,
+    pub r#type: Option<Expr<'alloc>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunArg<'a> {
-    pub expr: Expr<'a>,
+pub struct FunArg<'alloc> {
+    pub expr: Expr<'alloc>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -68,12 +68,12 @@ pub enum FieldLabel {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'a> {
+pub enum Pat<'alloc> {
     Error,
     Lit(Lit),
     Underscore,
     Ident(Symbol),
-    TupleLit { pats: &'a [Self] },
+    TupleLit { pats: &'alloc [Self] },
 }
 
 #[derive(Debug, Copy, Clone)]
