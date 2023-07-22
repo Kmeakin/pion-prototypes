@@ -53,6 +53,17 @@ pub enum Expr<'alloc> {
         scrut: &'alloc Self,
         cases: &'alloc [MatchCase<'alloc>],
     },
+    If {
+        scrut: &'alloc Self,
+        then: &'alloc Self,
+        r#else: &'alloc Self,
+    },
+    Let {
+        pat: &'alloc Pat<'alloc>,
+        r#type: Option<&'alloc Expr<'alloc>>,
+        init: &'alloc Expr<'alloc>,
+        body: &'alloc Expr<'alloc>,
+    },
     RecordType {
         fields: &'alloc [TypeField<'alloc>],
     },

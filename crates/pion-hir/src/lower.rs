@@ -41,6 +41,7 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn lower_expr(&mut self, expr: &surface::Expr<'_, ByteSpan>) -> Expr<'alloc> {
         match expr {
             surface::Expr::Error(_) => Expr::Error,
@@ -135,6 +136,28 @@ impl<'alloc> Ctx<'alloc> {
                             expr: self.lower_expr(&field.expr),
                         }));
                 Expr::RecordLit { fields }
+            }
+            surface::Expr::If(_, (scrut, then, r#else)) => {
+                let scrut = self.lower_expr(scrut);
+                let then = self.lower_expr(then);
+                let r#else = self.lower_expr(r#else);
+                Expr::If {
+                    scrut: self.bump.alloc(scrut),
+                    then: self.bump.alloc(then),
+                    r#else: self.bump.alloc(r#else),
+                }
+            }
+            surface::Expr::Let(.., (pat, r#type, init, body)) => {
+                let pat = self.lower_pat(pat);
+                let r#type = r#type.map(|r#type| self.lower_expr(&r#type));
+                let init = self.lower_expr(init);
+                let body = self.lower_expr(body);
+                Expr::Let {
+                    pat: self.bump.alloc(pat),
+                    r#type: r#type.map(|r#type| self.bump.alloc(r#type) as &_),
+                    init: self.bump.alloc(init),
+                    body: self.bump.alloc(body),
+                }
             }
         }
     }

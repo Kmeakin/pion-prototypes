@@ -71,6 +71,12 @@ Def: Def<'alloc, ByteSpan> = {
 // ==== Expressions ====
 
 pub Expr: Expr<'alloc, ByteSpan> = {
+    LetExpr => <>,
+}
+
+LetExpr: Expr<'alloc, ByteSpan> = {
+    <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => Expr::Let(ByteSpan::new(start, end), bump.alloc((pat, r#type, init, body))),
+    <start: @L> "if" <scrut: Expr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => Expr::If(ByteSpan::new(start, end), bump.alloc((scrut, then, r#else))),
     FunExpr => <>,
 }
 

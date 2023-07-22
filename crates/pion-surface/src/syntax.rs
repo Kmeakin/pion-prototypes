@@ -62,6 +62,8 @@ pub enum Expr<'alloc, Span> {
     RecordType(Span, &'alloc [TypeField<'alloc, Span>]),
     RecordLit(Span, &'alloc [ExprField<'alloc, Span>]),
     Match(Span, &'alloc Self, &'alloc [MatchCase<'alloc, Span>]),
+    If(Span, &'alloc (Self, Self, Self)),
+    Let(Span, &'alloc (Pat<'alloc, Span>, Option<Self>, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]
