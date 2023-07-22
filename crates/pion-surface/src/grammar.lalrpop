@@ -103,12 +103,16 @@ AtomExpr: Expr<'alloc, ByteSpan> = {
 }
 
 FunArg: FunArg<'alloc, ByteSpan> = {
-    <start: @L> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), expr},
+    <start: @L> <plicity: Plicity> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), plicity, expr},
 }
 
 FunParam: FunParam<'alloc, ByteSpan> = {
-    <start: @L> <pat: Pat> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: None},
-    <start: @L> <pat: Pat> ":" <r#type: Expr> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: Some(r#type)},
+    <start: @L> <plicity: Plicity> <pat: Pat> <r#type: (":" <Expr>)?> <end: @R> => FunParam {span: ByteSpan::new(start, end), plicity, pat, r#type},
+}
+
+Plicity: Plicity = {
+    () =>  Plicity::Explicit,
+    "@" => Plicity::Implicit,
 }
 
 FieldLabel: (ByteSpan, FieldLabel) = {

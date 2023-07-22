@@ -96,6 +96,7 @@ impl<'alloc> Ctx<'alloc> {
                 let args = self
                     .bump
                     .alloc_slice_fill_iter(args.iter().map(|arg| FunArg {
+                        plicity: arg.plicity.into(),
                         expr: self.lower_expr(&arg.expr),
                     }));
                 Expr::FunCall {
@@ -114,6 +115,7 @@ impl<'alloc> Ctx<'alloc> {
 
     fn lower_fun_param(&mut self, surface: &surface::FunParam<ByteSpan>) -> FunParam<'alloc> {
         FunParam {
+            plicity: surface.plicity.into(),
             pat: self.lower_pat(&surface.pat),
             r#type: surface.r#type.map(|r#type| self.lower_expr(&r#type)),
         }

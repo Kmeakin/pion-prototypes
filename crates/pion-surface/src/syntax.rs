@@ -64,6 +64,7 @@ pub enum Expr<'alloc, Span> {
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<'alloc, Span> {
     pub span: Span,
+    pub plicity: Plicity,
     pub pat: Pat<'alloc, Span>,
     pub r#type: Option<Expr<'alloc, Span>>,
 }
@@ -71,7 +72,14 @@ pub struct FunParam<'alloc, Span> {
 #[derive(Debug, Copy, Clone)]
 pub struct FunArg<'alloc, Span> {
     pub span: Span,
+    pub plicity: Plicity,
     pub expr: Expr<'alloc, Span>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Plicity {
+    Implicit,
+    Explicit,
 }
 
 #[derive(Debug, Copy, Clone)]

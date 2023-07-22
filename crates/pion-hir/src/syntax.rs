@@ -1,3 +1,4 @@
+use pion_surface::syntax as surface;
 use pion_utils::interner::Symbol;
 
 #[derive(Debug, Copy, Clone)]
@@ -52,13 +53,39 @@ pub enum Expr<'alloc> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<'alloc> {
+    pub plicity: Plicity,
     pub pat: Pat<'alloc>,
     pub r#type: Option<Expr<'alloc>>,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunArg<'alloc> {
+    pub plicity: Plicity,
     pub expr: Expr<'alloc>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Plicity {
+    Implicit,
+    Explicit,
+}
+
+impl From<surface::Plicity> for Plicity {
+    fn from(other: surface::Plicity) -> Self {
+        match other {
+            surface::Plicity::Implicit => Self::Implicit,
+            surface::Plicity::Explicit => Self::Explicit,
+        }
+    }
+}
+
+impl From<Plicity> for surface::Plicity {
+    fn from(other: Plicity) -> Self {
+        match other {
+            Plicity::Implicit => Self::Implicit,
+            Plicity::Explicit => Self::Explicit,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
