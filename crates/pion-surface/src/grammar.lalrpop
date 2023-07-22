@@ -8,9 +8,9 @@ use string32::Str32 as str32;
 use crate::syntax::*;
 use crate::reporting::SyntaxError;
 
-grammar<'source, 'a>(
+grammar<'source, 'alloc>(
     source: &'source str32,
-    bump: &'a Bump,
+    bump: &'alloc Bump,
     errors: &mut Vec<SyntaxError>,
 );
 
@@ -54,44 +54,44 @@ extern {
 
 
 // ==== Items ====
-pub Module: Module<'a, ByteSpan> = {
+pub Module: Module<'alloc, ByteSpan> = {
     <items: Item*> => Module {items: bump.alloc_slice_copy(&items)},
 }
 
-pub Item: Item<'a, ByteSpan> = {
+pub Item: Item<'alloc, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Item::Error(ByteSpan::new(start, end)) },
     Def => Item::Def(<>),
 }
 
-Def: Def<'a, ByteSpan> = {
+Def: Def<'alloc, ByteSpan> = {
     <start: @L> "def" <name: SpannedIdent> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: None, expr},
     <start: @L> "def" <name: SpannedIdent> ":" <r#type: Expr> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: Some(r#type), expr},
 }
 
 // ==== Expressions ====
 
-pub Expr: Expr<'a, ByteSpan> = {
+pub Expr: Expr<'alloc, ByteSpan> = {
     FunExpr => <>,
 }
 
-FunExpr: Expr<'a, ByteSpan> = {
+FunExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: FunExpr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: FunExpr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
     <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
     ProjExpr => <>,
 }
 
-ProjExpr: Expr<'a, ByteSpan> = {
+ProjExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> <head: CallExpr> "." <label: FieldLabel> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
     CallExpr => <>,
 }
 
-CallExpr: Expr<'a, ByteSpan> = {
+CallExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> <fun: ProjExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
     AtomExpr => <>,
 }
 
-AtomExpr: Expr<'a, ByteSpan> = {
+AtomExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Expr::Error(ByteSpan::new(start, end)) },
     <start: @L> <lit: Lit> <end: @R> => Expr::Lit(ByteSpan::new(start, end), lit),
     <start: @L> "_" <end: @R> => Expr::Underscore(ByteSpan::new(start, end)),
@@ -102,11 +102,11 @@ AtomExpr: Expr<'a, ByteSpan> = {
     <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
 }
 
-FunArg: FunArg<'a, ByteSpan> = {
+FunArg: FunArg<'alloc, ByteSpan> = {
     <start: @L> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), expr},
 }
 
-FunParam: FunParam<'a, ByteSpan> = {
+FunParam: FunParam<'alloc, ByteSpan> = {
     <start: @L> <pat: Pat> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: None},
     <start: @L> <pat: Pat> ":" <r#type: Expr> <end: @R> => FunParam {span: ByteSpan::new(start, end), pat, r#type: Some(r#type)},
 }
@@ -118,11 +118,11 @@ FieldLabel: (ByteSpan, FieldLabel) = {
 
 // ==== Patterns ====
 
-pub Pat: Pat<'a, ByteSpan> = {
+pub Pat: Pat<'alloc, ByteSpan> = {
     AtomPat => <>,
 }
 
-AtomPat: Pat<'a, ByteSpan> = {
+AtomPat: Pat<'alloc, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Pat::Error(ByteSpan::new(start, end)) },
     <start: @L> <lit: Lit> <end: @R> => Pat::Lit(ByteSpan::new(start, end), lit),
     <start: @L> "_" <end: @R> => Pat::Underscore(ByteSpan::new(start, end)),
@@ -147,7 +147,7 @@ Int: IntLit = {
 
 // ==== Generic parsers ====
 
-Tuple<Elem>: &'a [Elem] = {
+Tuple<Elem>: &'alloc [Elem] = {
     "(" ")" => &[],
     "(" <elem: Elem> "," ")" => std::slice::from_ref(bump.alloc(elem)),
     "(" <elems: Seq2<Elem, ",">> ")" => elems,
@@ -155,7 +155,7 @@ Tuple<Elem>: &'a [Elem] = {
 
 // ==== Generic helpers ====
 
-Seq<Elem, Sep>: &'a [Elem] = {
+Seq<Elem, Sep>: &'alloc [Elem] = {
     <elems: (<Elem> Sep)*> <last: Elem?> => {
         let len = elems.len() + last.is_some() as usize;
         let mut iter = elems.into_iter().chain(last);
@@ -163,7 +163,7 @@ Seq<Elem, Sep>: &'a [Elem] = {
     }
 };
 
-Seq1<Elem, Sep>: &'a [Elem] = {
+Seq1<Elem, Sep>: &'alloc [Elem] = {
     <first: Elem> <elems: (Sep <Elem>)*> Sep? => {
         let len = elems.len() + 1;
         let mut iter = std::iter::once(first).chain(elems);
@@ -171,7 +171,7 @@ Seq1<Elem, Sep>: &'a [Elem] = {
     },
 };
 
-Seq2<Elem, Sep>: &'a [Elem] = {
+Seq2<Elem, Sep>: &'alloc [Elem] = {
     <first: Elem> Sep <second: Elem> <elems: (Sep <Elem>)*> Sep? => {
         let len = elems.len() + 2;
         let mut iter = std::iter::once(first).chain(std::iter::once(second)).chain(elems);

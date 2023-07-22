@@ -4,10 +4,10 @@ use string32::Str32 as str32;
 
 use crate::reporting::SyntaxError;
 
-pub fn parse_module<'a>(
+pub fn parse_module<'alloc>(
     src: &str32,
-    bump: &'a bumpalo::Bump,
-) -> (Module<'a, ByteSpan>, Vec<SyntaxError>) {
+    bump: &'alloc bumpalo::Bump,
+) -> (Module<'alloc, ByteSpan>, Vec<SyntaxError>) {
     let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
         Ok(token) if token.is_trivia() => None,
         Ok(token) => Some(Ok((span.start, token, span.end))),
@@ -26,52 +26,52 @@ pub fn parse_module<'a>(
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'a, Span> {
-    pub items: &'a [Item<'a, Span>],
+pub struct Module<'alloc, Span> {
+    pub items: &'alloc [Item<'alloc, Span>],
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Item<'a, Span> {
+pub enum Item<'alloc, Span> {
     Error(Span),
-    Def(Def<'a, Span>),
+    Def(Def<'alloc, Span>),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Def<'a, Span> {
+pub struct Def<'alloc, Span> {
     pub span: Span,
     pub name: (Span, Symbol),
-    pub r#type: Option<Expr<'a, Span>>,
-    pub expr: Expr<'a, Span>,
+    pub r#type: Option<Expr<'alloc, Span>>,
+    pub expr: Expr<'alloc, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'a, Span> {
+pub enum Expr<'alloc, Span> {
     Error(Span),
     Lit(Span, Lit),
     Underscore(Span),
     Ident(Span, Symbol),
-    Ann(Span, &'a (Self, Self)),
-    Paren(Span, &'a Self),
-    TupleLit(Span, &'a [Self]),
-    FieldProj(Span, &'a Self, (Span, FieldLabel)),
-    FunArrow(Span, &'a (Self, Self)),
-    FunType(Span, &'a [FunParam<'a, Span>], &'a Self),
-    FunLit(Span, &'a [FunParam<'a, Span>], &'a Self),
-    FunCall(Span, &'a Self, &'a [FunArg<'a, Span>]),
-    ArrayLit(Span, &'a [Self]),
+    Ann(Span, &'alloc (Self, Self)),
+    Paren(Span, &'alloc Self),
+    TupleLit(Span, &'alloc [Self]),
+    FieldProj(Span, &'alloc Self, (Span, FieldLabel)),
+    FunArrow(Span, &'alloc (Self, Self)),
+    FunType(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
+    FunLit(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
+    FunCall(Span, &'alloc Self, &'alloc [FunArg<'alloc, Span>]),
+    ArrayLit(Span, &'alloc [Self]),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'a, Span> {
+pub struct FunParam<'alloc, Span> {
     pub span: Span,
-    pub pat: Pat<'a, Span>,
-    pub r#type: Option<Expr<'a, Span>>,
+    pub pat: Pat<'alloc, Span>,
+    pub r#type: Option<Expr<'alloc, Span>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunArg<'a, Span> {
+pub struct FunArg<'alloc, Span> {
     pub span: Span,
-    pub expr: Expr<'a, Span>,
+    pub expr: Expr<'alloc, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -81,13 +81,13 @@ pub enum FieldLabel {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'a, Span> {
+pub enum Pat<'alloc, Span> {
     Error(Span),
     Lit(Span, Lit),
     Underscore(Span),
     Ident(Span, Symbol),
-    Paren(Span, &'a Self),
-    TupleLit(Span, &'a [Self]),
+    Paren(Span, &'alloc Self),
+    TupleLit(Span, &'alloc [Self]),
 }
 
 #[derive(Debug, Copy, Clone)]
