@@ -6,8 +6,9 @@ use pion_utils::location::ByteSpan;
 #[allow(clippy::wildcard_imports)]
 use crate::syntax::*;
 
-pub struct Ctx<'hir> {
+pub struct Ctx<'surface, 'hir> {
     bump: &'hir bumpalo::Bump,
+    syntax_map: LocalSyntaxMap<'surface, 'hir>,
     errors: Vec<LowerError>,
 }
 
@@ -15,23 +16,35 @@ pub enum LowerError {
     ParseInt(ByteSpan, ParseIntError),
 }
 
-impl<'hir> Ctx<'hir> {
-    pub fn lower_module(&mut self, module: &surface::Module<'_>) -> Module<'hir> {
+impl<'surface, 'hir> Ctx<'surface, 'hir> {
+    pub fn new(bump: &'hir bumpalo::Bump) -> Self {
+        Self {
+            bump,
+            syntax_map: LocalSyntaxMap::new(),
+            errors: Vec::new(),
+        }
+    }
+
+    pub fn finish(self) -> (LocalSyntaxMap<'surface, 'hir>, Vec<LowerError>) {
+        (self.syntax_map, self.errors)
+    }
+
+    pub fn lower_module(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
         let items = self
             .bump
             .alloc_slice_fill_iter(module.items.iter().map(|item| self.lower_item(item)));
         Module { items }
     }
 
-    pub fn lower_item(&mut self, item: &surface::Item<'_>) -> Item<'hir> {
+    pub fn lower_item(&mut self, item: &'surface surface::Item<'surface>) -> Item<'hir> {
         match item {
             surface::Item::Error(_) => Item::Error,
             surface::Item::Def(def) => Item::Def(self.lower_def(def)),
         }
     }
 
-    fn lower_def(&mut self, def: &surface::Def<'_>) -> Def<'hir> {
-        let r#type = def.r#type.map(|r#type| self.lower_expr(&r#type));
+    fn lower_def(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
+        let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
         let expr = self.lower_expr(&def.expr);
         Def {
             name: def.name.1,
@@ -40,7 +53,7 @@ impl<'hir> Ctx<'hir> {
         }
     }
 
-    pub fn lower_expr(&mut self, expr: &surface::Expr<'_>) -> Expr<'hir> {
+    pub fn lower_expr(&mut self, expr: &'surface surface::Expr<'surface>) -> Expr<'hir> {
         match expr {
             surface::Expr::Error(_) => Expr::Error,
             surface::Expr::Lit(span, lit) => Expr::Lit(self.lower_lit(*span, *lit)),
@@ -56,7 +69,7 @@ impl<'hir> Ctx<'hir> {
 
             surface::Expr::Let(.., (pat, r#type, init, body)) => {
                 let pat = self.lower_pat(pat);
-                let r#type = r#type.map(|r#type| self.lower_expr(&r#type));
+                let r#type = r#type.as_ref().map(|r#type| self.lower_expr(r#type));
                 let init = self.lower_expr(init);
                 let body = self.lower_expr(body);
                 Expr::Let(self.bump.alloc((pat, r#type, init, body)))
@@ -140,28 +153,28 @@ impl<'hir> Ctx<'hir> {
         }
     }
 
-    fn lower_fun_param(&mut self, param: &surface::FunParam) -> FunParam<'hir> {
+    fn lower_fun_param(&mut self, param: &'surface surface::FunParam) -> FunParam<'hir> {
         FunParam {
             plicity: param.plicity.into(),
             pat: self.lower_pat(&param.pat),
-            r#type: param.r#type.map(|r#type| self.lower_expr(&r#type)),
+            r#type: param.r#type.as_ref().map(|r#type| self.lower_expr(r#type)),
         }
     }
 
-    fn lower_fun_arg(&mut self, arg: &surface::FunArg) -> FunArg<'hir> {
+    fn lower_fun_arg(&mut self, arg: &'surface surface::FunArg) -> FunArg<'hir> {
         FunArg {
             plicity: arg.plicity.into(),
             expr: self.lower_expr(&arg.expr),
         }
     }
 
-    fn lower_match_case(&mut self, case: &surface::MatchCase) -> MatchCase<'hir> {
+    fn lower_match_case(&mut self, case: &'surface surface::MatchCase) -> MatchCase<'hir> {
         let pat = self.lower_pat(&case.pat);
         let expr = self.lower_expr(&case.expr);
         MatchCase { pat, expr }
     }
 
-    pub fn lower_pat(&mut self, pat: &surface::Pat) -> Pat<'hir> {
+    pub fn lower_pat(&mut self, pat: &'surface surface::Pat) -> Pat<'hir> {
         match pat {
             surface::Pat::Error(_) => Pat::Error,
             surface::Pat::Lit(span, lit) => Pat::Lit(self.lower_lit(*span, *lit)),

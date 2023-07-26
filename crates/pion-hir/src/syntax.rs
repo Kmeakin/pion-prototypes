@@ -1,5 +1,10 @@
+use std::ops::Index;
+
 use pion_surface::syntax as surface;
+use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
+
+use crate::syntax_map::SyntaxMap;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Module<'hir> {
@@ -119,6 +124,49 @@ pub enum Pat<'hir> {
 pub enum Lit {
     Bool(bool),
     Int(Result<u32, ()>),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LocalSyntaxMap<'surface, 'hir> {
+    pub exprs: SyntaxMap<'surface, 'hir, surface::Expr<'surface>, Expr<'hir>>,
+    pub pats: SyntaxMap<'surface, 'hir, surface::Pat<'surface>, Pat<'hir>>,
+}
+
+impl<'surface, 'hir> LocalSyntaxMap<'surface, 'hir> {
+    pub fn new() -> Self { Self::default() }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.exprs.shrink_to_fit();
+        self.pats.shrink_to_fit();
+    }
+}
+
+impl<'surface, 'hir> Index<&'surface surface::Expr<'surface>> for LocalSyntaxMap<'surface, 'hir> {
+    type Output = &'hir Expr<'hir>;
+    fn index(&self, surface: &'surface surface::Expr<'surface>) -> &Self::Output {
+        &self.exprs.surface_to_hir[&Identity(surface)]
+    }
+}
+
+impl<'surface, 'hir> Index<&'surface surface::Pat<'surface>> for LocalSyntaxMap<'surface, 'hir> {
+    type Output = &'hir Pat<'hir>;
+    fn index(&self, surface: &'surface surface::Pat<'surface>) -> &Self::Output {
+        &self.pats.surface_to_hir[&Identity(surface)]
+    }
+}
+
+impl<'surface, 'hir> Index<&'hir Expr<'hir>> for LocalSyntaxMap<'surface, 'hir> {
+    type Output = &'surface surface::Expr<'surface>;
+    fn index(&self, hir: &'hir Expr<'hir>) -> &Self::Output {
+        &self.exprs.hir_to_surface[&Identity(hir)]
+    }
+}
+
+impl<'surface, 'hir> Index<&'hir Pat<'hir>> for LocalSyntaxMap<'surface, 'hir> {
+    type Output = &'surface surface::Pat<'surface>;
+    fn index(&self, hir: &'hir Pat<'hir>) -> &Self::Output {
+        &self.pats.hir_to_surface[&Identity(hir)]
+    }
 }
 
 #[cfg(test)]
