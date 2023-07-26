@@ -1,0 +1,17 @@
+[package]
+name = "pion-core"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-hir     = { path = "../pion-hir" }
+pion-surface = { path = "../pion-surface" }
+pion-utils   = { path = "../pion-utils" }
+
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+internal-iterator  = { workspace = true }
