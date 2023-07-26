@@ -6,6 +6,8 @@ use pion_utils::interner::Symbol;
 
 use crate::syntax_map::SyntaxMap;
 
+mod iterators;
+
 #[derive(Debug, Copy, Clone)]
 pub struct Module<'hir> {
     pub items: &'hir [Item<'hir>],
@@ -24,7 +26,7 @@ pub struct Def<'hir> {
     pub expr: Expr<'hir>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'hir> {
     Error,
     Lit(Lit),
@@ -49,20 +51,20 @@ pub enum Expr<'hir> {
     If(&'hir (Self, Self, Self)),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunParam<'hir> {
     pub plicity: Plicity,
     pub pat: Pat<'hir>,
     pub r#type: Option<Expr<'hir>>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunArg<'hir> {
     pub plicity: Plicity,
     pub expr: Expr<'hir>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MatchCase<'hir> {
     pub pat: Pat<'hir>,
     pub expr: Expr<'hir>,
@@ -92,25 +94,25 @@ impl From<Plicity> for surface::Plicity {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'hir> {
     pub label: Symbol,
     pub r#type: Expr<'hir>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'hir> {
     pub label: Symbol,
     pub expr: Expr<'hir>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'hir> {
     pub label: Symbol,
     pub pat: Pat<'hir>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Pat<'hir> {
     Error,
     Lit(Lit),
@@ -120,7 +122,7 @@ pub enum Pat<'hir> {
     RecordLit(&'hir [PatField<'hir>]),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit {
     Bool(bool),
     Int(Result<u32, ()>),

@@ -4,6 +4,8 @@ use string32::Str32 as str32;
 
 use crate::reporting::SyntaxError;
 
+mod iterators;
+
 pub fn parse_module<'surface>(
     src: &str32,
     bump: &'surface bumpalo::Bump,
@@ -44,7 +46,7 @@ pub struct Def<'surface> {
     pub expr: Expr<'surface>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'surface> {
     Error(ByteSpan),
     Lit(ByteSpan, Lit),
@@ -73,7 +75,7 @@ pub enum Expr<'surface> {
     If(ByteSpan, &'surface (Self, Self, Self)),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunParam<'surface> {
     pub span: ByteSpan,
     pub plicity: Plicity,
@@ -81,7 +83,7 @@ pub struct FunParam<'surface> {
     pub r#type: Option<Expr<'surface>>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunArg<'surface> {
     pub span: ByteSpan,
     pub plicity: Plicity,
@@ -94,31 +96,31 @@ pub enum Plicity {
     Explicit,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'surface> {
     pub label: (ByteSpan, Symbol),
     pub r#type: Expr<'surface>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'surface> {
     pub label: (ByteSpan, Symbol),
     pub expr: Expr<'surface>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'surface> {
     pub label: (ByteSpan, Symbol),
     pub pat: Pat<'surface>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MatchCase<'surface> {
     pub pat: Pat<'surface>,
     pub expr: Expr<'surface>,
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Pat<'surface> {
     Error(ByteSpan),
     Lit(ByteSpan, Lit),
@@ -129,13 +131,13 @@ pub enum Pat<'surface> {
     RecordLit(ByteSpan, &'surface [PatField<'surface>]),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit {
     Bool(bool),
     Int(IntLit),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum IntLit {
     Dec(Symbol),
     Bin(Symbol),

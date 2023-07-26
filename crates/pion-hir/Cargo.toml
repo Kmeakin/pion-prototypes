@@ -14,4 +14,5 @@ pion-utils   = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
+internal-iterator  = { workspace = true }
 nohash             = { workspace = true }

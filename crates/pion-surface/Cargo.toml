@@ -13,6 +13,7 @@ pion-utils = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
+internal-iterator  = { workspace = true }
 lalrpop-util       = { version = "0.20.0" }
 string32           = { workspace = true }
 
