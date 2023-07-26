@@ -53,6 +53,7 @@ impl Index<ByteSpan> for String {
 }
 
 impl Index<ByteSpan> for str32 {
+    #[allow(clippy::use_self)]
     type Output = str32;
     fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
 }
