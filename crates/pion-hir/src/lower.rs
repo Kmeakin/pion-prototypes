@@ -16,6 +16,7 @@ pub enum LowerError {
     ParseInt(ByteSpan, ParseIntError),
 }
 
+// Creation and destruction
 impl<'surface, 'hir> Ctx<'surface, 'hir> {
     pub fn new(bump: &'hir bumpalo::Bump) -> Self {
         Self {
@@ -28,185 +29,340 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
     pub fn finish(self) -> (LocalSyntaxMap<'surface, 'hir>, Vec<LowerError>) {
         (self.syntax_map, self.errors)
     }
+}
 
-    pub fn lower_module(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
-        let items = self
-            .bump
-            .alloc_slice_fill_iter(module.items.iter().map(|item| self.lower_item(item)));
+// Modules and items
+impl<'surface, 'hir> Ctx<'surface, 'hir> {
+    pub fn module_to_hir(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
+        let items = self.lower_items(module.items);
         Module { items }
     }
 
-    pub fn lower_item(&mut self, item: &'surface surface::Item<'surface>) -> Item<'hir> {
+    fn item_to_hir(&mut self, item: &'surface surface::Item<'surface>) -> Item<'hir> {
         match item {
             surface::Item::Error(_) => Item::Error,
-            surface::Item::Def(def) => Item::Def(self.lower_def(def)),
+            surface::Item::Def(def) => Item::Def(self.def_to_hir(def)),
         }
     }
 
-    fn lower_def(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
-        let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
-        let expr = self.lower_expr(&def.expr);
+    fn lower_items(&mut self, items: &'surface [surface::Item<'surface>]) -> &'hir [Item<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(items.iter().map(|item| self.item_to_hir(item)));
+        for (item, hir) in items.iter().zip(hir.iter()) {
+            match (item, hir) {
+                (surface::Item::Error(_), Item::Error) => {}
+                (surface::Item::Def(def), Item::Def(hir)) => {
+                    if let (Some(r#type), Some(hir)) = (&def.r#type, &hir.r#type) {
+                        self.syntax_map.exprs.insert(r#type, hir);
+                    }
+                    self.syntax_map.exprs.insert(&def.expr, &hir.expr);
+                }
+                _ => unreachable!(),
+            }
+        }
+        hir
+    }
+
+    fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
+        let r#type = def.r#type.as_ref().map(|r#type| self.expr_to_hir(r#type));
+        let expr = self.expr_to_hir(&def.expr);
         Def {
             name: def.name.1,
             r#type,
             expr,
         }
     }
+}
 
-    pub fn lower_expr(&mut self, expr: &'surface surface::Expr<'surface>) -> Expr<'hir> {
+// Expressions
+impl<'surface, 'hir> Ctx<'surface, 'hir> {
+    fn expr_to_hir(&mut self, expr: &'surface surface::Expr<'surface>) -> Expr<'hir> {
         match expr {
             surface::Expr::Error(_) => Expr::Error,
-            surface::Expr::Lit(span, lit) => Expr::Lit(self.lower_lit(*span, *lit)),
+            surface::Expr::Lit(span, lit) => Expr::Lit(self.lit_to_hir(*span, *lit)),
             surface::Expr::Underscore(_) => Expr::Underscore,
             surface::Expr::Ident(_, symbol) => Expr::Ident(*symbol),
-            surface::Expr::Paren(_, expr) => self.lower_expr(expr),
-            surface::Expr::Ann(_, (expr, r#type)) => {
-                let expr = self.lower_expr(expr);
-                let r#type = self.lower_expr(r#type);
-                let expr = self.bump.alloc((expr, r#type));
-                Expr::Ann(expr)
+            surface::Expr::Paren(_, expr) => self.expr_to_hir(expr),
+            surface::Expr::Ann(_, surface @ (expr, r#type)) => {
+                let expr = self.expr_to_hir(expr);
+                let r#type = self.expr_to_hir(r#type);
+                let hir = self.bump.alloc((expr, r#type));
+
+                self.syntax_map.exprs.insert(&surface.0, &hir.0);
+                self.syntax_map.exprs.insert(&surface.1, &hir.1);
+
+                Expr::Ann(hir)
             }
 
-            surface::Expr::Let(.., (pat, r#type, init, body)) => {
-                let pat = self.lower_pat(pat);
-                let r#type = r#type.as_ref().map(|r#type| self.lower_expr(r#type));
-                let init = self.lower_expr(init);
-                let body = self.lower_expr(body);
-                Expr::Let(self.bump.alloc((pat, r#type, init, body)))
+            surface::Expr::Let(.., surface @ (pat, r#type, init, body)) => {
+                let pat = self.pat_to_hir(pat);
+                let r#type = r#type.as_ref().map(|r#type| self.expr_to_hir(r#type));
+                let init = self.expr_to_hir(init);
+                let body = self.expr_to_hir(body);
+
+                let hir = self.bump.alloc((pat, r#type, init, body));
+
+                self.syntax_map.pats.insert(&surface.0, &hir.0);
+                if let (Some(surface), Some(hir)) = (&surface.1, &hir.1) {
+                    self.syntax_map.exprs.insert(surface, hir);
+                }
+                self.syntax_map.exprs.insert(&surface.2, &hir.2);
+                self.syntax_map.exprs.insert(&surface.3, &hir.3);
+
+                Expr::Let(hir)
             }
 
-            surface::Expr::ArrayLit(.., exprs) => {
-                let exprs = self
-                    .bump
-                    .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
-                Expr::ArrayLit(exprs)
-            }
-            surface::Expr::TupleLit(.., exprs) => {
-                let exprs = self
-                    .bump
-                    .alloc_slice_fill_iter(exprs.iter().map(|expr| self.lower_expr(expr)));
-                Expr::TupleLit(exprs)
-            }
+            surface::Expr::ArrayLit(.., exprs) => Expr::ArrayLit(self.lower_exprs(exprs)),
+            surface::Expr::TupleLit(.., exprs) => Expr::TupleLit(self.lower_exprs(exprs)),
             surface::Expr::RecordType(_, fields) => {
-                let fields =
-                    self.bump
-                        .alloc_slice_fill_iter(fields.iter().map(|field| TypeField {
-                            label: field.label.1,
-                            r#type: self.lower_expr(&field.r#type),
-                        }));
-                Expr::RecordType(fields)
+                Expr::RecordType(self.lower_type_fields(fields))
             }
-            surface::Expr::RecordLit(_, fields) => {
-                let fields =
-                    self.bump
-                        .alloc_slice_fill_iter(fields.iter().map(|field| ExprField {
-                            label: field.label.1,
-                            expr: self.lower_expr(&field.expr),
-                        }));
-                Expr::RecordLit(fields)
-            }
+            surface::Expr::RecordLit(_, fields) => Expr::RecordLit(self.lower_expr_fields(fields)),
             surface::Expr::FieldProj(.., scrut, label) => {
                 let scrut = self.lower_expr(scrut);
-                Expr::FieldProj(self.bump.alloc(scrut), label.1)
+                Expr::FieldProj(scrut, label.1)
             }
 
-            surface::Expr::FunArrow(.., (domain, codomain)) => {
-                let domain = self.lower_expr(domain);
-                let codomain = self.lower_expr(codomain);
-                Expr::FunArrow(self.bump.alloc((domain, codomain)))
+            surface::Expr::FunArrow(.., surface @ (domain, codomain)) => {
+                let domain = self.expr_to_hir(domain);
+                let codomain = self.expr_to_hir(codomain);
+                let hir = self.bump.alloc((domain, codomain));
+
+                self.syntax_map.exprs.insert(&surface.0, &hir.0);
+                self.syntax_map.exprs.insert(&surface.1, &hir.1);
+
+                Expr::FunArrow(hir)
             }
             surface::Expr::FunType(.., params, codomain) => {
-                let params = self
-                    .bump
-                    .alloc_slice_fill_iter(params.iter().map(|param| self.lower_fun_param(param)));
+                let params = self.lower_fun_params(params);
                 let codomain = self.lower_expr(codomain);
-                Expr::FunType(params, self.bump.alloc(codomain))
+                Expr::FunType(params, codomain)
             }
             surface::Expr::FunLit(.., params, body) => {
-                let params = self
-                    .bump
-                    .alloc_slice_fill_iter(params.iter().map(|param| self.lower_fun_param(param)));
+                let params = self.lower_fun_params(params);
                 let body = self.lower_expr(body);
-                Expr::FunLit(params, self.bump.alloc(body))
+                Expr::FunLit(params, body)
             }
             surface::Expr::FunCall(_, fun, args) => {
                 let fun = self.lower_expr(fun);
-                let args = self
-                    .bump
-                    .alloc_slice_fill_iter(args.iter().map(|arg| self.lower_fun_arg(arg)));
-                Expr::FunCall(self.bump.alloc(fun), args)
+                let args = self.lower_fun_args(args);
+                Expr::FunCall(fun, args)
             }
 
             surface::Expr::Match(_, scrut, cases) => {
                 let scrut = self.lower_expr(scrut);
-                let cases = self
-                    .bump
-                    .alloc_slice_fill_iter(cases.iter().map(|case| self.lower_match_case(case)));
-                Expr::Match(self.bump.alloc(scrut), cases)
+                let cases = self.lower_match_cases(cases);
+                Expr::Match(scrut, cases)
             }
-            surface::Expr::If(_, (scrut, then, r#else)) => {
-                let scrut = self.lower_expr(scrut);
-                let then = self.lower_expr(then);
-                let r#else = self.lower_expr(r#else);
-                Expr::If(self.bump.alloc((scrut, then, r#else)))
+            surface::Expr::If(_, surface @ (scrut, then, r#else)) => {
+                let scrut = self.expr_to_hir(scrut);
+                let then = self.expr_to_hir(then);
+                let r#else = self.expr_to_hir(r#else);
+                let hir = self.bump.alloc((scrut, then, r#else));
+
+                self.syntax_map.exprs.insert(&surface.0, &hir.0);
+                self.syntax_map.exprs.insert(&surface.1, &hir.1);
+                self.syntax_map.exprs.insert(&surface.2, &hir.2);
+
+                Expr::If(hir)
             }
         }
     }
 
-    fn lower_fun_param(&mut self, param: &'surface surface::FunParam) -> FunParam<'hir> {
+    pub fn lower_expr(&mut self, expr: &'surface surface::Expr<'surface>) -> &'hir Expr<'hir> {
+        let hir = self.expr_to_hir(expr);
+        let hir = self.bump.alloc(hir);
+        self.syntax_map.exprs.insert(expr, hir);
+        hir
+    }
+
+    fn lower_exprs(&mut self, exprs: &'surface [surface::Expr<'surface>]) -> &'hir [Expr<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(exprs.iter().map(|expr| self.expr_to_hir(expr)));
+        for (expr, hir) in exprs.iter().zip(hir.iter()) {
+            self.syntax_map.exprs.insert(expr, hir);
+        }
+        hir
+    }
+
+    fn type_field_to_hir(
+        &mut self,
+        field: &'surface surface::TypeField<'surface>,
+    ) -> TypeField<'hir> {
+        TypeField {
+            label: field.label.1,
+            r#type: self.expr_to_hir(&field.r#type),
+        }
+    }
+
+    fn lower_type_fields(
+        &mut self,
+        fields: &'surface [surface::TypeField<'surface>],
+    ) -> &'hir [TypeField<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(fields.iter().map(|field| self.type_field_to_hir(field)));
+        for (field, hir) in fields.iter().zip(hir.iter()) {
+            self.syntax_map.exprs.insert(&field.r#type, &hir.r#type);
+        }
+        hir
+    }
+
+    fn expr_field_to_hir(
+        &mut self,
+        field: &'surface surface::ExprField<'surface>,
+    ) -> ExprField<'hir> {
+        ExprField {
+            label: field.label.1,
+            r#expr: self.expr_to_hir(&field.expr),
+        }
+    }
+
+    fn lower_expr_fields(
+        &mut self,
+        fields: &'surface [surface::ExprField<'surface>],
+    ) -> &'hir [ExprField<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(fields.iter().map(|field| self.expr_field_to_hir(field)));
+        for (field, hir) in fields.iter().zip(hir.iter()) {
+            self.syntax_map.exprs.insert(&field.r#expr, &hir.r#expr);
+        }
+        hir
+    }
+
+    fn fun_param_to_hir(&mut self, param: &'surface surface::FunParam<'surface>) -> FunParam<'hir> {
         FunParam {
             plicity: param.plicity.into(),
-            pat: self.lower_pat(&param.pat),
-            r#type: param.r#type.as_ref().map(|r#type| self.lower_expr(r#type)),
+            pat: self.pat_to_hir(&param.pat),
+            r#type: param.r#type.as_ref().map(|r#type| self.expr_to_hir(r#type)),
         }
     }
 
-    fn lower_fun_arg(&mut self, arg: &'surface surface::FunArg) -> FunArg<'hir> {
+    fn lower_fun_params(
+        &mut self,
+        params: &'surface [surface::FunParam<'surface>],
+    ) -> &'hir [FunParam<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(params.iter().map(|field| self.fun_param_to_hir(field)));
+        for (param, hir) in params.iter().zip(hir.iter()) {
+            self.syntax_map.pats.insert(&param.pat, &hir.pat);
+            if let (Some(r#type), Some(hir)) = (&param.r#type, &hir.r#type) {
+                self.syntax_map.exprs.insert(r#type, hir);
+            }
+        }
+        hir
+    }
+
+    fn fun_arg_to_hir(&mut self, arg: &'surface surface::FunArg<'surface>) -> FunArg<'hir> {
         FunArg {
             plicity: arg.plicity.into(),
-            expr: self.lower_expr(&arg.expr),
+            expr: self.expr_to_hir(&arg.expr),
         }
     }
 
-    fn lower_match_case(&mut self, case: &'surface surface::MatchCase) -> MatchCase<'hir> {
-        let pat = self.lower_pat(&case.pat);
-        let expr = self.lower_expr(&case.expr);
+    fn match_case_to_hir(
+        &mut self,
+        case: &'surface surface::MatchCase<'surface>,
+    ) -> MatchCase<'hir> {
+        let pat = self.pat_to_hir(&case.pat);
+        let expr = self.expr_to_hir(&case.expr);
         MatchCase { pat, expr }
     }
 
-    pub fn lower_pat(&mut self, pat: &'surface surface::Pat) -> Pat<'hir> {
+    fn lower_match_cases(
+        &mut self,
+        cases: &'surface [surface::MatchCase<'surface>],
+    ) -> &'hir [MatchCase<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(cases.iter().map(|case| self.match_case_to_hir(case)));
+        for (case, hir) in cases.iter().zip(hir.iter()) {
+            self.syntax_map.pats.insert(&case.pat, &hir.pat);
+            self.syntax_map.exprs.insert(&case.expr, &hir.expr);
+        }
+        hir
+    }
+
+    fn lower_fun_args(
+        &mut self,
+        args: &'surface [surface::FunArg<'surface>],
+    ) -> &'hir [FunArg<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(args.iter().map(|arg| self.fun_arg_to_hir(arg)));
+        for (arg, hir) in args.iter().zip(hir.iter()) {
+            self.syntax_map.exprs.insert(&arg.expr, &hir.expr);
+        }
+        hir
+    }
+}
+
+// Patternss
+impl<'surface, 'hir> Ctx<'surface, 'hir> {
+    fn pat_to_hir(&mut self, pat: &'surface surface::Pat<'surface>) -> Pat<'hir> {
         match pat {
-            surface::Pat::Error(_) => Pat::Error,
-            surface::Pat::Lit(span, lit) => Pat::Lit(self.lower_lit(*span, *lit)),
-            surface::Pat::Underscore(_) => Pat::Underscore,
+            surface::Pat::Error(..) => Pat::Error,
+            surface::Pat::Lit(.., span, lit) => Pat::Lit(self.lit_to_hir(*span, *lit)),
+            surface::Pat::Underscore(..) => Pat::Underscore,
             surface::Pat::Ident(.., symbol) => Pat::Ident(*symbol),
-            surface::Pat::Paren(.., pat) => self.lower_pat(pat),
-            surface::Pat::TupleLit(.., pats) => {
-                let pats = self
-                    .bump
-                    .alloc_slice_fill_iter(pats.iter().map(|pat| self.lower_pat(pat)));
-                Pat::TupleLit(pats)
-            }
-            surface::Pat::RecordLit(_, fields) => {
-                let fields = self
-                    .bump
-                    .alloc_slice_fill_iter(fields.iter().map(|field| PatField {
-                        label: field.label.1,
-                        pat: self.lower_pat(&field.pat),
-                    }));
-                Pat::RecordLit(fields)
-            }
+            surface::Pat::Paren(.., pat) => self.pat_to_hir(pat),
+            surface::Pat::TupleLit(.., pats) => Pat::TupleLit(self.lower_pats(pats)),
+            surface::Pat::RecordLit(.., fields) => Pat::RecordLit(self.lower_pat_fields(fields)),
         }
     }
 
-    fn lower_lit(&mut self, span: ByteSpan, lit: surface::Lit) -> Lit {
+    pub fn lower_pat(&mut self, pat: &'surface surface::Pat<'surface>) -> &'hir Pat<'hir> {
+        let hir = self.pat_to_hir(pat);
+        let hir = self.bump.alloc(hir);
+        self.syntax_map.pats.insert(pat, hir);
+        hir
+    }
+
+    fn lower_pats(&mut self, pats: &'surface [surface::Pat<'surface>]) -> &'hir [Pat<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(pats.iter().map(|pat| self.pat_to_hir(pat)));
+        for (pat, hir) in pats.iter().zip(hir.iter()) {
+            self.syntax_map.pats.insert(pat, hir);
+        }
+        hir
+    }
+
+    fn pat_field_to_hir(&mut self, field: &'surface surface::PatField<'surface>) -> PatField<'hir> {
+        PatField {
+            label: field.label.1,
+            pat: self.pat_to_hir(&field.pat),
+        }
+    }
+
+    fn lower_pat_fields(
+        &mut self,
+        fields: &'surface [surface::PatField<'surface>],
+    ) -> &'hir [PatField<'hir>] {
+        let hir = self
+            .bump
+            .alloc_slice_fill_iter(fields.iter().map(|field| self.pat_field_to_hir(field)));
+        for (field, hir) in fields.iter().zip(hir.iter()) {
+            self.syntax_map.pats.insert(&field.pat, &hir.pat);
+        }
+        hir
+    }
+}
+
+// Literals
+impl<'surface, 'hir> Ctx<'surface, 'hir> {
+    fn lit_to_hir(&mut self, span: ByteSpan, lit: surface::Lit) -> Lit {
         match lit {
             surface::Lit::Bool(b) => Lit::Bool(b),
-            surface::Lit::Int(symbol) => Lit::Int(self.lower_int_lit(span, symbol)),
+            surface::Lit::Int(symbol) => Lit::Int(self.int_lit_to_hir(span, symbol)),
         }
     }
 
-    fn lower_int_lit(&mut self, span: ByteSpan, int: surface::IntLit) -> Result<u32, ()> {
+    fn int_lit_to_hir(&mut self, span: ByteSpan, int: surface::IntLit) -> Result<u32, ()> {
         match int {
             surface::IntLit::Dec(sym) => self.parse_int(span, sym.as_str(), 10),
             surface::IntLit::Bin(sym) => self.parse_int(span, &sym.as_str()[2..], 2),
