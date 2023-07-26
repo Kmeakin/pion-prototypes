@@ -2,65 +2,65 @@ use pion_surface::syntax as surface;
 use pion_utils::interner::Symbol;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'alloc> {
-    pub items: &'alloc [Item<'alloc>],
+pub struct Module<'hir> {
+    pub items: &'hir [Item<'hir>],
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Item<'alloc> {
+pub enum Item<'hir> {
     Error,
-    Def(Def<'alloc>),
+    Def(Def<'hir>),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Def<'alloc> {
+pub struct Def<'hir> {
     pub name: Symbol,
-    pub r#type: Option<Expr<'alloc>>,
-    pub expr: Expr<'alloc>,
+    pub r#type: Option<Expr<'hir>>,
+    pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'alloc> {
+pub enum Expr<'hir> {
     Error,
     Lit(Lit),
     Underscore,
     Ident(Symbol),
-    Ann(&'alloc (Self, Self)),
+    Ann(&'hir (Self, Self)),
 
-    Let(&'alloc (Pat<'alloc>, Option<Self>, Self, Self)),
+    Let(&'hir (Pat<'hir>, Option<Self>, Self, Self)),
 
-    ArrayLit(&'alloc [Self]),
-    TupleLit(&'alloc [Self]),
-    RecordType(&'alloc [TypeField<'alloc>]),
-    RecordLit(&'alloc [ExprField<'alloc>]),
-    FieldProj(&'alloc Self, Symbol),
+    ArrayLit(&'hir [Self]),
+    TupleLit(&'hir [Self]),
+    RecordType(&'hir [TypeField<'hir>]),
+    RecordLit(&'hir [ExprField<'hir>]),
+    FieldProj(&'hir Self, Symbol),
 
-    FunArrow(&'alloc (Self, Self)),
-    FunType(&'alloc [FunParam<'alloc>], &'alloc Self),
-    FunLit(&'alloc [FunParam<'alloc>], &'alloc Self),
-    FunCall(&'alloc Self, &'alloc [FunArg<'alloc>]),
+    FunArrow(&'hir (Self, Self)),
+    FunType(&'hir [FunParam<'hir>], &'hir Self),
+    FunLit(&'hir [FunParam<'hir>], &'hir Self),
+    FunCall(&'hir Self, &'hir [FunArg<'hir>]),
 
-    Match(&'alloc Self, &'alloc [MatchCase<'alloc>]),
-    If(&'alloc (Self, Self, Self)),
+    Match(&'hir Self, &'hir [MatchCase<'hir>]),
+    If(&'hir (Self, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'alloc> {
+pub struct FunParam<'hir> {
     pub plicity: Plicity,
-    pub pat: Pat<'alloc>,
-    pub r#type: Option<Expr<'alloc>>,
+    pub pat: Pat<'hir>,
+    pub r#type: Option<Expr<'hir>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunArg<'alloc> {
+pub struct FunArg<'hir> {
     pub plicity: Plicity,
-    pub expr: Expr<'alloc>,
+    pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct MatchCase<'alloc> {
-    pub pat: Pat<'alloc>,
-    pub expr: Expr<'alloc>,
+pub struct MatchCase<'hir> {
+    pub pat: Pat<'hir>,
+    pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -88,31 +88,31 @@ impl From<Plicity> for surface::Plicity {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct TypeField<'alloc> {
+pub struct TypeField<'hir> {
     pub label: Symbol,
-    pub r#type: Expr<'alloc>,
+    pub r#type: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ExprField<'alloc> {
+pub struct ExprField<'hir> {
     pub label: Symbol,
-    pub expr: Expr<'alloc>,
+    pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct PatField<'alloc> {
+pub struct PatField<'hir> {
     pub label: Symbol,
-    pub pat: Pat<'alloc>,
+    pub pat: Pat<'hir>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'alloc> {
+pub enum Pat<'hir> {
     Error,
     Lit(Lit),
     Underscore,
     Ident(Symbol),
-    TupleLit(&'alloc [Self]),
-    RecordLit(&'alloc [PatField<'alloc>]),
+    TupleLit(&'hir [Self]),
+    RecordLit(&'hir [PatField<'hir>]),
 }
 
 #[derive(Debug, Copy, Clone)]

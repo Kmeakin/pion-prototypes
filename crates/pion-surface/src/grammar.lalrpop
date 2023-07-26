@@ -8,9 +8,9 @@ use string32::Str32 as str32;
 use crate::syntax::*;
 use crate::reporting::SyntaxError;
 
-grammar<'source, 'alloc>(
+grammar<'source, 'surface>(
     source: &'source str32,
-    bump: &'alloc Bump,
+    bump: &'surface Bump,
     errors: &mut Vec<SyntaxError>,
 );
 
@@ -54,50 +54,50 @@ extern {
 
 
 // ==== Items ====
-pub Module: Module<'alloc, ByteSpan> = {
+pub Module: Module<'surface, ByteSpan> = {
     <items: Item*> => Module {items: bump.alloc_slice_copy(&items)},
 }
 
-pub Item: Item<'alloc, ByteSpan> = {
+pub Item: Item<'surface, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Item::Error(ByteSpan::new(start, end)) },
     Def => Item::Def(<>),
 }
 
-Def: Def<'alloc, ByteSpan> = {
+Def: Def<'surface, ByteSpan> = {
     <start: @L> "def" <name: SpannedIdent> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: None, expr},
     <start: @L> "def" <name: SpannedIdent> ":" <r#type: Expr> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: Some(r#type), expr},
 }
 
 // ==== Expressions ====
 
-pub Expr: Expr<'alloc, ByteSpan> = {
+pub Expr: Expr<'surface, ByteSpan> = {
     LetExpr => <>,
 }
 
-LetExpr: Expr<'alloc, ByteSpan> = {
+LetExpr: Expr<'surface, ByteSpan> = {
     <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => Expr::Let(ByteSpan::new(start, end), bump.alloc((pat, r#type, init, body))),
     <start: @L> "if" <scrut: Expr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => Expr::If(ByteSpan::new(start, end), bump.alloc((scrut, then, r#else))),
     FunExpr => <>,
 }
 
-FunExpr: Expr<'alloc, ByteSpan> = {
+FunExpr: Expr<'surface, ByteSpan> = {
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: FunExpr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
     <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: FunExpr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
     <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
     ProjExpr => <>,
 }
 
-ProjExpr: Expr<'alloc, ByteSpan> = {
+ProjExpr: Expr<'surface, ByteSpan> = {
     <start: @L> <head: CallExpr> "." <label: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
     CallExpr => <>,
 }
 
-CallExpr: Expr<'alloc, ByteSpan> = {
+CallExpr: Expr<'surface, ByteSpan> = {
     <start: @L> <fun: ProjExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
     AtomExpr => <>,
 }
 
-AtomExpr: Expr<'alloc, ByteSpan> = {
+AtomExpr: Expr<'surface, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Expr::Error(ByteSpan::new(start, end)) },
     <start: @L> <lit: Lit> <end: @R> => Expr::Lit(ByteSpan::new(start, end), lit),
     <start: @L> "_" <end: @R> => Expr::Underscore(ByteSpan::new(start, end)),
@@ -109,11 +109,11 @@ AtomExpr: Expr<'alloc, ByteSpan> = {
     <start: @L> "match" <scrut: Expr> "{" <cases: Seq<MatchCase, ",">> "}" <end: @R> => Expr::Match(ByteSpan::new(start, end), bump.alloc(scrut), cases),
 }
 
-FunArg: FunArg<'alloc, ByteSpan> = {
+FunArg: FunArg<'surface, ByteSpan> = {
     <start: @L> <plicity: Plicity> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), plicity, expr},
 }
 
-FunParam: FunParam<'alloc, ByteSpan> = {
+FunParam: FunParam<'surface, ByteSpan> = {
     <start: @L> <plicity: Plicity> <pat: Pat> <r#type: (":" <Expr>)?> <end: @R> => FunParam {span: ByteSpan::new(start, end), plicity, pat, r#type},
 }
 
@@ -122,17 +122,17 @@ Plicity: Plicity = {
     "@" => Plicity::Implicit,
 }
 
-MatchCase: MatchCase<'alloc, ByteSpan> = {
+MatchCase: MatchCase<'surface, ByteSpan> = {
     <pat: Pat> "=>" <expr: Expr> => MatchCase {pat, expr},
 }
 
 // ==== Patterns ====
 
-pub Pat: Pat<'alloc, ByteSpan> = {
+pub Pat: Pat<'surface, ByteSpan> = {
     AtomPat => <>,
 }
 
-AtomPat: Pat<'alloc, ByteSpan> = {
+AtomPat: Pat<'surface, ByteSpan> = {
     <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Pat::Error(ByteSpan::new(start, end)) },
     <start: @L> <lit: Lit> <end: @R> => Pat::Lit(ByteSpan::new(start, end), lit),
     <start: @L> "_" <end: @R> => Pat::Underscore(ByteSpan::new(start, end)),
@@ -157,7 +157,7 @@ Int: IntLit = {
 
 // ==== Generic parsers ====
 
-Tuple<Elem>: &'alloc [Elem] = {
+Tuple<Elem>: &'surface [Elem] = {
     "(" ")" => &[],
     "(" <elem: Elem> "," ")" => std::slice::from_ref(bump.alloc(elem)),
     "(" <elems: Seq2<Elem, ",">> ")" => elems,
@@ -165,7 +165,7 @@ Tuple<Elem>: &'alloc [Elem] = {
 
 // ==== Generic helpers ====
 
-Seq<Elem, Sep>: &'alloc [Elem] = {
+Seq<Elem, Sep>: &'surface [Elem] = {
     <elems: (<Elem> Sep)*> <last: Elem?> => {
         let len = elems.len() + last.is_some() as usize;
         let mut iter = elems.into_iter().chain(last);
@@ -173,7 +173,7 @@ Seq<Elem, Sep>: &'alloc [Elem] = {
     }
 };
 
-Seq1<Elem, Sep>: &'alloc [Elem] = {
+Seq1<Elem, Sep>: &'surface [Elem] = {
     <first: Elem> <elems: (Sep <Elem>)*> Sep? => {
         let len = elems.len() + 1;
         let mut iter = std::iter::once(first).chain(elems);
@@ -181,7 +181,7 @@ Seq1<Elem, Sep>: &'alloc [Elem] = {
     },
 };
 
-Seq2<Elem, Sep>: &'alloc [Elem] = {
+Seq2<Elem, Sep>: &'surface [Elem] = {
     <first: Elem> Sep <second: Elem> <elems: (Sep <Elem>)*> Sep? => {
         let len = elems.len() + 2;
         let mut iter = std::iter::once(first).chain(std::iter::once(second)).chain(elems);

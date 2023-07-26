@@ -4,10 +4,10 @@ use string32::Str32 as str32;
 
 use crate::reporting::SyntaxError;
 
-pub fn parse_module<'alloc>(
+pub fn parse_module<'surface>(
     src: &str32,
-    bump: &'alloc bumpalo::Bump,
-) -> (Module<'alloc, ByteSpan>, Vec<SyntaxError>) {
+    bump: &'surface bumpalo::Bump,
+) -> (Module<'surface, ByteSpan>, Vec<SyntaxError>) {
     let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
         Ok(token) if token.is_trivia() => None,
         Ok(token) => Some(Ok((span.start, token, span.end))),
@@ -26,63 +26,66 @@ pub fn parse_module<'alloc>(
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'alloc, Span> {
-    pub items: &'alloc [Item<'alloc, Span>],
+pub struct Module<'surface, Span> {
+    pub items: &'surface [Item<'surface, Span>],
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Item<'alloc, Span> {
+pub enum Item<'surface, Span> {
     Error(Span),
-    Def(Def<'alloc, Span>),
+    Def(Def<'surface, Span>),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Def<'alloc, Span> {
+pub struct Def<'surface, Span> {
     pub span: Span,
     pub name: (Span, Symbol),
-    pub r#type: Option<Expr<'alloc, Span>>,
-    pub expr: Expr<'alloc, Span>,
+    pub r#type: Option<Expr<'surface, Span>>,
+    pub expr: Expr<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'alloc, Span> {
+pub enum Expr<'surface, Span> {
     Error(Span),
     Lit(Span, Lit),
     Underscore(Span),
     Ident(Span, Symbol),
-    Paren(Span, &'alloc Self),
-    Ann(Span, &'alloc (Self, Self)),
+    Paren(Span, &'surface Self),
+    Ann(Span, &'surface (Self, Self)),
 
-    Let(Span, &'alloc (Pat<'alloc, Span>, Option<Self>, Self, Self)),
+    Let(
+        Span,
+        &'surface (Pat<'surface, Span>, Option<Self>, Self, Self),
+    ),
 
-    ArrayLit(Span, &'alloc [Self]),
-    RecordType(Span, &'alloc [TypeField<'alloc, Span>]),
-    RecordLit(Span, &'alloc [ExprField<'alloc, Span>]),
-    TupleLit(Span, &'alloc [Self]),
-    FieldProj(Span, &'alloc Self, (Span, Symbol)),
+    ArrayLit(Span, &'surface [Self]),
+    RecordType(Span, &'surface [TypeField<'surface, Span>]),
+    RecordLit(Span, &'surface [ExprField<'surface, Span>]),
+    TupleLit(Span, &'surface [Self]),
+    FieldProj(Span, &'surface Self, (Span, Symbol)),
 
-    FunArrow(Span, &'alloc (Self, Self)),
-    FunType(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
-    FunLit(Span, &'alloc [FunParam<'alloc, Span>], &'alloc Self),
-    FunCall(Span, &'alloc Self, &'alloc [FunArg<'alloc, Span>]),
+    FunArrow(Span, &'surface (Self, Self)),
+    FunType(Span, &'surface [FunParam<'surface, Span>], &'surface Self),
+    FunLit(Span, &'surface [FunParam<'surface, Span>], &'surface Self),
+    FunCall(Span, &'surface Self, &'surface [FunArg<'surface, Span>]),
 
-    Match(Span, &'alloc Self, &'alloc [MatchCase<'alloc, Span>]),
-    If(Span, &'alloc (Self, Self, Self)),
+    Match(Span, &'surface Self, &'surface [MatchCase<'surface, Span>]),
+    If(Span, &'surface (Self, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'alloc, Span> {
+pub struct FunParam<'surface, Span> {
     pub span: Span,
     pub plicity: Plicity,
-    pub pat: Pat<'alloc, Span>,
-    pub r#type: Option<Expr<'alloc, Span>>,
+    pub pat: Pat<'surface, Span>,
+    pub r#type: Option<Expr<'surface, Span>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunArg<'alloc, Span> {
+pub struct FunArg<'surface, Span> {
     pub span: Span,
     pub plicity: Plicity,
-    pub expr: Expr<'alloc, Span>,
+    pub expr: Expr<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -92,38 +95,38 @@ pub enum Plicity {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct TypeField<'alloc, Span> {
+pub struct TypeField<'surface, Span> {
     pub label: (Span, Symbol),
-    pub r#type: Expr<'alloc, Span>,
+    pub r#type: Expr<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ExprField<'alloc, Span> {
+pub struct ExprField<'surface, Span> {
     pub label: (Span, Symbol),
-    pub expr: Expr<'alloc, Span>,
+    pub expr: Expr<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct PatField<'alloc, Span> {
+pub struct PatField<'surface, Span> {
     pub label: (Span, Symbol),
-    pub pat: Pat<'alloc, Span>,
+    pub pat: Pat<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct MatchCase<'alloc, Span> {
-    pub pat: Pat<'alloc, Span>,
-    pub expr: Expr<'alloc, Span>,
+pub struct MatchCase<'surface, Span> {
+    pub pat: Pat<'surface, Span>,
+    pub expr: Expr<'surface, Span>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'alloc, Span> {
+pub enum Pat<'surface, Span> {
     Error(Span),
     Lit(Span, Lit),
     Underscore(Span),
     Ident(Span, Symbol),
-    Paren(Span, &'alloc Self),
-    TupleLit(Span, &'alloc [Self]),
-    RecordLit(Span, &'alloc [PatField<'alloc, Span>]),
+    Paren(Span, &'surface Self),
+    TupleLit(Span, &'surface [Self]),
+    RecordLit(Span, &'surface [PatField<'surface, Span>]),
 }
 
 #[derive(Debug, Copy, Clone)]
