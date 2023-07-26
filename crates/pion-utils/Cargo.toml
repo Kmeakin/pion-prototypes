@@ -1,17 +1,18 @@
 [package]
 name = "pion-utils"
-version = { workspace = true }
+
 edition = { workspace = true }
+version = { workspace = true }
 
 [lints]
 workspace = true
 
 [dependencies]
 anyhow             = { workspace = true }
-codespan-reporting = { workspace = true }
-string32           = { workspace = true }
 camino             = { workspace = true }
+codespan-reporting = { workspace = true }
 fxhash             = { workspace = true }
 lasso              = { workspace = true }
-triomphe           = { workspace = true }
 once_cell          = { version = "1.18.0", features = ["parking_lot"] }
+string32           = { workspace = true }
+triomphe           = { workspace = true }

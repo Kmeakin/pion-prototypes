@@ -1,14 +1,15 @@
 [package]
 name = "pion-surface"
-version = { workspace = true }
+
 edition = { workspace = true }
+version = { workspace = true }
 
 [lints]
 workspace = true
 
 [dependencies]
-pion-utils = { path = "../pion-utils" }
 pion-lexer = { path = "../pion-lexer" }
+pion-utils = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
@@ -16,4 +17,4 @@ lalrpop-util       = { version = "0.20.0" }
 string32           = { workspace = true }
 
 [build-dependencies]
-lalrpop         = { version = "0.20.0", default-features = false } # disable regex support
+lalrpop = { version = "0.20.0", default-features = false } # disable regex support

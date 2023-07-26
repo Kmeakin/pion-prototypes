@@ -1,13 +1,14 @@
 [package]
 name = "pion-lexer"
-version = { workspace = true }
+
 edition = { workspace = true }
+version = { workspace = true }
 
 [lints]
 workspace = true
 
 [dependencies]
-pion-utils  = { path = "../pion-utils" }
+pion-utils = { path = "../pion-utils" }
 
 codespan-reporting = { workspace = true }
 logos              = { version = "0.13.0" }
