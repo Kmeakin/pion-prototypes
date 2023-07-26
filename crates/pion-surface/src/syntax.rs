@@ -7,7 +7,7 @@ use crate::reporting::SyntaxError;
 pub fn parse_module<'surface>(
     src: &str32,
     bump: &'surface bumpalo::Bump,
-) -> (Module<'surface, ByteSpan>, Vec<SyntaxError>) {
+) -> (Module<'surface>, Vec<SyntaxError>) {
     let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
         Ok(token) if token.is_trivia() => None,
         Ok(token) => Some(Ok((span.start, token, span.end))),
@@ -26,66 +26,66 @@ pub fn parse_module<'surface>(
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Module<'surface, Span> {
-    pub items: &'surface [Item<'surface, Span>],
+pub struct Module<'surface> {
+    pub items: &'surface [Item<'surface>],
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Item<'surface, Span> {
-    Error(Span),
-    Def(Def<'surface, Span>),
+pub enum Item<'surface> {
+    Error(ByteSpan),
+    Def(Def<'surface>),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Def<'surface, Span> {
-    pub span: Span,
-    pub name: (Span, Symbol),
-    pub r#type: Option<Expr<'surface, Span>>,
-    pub expr: Expr<'surface, Span>,
+pub struct Def<'surface> {
+    pub span: ByteSpan,
+    pub name: (ByteSpan, Symbol),
+    pub r#type: Option<Expr<'surface>>,
+    pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'surface, Span> {
-    Error(Span),
-    Lit(Span, Lit),
-    Underscore(Span),
-    Ident(Span, Symbol),
-    Paren(Span, &'surface Self),
-    Ann(Span, &'surface (Self, Self)),
+pub enum Expr<'surface> {
+    Error(ByteSpan),
+    Lit(ByteSpan, Lit),
+    Underscore(ByteSpan),
+    Ident(ByteSpan, Symbol),
+    Paren(ByteSpan, &'surface Self),
+    Ann(ByteSpan, &'surface (Self, Self)),
 
     Let(
-        Span,
-        &'surface (Pat<'surface, Span>, Option<Self>, Self, Self),
+        ByteSpan,
+        &'surface (Pat<'surface>, Option<Self>, Self, Self),
     ),
 
-    ArrayLit(Span, &'surface [Self]),
-    RecordType(Span, &'surface [TypeField<'surface, Span>]),
-    RecordLit(Span, &'surface [ExprField<'surface, Span>]),
-    TupleLit(Span, &'surface [Self]),
-    FieldProj(Span, &'surface Self, (Span, Symbol)),
+    ArrayLit(ByteSpan, &'surface [Self]),
+    RecordType(ByteSpan, &'surface [TypeField<'surface>]),
+    RecordLit(ByteSpan, &'surface [ExprField<'surface>]),
+    TupleLit(ByteSpan, &'surface [Self]),
+    FieldProj(ByteSpan, &'surface Self, (ByteSpan, Symbol)),
 
-    FunArrow(Span, &'surface (Self, Self)),
-    FunType(Span, &'surface [FunParam<'surface, Span>], &'surface Self),
-    FunLit(Span, &'surface [FunParam<'surface, Span>], &'surface Self),
-    FunCall(Span, &'surface Self, &'surface [FunArg<'surface, Span>]),
+    FunArrow(ByteSpan, &'surface (Self, Self)),
+    FunType(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
+    FunLit(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
+    FunCall(ByteSpan, &'surface Self, &'surface [FunArg<'surface>]),
 
-    Match(Span, &'surface Self, &'surface [MatchCase<'surface, Span>]),
-    If(Span, &'surface (Self, Self, Self)),
+    Match(ByteSpan, &'surface Self, &'surface [MatchCase<'surface>]),
+    If(ByteSpan, &'surface (Self, Self, Self)),
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'surface, Span> {
-    pub span: Span,
+pub struct FunParam<'surface> {
+    pub span: ByteSpan,
     pub plicity: Plicity,
-    pub pat: Pat<'surface, Span>,
-    pub r#type: Option<Expr<'surface, Span>>,
+    pub pat: Pat<'surface>,
+    pub r#type: Option<Expr<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunArg<'surface, Span> {
-    pub span: Span,
+pub struct FunArg<'surface> {
+    pub span: ByteSpan,
     pub plicity: Plicity,
-    pub expr: Expr<'surface, Span>,
+    pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -95,38 +95,38 @@ pub enum Plicity {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct TypeField<'surface, Span> {
-    pub label: (Span, Symbol),
-    pub r#type: Expr<'surface, Span>,
+pub struct TypeField<'surface> {
+    pub label: (ByteSpan, Symbol),
+    pub r#type: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ExprField<'surface, Span> {
-    pub label: (Span, Symbol),
-    pub expr: Expr<'surface, Span>,
+pub struct ExprField<'surface> {
+    pub label: (ByteSpan, Symbol),
+    pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct PatField<'surface, Span> {
-    pub label: (Span, Symbol),
-    pub pat: Pat<'surface, Span>,
+pub struct PatField<'surface> {
+    pub label: (ByteSpan, Symbol),
+    pub pat: Pat<'surface>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct MatchCase<'surface, Span> {
-    pub pat: Pat<'surface, Span>,
-    pub expr: Expr<'surface, Span>,
+pub struct MatchCase<'surface> {
+    pub pat: Pat<'surface>,
+    pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'surface, Span> {
-    Error(Span),
-    Lit(Span, Lit),
-    Underscore(Span),
-    Ident(Span, Symbol),
-    Paren(Span, &'surface Self),
-    TupleLit(Span, &'surface [Self]),
-    RecordLit(Span, &'surface [PatField<'surface, Span>]),
+pub enum Pat<'surface> {
+    Error(ByteSpan),
+    Lit(ByteSpan, Lit),
+    Underscore(ByteSpan),
+    Ident(ByteSpan, Symbol),
+    Paren(ByteSpan, &'surface Self),
+    TupleLit(ByteSpan, &'surface [Self]),
+    RecordLit(ByteSpan, &'surface [PatField<'surface>]),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -144,19 +144,16 @@ pub enum IntLit {
 
 #[cfg(test)]
 mod size_tests {
-    use pion_utils::location::ByteSpan;
 
     use super::*;
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr<()>>(), 32);
-        assert_eq!(std::mem::size_of::<Expr<ByteSpan>>(), 40);
+        assert_eq!(std::mem::size_of::<Expr>(), 40);
     }
 
     #[test]
     fn pat_size() {
-        assert_eq!(std::mem::size_of::<Pat<()>>(), 24);
-        assert_eq!(std::mem::size_of::<Pat<ByteSpan>>(), 32);
+        assert_eq!(std::mem::size_of::<Pat>(), 32);
     }
 }
