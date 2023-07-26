@@ -7,8 +7,8 @@ use crate::syntax::{
     Def, Expr, ExprField, FunArg, FunParam, Item, Lit, MatchCase, Module, Pat, PatField, TypeField,
 };
 
-pub struct Ctx<'alloc> {
-    bump: &'alloc bumpalo::Bump,
+pub struct Ctx<'hir> {
+    bump: &'hir bumpalo::Bump,
     errors: Vec<LowerError>,
 }
 
@@ -16,22 +16,22 @@ pub enum LowerError {
     ParseInt(ByteSpan, ParseIntError),
 }
 
-impl<'alloc> Ctx<'alloc> {
-    pub fn lower_module(&mut self, module: &surface::Module<'_>) -> Module<'alloc> {
+impl<'hir> Ctx<'hir> {
+    pub fn lower_module(&mut self, module: &surface::Module<'_>) -> Module<'hir> {
         let items = self
             .bump
             .alloc_slice_fill_iter(module.items.iter().map(|item| self.lower_item(item)));
         Module { items }
     }
 
-    pub fn lower_item(&mut self, item: &surface::Item<'_>) -> Item<'alloc> {
+    pub fn lower_item(&mut self, item: &surface::Item<'_>) -> Item<'hir> {
         match item {
             surface::Item::Error(_) => Item::Error,
             surface::Item::Def(def) => Item::Def(self.lower_def(def)),
         }
     }
 
-    fn lower_def(&mut self, def: &surface::Def<'_>) -> Def<'alloc> {
+    fn lower_def(&mut self, def: &surface::Def<'_>) -> Def<'hir> {
         let r#type = def.r#type.map(|r#type| self.lower_expr(&r#type));
         let expr = self.lower_expr(&def.expr);
         Def {
@@ -41,7 +41,7 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    pub fn lower_expr(&mut self, expr: &surface::Expr<'_>) -> Expr<'alloc> {
+    pub fn lower_expr(&mut self, expr: &surface::Expr<'_>) -> Expr<'hir> {
         match expr {
             surface::Expr::Error(_) => Expr::Error,
             surface::Expr::Lit(span, lit) => Expr::Lit(self.lower_lit(*span, *lit)),
@@ -141,7 +141,7 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    fn lower_fun_param(&mut self, param: &surface::FunParam) -> FunParam<'alloc> {
+    fn lower_fun_param(&mut self, param: &surface::FunParam) -> FunParam<'hir> {
         FunParam {
             plicity: param.plicity.into(),
             pat: self.lower_pat(&param.pat),
@@ -149,20 +149,20 @@ impl<'alloc> Ctx<'alloc> {
         }
     }
 
-    fn lower_fun_arg(&mut self, arg: &surface::FunArg) -> FunArg<'alloc> {
+    fn lower_fun_arg(&mut self, arg: &surface::FunArg) -> FunArg<'hir> {
         FunArg {
             plicity: arg.plicity.into(),
             expr: self.lower_expr(&arg.expr),
         }
     }
 
-    fn lower_match_case(&mut self, case: &surface::MatchCase) -> MatchCase<'alloc> {
+    fn lower_match_case(&mut self, case: &surface::MatchCase) -> MatchCase<'hir> {
         let pat = self.lower_pat(&case.pat);
         let expr = self.lower_expr(&case.expr);
         MatchCase { pat, expr }
     }
 
-    pub fn lower_pat(&mut self, pat: &surface::Pat) -> Pat<'alloc> {
+    pub fn lower_pat(&mut self, pat: &surface::Pat) -> Pat<'hir> {
         match pat {
             surface::Pat::Error(_) => Pat::Error,
             surface::Pat::Lit(span, lit) => Pat::Lit(self.lower_lit(*span, *lit)),
