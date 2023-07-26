@@ -3,9 +3,8 @@ use std::num::ParseIntError;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 
-use crate::syntax::{
-    Def, Expr, ExprField, FunArg, FunParam, Item, Lit, MatchCase, Module, Pat, PatField, TypeField,
-};
+#[allow(clippy::wildcard_imports)]
+use crate::syntax::*;
 
 pub struct Ctx<'hir> {
     bump: &'hir bumpalo::Bump,
