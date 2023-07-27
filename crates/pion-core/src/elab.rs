@@ -1,7 +1,6 @@
 use std::fmt;
 
 use pion_utils::interner::Symbol;
-use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
@@ -9,6 +8,8 @@ use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv};
 use crate::syntax::{BinderInfo, Expr, Type, Value};
 
 mod diagnostics;
+mod expr;
+mod pat;
 mod unify;
 
 pub struct ElabCtx<'surface, 'hir, 'core> {

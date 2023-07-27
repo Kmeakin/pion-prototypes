@@ -75,6 +75,31 @@ pub enum Expr<'surface> {
     If(ByteSpan, &'surface (Self, Self, Self)),
 }
 
+impl<'surface> Expr<'surface> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Expr::Error(span, ..)
+            | Expr::Lit(span, ..)
+            | Expr::Underscore(span, ..)
+            | Expr::Ident(span, ..)
+            | Expr::Paren(span, ..)
+            | Expr::Ann(span, ..)
+            | Expr::Let(span, ..)
+            | Expr::ArrayLit(span, ..)
+            | Expr::RecordType(span, ..)
+            | Expr::RecordLit(span, ..)
+            | Expr::TupleLit(span, ..)
+            | Expr::FieldProj(span, ..)
+            | Expr::FunArrow(span, ..)
+            | Expr::FunType(span, ..)
+            | Expr::FunLit(span, ..)
+            | Expr::FunCall(span, ..)
+            | Expr::Match(span, ..)
+            | Expr::If(span, ..) => *span,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunParam<'surface> {
     pub span: ByteSpan,
