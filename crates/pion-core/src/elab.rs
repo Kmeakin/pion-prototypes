@@ -3,17 +3,20 @@ use std::fmt;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
+use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv};
 use crate::syntax::{BinderInfo, Expr, Type, Value};
 
 mod diagnostics;
+mod unify;
 
 pub struct ElabCtx<'surface, 'hir, 'core> {
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
+    renaming: unify::PartialRenaming,
     diagnostics: Vec<diagnostics::ElabDiagnostic>,
 }
 
@@ -27,6 +30,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             syntax_map,
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
+            renaming: unify::PartialRenaming::new(),
             diagnostics: Vec::default(),
         }
     }
@@ -58,6 +62,15 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     pub fn quote_env(&self) -> QuoteEnv<'core, 'core, '_> {
         QuoteEnv::new(self.bump, self.elim_env(), self.local_env.values.len())
+    }
+
+    pub fn unifiy_ctx(&mut self) -> UnifyCtx<'core, '_> {
+        UnifyCtx::new(
+            self.bump,
+            &mut self.renaming,
+            self.local_env.len(),
+            &mut self.meta_env.values,
+        )
     }
 
     /// Run `f`, potentially modifying the local environment, then restore the
