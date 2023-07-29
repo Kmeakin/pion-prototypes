@@ -4,6 +4,8 @@ use pion_utils::interner::Symbol;
 use crate::env::{Index, Level, SharedEnv};
 use crate::prim::Prim;
 
+mod iterators;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
     Error,
