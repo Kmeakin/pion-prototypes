@@ -158,6 +158,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 self.unify_fun_lit(*plicity, body, other)
             }
 
+            (Value::ArrayLit(values1), Value::ArrayLit(values2)) => {
+                self.unify_all(values1, values2)
+            }
+
             (Value::RecordType(labels1, telescope1), Value::RecordType(labels2, telescope2))
                 if labels1 == labels2 =>
             {
