@@ -269,7 +269,7 @@ impl<'core> fmt::Debug for MetaEnv<'core> {
 }
 
 #[derive(Debug, Copy, Clone)]
-enum MetaSource {}
+pub enum MetaSource {}
 
 #[derive(Debug, Clone)]
 pub struct Synth<'core, T> {

@@ -44,6 +44,10 @@ impl EnvLen {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Index(Repr);
 
+impl From<Index> for usize {
+    fn from(index: Index) -> Self { index.0 }
+}
+
 impl Index {
     pub fn new() -> Self { Self(0) }
 
@@ -56,6 +60,10 @@ impl Index {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Level(Repr);
+
+impl From<Level> for usize {
+    fn from(level: Level) -> Self { level.0 }
+}
 
 impl Level {
     pub fn new() -> Self { Self(0) }

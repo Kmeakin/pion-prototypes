@@ -17,7 +17,14 @@ impl Symbol {
 
     pub fn exists(sym: impl AsRef<str>) -> bool { Self::get(sym).is_some() }
 
-    pub fn as_str(&self) -> &str { INTERNER.resolve(&self.0) }
+    pub fn as_str(self) -> &'static str { INTERNER.resolve(&self.0) }
+
+    pub fn is_keyword(self) -> bool {
+        matches!(
+            self.as_str(),
+            "def" | "else" | "false" | "fun" | "if" | "let" | "match" | "then" | "true"
+        )
+    }
 }
 
 impl fmt::Debug for Symbol {

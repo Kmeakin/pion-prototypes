@@ -15,3 +15,4 @@ pion-utils   = { path = "../pion-utils" }
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
 internal-iterator  = { workspace = true }
+pretty             = { version = "0.12.1" }
