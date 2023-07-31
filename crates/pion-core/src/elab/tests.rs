@@ -121,3 +121,24 @@ fn unbound_name() {
             r#type:	?0"#]],
     );
 }
+
+#[test]
+fn synth_empty_array() {
+    cov_mark::check!(synth_empty_array);
+    check_expr(
+        "[]",
+        expect![[r#"
+            expr:	[]
+            r#type:	Array(?0)(0)"#]],
+    );
+}
+
+#[test]
+fn synth_array() {
+    check_expr(
+        "[1,2,3]",
+        expect![[r#"
+            expr:	[1, 2, 3]
+            r#type:	Array(Int)(3)"#]],
+    );
+}

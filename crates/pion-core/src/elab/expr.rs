@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use pion_hir::syntax as hir;
 use pion_utils::location::ByteSpan;
+use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
 use super::*;
@@ -62,7 +63,29 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr.core, type_value)
             }
             hir::Expr::Let(..) => todo!(),
-            hir::Expr::ArrayLit(..) => todo!(),
+            hir::Expr::ArrayLit(exprs) => {
+                let Some((first, rest)) = exprs.split_first() else {
+                    cov_mark::hit!(synth_empty_array);
+
+                    let span = self.syntax_map[expr].span();
+                    let r#type = self.push_unsolved_type(MetaSource::EmptyArrayElemType { span });
+                    return SynthExpr::new(Expr::ArrayLit(&[]), Type::array_type(r#type, 0));
+                };
+
+                let mut exprs = SliceVec::new(self.bump, exprs.len());
+                let first = self.synth_expr(first);
+                exprs.push(first.core);
+
+                for expr in rest {
+                    let expr = self.check_expr(expr, &first.r#type);
+                    exprs.push(expr.core);
+                }
+                let exprs = exprs.into();
+
+                let expr = Expr::ArrayLit(exprs);
+                let r#type = Type::array_type(first.r#type, exprs.len() as u32);
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::TupleLit(..) => todo!(),
             hir::Expr::RecordType(..) => todo!(),
             hir::Expr::RecordLit(..) => todo!(),

@@ -8,9 +8,7 @@ use std::rc::Rc;
 pub struct Identity<T>(pub T);
 
 impl<T: Deref> Identity<T> {
-    pub fn address(&self) -> *const T::Target {
-        &*self.0
-    }
+    pub fn address(&self) -> *const T::Target { &*self.0 }
 }
 
 impl<T: Deref + Debug> Debug for Identity<T> {
@@ -23,29 +21,21 @@ impl<T: Deref + Debug> Debug for Identity<T> {
 }
 
 impl<T: Deref> PartialEq for Identity<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.address() == other.address()
-    }
+    fn eq(&self, other: &Self) -> bool { self.address() == other.address() }
 }
 
 impl<T: Deref> Eq for Identity<T> {}
 
 impl<T: Deref> PartialOrd for Identity<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> { Some(self.cmp(other)) }
 }
 
 impl<T: Deref> Ord for Identity<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.address().cmp(&other.address())
-    }
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering { self.address().cmp(&other.address()) }
 }
 
 impl<T: Deref> std::hash::Hash for Identity<T> {
-    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
-        self.address().hash(hasher)
-    }
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) { self.address().hash(hasher) }
 }
 
 impl<T: Deref> nohash::IsEnabled for Identity<T> {}
