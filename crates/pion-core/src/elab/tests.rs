@@ -35,6 +35,9 @@ fn check_expr(src: &str, expected: Expect) {
     let mut actual = format!("expr:\t{}\nr#type:\t{}", core.pretty(80), r#type.pretty(80));
     let diagnostics = elab_ctx.finish();
 
+    if !diagnostics.is_empty() {
+        writeln!(actual, "").unwrap();
+    }
     for diagnostic in diagnostics {
         writeln!(actual, "{diagnostic:?}").unwrap();
     }
@@ -94,5 +97,17 @@ fn synth_prims() {
         expect![[r#"
             expr:	Array
             r#type:	fun(_: Type) -> fun(_: Int) -> Type"#]],
+    );
+}
+
+#[test]
+fn unbound_name() {
+    check_expr(
+        "unbound",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            UnboundName { span: 0..7, name: Symbol("unbound") }
+        "#]],
     );
 }
