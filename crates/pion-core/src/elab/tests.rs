@@ -36,7 +36,7 @@ fn check_expr(src: &str, expected: Expect) {
     let diagnostics = elab_ctx.finish();
 
     if !diagnostics.is_empty() {
-        writeln!(actual, "").unwrap();
+        writeln!(actual).unwrap();
     }
     for diagnostic in diagnostics {
         writeln!(actual, "{diagnostic:?}").unwrap();
