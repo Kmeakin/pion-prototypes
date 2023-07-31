@@ -55,7 +55,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 self.emit_diagnostic(ElabDiagnostic::UnboundName { name: *name, span });
                 SynthExpr::ERROR
             }
-            hir::Expr::Ann(..) => todo!(),
+            hir::Expr::Ann((expr, r#type)) => {
+                let r#type = self.check_expr(r#type, &Type::TYPE);
+                let type_value = self.eval_env().eval(&r#type.core);
+                let expr = self.check_expr(expr, &type_value);
+                SynthExpr::new(expr.core, type_value)
+            }
             hir::Expr::Let(..) => todo!(),
             hir::Expr::ArrayLit(..) => todo!(),
             hir::Expr::TupleLit(..) => todo!(),
