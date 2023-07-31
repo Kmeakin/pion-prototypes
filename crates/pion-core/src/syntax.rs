@@ -131,7 +131,7 @@ pub struct Closure<'arena> {
 }
 
 impl<'arena> Closure<'arena> {
-    pub fn new(local_values: SharedEnv<Value<'arena>>, expr: &'arena Expr<'arena>) -> Self {
+    pub const fn new(local_values: SharedEnv<Value<'arena>>, expr: &'arena Expr<'arena>) -> Self {
         Self { local_values, expr }
     }
 }

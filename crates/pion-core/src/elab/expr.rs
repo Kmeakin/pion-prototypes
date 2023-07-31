@@ -23,7 +23,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn synth_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> SynthExpr<'core> {
         match expr {
             hir::Expr::Error => SynthExpr::ERROR,
-            hir::Expr::Lit(..) => todo!(),
+            hir::Expr::Lit(lit) => {
+                let Synth { core, r#type } = synth_lit(lit);
+                let core = match core {
+                    Ok(core) => Expr::Lit(core),
+                    Err(()) => Expr::Error,
+                };
+                SynthExpr::new(core, r#type)
+            }
             hir::Expr::Underscore => todo!(),
             hir::Expr::Ident(name) => {
                 if let Some((index, entry)) = self.local_env.lookup(*name) {
@@ -114,5 +121,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 Expr::Error
             }
         }
+    }
+}
+
+pub fn synth_lit<'core>(lit: &hir::Lit) -> Synth<'core, Result<Lit, ()>> {
+    match lit {
+        hir::Lit::Bool(b) => Synth::new(Ok(Lit::Bool(*b)), Type::BOOL),
+        hir::Lit::Int(Ok(i)) => Synth::new(Ok(Lit::Int(*i)), Type::INT),
+        hir::Lit::Int(Err(())) => Synth::new(Err(()), Type::INT),
     }
 }

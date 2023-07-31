@@ -3,6 +3,7 @@ use pion_utils::location::ByteSpan;
 
 use super::unify;
 
+#[derive(Debug)]
 pub enum ElabDiagnostic {
     UnboundName {
         span: ByteSpan,

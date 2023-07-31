@@ -27,6 +27,29 @@ pub fn parse_module<'surface>(
     }
 }
 
+pub fn parse_expr<'surface>(
+    src: &str32,
+    bump: &'surface bumpalo::Bump,
+) -> (Expr<'surface>, Vec<SyntaxError>) {
+    let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
+        Ok(token) if token.is_trivia() => None,
+        Ok(token) => Some(Ok((span.start, token, span.end))),
+        Err(error) => Some(Err((span, error))),
+    });
+
+    let mut errors = Vec::new();
+
+    match crate::grammar::ExprParser::new().parse(src, bump, &mut errors, tokens) {
+        Ok(expr) => (expr, errors),
+        Err(error) => {
+            let error = SyntaxError::from_lalrpop(error);
+            let span = error.span();
+            errors.push(error);
+            (Expr::Error(span), errors)
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Module<'surface> {
     pub items: &'surface [Item<'surface>],

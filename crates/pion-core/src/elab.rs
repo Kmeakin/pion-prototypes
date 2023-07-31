@@ -12,6 +12,9 @@ mod expr;
 mod pat;
 mod unify;
 
+#[cfg(test)]
+mod tests;
+
 pub struct ElabCtx<'surface, 'hir, 'core> {
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
@@ -35,6 +38,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             diagnostics: Vec::default(),
         }
     }
+
+    pub fn finish(self) -> Vec<diagnostics::ElabDiagnostic> { self.diagnostics }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
         let level = self.meta_env.len().to_level();

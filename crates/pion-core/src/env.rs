@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+
+use triomphe::Arc;
 
 type Repr = usize;
 
@@ -126,30 +127,30 @@ impl<T> DerefMut for UniqueEnv<T> {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SharedEnv<T> {
-    elems: Rc<Vec<T>>,
+    elems: Arc<Vec<T>>,
 }
 
 impl<T> SharedEnv<T> {
     pub fn new() -> Self {
         Self {
-            elems: Rc::new(Vec::new()),
+            elems: Arc::new(Vec::new()),
         }
     }
 }
 
 impl<T: Clone> SharedEnv<T> {
-    pub fn push(&mut self, elem: T) { Rc::make_mut(&mut self.elems).push(elem) }
+    pub fn push(&mut self, elem: T) { Arc::make_mut(&mut self.elems).push(elem) }
 
-    pub fn pop(&mut self) -> Option<T> { Rc::make_mut(&mut self.elems).pop() }
+    pub fn pop(&mut self) -> Option<T> { Arc::make_mut(&mut self.elems).pop() }
 
-    pub fn reserve(&mut self, amount: usize) { Rc::make_mut(&mut self.elems).reserve(amount) }
+    pub fn reserve(&mut self, amount: usize) { Arc::make_mut(&mut self.elems).reserve(amount) }
 
-    pub fn truncate(&mut self, len: EnvLen) { Rc::make_mut(&mut self.elems).truncate(len.0) }
+    pub fn truncate(&mut self, len: EnvLen) { Arc::make_mut(&mut self.elems).truncate(len.0) }
 
-    pub fn clear(&mut self) { Rc::make_mut(&mut self.elems).clear() }
+    pub fn clear(&mut self) { Arc::make_mut(&mut self.elems).clear() }
 
     pub fn resize(&mut self, len: EnvLen, elem: T) {
-        Rc::make_mut(&mut self.elems).resize(len.0, elem);
+        Arc::make_mut(&mut self.elems).resize(len.0, elem);
     }
 }
 

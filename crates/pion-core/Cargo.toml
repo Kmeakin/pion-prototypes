@@ -16,3 +16,8 @@ bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
 internal-iterator  = { workspace = true }
 pretty             = { version = "0.12.1" }
+string32           = { workspace = true }
+triomphe           = { workspace = true }
+
+[dev-dependencies]
+expect-test = { version = "1.4.1" }
