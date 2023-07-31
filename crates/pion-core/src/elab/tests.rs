@@ -101,7 +101,7 @@ fn synth_prims() {
 }
 
 #[test]
-fn unbound_name() {
+fn synth_underscore_expr() {
     check_expr(
         "unbound",
         expect![[r#"
@@ -109,5 +109,15 @@ fn unbound_name() {
             r#type:	#error
             UnboundName { span: 0..7, name: Symbol("unbound") }
         "#]],
+    );
+}
+
+#[test]
+fn unbound_name() {
+    check_expr(
+        "_",
+        expect![[r#"
+            expr:	?1
+            r#type:	?0"#]],
     );
 }

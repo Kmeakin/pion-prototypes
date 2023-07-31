@@ -1,6 +1,7 @@
 use std::fmt;
 
 use pion_utils::interner::Symbol;
+use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
@@ -39,7 +40,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
-    pub fn finish(self) -> Vec<diagnostics::ElabDiagnostic> { self.diagnostics }
+    pub fn finish(self) -> Vec<diagnostics::ElabDiagnostic> {
+        self.diagnostics
+    }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
         let level = self.meta_env.len().to_level();
@@ -59,7 +62,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.bump, &self.meta_env.values) }
+    pub fn elim_env(&self) -> ElimEnv<'core, '_> {
+        ElimEnv::new(self.bump, &self.meta_env.values)
+    }
 
     pub fn eval_env(&mut self) -> EvalEnv<'core, '_> {
         let elim_env = ElimEnv::new(self.bump, &self.meta_env.values);
@@ -118,9 +123,13 @@ struct LocalEntry<'env, 'core> {
 }
 
 impl<'core> LocalEnv<'core> {
-    fn new() -> Self { Self::default() }
+    fn new() -> Self {
+        Self::default()
+    }
 
-    fn len(&self) -> EnvLen { self.names.len() }
+    fn len(&self) -> EnvLen {
+        self.names.len()
+    }
 
     fn reserve(&mut self, amount: usize) {
         self.names.reserve(amount);
@@ -151,7 +160,9 @@ impl<'core> LocalEnv<'core> {
         self.push(name, BinderInfo::Param, r#type, value);
     }
 
-    fn next_var(&self) -> Value<'core> { Value::local(self.values.len().to_level()) }
+    fn next_var(&self) -> Value<'core> {
+        Value::local(self.values.len().to_level())
+    }
 
     fn pop(&mut self) {
         self.names.pop();
@@ -224,9 +235,13 @@ struct MetaEntry<'env, 'core> {
 }
 
 impl<'core> MetaEnv<'core> {
-    fn new() -> Self { Self::default() }
+    fn new() -> Self {
+        Self::default()
+    }
 
-    fn len(&self) -> EnvLen { self.sources.len() }
+    fn len(&self) -> EnvLen {
+        self.sources.len()
+    }
 
     fn reserve(&mut self, amount: usize) {
         self.sources.reserve(amount);
@@ -274,7 +289,10 @@ impl<'core> fmt::Debug for MetaEnv<'core> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum MetaSource {}
+pub enum MetaSource {
+    UnderscoreType { span: ByteSpan },
+    UnderscoreExpr { span: ByteSpan },
+}
 
 #[derive(Debug, Clone)]
 pub struct Synth<'core, T> {
@@ -283,7 +301,9 @@ pub struct Synth<'core, T> {
 }
 
 impl<'core, T> Synth<'core, T> {
-    pub const fn new(core: T, r#type: Type<'core>) -> Self { Self { core, r#type } }
+    pub const fn new(core: T, r#type: Type<'core>) -> Self {
+        Self { core, r#type }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -292,5 +312,7 @@ pub struct Check<T> {
 }
 
 impl<T> Check<T> {
-    pub const fn new(core: T) -> Self { Self { core } }
+    pub const fn new(core: T) -> Self {
+        Self { core }
+    }
 }

@@ -31,7 +31,17 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 };
                 SynthExpr::new(core, r#type)
             }
-            hir::Expr::Underscore => todo!(),
+            hir::Expr::Underscore => {
+                let span = self.syntax_map[expr].span();
+
+                let type_source = MetaSource::UnderscoreType { span };
+                let expr_source = MetaSource::UnderscoreExpr { span };
+
+                let r#type = self.push_unsolved_type(type_source);
+                let expr = self.push_unsolved_expr(expr_source, r#type.clone());
+
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::Ident(name) => {
                 if let Some((index, entry)) = self.local_env.lookup(*name) {
                     return SynthExpr::new(Expr::Local(index), entry.r#type.clone());
