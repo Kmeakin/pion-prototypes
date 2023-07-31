@@ -129,7 +129,7 @@ fn synth_empty_array() {
         "[]",
         expect![[r#"
             expr:	[]
-            r#type:	Array(?0)(0)"#]],
+            r#type:	Array(?0, 0)"#]],
     );
 }
 

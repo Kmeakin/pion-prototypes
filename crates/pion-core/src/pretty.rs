@@ -120,11 +120,19 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append(" -> ")
                     .append(codomain)
             }
-            Expr::FunApp(plicity, (fun, arg)) => {
-                let plicity = plicity.pretty(self);
+            Expr::FunApp(..) => {
+                let mut args = Vec::new();
+                let mut fun = expr;
+
+                while let Expr::FunApp(plicity, (next_fun, arg)) = fun {
+                    fun = next_fun;
+                    let arg = self.fun_arg(*plicity, arg);
+                    args.push(arg);
+                }
+
+                let args = self.intersperse(args.into_iter().rev(), self.text(", "));
                 let fun = self.expr(fun, Prec::App);
-                let arg = self.expr(arg, Prec::MAX);
-                fun.append("(").append(plicity).append(arg).append(")")
+                fun.append("(").append(args).append(")")
             }
             Expr::ArrayLit(exprs) => {
                 let elems = exprs.iter().map(|expr| self.expr(expr, Prec::MAX));
