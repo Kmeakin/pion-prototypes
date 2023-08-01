@@ -102,6 +102,10 @@ impl<'core> Value<'core> {
         )
     }
 
+    pub fn record_type(labels: &'core [Symbol], types: &'core [Expr<'core>]) -> Self {
+        Self::RecordType(labels, Telescope::new(SharedEnv::new(), types))
+    }
+
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())
     }

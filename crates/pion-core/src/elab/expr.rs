@@ -86,7 +86,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = Type::array_type(first.r#type, exprs.len() as u32);
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::TupleLit(..) => todo!(),
+            hir::Expr::TupleLit(elems) => {
+                let mut exprs = SliceVec::new(self.bump, elems.len());
+                let mut types = SliceVec::new(self.bump, elems.len());
+                let mut labels = SliceVec::new(self.bump, elems.len());
+
+                for (index, elem) in elems.iter().enumerate() {
+                    let expr = self.synth_expr(elem);
+                    exprs.push(expr.core);
+                    types.push(self.quote_env().quote(&expr.r#type));
+                    labels.push(Symbol::intern(format!("_{index}")));
+                }
+
+                let labels = labels.into();
+                let expr = Expr::RecordLit(labels, exprs.into());
+                let r#type = Type::record_type(labels, r#types.into());
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::RecordType(..) => todo!(),
             hir::Expr::RecordLit(..) => todo!(),
             hir::Expr::FieldProj(..) => todo!(),

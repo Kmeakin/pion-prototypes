@@ -139,6 +139,34 @@ fn synth_array() {
         "[1,2,3]",
         expect![[r#"
             expr:	[1, 2, 3]
-            r#type:	Array(Int)(3)"#]],
+            r#type:	Array(Int, 3)"#]],
+    );
+}
+
+#[test]
+fn synth_tuple_lit() {
+    check_expr(
+        "()",
+        expect![[r#"
+        expr:	{}
+        r#type:	{}"#]],
+    );
+    check_expr(
+        "(1,)",
+        expect![[r#"
+        expr:	{_0 = 1}
+        r#type:	{_0: Int}"#]],
+    );
+    check_expr(
+        "(1,true)",
+        expect![[r#"
+            expr:	{_0 = 1, _1 = true}
+            r#type:	{_0: Int, _1: Bool}"#]],
+    );
+    check_expr(
+        "(1,true,false)",
+        expect![[r#"
+            expr:	{_0 = 1, _1 = true, _2 = false}
+            r#type:	{_0: Int, _1: Bool, _2: Bool}"#]],
     );
 }
