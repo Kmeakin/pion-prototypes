@@ -21,6 +21,7 @@ impl<'core> CheckExpr<'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    #[allow(clippy::too_many_lines)]
     pub fn synth_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> SynthExpr<'core> {
         match expr {
             hir::Expr::Error => SynthExpr::ERROR,
@@ -122,7 +123,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::FieldProj(..) => todo!(),
-            hir::Expr::FunArrow(..) => todo!(),
+            hir::Expr::FunArrow((domain, codomain)) => {
+                let domain = self.check_expr(domain, &Type::TYPE);
+                let domain_value = self.eval_env().eval(&domain.core);
+                let codomain = self.with_param(None, domain_value, |this| {
+                    this.check_expr(codomain, &Type::TYPE)
+                });
+                let expr = Expr::FunType(
+                    Plicity::Explicit,
+                    None,
+                    self.bump.alloc((domain.core, codomain.core)),
+                );
+                let r#type = Type::TYPE;
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::FunType(..) => todo!(),
             hir::Expr::FunLit(..) => todo!(),
             hir::Expr::FunCall(..) => todo!(),

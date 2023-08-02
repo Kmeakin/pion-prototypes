@@ -198,3 +198,19 @@ fn synth_record_lit() {
             r#type:	{x: Int, y: Bool, z: Bool}"#]],
     );
 }
+
+#[test]
+fn synth_fun_arrow() {
+    check_expr(
+        "Int -> Bool",
+        expect![[r#"
+            expr:	fun(_: Int) -> Bool
+            r#type:	Type"#]],
+    );
+    check_expr(
+        "Int -> Bool -> Type",
+        expect![[r#"
+            expr:	fun(_: Int) -> fun(_: Bool) -> Type
+            r#type:	Type"#]],
+    );
+}
