@@ -102,13 +102,3 @@ mod tests {
         assert_eq!(hashmap.get(&Identity(also_two)), None);
     }
 }
-
-#[test]
-fn fuck() {
-    let one = &1;
-    let addr = one as *const i32 as usize;
-    let id = Identity(one);
-
-    assert_eq!(addr, addr);
-    assert_eq!(id, id);
-}
