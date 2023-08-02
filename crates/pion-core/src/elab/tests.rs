@@ -13,12 +13,12 @@ fn check_expr(src: &str, expected: Expect) {
     let string32 = String32::try_from(src).unwrap();
 
     let (expr, errors) = pion_surface::syntax::parse_expr(&string32, &bump);
-    assert!(errors.is_empty());
+    assert_eq!(errors, &[]);
 
     let mut lower_ctx = pion_hir::lower::Ctx::new(&bump);
     let expr = lower_ctx.lower_expr(&expr);
     let (syntax_map, errors) = lower_ctx.finish();
-    assert!(errors.is_empty());
+    assert_eq!(errors, &[]);
 
     let mut elab_ctx = ElabCtx::new(&bump, &syntax_map);
     let Synth { core, r#type } = elab_ctx.synth_expr(expr);
@@ -168,5 +168,33 @@ fn synth_tuple_lit() {
         expect![[r#"
             expr:	{_0 = 1, _1 = true, _2 = false}
             r#type:	{_0: Int, _1: Bool, _2: Bool}"#]],
+    );
+}
+
+#[test]
+fn synth_record_lit() {
+    check_expr(
+        "{}",
+        expect![[r#"
+        expr:	{}
+        r#type:	{}"#]],
+    );
+    check_expr(
+        "{x=1}",
+        expect![[r#"
+            expr:	{x = 1}
+            r#type:	{x: Int}"#]],
+    );
+    check_expr(
+        "{x=1, y=false}",
+        expect![[r#"
+            expr:	{x = 1, y = false}
+            r#type:	{x: Int, y: Bool}"#]],
+    );
+    check_expr(
+        "{x=1, y=false, z=true}",
+        expect![[r#"
+            expr:	{x = 1, y = false, z = true}
+            r#type:	{x: Int, y: Bool, z: Bool}"#]],
     );
 }

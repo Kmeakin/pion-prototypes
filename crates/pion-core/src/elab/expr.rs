@@ -104,7 +104,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::RecordType(..) => todo!(),
-            hir::Expr::RecordLit(..) => todo!(),
+            hir::Expr::RecordLit(fields) => {
+                let mut exprs = SliceVec::new(self.bump, fields.len());
+                let mut types = SliceVec::new(self.bump, fields.len());
+                let mut labels = SliceVec::new(self.bump, fields.len());
+
+                for field in *fields {
+                    let expr = self.synth_expr(&field.expr);
+                    exprs.push(expr.core);
+                    types.push(self.quote_env().quote(&expr.r#type));
+                    labels.push(field.label);
+                }
+
+                let labels = labels.into();
+                let expr = Expr::RecordLit(labels, exprs.into());
+                let r#type = Type::record_type(labels, r#types.into());
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::FieldProj(..) => todo!(),
             hir::Expr::FunArrow(..) => todo!(),
             hir::Expr::FunType(..) => todo!(),

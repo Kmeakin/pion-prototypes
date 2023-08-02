@@ -2,6 +2,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_lexer::token::{TokenError, TokenKind};
 use pion_utils::location::{BytePos, ByteSpan};
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum SyntaxError {
     Lexer((ByteSpan, TokenError)),
     InvalidToken(ByteSpan),

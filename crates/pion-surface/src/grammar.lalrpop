@@ -107,6 +107,9 @@ AtomExpr: Expr<'surface> = {
     <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), exprs),
     <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
     <start: @L> "match" <scrut: Expr> "{" <cases: Seq<MatchCase, ",">> "}" <end: @R> => Expr::Match(ByteSpan::new(start, end), bump.alloc(scrut), cases),
+    <start: @L> "{" "}" <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), &[]),
+    <start: @L> "{" <fields: Seq1<ExprField, ",">> "}" <end: @R> => Expr::RecordLit(ByteSpan::new(start, end), fields),
+    <start: @L> "{" <fields: Seq1<TypeField, ",">> "}" <end: @R> => Expr::RecordType(ByteSpan::new(start, end), fields),
 }
 
 FunArg: FunArg<'surface> = {
@@ -126,6 +129,14 @@ MatchCase: MatchCase<'surface> = {
     <pat: Pat> "=>" <expr: Expr> => MatchCase {pat, expr},
 }
 
+ExprField: ExprField<'surface> = {
+    <label: SpannedIdent> "=" <expr: Expr> => ExprField {label, expr},
+}
+
+TypeField: TypeField<'surface> = {
+    <label: SpannedIdent> ":" <r#type: Expr> => TypeField {label, r#type},
+}
+
 // ==== Patterns ====
 
 pub Pat: Pat<'surface> = {
@@ -139,6 +150,11 @@ AtomPat: Pat<'surface> = {
     <start: @L> <ident: Ident> <end: @R> => Pat::Ident(ByteSpan::new(start, end), ident),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => Pat::Paren(ByteSpan::new(start, end), bump.alloc(pat)),
     <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::TupleLit(ByteSpan::new(start, end), pats),
+    <start: @L> "{" <fields: Seq<PatField, ",">> "}" <end: @R> => Pat::RecordLit(ByteSpan::new(start, end), fields),
+}
+
+PatField: PatField<'surface> = {
+    <label: SpannedIdent> "=" <pat: Pat> => PatField {label, pat},
 }
 
 // ==== Literals ====

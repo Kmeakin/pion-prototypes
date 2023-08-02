@@ -12,6 +12,7 @@ pub struct Ctx<'surface, 'hir> {
     errors: Vec<LowerError>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum LowerError {
     ParseInt(ByteSpan, ParseIntError),
 }
