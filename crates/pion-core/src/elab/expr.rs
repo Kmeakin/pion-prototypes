@@ -155,7 +155,32 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 self.synth_fun_type(params, body)
             }
-            hir::Expr::FunLit(..) => todo!(),
+            hir::Expr::FunLit(params, body) => {
+                // empty parameter list is treated as a single unit parameter
+                if params.is_empty() {
+                    cov_mark::hit!(synth_empty_fun_lit);
+
+                    let body =
+                        self.with_param(None, Type::unit_type(), |this| this.synth_expr(body));
+                    let body_type = self.quote_env().quote(&body.r#type);
+
+                    let domain = Expr::RecordType(&[], &[]);
+                    let expr = Expr::FunLit(
+                        Plicity::Explicit,
+                        None,
+                        self.bump.alloc((domain, body.core)),
+                    );
+                    let r#type = Type::FunType(
+                        Plicity::Explicit,
+                        None,
+                        self.bump.alloc(Type::unit_type()),
+                        Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+                    );
+                    return SynthExpr::new(expr, r#type);
+                }
+
+                self.synth_fun_lit(params, body)
+            }
             hir::Expr::FunCall(..) => todo!(),
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If(..) => todo!(),
@@ -244,6 +269,36 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         let expr = Expr::FunType(plicity, name, self.bump.alloc((domain, codomain.core)));
         SynthExpr::new(expr, Type::TYPE)
+    }
+
+    fn synth_fun_lit(
+        &mut self,
+        params: &'hir [hir::FunParam<'hir>],
+        body: &'hir hir::Expr<'hir>,
+    ) -> SynthExpr<'core> {
+        let Some((param, params)) = params.split_first() else {
+            return self.synth_expr(body);
+        };
+
+        let plicity = param.plicity.into();
+        let Synth { core: pat, r#type } = self.synth_fun_param(param);
+        let domain = self.quote_env().quote(&r#type);
+        let name = pat.name();
+
+        self.local_env.push_param(name, r#type.clone());
+        let body = self.synth_fun_lit(params, body);
+        let body_expr = body.core;
+        let body_type = self.quote_env().quote(&body.r#type);
+        self.local_env.pop();
+
+        let expr = Expr::FunLit(plicity, name, self.bump.alloc((domain, body_expr)));
+        let r#type = Type::FunType(
+            plicity,
+            name,
+            self.bump.alloc(r#type),
+            Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+        );
+        SynthExpr::new(expr, r#type)
     }
 }
 

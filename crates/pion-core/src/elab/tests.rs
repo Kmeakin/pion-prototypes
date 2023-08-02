@@ -241,3 +241,35 @@ fn synth_fun_type() {
             r#type:	Type"#]],
     );
 }
+
+#[test]
+fn synth_fun_lit() {
+    {
+        cov_mark::check!(synth_empty_fun_lit);
+        check_expr(
+            "fun() => 5",
+            expect![[r#"
+                expr:	fun(_: {}) -> 5
+                r#type:	fun(_: {}) -> Int"#]],
+        );
+    }
+
+    check_expr(
+        "fun(x) => x",
+        expect![[r#"
+            expr:	fun(x: ?0) -> x
+            r#type:	fun(x: ?0) -> ?0"#]],
+    );
+    check_expr(
+        "fun(x: Int) => x",
+        expect![[r#"
+            expr:	fun(x: Int) -> x
+            r#type:	fun(x: Int) -> Int"#]],
+    );
+    check_expr(
+        "fun(A: Type, a: A) => a",
+        expect![[r#"
+            expr:	fun(A: Type) -> fun(a: A) -> a
+            r#type:	fun(A: Type) -> fun(a: A) -> A"#]],
+    );
+}
