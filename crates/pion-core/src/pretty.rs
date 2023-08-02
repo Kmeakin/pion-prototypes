@@ -151,11 +151,13 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append("]")
             }
             Expr::RecordType(labels, r#types) => {
+                let initial_len = self.local_names.borrow().len();
                 let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
-                    self.text(label.as_str())
-                        .append(": ")
-                        .append(self.expr(r#type, Prec::MAX))
+                    let r#type = self.expr(r#type, Prec::MAX);
+                    self.local_names.borrow_mut().push(Some(*label));
+                    self.text(label.as_str()).append(": ").append(r#type)
                 });
+                self.local_names.borrow_mut().truncate(initial_len);
                 self.text("{")
                     .append(self.intersperse(elems, self.text(", ")))
                     .append("}")

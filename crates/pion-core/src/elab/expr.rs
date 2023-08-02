@@ -105,7 +105,24 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = Type::record_type(labels, r#types.into());
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::RecordType(..) => todo!(),
+            hir::Expr::RecordType(fields) => {
+                let mut types = SliceVec::new(self.bump, fields.len());
+                let mut labels = SliceVec::new(self.bump, fields.len());
+
+                self.with_scope(|this| {
+                    for field in *fields {
+                        let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
+                        let type_value = this.eval_env().eval(&r#type);
+                        types.push(r#type);
+                        labels.push(field.label);
+                        this.local_env.push_param(Some(field.label), type_value);
+                    }
+                });
+
+                let labels = labels.into();
+                let expr = Expr::RecordType(labels, types.into());
+                SynthExpr::new(expr, Type::TYPE)
+            }
             hir::Expr::RecordLit(fields) => {
                 let mut exprs = SliceVec::new(self.bump, fields.len());
                 let mut types = SliceVec::new(self.bump, fields.len());
