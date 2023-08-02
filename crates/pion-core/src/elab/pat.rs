@@ -20,12 +20,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match pat {
             hir::Pat::Error => SynthPat::ERROR,
             hir::Pat::Lit(lit) => {
-                let Synth { core, r#type } = expr::synth_lit(lit);
-                let core = match core {
-                    Ok(core) => Pat::Lit(core),
+                let Synth(result, r#type) = expr::synth_lit(lit);
+                let pat = match result {
+                    Ok(lit) => Pat::Lit(lit),
                     Err(()) => Pat::Error,
                 };
-                SynthPat::new(core, r#type)
+                SynthPat::new(pat, r#type)
             }
             hir::Pat::Underscore => {
                 let span = self.syntax_map[pat].span();
@@ -53,8 +53,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(*name)),
             _ => {
                 let span = self.syntax_map[pat].span();
-                let pat = self.synth_pat(pat);
-                CheckPat::new(self.convert_pat(span, pat.core, &pat.r#type, expected))
+                let Synth(pat, r#type) = self.synth_pat(pat);
+                CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
             }
         }
     }
@@ -69,10 +69,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match r#type {
             None => self.synth_pat(pat),
             Some(r#type) => {
-                let r#type = self.check_expr(r#type, &Value::TYPE);
-                let r#type = self.eval_env().eval(&r#type.core);
-                let pat = self.check_pat(pat, &r#type);
-                SynthPat::new(pat.core, r#type)
+                let Check(r#type) = self.check_expr(r#type, &Value::TYPE);
+                let r#type = self.eval_env().eval(&r#type);
+                let Check(pat) = self.check_pat(pat, &r#type);
+                SynthPat::new(pat, r#type)
             }
         }
     }

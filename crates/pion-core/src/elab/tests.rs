@@ -21,7 +21,7 @@ fn check_expr(src: &str, expected: Expect) {
     assert_eq!(errors, &[]);
 
     let mut elab_ctx = ElabCtx::new(&bump, &syntax_map);
-    let Synth { core, r#type } = elab_ctx.synth_expr(expr);
+    let Synth(expr, r#type) = elab_ctx.synth_expr(expr);
     let r#type = elab_ctx.quote_env().quote(&r#type);
 
     let pretty_ctx = PrettyCtx::new(
@@ -29,10 +29,10 @@ fn check_expr(src: &str, expected: Expect) {
         &mut elab_ctx.local_env.names,
         &elab_ctx.meta_env.sources,
     );
-    let core = pretty_ctx.expr(&core, Prec::MAX);
+    let expr = pretty_ctx.expr(&expr, Prec::MAX);
     let r#type = pretty_ctx.expr(&r#type, Prec::MAX);
 
-    let mut actual = format!("expr:\t{}\nr#type:\t{}", core.pretty(80), r#type.pretty(80));
+    let mut actual = format!("expr:\t{}\nr#type:\t{}", expr.pretty(80), r#type.pretty(80));
     let diagnostics = elab_ctx.finish();
 
     if !diagnostics.is_empty() {

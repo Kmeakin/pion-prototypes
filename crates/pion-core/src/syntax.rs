@@ -33,6 +33,9 @@ pub enum Expr<'core> {
 }
 
 impl<'core> Expr<'core> {
+    pub const UNIT_LIT: Self = Self::RecordLit(&[], &[]);
+    pub const UNIT_TYPE: Self = Self::RecordType(&[], &[]);
+
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
 }
 

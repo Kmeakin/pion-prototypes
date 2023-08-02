@@ -283,20 +283,15 @@ pub enum MetaSource {
 }
 
 #[derive(Debug, Clone)]
-pub struct Synth<'core, T> {
-    pub core: T,
-    pub r#type: Type<'core>,
-}
+pub struct Synth<'core, T>(pub T, pub Type<'core>);
 
 impl<'core, T> Synth<'core, T> {
-    pub const fn new(core: T, r#type: Type<'core>) -> Self { Self { core, r#type } }
+    pub const fn new(core: T, r#type: Type<'core>) -> Self { Self(core, r#type) }
 }
 
 #[derive(Debug, Clone)]
-pub struct Check<T> {
-    pub core: T,
-}
+pub struct Check<T>(pub T);
 
 impl<T> Check<T> {
-    pub const fn new(core: T) -> Self { Self { core } }
+    pub const fn new(core: T) -> Self { Self(core) }
 }
