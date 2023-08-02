@@ -214,3 +214,30 @@ fn synth_fun_arrow() {
             r#type:	Type"#]],
     );
 }
+
+#[test]
+fn synth_fun_type() {
+    {
+        cov_mark::check!(synth_empty_fun_type);
+        check_expr(
+            "fun() -> Int",
+            expect![[r#"
+        expr:	fun(_: {}) -> Int
+        r#type:	Type"#]],
+        );
+    }
+
+    check_expr(
+        "fun(x) -> Int",
+        expect![[r#"
+            expr:	fun(x: ?0) -> Int
+            r#type:	Type"#]],
+    );
+
+    check_expr(
+        "fun(A: Type) -> A -> A",
+        expect![[r#"
+            expr:	fun(A: Type) -> fun(_: A) -> A
+            r#type:	Type"#]],
+    );
+}

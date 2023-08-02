@@ -134,10 +134,27 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     None,
                     self.bump.alloc((domain.core, codomain.core)),
                 );
-                let r#type = Type::TYPE;
-                SynthExpr::new(expr, r#type)
+                SynthExpr::new(expr, Type::TYPE)
             }
-            hir::Expr::FunType(..) => todo!(),
+            hir::Expr::FunType(params, body) => {
+                // empty parameter list is treated as a single unit parameter
+                if params.is_empty() {
+                    cov_mark::hit!(synth_empty_fun_type);
+
+                    let codomain = self.with_param(None, Type::unit_type(), |this| {
+                        this.check_expr(body, &Type::TYPE)
+                    });
+                    let domain = Expr::RecordType(&[], &[]);
+                    let expr = Expr::FunType(
+                        Plicity::Explicit,
+                        None,
+                        self.bump.alloc((domain, codomain.core)),
+                    );
+                    return SynthExpr::new(expr, Type::TYPE);
+                }
+
+                self.synth_fun_type(params, body)
+            }
             hir::Expr::FunLit(..) => todo!(),
             hir::Expr::FunCall(..) => todo!(),
             hir::Expr::Match(..) => todo!(),
@@ -205,6 +222,28 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 Expr::Error
             }
         }
+    }
+}
+
+impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    fn synth_fun_type(
+        &mut self,
+        params: &'hir [hir::FunParam<'hir>],
+        codomain: &'hir hir::Expr<'hir>,
+    ) -> SynthExpr<'core> {
+        let Some((param, params)) = params.split_first() else {
+            let codomain = self.check_expr(codomain, &Type::TYPE);
+            return SynthExpr::new(codomain.core, Type::TYPE);
+        };
+
+        let plicity = param.plicity.into();
+        let Synth { core: pat, r#type } = self.synth_fun_param(param);
+        let domain = self.quote_env().quote(&r#type);
+        let name = pat.name();
+        let codomain = self.with_param(name, r#type, |this| this.synth_fun_type(params, codomain));
+
+        let expr = Expr::FunType(plicity, name, self.bump.alloc((domain, codomain.core)));
+        SynthExpr::new(expr, Type::TYPE)
     }
 }
 

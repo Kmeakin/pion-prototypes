@@ -45,6 +45,15 @@ pub enum Pat<'core> {
     RecordLit(&'core [Symbol], &'core [Self]),
 }
 
+impl<'core> Pat<'core> {
+    pub fn name(&self) -> Option<Symbol> {
+        match self {
+            Pat::Ident(name) => Some(*name),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinderInfo {
     Def,
@@ -105,6 +114,8 @@ impl<'core> Value<'core> {
     pub fn record_type(labels: &'core [Symbol], types: &'core [Expr<'core>]) -> Self {
         Self::RecordType(labels, Telescope::new(SharedEnv::new(), types))
     }
+
+    pub fn unit_type() -> Self { Self::record_type(&[], &[]) }
 
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())

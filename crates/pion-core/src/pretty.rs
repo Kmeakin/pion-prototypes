@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
@@ -25,7 +27,7 @@ impl Prec {
 
 pub struct PrettyCtx<'pretty, 'env> {
     bump: &'pretty bumpalo::Bump,
-    local_names: &'env mut UniqueEnv<Option<Symbol>>,
+    local_names: RefCell<&'env mut UniqueEnv<Option<Symbol>>>,
     meta_sources: &'env SliceEnv<MetaSource>,
 }
 
@@ -37,7 +39,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
     ) -> Self {
         Self {
             bump,
-            local_names,
+            local_names: RefCell::new(local_names),
             meta_sources,
         }
     }
@@ -48,7 +50,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
-            Expr::Local(var) => match self.local_names.get_index(*var) {
+            Expr::Local(var) => match self.local_names.borrow().get_index(*var) {
                 Some(Some(name)) => self.ident(*name),
                 Some(None) => panic!("Referenced local variable without name: {var:?}"),
                 None => panic!("Unbound local variable: {var:?}"),
@@ -74,7 +76,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     match info {
                         BinderInfo::Def => {}
                         BinderInfo::Param => {
-                            let var = self.local_names.len().level_to_index(var).unwrap();
+                            let var = self.local_names.borrow().len().level_to_index(var).unwrap();
                             args.push(var);
                         }
                     }
@@ -102,7 +104,11 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             }
             Expr::FunLit(plicity, name, (domain, body)) => {
                 let param = self.fun_param(*plicity, *name, domain);
+
+                self.local_names.borrow_mut().push(*name);
                 let body = self.expr(body, Prec::Fun);
+                self.local_names.borrow_mut().pop();
+
                 self.text("fun")
                     .append("(")
                     .append(param)
@@ -112,7 +118,11 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             }
             Expr::FunType(plicity, name, (domain, codomain)) => {
                 let param = self.fun_param(*plicity, *name, domain);
+
+                self.local_names.borrow_mut().push(*name);
                 let codomain = self.expr(codomain, Prec::Fun);
+                self.local_names.borrow_mut().pop();
+
                 self.text("fun")
                     .append("(")
                     .append(param)

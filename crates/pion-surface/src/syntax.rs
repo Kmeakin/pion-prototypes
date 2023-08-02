@@ -179,6 +179,20 @@ pub enum Pat<'surface> {
     RecordLit(ByteSpan, &'surface [PatField<'surface>]),
 }
 
+impl<'surface> Pat<'surface> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Pat::Error(span, ..)
+            | Pat::Lit(span, ..)
+            | Pat::Underscore(span, ..)
+            | Pat::Ident(span, ..)
+            | Pat::Paren(span, ..)
+            | Pat::TupleLit(span, ..)
+            | Pat::RecordLit( span,..) => *span,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit {
     Bool(bool),

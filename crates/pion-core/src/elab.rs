@@ -279,6 +279,7 @@ pub enum MetaSource {
     UnderscoreType { span: ByteSpan },
     UnderscoreExpr { span: ByteSpan },
     EmptyArrayElemType { span: ByteSpan },
+    PatType { span: ByteSpan },
 }
 
 #[derive(Debug, Clone)]
