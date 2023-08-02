@@ -47,7 +47,7 @@ define_prims! {
 impl Prim {
     #[allow(clippy::use_self)]
     pub fn r#type(self) -> Type<'static> {
-        static TYPE: Type = Type::TYPE;
+        const TYPE: &Type = &Type::TYPE;
 
         #[allow(clippy::match_same_arms)]
         match self {
@@ -57,7 +57,7 @@ impl Prim {
             Self::Array => Type::FunType(
                 Plicity::Explicit,
                 None,
-                &TYPE,
+                TYPE,
                 Closure::new(
                     SharedEnv::new(),
                     &Expr::FunType(

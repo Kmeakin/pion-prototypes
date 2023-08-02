@@ -1,6 +1,5 @@
 use std::fmt::{self, Debug};
 use std::ops::Deref;
-use std::rc::Rc;
 
 /// Wrapper type for comparison and hashing by pointer address rather than by
 /// value.
