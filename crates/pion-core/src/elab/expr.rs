@@ -63,7 +63,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let Check(expr) = self.check_expr(expr, &type_value);
                 SynthExpr::new(expr, type_value)
             }
-            hir::Expr::Let(..) => todo!(),
+            hir::Expr::Let((pat, r#type, init, body)) => {
+                let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
+                let name = pat.name();
+                let type_expr = self.quote_env().quote(&pat_type);
+
+                let Check(init_expr) = self.check_expr(init, &pat_type);
+                let init_value = self.eval_env().eval(&init_expr);
+
+                let Synth(body_expr, body_type) =
+                    self.with_def(name, pat_type, init_value, |this| this.synth_expr(body));
+
+                let expr = Expr::Let(name, self.bump.alloc((type_expr, init_expr, body_expr)));
+                SynthExpr::new(expr, body_type)
+            }
             hir::Expr::ArrayLit(elems) => {
                 let Some((first, rest)) = elems.split_first() else {
                     cov_mark::hit!(synth_empty_array);
@@ -210,11 +223,27 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expr: &'hir hir::Expr<'hir>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
+        let expected = &self.elim_env().update_metas(expected);
+
         match expr {
             hir::Expr::Error => CheckExpr::ERROR,
 
             hir::Expr::Ann(..) => todo!(),
-            hir::Expr::Let(..) => todo!(),
+            hir::Expr::Let((pat, r#type, init, body)) => {
+                let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
+                let name = pat.name();
+                let type_expr = self.quote_env().quote(&pat_type);
+
+                let Check(init_expr) = self.check_expr(init, &pat_type);
+                let init_value = self.eval_env().eval(&init_expr);
+
+                let Check(body_expr) = self.with_def(name, pat_type, init_value, |this| {
+                    this.check_expr(body, expected)
+                });
+
+                let expr = Expr::Let(name, self.bump.alloc((type_expr, init_expr, body_expr)));
+                CheckExpr::new(expr)
+            }
             hir::Expr::ArrayLit(..) => todo!(),
             hir::Expr::TupleLit(..) => todo!(),
             hir::Expr::RecordType(..) => todo!(),

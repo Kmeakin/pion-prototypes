@@ -88,12 +88,13 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 fun.append("(").append(args).append(")")
             }
             Expr::Let(name, (r#type, init, body)) => {
-                let name = self.name(*name);
                 let r#type = self.expr(r#type, Prec::MAX);
                 let init = self.expr(init, Prec::MAX);
+                self.local_names.borrow_mut().push(*name);
                 let body = self.expr(body, Prec::MAX);
+                self.local_names.borrow_mut().pop();
                 self.text("let ")
-                    .append(name)
+                    .append(self.name(*name))
                     .append(": ")
                     .append(r#type)
                     .append(" = ")

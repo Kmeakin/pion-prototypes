@@ -123,6 +123,35 @@ fn unbound_name() {
 }
 
 #[test]
+fn synth_let() {
+    check_expr(
+        "let x = 5; x",
+        expect![[r#"
+            expr:	let x: ?0 = 5;
+            x
+            r#type:	Int"#]],
+    );
+    check_expr(
+        "let x: Int = 5; x",
+        expect![[r#"
+            expr:	let x: Int = 5;
+            x
+            r#type:	Int"#]],
+    );
+}
+
+#[test]
+fn check_let() {
+    check_expr(
+        "((let x = 5; x): Int)",
+        expect![[r#"
+            expr:	let x: ?0 = 5;
+            x
+            r#type:	Int"#]],
+    );
+}
+
+#[test]
 fn synth_empty_array() {
     cov_mark::check!(synth_empty_array);
     check_expr(

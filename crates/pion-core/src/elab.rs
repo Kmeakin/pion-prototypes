@@ -100,6 +100,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         self.local_env.pop();
         result
     }
+
+    fn with_def<T>(
+        &mut self,
+        name: Option<Symbol>,
+        r#type: Type<'core>,
+        value: Value<'core>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.local_env.push_def(name, r#type, value);
+        let result = f(self);
+        self.local_env.pop();
+        result
+    }
 }
 
 #[derive(Default)]
