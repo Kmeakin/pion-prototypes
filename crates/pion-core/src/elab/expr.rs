@@ -214,7 +214,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::FunCall(..) => todo!(),
             hir::Expr::Match(..) => todo!(),
-            hir::Expr::If(..) => todo!(),
+            hir::Expr::If((scrut, then, r#else)) => {
+                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
+                let Synth(then_expr, then_type) = self.synth_expr(then);
+                let Check(else_expr) = self.check_expr(r#else, &then_type);
+                let expr = Expr::Match(
+                    self.bump.alloc((scrut_expr, None)),
+                    self.bump.alloc_slice_copy(&[
+                        (Lit::Bool(false), else_expr),
+                        (Lit::Bool(true), then_expr),
+                    ]),
+                );
+                SynthExpr::new(expr, then_type)
+            }
         }
     }
 
@@ -252,7 +264,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunType(..) => todo!(),
             hir::Expr::FunLit(..) => todo!(),
             hir::Expr::Match(..) => todo!(),
-            hir::Expr::If(..) => todo!(),
+            hir::Expr::If((scrut, then, r#else)) => {
+                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
+                let Check(then_expr) = self.check_expr(then, expected);
+                let Check(else_expr) = self.check_expr(r#else, expected);
+                let expr = Expr::Match(
+                    self.bump.alloc((scrut_expr, None)),
+                    self.bump.alloc_slice_copy(&[
+                        (Lit::Bool(false), else_expr),
+                        (Lit::Bool(true), then_expr),
+                    ]),
+                );
+                CheckExpr::new(expr)
+            }
 
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
             // new expression variants are added

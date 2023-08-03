@@ -185,17 +185,22 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                         .append(self.expr(expr, Prec::MAX))
                 });
                 let default = default.as_ref().map(|(name, expr)| {
-                    self.name(*name)
-                        .append(" => ")
-                        .append(self.expr(expr, Prec::MAX))
+                    self.local_names.borrow_mut().push(*name);
+                    let expr = self.expr(expr, Prec::MAX);
+                    self.local_names.borrow_mut().pop();
+
+                    self.name(*name).append(" => ").append(expr)
                 });
-                let cases =
-                    self.intersperse(cases.chain(default), self.text(",").append(self.hardline()));
+                let cases = cases.chain(default);
+                let cases = cases.map(|case| self.hardline().append(case).append(","));
+                let cases = self.concat(cases).nest(4);
                 self.text("match ")
                     .append(scrut)
-                    .append("{")
+                    .append(" {")
                     .append(cases)
+                    .append(self.line_())
                     .append("}")
+                    .group()
             }
         };
         self.paren(pretty_expr, prec > expr_prec(expr))

@@ -324,3 +324,29 @@ fn synth_fun_lit() {
             r#type:	fun(A: Type) -> fun(a: A) -> A"#]],
     );
 }
+
+#[test]
+fn synth_if() {
+    check_expr(
+        "if true then 1 else 0",
+        expect![[r#"
+            expr:	match true {
+                false => 0,
+                true => 1,
+            }
+            r#type:	Int"#]],
+    );
+}
+
+#[test]
+fn check_if() {
+    check_expr(
+        "((if true then 1 else 0): Int)",
+        expect![[r#"
+            expr:	match true {
+                false => 0,
+                true => 1,
+            }
+            r#type:	Int"#]],
+    );
+}
