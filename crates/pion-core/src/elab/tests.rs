@@ -8,7 +8,7 @@ use crate::pretty::{Prec, PrettyCtx};
 
 #[track_caller]
 #[allow(clippy::needless_pass_by_value)]
-fn check_expr(src: &str, expected: Expect) {
+fn synth_expr(src: &str, expected: Expect) {
     let bump = bumpalo::Bump::new();
     let string32 = String32::try_from(src).unwrap();
 
@@ -47,14 +47,14 @@ fn check_expr(src: &str, expected: Expect) {
 
 #[test]
 fn synth_bool_lit() {
-    check_expr(
+    synth_expr(
         "true",
         expect![[r#"
     expr:	true
     r#type:	Bool"#]],
     );
 
-    check_expr(
+    synth_expr(
         "false",
         expect![[r#"
             expr:	false
@@ -64,7 +64,7 @@ fn synth_bool_lit() {
 
 #[test]
 fn synth_int_lit() {
-    check_expr(
+    synth_expr(
         "0",
         expect![[r#"
             expr:	0
@@ -74,25 +74,25 @@ fn synth_int_lit() {
 
 #[test]
 fn synth_prims() {
-    check_expr(
+    synth_expr(
         "Type",
         expect![[r#"
         expr:	Type
         r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Int",
         expect![[r#"
         expr:	Int
         r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Bool",
         expect![[r#"
         expr:	Bool
         r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Array",
         expect![[r#"
             expr:	Array
@@ -101,8 +101,8 @@ fn synth_prims() {
 }
 
 #[test]
-fn synth_underscore_expr() {
-    check_expr(
+fn synth_underscore() {
+    synth_expr(
         "unbound",
         expect![[r#"
             expr:	#error
@@ -114,7 +114,7 @@ fn synth_underscore_expr() {
 
 #[test]
 fn unbound_name() {
-    check_expr(
+    synth_expr(
         "_",
         expect![[r#"
             expr:	?1
@@ -124,14 +124,14 @@ fn unbound_name() {
 
 #[test]
 fn synth_let() {
-    check_expr(
+    synth_expr(
         "let x = 5; x",
         expect![[r#"
             expr:	let x: ?0 = 5;
             x
             r#type:	Int"#]],
     );
-    check_expr(
+    synth_expr(
         "let x: Int = 5; x",
         expect![[r#"
             expr:	let x: Int = 5;
@@ -142,7 +142,7 @@ fn synth_let() {
 
 #[test]
 fn check_let() {
-    check_expr(
+    synth_expr(
         "((let x = 5; x): Int)",
         expect![[r#"
             expr:	let x: ?0 = 5;
@@ -152,19 +152,16 @@ fn check_let() {
 }
 
 #[test]
-fn synth_empty_array() {
-    cov_mark::check!(synth_empty_array);
-    check_expr(
-        "[]",
-        expect![[r#"
+fn synth_array_lit() {
+    {
+        synth_expr(
+            "[]",
+            expect![[r#"
             expr:	[]
             r#type:	Array(?0, 0)"#]],
-    );
-}
-
-#[test]
-fn synth_array() {
-    check_expr(
+        );
+    }
+    synth_expr(
         "[1,2,3]",
         expect![[r#"
             expr:	[1, 2, 3]
@@ -174,25 +171,25 @@ fn synth_array() {
 
 #[test]
 fn synth_tuple_lit() {
-    check_expr(
+    synth_expr(
         "()",
         expect![[r#"
         expr:	{}
         r#type:	{}"#]],
     );
-    check_expr(
+    synth_expr(
         "(1,)",
         expect![[r#"
         expr:	{_0 = 1}
         r#type:	{_0: Int}"#]],
     );
-    check_expr(
+    synth_expr(
         "(1,true)",
         expect![[r#"
             expr:	{_0 = 1, _1 = true}
             r#type:	{_0: Int, _1: Bool}"#]],
     );
-    check_expr(
+    synth_expr(
         "(1,true,false)",
         expect![[r#"
             expr:	{_0 = 1, _1 = true, _2 = false}
@@ -202,19 +199,19 @@ fn synth_tuple_lit() {
 
 #[test]
 fn synth_record_type() {
-    check_expr(
+    synth_expr(
         "{x:Int}",
         expect![[r#"
             expr:	{x: Int}
             r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "{A:Type, a:A}",
         expect![[r#"
             expr:	{A: Type, a: A}
             r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "{x:Int, y:Bool, z:Type}",
         expect![[r#"
             expr:	{x: Int, y: Bool, z: Type}
@@ -224,25 +221,25 @@ fn synth_record_type() {
 
 #[test]
 fn synth_record_lit() {
-    check_expr(
+    synth_expr(
         "{}",
         expect![[r#"
         expr:	{}
         r#type:	{}"#]],
     );
-    check_expr(
+    synth_expr(
         "{x=1}",
         expect![[r#"
             expr:	{x = 1}
             r#type:	{x: Int}"#]],
     );
-    check_expr(
+    synth_expr(
         "{x=1, y=false}",
         expect![[r#"
             expr:	{x = 1, y = false}
             r#type:	{x: Int, y: Bool}"#]],
     );
-    check_expr(
+    synth_expr(
         "{x=1, y=false, z=true}",
         expect![[r#"
             expr:	{x = 1, y = false, z = true}
@@ -252,13 +249,13 @@ fn synth_record_lit() {
 
 #[test]
 fn synth_fun_arrow() {
-    check_expr(
+    synth_expr(
         "Int -> Bool",
         expect![[r#"
             expr:	fun(_: Int) -> Bool
             r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Int -> Bool -> Type",
         expect![[r#"
             expr:	fun(_: Int) -> fun(_: Bool) -> Type
@@ -270,7 +267,7 @@ fn synth_fun_arrow() {
 fn synth_fun_type() {
     {
         cov_mark::check!(synth_empty_fun_type);
-        check_expr(
+        synth_expr(
             "fun() -> Int",
             expect![[r#"
         expr:	fun(_: {}) -> Int
@@ -278,14 +275,14 @@ fn synth_fun_type() {
         );
     }
 
-    check_expr(
+    synth_expr(
         "fun(x) -> Int",
         expect![[r#"
             expr:	fun(x: ?0) -> Int
             r#type:	Type"#]],
     );
 
-    check_expr(
+    synth_expr(
         "fun(A: Type) -> A -> A",
         expect![[r#"
             expr:	fun(A: Type) -> fun(_: A) -> A
@@ -297,7 +294,7 @@ fn synth_fun_type() {
 fn synth_fun_lit() {
     {
         cov_mark::check!(synth_empty_fun_lit);
-        check_expr(
+        synth_expr(
             "fun() => 5",
             expect![[r#"
                 expr:	fun(_: {}) -> 5
@@ -305,19 +302,19 @@ fn synth_fun_lit() {
         );
     }
 
-    check_expr(
+    synth_expr(
         "fun(x) => x",
         expect![[r#"
             expr:	fun(x: ?0) -> x
             r#type:	fun(x: ?0) -> ?0"#]],
     );
-    check_expr(
+    synth_expr(
         "fun(x: Int) => x",
         expect![[r#"
             expr:	fun(x: Int) -> x
             r#type:	fun(x: Int) -> Int"#]],
     );
-    check_expr(
+    synth_expr(
         "fun(A: Type, a: A) => a",
         expect![[r#"
             expr:	fun(A: Type) -> fun(a: A) -> a
@@ -327,19 +324,19 @@ fn synth_fun_lit() {
 
 #[test]
 fn synth_fun_app() {
-    check_expr(
+    synth_expr(
         "Array(Int, 5)",
         expect![[r#"
             expr:	Array(Int, 5)
             r#type:	Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Array(Int)",
         expect![[r#"
             expr:	Array(Int)
             r#type:	fun(_: Int) -> Type"#]],
     );
-    check_expr(
+    synth_expr(
         "Array(@Int)",
         expect![[r#"
             expr:	#error
@@ -347,7 +344,7 @@ fn synth_fun_app() {
             FunAppPlicity { call_span: 0..11, fun_type: "TODO", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
         "#]],
     );
-    check_expr(
+    synth_expr(
         "Int(0)",
         expect![[r#"
             expr:	#error
@@ -355,7 +352,7 @@ fn synth_fun_app() {
             FunAppNotFun { call_span: 0..6, fun_type: "TODO", num_args: 1 }
         "#]],
     );
-    check_expr(
+    synth_expr(
         "Array(Int, 0, 0)",
         expect![[r#"
             expr:	#error
@@ -367,7 +364,7 @@ fn synth_fun_app() {
 
 #[test]
 fn synth_if() {
-    check_expr(
+    synth_expr(
         "if true then 1 else 0",
         expect![[r#"
             expr:	match true {
@@ -380,7 +377,7 @@ fn synth_if() {
 
 #[test]
 fn check_if() {
-    check_expr(
+    synth_expr(
         "((if true then 1 else 0): Int)",
         expect![[r#"
             expr:	match true {
