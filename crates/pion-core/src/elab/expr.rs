@@ -212,7 +212,73 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 self.synth_fun_lit(params, body)
             }
-            hir::Expr::FunCall(..) => todo!(),
+            hir::Expr::FunCall(fun, args) => {
+                let call_span = self.syntax_map[expr].span();
+                let fun_span = self.syntax_map[*fun].span();
+
+                let Synth(fun_expr, fun_type) = self.synth_expr(fun);
+
+                let mut expr = fun_expr;
+                let mut r#type = fun_type;
+
+                if args.is_empty() {
+                    todo!()
+                }
+
+                for (arity, arg) in args.iter().enumerate() {
+                    r#type = self.elim_env().update_metas(&r#type);
+
+                    let arg_plicity = Plicity::from(arg.plicity);
+                    if arg_plicity == Plicity::Explicit {
+                        (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
+                    }
+
+                    match r#type {
+                        Value::FunType(fun_plicity, _, domain, codomain)
+                            if arg_plicity == fun_plicity =>
+                        {
+                            let Check(arg_expr) = self.check_expr(&arg.expr, domain);
+                            let arg_value = self.eval_env().eval(&arg_expr);
+
+                            expr = Expr::FunApp(fun_plicity, self.bump.alloc((expr, arg_expr)));
+                            r#type = self.elim_env().apply_closure(codomain, arg_value);
+                        }
+                        Value::FunType(fun_plicity, ..) => {
+                            let fun_type = "TODO".into();
+                            self.emit_diagnostic(ElabDiagnostic::FunAppPlicity {
+                                call_span,
+                                fun_type,
+                                fun_plicity,
+                                arg_span: self.syntax_map[&arg.expr].span(),
+                                arg_plicity,
+                            });
+                            return SynthExpr::ERROR;
+                        }
+                        _ if expr.is_error() || r#type.is_error() => return SynthExpr::ERROR,
+                        _ if arity == 0 => {
+                            let fun_type = "TODO".into();
+                            self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
+                                call_span,
+                                fun_type,
+                                num_args: args.len(),
+                            });
+                            return SynthExpr::ERROR;
+                        }
+                        _ => {
+                            let fun_type = "TODO".into();
+                            self.emit_diagnostic(ElabDiagnostic::FunAppTooManyArgs {
+                                call_span,
+                                fun_type,
+                                expected_arity: arity,
+                                actual_arity: args.len(),
+                            });
+                            return SynthExpr::ERROR;
+                        }
+                    }
+                }
+
+                SynthExpr::new(expr, r#type)
+            }
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If((scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
@@ -371,6 +437,40 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
         );
         SynthExpr::new(expr, r#type)
+    }
+
+    /// Wrap an expr in fresh implicit applications that correspond to implicit
+    /// parameters in the type provided.
+    fn insert_implicit_apps(
+        &mut self,
+        span: ByteSpan,
+        mut expr: Expr<'core>,
+        mut r#type: Type<'core>,
+    ) -> (Expr<'core>, Type<'core>) {
+        while let Value::FunType(Plicity::Implicit, name, param_type, body_type) =
+            self.elim_env().update_metas(&r#type)
+        {
+            let source = MetaSource::ImplicitArg { span, name };
+            let arg_expr = self.push_unsolved_expr(source, param_type.clone());
+            let arg_value = self.eval_env().eval(&arg_expr);
+
+            expr = Expr::FunApp(Plicity::Implicit, self.bump.alloc((expr, arg_expr)));
+            r#type = self.elim_env().apply_closure(body_type, arg_value);
+        }
+        (expr, r#type)
+    }
+
+    /// Synthesize the type of `expr`, wrapping it in fresh implicit
+    /// applications if the term was not an implicit function literal.
+    fn synth_and_insert_implicit_apps(
+        &mut self,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> (Expr<'core>, Type<'core>) {
+        let Synth(core_expr, r#type) = self.synth_expr(expr);
+        match core_expr {
+            Expr::FunLit(Plicity::Implicit, ..) => (core_expr, r#type),
+            core_expr => self.insert_implicit_apps(self.syntax_map[expr].span(), core_expr, r#type),
+        }
     }
 }
 

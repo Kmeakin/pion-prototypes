@@ -289,10 +289,22 @@ impl<'core> fmt::Debug for MetaEnv<'core> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MetaSource {
-    UnderscoreType { span: ByteSpan },
-    UnderscoreExpr { span: ByteSpan },
-    EmptyArrayElemType { span: ByteSpan },
-    PatType { span: ByteSpan },
+    UnderscoreType {
+        span: ByteSpan,
+    },
+    UnderscoreExpr {
+        span: ByteSpan,
+    },
+    EmptyArrayElemType {
+        span: ByteSpan,
+    },
+    ImplicitArg {
+        span: ByteSpan,
+        name: Option<Symbol>,
+    },
+    PatType {
+        span: ByteSpan,
+    },
 }
 
 #[derive(Debug, Clone)]

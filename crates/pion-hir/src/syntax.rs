@@ -75,6 +75,10 @@ pub enum Plicity {
     Implicit,
     Explicit,
 }
+impl Plicity {
+    pub fn is_implicit(&self) -> bool { matches!(self, Self::Implicit) }
+    pub fn is_explicit(&self) -> bool { matches!(self, Self::Explicit) }
+}
 
 impl From<surface::Plicity> for Plicity {
     fn from(other: surface::Plicity) -> Self {

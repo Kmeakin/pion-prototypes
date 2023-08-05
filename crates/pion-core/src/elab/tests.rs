@@ -326,6 +326,46 @@ fn synth_fun_lit() {
 }
 
 #[test]
+fn synth_fun_app() {
+    check_expr(
+        "Array(Int, 5)",
+        expect![[r#"
+            expr:	Array(Int, 5)
+            r#type:	Type"#]],
+    );
+    check_expr(
+        "Array(Int)",
+        expect![[r#"
+            expr:	Array(Int)
+            r#type:	fun(_: Int) -> Type"#]],
+    );
+    check_expr(
+        "Array(@Int)",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FunAppPlicity { call_span: 0..11, fun_type: "TODO", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
+        "#]],
+    );
+    check_expr(
+        "Int(0)",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FunAppNotFun { call_span: 0..6, fun_type: "TODO", num_args: 1 }
+        "#]],
+    );
+    check_expr(
+        "Array(Int, 0, 0)",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FunAppTooManyArgs { call_span: 0..16, fun_type: "TODO", expected_arity: 2, actual_arity: 3 }
+        "#]],
+    );
+}
+
+#[test]
 fn synth_if() {
     check_expr(
         "if true then 1 else 0",
