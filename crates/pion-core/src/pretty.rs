@@ -114,7 +114,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append("(")
                     .append(param)
                     .append(")")
-                    .append(" -> ")
+                    .append(" => ")
                     .append(body)
             }
             Expr::FunType(plicity, name, (domain, codomain)) => {

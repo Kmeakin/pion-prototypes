@@ -344,7 +344,7 @@ fn synth_fun_lit() {
         synth_expr(
             "fun() => 5",
             expect![[r#"
-                expr:	fun(_: {}) -> 5
+                expr:	fun(_: {}) => 5
                 r#type:	fun(_: {}) -> Int"#]],
         );
     }
@@ -352,19 +352,19 @@ fn synth_fun_lit() {
     synth_expr(
         "fun(x) => x",
         expect![[r#"
-            expr:	fun(x: ?0) -> x
+            expr:	fun(x: ?0) => x
             r#type:	fun(x: ?0) -> ?0"#]],
     );
     synth_expr(
         "fun(x: Int) => x",
         expect![[r#"
-            expr:	fun(x: Int) -> x
+            expr:	fun(x: Int) => x
             r#type:	fun(x: Int) -> Int"#]],
     );
     synth_expr(
         "fun(A: Type, a: A) => a",
         expect![[r#"
-            expr:	fun(A: Type) -> fun(a: A) -> a
+            expr:	fun(A: Type) => fun(a: A) => a
             r#type:	fun(A: Type) -> fun(a: A) -> A"#]],
     );
 }
