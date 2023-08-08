@@ -107,7 +107,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 let param = self.fun_param(*plicity, *name, domain);
 
                 self.local_names.borrow_mut().push(*name);
-                let body = self.expr(body, Prec::Fun);
+                let body = self.expr(body, Prec::MAX);
                 self.local_names.borrow_mut().pop();
 
                 self.text("fun")
@@ -121,7 +121,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 let param = self.fun_param(*plicity, *name, domain);
 
                 self.local_names.borrow_mut().push(*name);
-                let codomain = self.expr(codomain, Prec::Fun);
+                let codomain = self.expr(codomain, Prec::MAX);
                 self.local_names.borrow_mut().pop();
 
                 self.text("fun")
@@ -174,7 +174,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append("}")
             }
             Expr::FieldProj(scrut, label) => {
-                let scrut = self.expr(scrut, Prec::App);
+                let scrut = self.expr(scrut, Prec::Proj);
                 scrut.append(".").append(label.as_str())
             }
             Expr::Match((scrut, default), cases) => {

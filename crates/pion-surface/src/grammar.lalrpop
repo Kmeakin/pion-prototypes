@@ -81,14 +81,14 @@ LetExpr: Expr<'surface> = {
 }
 
 FunExpr: Expr<'surface> = {
-    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: FunExpr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
-    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: FunExpr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
-    <start: @L> <param: ProjExpr> "->" <body: FunExpr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: Expr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: Expr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> <param: ProjExpr> "->" <body: Expr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
     ProjExpr => <>,
 }
 
 ProjExpr: Expr<'surface> = {
-    <start: @L> <head: CallExpr> "." <label: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
+    <start: @L> <head: ProjExpr> "." <label: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
     CallExpr => <>,
 }
 
