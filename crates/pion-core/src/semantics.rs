@@ -83,7 +83,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                     None => panic!("Bad record proj: label `{label}` not found in `{labels:?}`"),
                 }
             }
-            _ => panic!("Bad record proj: {head:?} {label}"),
+            _ => panic!("Bad record proj: {head:?}.{label}"),
         }
     }
 

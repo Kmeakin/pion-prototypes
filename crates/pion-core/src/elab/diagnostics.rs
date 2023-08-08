@@ -36,4 +36,14 @@ pub enum ElabDiagnostic {
         expected_arity: usize,
         actual_arity: usize,
     },
+    FieldProjNotFound {
+        span: ByteSpan,
+        scrut_type: String,
+        field: Symbol,
+    },
+    FieldProjNotRecord {
+        span: ByteSpan,
+        scrut_type: String,
+        field: Symbol,
+    },
 }

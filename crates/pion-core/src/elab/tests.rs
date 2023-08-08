@@ -154,6 +154,7 @@ fn check_let() {
 #[test]
 fn synth_array_lit() {
     {
+        cov_mark::check!(synth_empty_array);
         synth_expr(
             "[]",
             expect![[r#"
@@ -244,6 +245,52 @@ fn synth_record_lit() {
         expect![[r#"
             expr:	{x = 1, y = false, z = true}
             r#type:	{x: Int, y: Bool, z: Bool}"#]],
+    );
+}
+
+#[test]
+fn synth_field_proj() {
+    synth_expr(
+        "{x=5}.x",
+        expect![[r#"
+    expr:	{x = 5}.x
+    r#type:	Int"#]],
+    );
+    synth_expr(
+        "{x=5,y=false}.x",
+        expect![[r#"
+            expr:	{x = 5, y = false}.x
+            r#type:	Int"#]],
+    );
+    synth_expr(
+        "{x=5,y=false}.y",
+        expect![[r#"
+            expr:	{x = 5, y = false}.y
+            r#type:	Bool"#]],
+    );
+    synth_expr(
+        "{}.x",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FieldProjNotFound { span: 0..4, scrut_type: "TODO", field: Symbol("x") }
+        "#]],
+    );
+    synth_expr(
+        "{z=0}.x",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FieldProjNotFound { span: 0..7, scrut_type: "TODO", field: Symbol("x") }
+        "#]],
+    );
+    synth_expr(
+        "Int.x",
+        expect![[r#"
+            expr:	#error
+            r#type:	#error
+            FieldProjNotRecord { span: 0..5, scrut_type: "TODO", field: Symbol("x") }
+        "#]],
     );
 }
 

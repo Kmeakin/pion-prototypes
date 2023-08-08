@@ -153,7 +153,50 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = Type::record_type(labels, r#types.into());
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::FieldProj(..) => todo!(),
+            hir::Expr::FieldProj(scrut, field) => {
+                let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
+                let scrut_value = self.eval_env().eval(&scrut_expr);
+
+                match scrut_type {
+                    Value::RecordType(labels, telescope) => {
+                        if !labels.contains(field) {
+                            self.emit_diagnostic(ElabDiagnostic::FieldProjNotFound {
+                                span: self.syntax_map[expr].span(),
+                                scrut_type: "TODO".into(),
+                                field: *field,
+                            });
+                            return SynthExpr::ERROR;
+                        }
+
+                        let mut telescope = telescope.clone();
+                        let mut labels = labels.iter();
+
+                        let r#type = loop {
+                            let label = labels.next().unwrap();
+                            let (r#type, cont) =
+                                self.elim_env().split_telescope(telescope.clone()).unwrap();
+                            if label == field {
+                                break r#type;
+                            }
+
+                            let projected = self.elim_env().field_proj(scrut_value.clone(), *field);
+                            telescope = cont(projected);
+                        };
+
+                        let expr = Expr::FieldProj(self.bump.alloc(scrut_expr), *field);
+                        SynthExpr::new(expr, r#type)
+                    }
+                    _ if scrut_type.is_error() => SynthExpr::ERROR,
+                    _ => {
+                        self.emit_diagnostic(ElabDiagnostic::FieldProjNotRecord {
+                            span: self.syntax_map[expr].span(),
+                            scrut_type: "TODO".into(),
+                            field: *field,
+                        });
+                        SynthExpr::ERROR
+                    }
+                }
+            }
             hir::Expr::FunArrow((domain, codomain)) => {
                 let Check(domain_expr) = self.check_expr(domain, &Type::TYPE);
                 let domain_value = self.eval_env().eval(&domain_expr);
@@ -324,7 +367,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::ArrayLit(..) => todo!(),
             hir::Expr::TupleLit(..) => todo!(),
-            hir::Expr::RecordType(..) => todo!(),
             hir::Expr::RecordLit(..) => todo!(),
 
             hir::Expr::FunType(..) => todo!(),
@@ -349,6 +391,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::Lit(..)
             | hir::Expr::Underscore
             | hir::Expr::Ident(..)
+            | hir::Expr::RecordType(..)
             | hir::Expr::FieldProj(..)
             | hir::Expr::FunArrow(..)
             | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, expected),
