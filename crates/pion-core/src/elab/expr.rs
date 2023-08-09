@@ -365,7 +365,32 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let expr = Expr::Let(name, self.bump.alloc((type_expr, init_expr, body_expr)));
                 CheckExpr::new(expr)
             }
-            hir::Expr::ArrayLit(..) => todo!(),
+            hir::Expr::ArrayLit(elems) => {
+                let Type::Stuck(Head::Prim(Prim::Array), args) = expected else {
+                    return self.synth_and_convert_expr(expr, expected);
+                };
+                #[rustfmt::skip]
+                let [Elim::FunApp(Plicity::Explicit, elem_type), Elim::FunApp(Plicity::Explicit, expected_len)] = &args[..] else {
+                    return self.synth_and_convert_expr(expr, expected);
+                };
+                let Value::Lit(Lit::Int(expected_len)) = expected_len else {
+                    return self.synth_and_convert_expr(expr, expected);
+                };
+                if elems.len() != *expected_len as usize {
+                    self.emit_diagnostic(ElabDiagnostic::ArrayLenMismatch {
+                        span: self.syntax_map[expr].span(),
+                        expected_len: *expected_len,
+                        actual_len: elems.len() as u32,
+                    });
+                    return CheckExpr::ERROR;
+                }
+
+                let elem_exprs = self.bump.alloc_slice_fill_iter(elems.iter().map(|elem| {
+                    let Check(elem_expr) = self.check_expr(elem, elem_type);
+                    elem_expr
+                }));
+                CheckExpr::new(Expr::ArrayLit(elem_exprs))
+            }
             hir::Expr::TupleLit(..) => todo!(),
             hir::Expr::RecordLit(..) => todo!(),
 

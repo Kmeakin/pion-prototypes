@@ -171,6 +171,36 @@ fn synth_array_lit() {
 }
 
 #[test]
+fn check_array_lit() {
+    synth_expr(
+        "([] : Array(Int, 0))",
+        expect![[r#"
+            expr:	[]
+            r#type:	Array(Int, 0)"#]],
+    );
+    synth_expr(
+        "([1] : Array(Int, 1))",
+        expect![[r#"
+            expr:	[1]
+            r#type:	Array(Int, 1)"#]],
+    );
+    synth_expr(
+        "([1] : Array(_, 1))",
+        expect![[r#"
+            expr:	[1]
+            r#type:	Array(Int, 1)"#]],
+    );
+    synth_expr(
+        "([1] : Array(_, 2))",
+        expect![[r#"
+            expr:	#error
+            r#type:	Array(?1, 2)
+            ArrayLenMismatch { span: 1..4, expected_len: 2, actual_len: 1 }
+        "#]],
+    );
+}
+
+#[test]
 fn synth_tuple_lit() {
     synth_expr(
         "()",

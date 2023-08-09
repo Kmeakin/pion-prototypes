@@ -46,4 +46,9 @@ pub enum ElabDiagnostic {
         scrut_type: String,
         field: Symbol,
     },
+    ArrayLenMismatch {
+        span: ByteSpan,
+        expected_len: u32,
+        actual_len: u32,
+    },
 }
