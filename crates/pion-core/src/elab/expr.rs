@@ -432,7 +432,26 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, expected),
             },
-            hir::Expr::RecordLit(..) => todo!(),
+            hir::Expr::RecordLit(fields) => match expected {
+                Value::RecordType(labels, telescope)
+                    if Iterator::eq(fields.iter().map(|field| &field.label), labels.iter()) =>
+                {
+                    let mut exprs = SliceVec::new(self.bump, fields.len());
+                    let mut telescope = telescope.clone();
+
+                    for field in *fields {
+                        let (r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+                        let Check(field_expr) = self.check_expr(&field.expr, &r#type);
+                        let field_value = self.eval_env().eval(&field_expr);
+                        telescope = cont(field_value);
+                        exprs.push(field_expr);
+                    }
+
+                    let expr = Expr::RecordLit(labels, exprs.into());
+                    CheckExpr::new(expr)
+                }
+                _ => self.synth_and_convert_expr(expr, expected),
+            },
 
             hir::Expr::FunType(..) => todo!(),
             hir::Expr::FunLit(..) => todo!(),

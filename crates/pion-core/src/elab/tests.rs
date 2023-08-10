@@ -320,6 +320,16 @@ fn synth_record_lit() {
 }
 
 #[test]
+fn check_record_lit() {
+    synth_expr(
+        "({x=1, y=false}: {x:Int, y: Bool})",
+        expect![[r#"
+    expr:	{x = 1, y = false}
+    r#type:	{x: Int, y: Bool}"#]],
+    );
+}
+
+#[test]
 fn synth_field_proj() {
     synth_expr(
         "{x=5}.x",
