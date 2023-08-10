@@ -25,6 +25,11 @@ pub enum ElabDiagnostic {
         arg_span: ByteSpan,
         arg_plicity: Plicity,
     },
+    FunAppEmptyArgsMismatch {
+        call_span: ByteSpan,
+        domain_type: String,
+        fun_type: String,
+    },
     FunAppNotFun {
         call_span: ByteSpan,
         fun_type: String,

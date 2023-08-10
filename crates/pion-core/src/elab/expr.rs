@@ -263,7 +263,42 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut r#type = fun_type;
 
                 if args.is_empty() {
-                    todo!()
+                    cov_mark::hit!(synth_empty_fun_call);
+
+                    r#type = self.elim_env().update_metas(&r#type);
+                    (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
+
+                    match r#type {
+                        Value::FunType(Plicity::Explicit, _, domain, codomain)
+                            if domain.is_unit_type() =>
+                        {
+                            let expr = Expr::FunApp(
+                                Plicity::Explicit,
+                                self.bump.alloc((expr, Expr::UNIT_LIT)),
+                            );
+                            let r#type =
+                                self.elim_env().apply_closure(codomain, Value::unit_type());
+                            return SynthExpr::new(expr, r#type);
+                        }
+                        Value::FunType(Plicity::Explicit, ..) => {
+                            let domain_type = "TODO".into();
+                            let fun_type = "TODO".into();
+                            self.emit_diagnostic(ElabDiagnostic::FunAppEmptyArgsMismatch {
+                                call_span,
+                                fun_type,
+                                domain_type,
+                            });
+                        }
+                        _ => {
+                            let fun_type = "TODO".into();
+                            self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
+                                call_span,
+                                fun_type,
+                                num_args: args.len(),
+                            });
+                            return SynthExpr::ERROR;
+                        }
+                    }
                 }
 
                 for (arity, arg) in args.iter().enumerate() {

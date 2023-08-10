@@ -471,6 +471,25 @@ fn check_fun_lit() {
 
 #[test]
 fn synth_fun_app() {
+    {
+        cov_mark::check!(synth_empty_fun_call);
+        synth_expr(
+            "let f = fun() => 0; f()",
+            expect![[r#"
+                expr:	let f: ?0 = fun(_: {}) => 0;
+                f({})
+                r#type:	Int"#]],
+        );
+        synth_expr(
+            "let f = fun(x: Int) => 0; f()",
+            expect![[r#"
+                expr:	let f: ?0 = fun(x: Int) => 0;
+                f
+                r#type:	fun(x: Int) -> Int
+                FunAppEmptyArgsMismatch { call_span: 25..28, domain_type: "TODO", fun_type: "TODO" }
+            "#]],
+        );
+    }
     synth_expr(
         "Array(Int, 5)",
         expect![[r#"
