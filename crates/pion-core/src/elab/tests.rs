@@ -354,7 +354,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FieldProjNotFound { span: 0..4, scrut_type: "TODO", field: Symbol("x") }
+            FieldProjNotFound { span: 0..4, scrut_type: "{}", field: Symbol("x") }
         "#]],
     );
     synth_expr(
@@ -362,7 +362,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FieldProjNotFound { span: 0..7, scrut_type: "TODO", field: Symbol("x") }
+            FieldProjNotFound { span: 0..7, scrut_type: "{z: Int}", field: Symbol("x") }
         "#]],
     );
     synth_expr(
@@ -370,7 +370,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FieldProjNotRecord { span: 0..5, scrut_type: "TODO", field: Symbol("x") }
+            FieldProjNotRecord { span: 0..5, scrut_type: "Type", field: Symbol("x") }
         "#]],
     );
 }
@@ -486,7 +486,7 @@ fn synth_fun_app() {
                 expr:	let f: ?0 = fun(x: Int) => 0;
                 f
                 r#type:	fun(x: Int) -> Int
-                FunAppEmptyArgsMismatch { call_span: 25..28, domain_type: "TODO", fun_type: "TODO" }
+                FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "fun(x: Int) -> Int" }
             "#]],
         );
     }
@@ -507,7 +507,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FunAppPlicity { call_span: 0..11, fun_type: "TODO", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
+            FunAppPlicity { call_span: 0..11, fun_type: "fun(_: Type) -> fun(_: Int) -> Type", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
         "#]],
     );
     synth_expr(
@@ -515,7 +515,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FunAppNotFun { call_span: 0..6, fun_type: "TODO", num_args: 1 }
+            FunAppNotFun { call_span: 0..6, fun_type: "Type", num_args: 1 }
         "#]],
     );
     synth_expr(
@@ -523,7 +523,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FunAppTooManyArgs { call_span: 0..16, fun_type: "TODO", expected_arity: 2, actual_arity: 3 }
+            FunAppTooManyArgs { call_span: 0..16, fun_type: "fun(_: Type) -> fun(_: Int) -> Type", expected_arity: 2, actual_arity: 3 }
         "#]],
     );
 }

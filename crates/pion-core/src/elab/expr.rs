@@ -157,12 +157,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
                 let scrut_value = self.eval_env().eval(&scrut_expr);
 
-                match scrut_type {
+                match &scrut_type {
                     Value::RecordType(labels, telescope) => {
                         if !labels.contains(field) {
+                            let scrut_type = self.pretty_value(&scrut_type);
                             self.emit_diagnostic(ElabDiagnostic::FieldProjNotFound {
                                 span: self.syntax_map[expr].span(),
-                                scrut_type: "TODO".into(),
+                                scrut_type,
                                 field: *field,
                             });
                             return SynthExpr::ERROR;
@@ -188,9 +189,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
                     _ if scrut_type.is_error() => SynthExpr::ERROR,
                     _ => {
+                        let scrut_type = self.pretty_value(&scrut_type);
                         self.emit_diagnostic(ElabDiagnostic::FieldProjNotRecord {
                             span: self.syntax_map[expr].span(),
-                            scrut_type: "TODO".into(),
+                            scrut_type,
                             field: *field,
                         });
                         SynthExpr::ERROR
@@ -260,7 +262,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let Synth(fun_expr, fun_type) = self.synth_expr(fun);
 
                 let mut expr = fun_expr;
-                let mut r#type = fun_type;
+                let mut r#type = fun_type.clone();
 
                 if args.is_empty() {
                     cov_mark::hit!(synth_empty_fun_call);
@@ -280,9 +282,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                 self.elim_env().apply_closure(codomain, Value::unit_type());
                             return SynthExpr::new(expr, r#type);
                         }
-                        Value::FunType(Plicity::Explicit, ..) => {
-                            let domain_type = "TODO".into();
-                            let fun_type = "TODO".into();
+                        Value::FunType(Plicity::Explicit, _, domain, _) => {
+                            let domain_type = self.pretty_value(domain);
+                            let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppEmptyArgsMismatch {
                                 call_span,
                                 fun_type,
@@ -290,7 +292,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             });
                         }
                         _ => {
-                            let fun_type = "TODO".into();
+                            let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
                                 call_span,
                                 fun_type,
@@ -320,7 +322,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             r#type = self.elim_env().apply_closure(codomain, arg_value);
                         }
                         Value::FunType(fun_plicity, ..) => {
-                            let fun_type = "TODO".into();
+                            let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppPlicity {
                                 call_span,
                                 fun_type,
@@ -332,7 +334,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         }
                         _ if expr.is_error() || r#type.is_error() => return SynthExpr::ERROR,
                         _ if arity == 0 => {
-                            let fun_type = "TODO".into();
+                            let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
                                 call_span,
                                 fun_type,
@@ -341,7 +343,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             return SynthExpr::ERROR;
                         }
                         _ => {
-                            let fun_type = "TODO".into();
+                            let fun_type = self.pretty_value(&fun_type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppTooManyArgs {
                                 call_span,
                                 fun_type,
@@ -589,10 +591,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match self.unifiy_ctx().unify(from, to) {
             Ok(()) => expr,
             Err(error) => {
+                let found = self.pretty_value(from);
+                let expected = self.pretty_value(to);
                 self.emit_diagnostic(ElabDiagnostic::Unification {
                     span,
-                    found: "TODO".into(),
-                    expected: "TODO".into(),
+                    found,
+                    expected,
                     error,
                 });
                 Expr::Error

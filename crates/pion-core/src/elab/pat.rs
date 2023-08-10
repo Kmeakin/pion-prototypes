@@ -115,10 +115,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match self.unifiy_ctx().unify(from, to) {
             Ok(()) => pat,
             Err(error) => {
+                let found = self.pretty_value(from);
+                let expected = self.pretty_value(to);
                 self.emit_diagnostic(ElabDiagnostic::Unification {
                     span,
-                    found: "TODO".into(),
-                    expected: "TODO".into(),
+                    found,
+                    expected,
                     error,
                 });
                 Pat::Error

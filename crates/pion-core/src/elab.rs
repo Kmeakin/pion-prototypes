@@ -5,6 +5,7 @@ use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
+use crate::pretty;
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv};
 use crate::syntax::{BinderInfo, Expr, Type, Value};
 
@@ -112,6 +113,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let result = f(self);
         self.local_env.pop();
         result
+    }
+
+    fn pretty_value(&mut self, value: &Value<'_>) -> Box<str> {
+        let expr = self.quote_env().quote(value);
+        let pretty_ctx =
+            pretty::PrettyCtx::new(self.bump, &mut self.local_env.names, &self.meta_env.sources);
+        let doc = pretty_ctx.expr(&expr, pretty::Prec::MAX);
+        doc.pretty(80).to_string().into()
     }
 }
 
