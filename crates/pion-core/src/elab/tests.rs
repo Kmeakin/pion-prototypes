@@ -229,6 +229,47 @@ fn synth_tuple_lit() {
 }
 
 #[test]
+fn check_tuple_lit() {
+    synth_expr(
+        "((): Type)",
+        expect![[r#"
+    expr:	{}
+    r#type:	Type"#]],
+    );
+    synth_expr(
+        "((Int,): Type)",
+        expect![[r#"
+            expr:	{_0: Int}
+            r#type:	Type"#]],
+    );
+    synth_expr(
+        "((Int,Bool): Type)",
+        expect![[r#"
+            expr:	{_0: Int, _1: Bool}
+            r#type:	Type"#]],
+    );
+
+    synth_expr(
+        "((): ())",
+        expect![[r#"
+            expr:	{}
+            r#type:	{}"#]],
+    );
+    synth_expr(
+        "((1,): (Int,))",
+        expect![[r#"
+            expr:	{_0 = 1}
+            r#type:	{_0: Int}"#]],
+    );
+    synth_expr(
+        "((1,false): (Int,Bool))",
+        expect![[r#"
+            expr:	{_0 = 1, _1 = false}
+            r#type:	{_0: Int, _1: Bool}"#]],
+    );
+}
+
+#[test]
 fn synth_record_type() {
     synth_expr(
         "{x:Int}",

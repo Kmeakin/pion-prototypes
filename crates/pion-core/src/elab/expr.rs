@@ -339,6 +339,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn check_expr(
         &mut self,
         expr: &'hir hir::Expr<'hir>,
@@ -391,7 +392,46 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }));
                 CheckExpr::new(Expr::ArrayLit(elem_exprs))
             }
-            hir::Expr::TupleLit(..) => todo!(),
+            hir::Expr::TupleLit(elems) => match expected {
+                #[rustfmt::skip]
+                Value::RecordType(labels, telescope) if labels.len() == elems.len() && Symbol::are_tuple_labels(labels) => {
+                    let mut exprs = SliceVec::new(self.bump, elems.len());
+                    let mut telescope = telescope.clone();
+
+                    for elem in *elems {
+                        let (r#type, cont) =
+                            self.elim_env().split_telescope(telescope.clone()).unwrap();
+
+                        let Check(elem_expr) = self.check_expr(elem, &r#type);
+                        let elem_value = self.eval_env().eval(&elem_expr);
+                        telescope = cont(elem_value);
+                        exprs.push(elem_expr);
+                    }
+
+                    let expr = Expr::RecordLit(labels, exprs.into());
+                    CheckExpr::new(expr)
+                }
+                _ if expected.is_type() => {
+                    let mut types = SliceVec::new(self.bump, elems.len());
+                    let mut labels = SliceVec::new(self.bump, elems.len());
+
+                    self.with_scope(|this| {
+                        for (idx, elem) in elems.iter().enumerate() {
+                            let Check(r#type) = this.check_expr(elem, &Type::TYPE);
+                            let type_value = this.eval_env().eval(&r#type);
+                            let label = Symbol::intern(format!("_{idx}"));
+                            types.push(r#type);
+                            labels.push(label);
+                            this.local_env.push_param(Some(label), type_value);
+                        }
+                    });
+
+                    let labels = labels.into();
+                    let expr = Expr::RecordType(labels, types.into());
+                    CheckExpr::new(expr)
+                }
+                _ => self.synth_and_convert_expr(expr, expected),
+            },
             hir::Expr::RecordLit(..) => todo!(),
 
             hir::Expr::FunType(..) => todo!(),

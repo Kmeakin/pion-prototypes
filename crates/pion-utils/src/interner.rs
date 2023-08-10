@@ -25,6 +25,13 @@ impl Symbol {
             "def" | "else" | "false" | "fun" | "if" | "let" | "match" | "then" | "true"
         )
     }
+
+    pub fn are_tuple_labels(labels: &[Self]) -> bool {
+        labels
+            .iter()
+            .enumerate()
+            .all(|(idx, symbol)| symbol.as_str() == format!("_{idx}"))
+    }
 }
 
 impl fmt::Debug for Symbol {
