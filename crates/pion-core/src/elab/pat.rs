@@ -77,8 +77,32 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
+    pub fn check_ann_pat(
+        &mut self,
+        pat: &'hir hir::Pat<'hir>,
+        r#type: Option<&'hir hir::Expr<'hir>>,
+        expected: &Type<'core>,
+    ) -> CheckPat<'core> {
+        match r#type {
+            None => self.check_pat(pat, expected),
+            Some(r#type) => {
+                let span = self.syntax_map[pat].span();
+                let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type));
+                CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
+            }
+        }
+    }
+
     pub fn synth_fun_param(&mut self, param: &'hir hir::FunParam<'hir>) -> SynthPat<'core> {
         self.synth_ann_pat(&param.pat, param.r#type.as_ref())
+    }
+
+    pub fn check_fun_param(
+        &mut self,
+        param: &'hir hir::FunParam<'hir>,
+        expected: &Type<'core>,
+    ) -> CheckPat<'core> {
+        self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected)
     }
 
     fn convert_pat(

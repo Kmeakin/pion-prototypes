@@ -120,8 +120,14 @@ impl<'core> Value<'core> {
 
     pub fn unit_type() -> Self { Self::record_type(&[], &[]) }
 
+    pub fn unit_lit() -> Self { Self::RecordLit(&[], &[]) }
+
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())
+    }
+
+    pub fn is_unit_type(&self) -> bool {
+        matches!(self, Value::RecordType(labels, types) if labels.is_empty() && types.is_empty())
     }
 
     pub const fn is_error(&self) -> bool { matches!(self, Self::Stuck(Head::Error, _)) }
@@ -168,8 +174,9 @@ impl<'arena> Telescope<'arena> {
         }
     }
 
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize { self.exprs.len() }
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

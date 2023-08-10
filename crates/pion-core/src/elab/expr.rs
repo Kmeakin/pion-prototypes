@@ -218,11 +218,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let Check(codomain_expr) = self.with_param(None, Type::unit_type(), |this| {
                         this.check_expr(codomain, &Type::TYPE)
                     });
-                    let domain_expr = Expr::UNIT_TYPE;
                     let expr = Expr::FunType(
                         Plicity::Explicit,
                         None,
-                        self.bump.alloc((domain_expr, codomain_expr)),
+                        self.bump.alloc((Expr::UNIT_TYPE, codomain_expr)),
                     );
                     return SynthExpr::new(expr, Type::TYPE);
                 }
@@ -238,11 +237,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         self.with_param(None, Type::unit_type(), |this| this.synth_expr(body));
                     let body_type = self.quote_env().quote(&body_type);
 
-                    let domain_expr = Expr::UNIT_TYPE;
                     let expr = Expr::FunLit(
                         Plicity::Explicit,
                         None,
-                        self.bump.alloc((domain_expr, body_expr)),
+                        self.bump.alloc((Expr::UNIT_TYPE, body_expr)),
                     );
                     let r#type = Type::FunType(
                         Plicity::Explicit,
@@ -345,12 +343,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expr: &'hir hir::Expr<'hir>,
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
-        let expected = &self.elim_env().update_metas(expected);
+        let expected = self.elim_env().update_metas(expected);
 
         match expr {
             hir::Expr::Error => CheckExpr::ERROR,
 
-            hir::Expr::Ann(..) => todo!(),
             hir::Expr::Let((pat, r#type, init, body)) => {
                 let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
                 let name = pat.name();
@@ -360,22 +357,22 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let init_value = self.eval_env().eval(&init_expr);
 
                 let Check(body_expr) = self.with_def(name, pat_type, init_value, |this| {
-                    this.check_expr(body, expected)
+                    this.check_expr(body, &expected)
                 });
 
                 let expr = Expr::Let(name, self.bump.alloc((type_expr, init_expr, body_expr)));
                 CheckExpr::new(expr)
             }
             hir::Expr::ArrayLit(elems) => {
-                let Type::Stuck(Head::Prim(Prim::Array), args) = expected else {
-                    return self.synth_and_convert_expr(expr, expected);
+                let Type::Stuck(Head::Prim(Prim::Array), ref args) = expected else {
+                    return self.synth_and_convert_expr(expr, &expected);
                 };
                 #[rustfmt::skip]
                 let [Elim::FunApp(Plicity::Explicit, elem_type), Elim::FunApp(Plicity::Explicit, expected_len)] = &args[..] else {
-                    return self.synth_and_convert_expr(expr, expected);
+                    return self.synth_and_convert_expr(expr, &expected);
                 };
                 let Value::Lit(Lit::Int(expected_len)) = expected_len else {
-                    return self.synth_and_convert_expr(expr, expected);
+                    return self.synth_and_convert_expr(expr, &expected);
                 };
                 if elems.len() != *expected_len as usize {
                     self.emit_diagnostic(ElabDiagnostic::ArrayLenMismatch {
@@ -430,7 +427,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let expr = Expr::RecordType(labels, types.into());
                     CheckExpr::new(expr)
                 }
-                _ => self.synth_and_convert_expr(expr, expected),
+                _ => self.synth_and_convert_expr(expr, &expected),
             },
             hir::Expr::RecordLit(fields) => match expected {
                 Value::RecordType(labels, telescope)
@@ -450,16 +447,69 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let expr = Expr::RecordLit(labels, exprs.into());
                     CheckExpr::new(expr)
                 }
-                _ => self.synth_and_convert_expr(expr, expected),
+                _ => self.synth_and_convert_expr(expr, &expected),
             },
 
-            hir::Expr::FunType(..) => todo!(),
-            hir::Expr::FunLit(..) => todo!(),
+            hir::Expr::FunLit(params, body) => {
+                if params.is_empty() {
+                    cov_mark::hit!(check_empty_fun_lit);
+                    let span = self.syntax_map[expr].span();
+
+                    match expected {
+                        Value::FunType(
+                            Plicity::Explicit,
+                            name,
+                            expected_param_type,
+                            ref next_expected,
+                        ) if expected_param_type.is_unit_type() => {
+                            let Check(body_expr) =
+                                self.with_param(name, Type::unit_type(), |this| {
+                                    let expected = this
+                                        .elim_env()
+                                        .apply_closure(next_expected.clone(), Value::unit_lit());
+                                    this.check_expr(body, &expected)
+                                });
+
+                            let param_type_expr = self.quote_env().quote(expected_param_type);
+                            let expr = Expr::FunLit(
+                                Plicity::Explicit,
+                                name,
+                                self.bump.alloc((param_type_expr, body_expr)),
+                            );
+                            return Check::new(expr);
+                        }
+                        _ => {
+                            let Synth(body_expr, body_type) =
+                                self.with_param(None, Type::unit_type(), |this| {
+                                    this.synth_expr(body)
+                                });
+                            let body_type = self.quote_env().quote(&body_type);
+                            let expr = Expr::FunLit(
+                                Plicity::Explicit,
+                                None,
+                                self.bump.alloc((Expr::UNIT_LIT, body_expr)),
+                            );
+                            let r#type = Type::FunType(
+                                Plicity::Explicit,
+                                None,
+                                self.bump.alloc(Type::unit_type()),
+                                Closure::new(
+                                    self.local_env.values.clone(),
+                                    self.bump.alloc(body_type),
+                                ),
+                            );
+                            return Check::new(self.convert_expr(span, expr, &r#type, &expected));
+                        }
+                    }
+                }
+
+                self.check_fun_lit(params, body, &expected)
+            }
             hir::Expr::Match(..) => todo!(),
             hir::Expr::If((scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
-                let Check(then_expr) = self.check_expr(then, expected);
-                let Check(else_expr) = self.check_expr(r#else, expected);
+                let Check(then_expr) = self.check_expr(then, &expected);
+                let Check(else_expr) = self.check_expr(r#else, &expected);
                 let expr = Expr::Match(
                     self.bump.alloc((scrut_expr, None)),
                     self.bump.alloc_slice_copy(&[
@@ -475,10 +525,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::Lit(..)
             | hir::Expr::Underscore
             | hir::Expr::Ident(..)
+            | hir::Expr::Ann(..)
             | hir::Expr::RecordType(..)
             | hir::Expr::FieldProj(..)
             | hir::Expr::FunArrow(..)
-            | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, expected),
+            | hir::Expr::FunType(..)
+            | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, &expected),
         }
     }
 
@@ -564,6 +616,49 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
         );
         SynthExpr::new(expr, r#type)
+    }
+
+    fn check_fun_lit(
+        &mut self,
+        params: &'hir [hir::FunParam<'hir>],
+        body: &'hir hir::Expr<'hir>,
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        let Some((param, rest_params)) = params.split_first() else {
+            return self.check_expr(body, expected);
+        };
+
+        let expected = self.elim_env().update_metas(expected);
+        let param_plicity = Plicity::from(param.plicity);
+
+        match expected {
+            Value::FunType(expected_plicity, expected_name, expected_param_type, next_expected)
+                if param_plicity == expected_plicity =>
+            {
+                let param_type_expr = self.quote_env().quote(expected_param_type);
+                let Check(pat) = self.check_fun_param(param, expected_param_type);
+                let name = pat.name().or(expected_name);
+
+                let arg_expr = self.local_env.next_var();
+                self.local_env.push_param(name, expected_param_type.clone());
+                let expected = self.elim_env().apply_closure(next_expected, arg_expr);
+                let Check(body_expr) = self.check_fun_lit(rest_params, body, &expected);
+                self.local_env.pop();
+
+                let expr = Expr::FunLit(
+                    param_plicity,
+                    name,
+                    self.bump.alloc((param_type_expr, body_expr)),
+                );
+                CheckExpr::new(expr)
+            }
+            _ if expected.is_error() => CheckExpr::ERROR,
+            _ => {
+                let span = self.syntax_map[body].span(); // TODO: correct span
+                let Synth(expr, r#type) = self.synth_fun_lit(params, body);
+                Check::new(self.convert_expr(span, expr, &r#type, &expected))
+            }
+        }
     }
 
     /// Wrap an expr in fresh implicit applications that correspond to implicit

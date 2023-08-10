@@ -451,6 +451,25 @@ fn synth_fun_lit() {
 }
 
 #[test]
+fn check_fun_lit() {
+    {
+        cov_mark::check!(check_empty_fun_lit);
+        synth_expr(
+            "((fun() => 0) : (() -> Int))",
+            expect![[r#"
+            expr:	fun(_: {}) => 0
+            r#type:	fun(_: {}) -> Int"#]],
+        );
+    }
+    synth_expr(
+        "((fun(x) => false) : (Int -> Bool))",
+        expect![[r#"
+    expr:	fun(x: Int) => false
+    r#type:	fun(_: Int) -> Bool"#]],
+    );
+}
+
+#[test]
 fn synth_fun_app() {
     synth_expr(
         "Array(Int, 5)",
