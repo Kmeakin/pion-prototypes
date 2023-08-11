@@ -52,6 +52,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             Expr::Prim(prim) => self.prim(*prim),
             Expr::Local(var) => match self.local_names.borrow().get_index(*var) {
                 Some(Some(name)) => self.ident(*name),
+                Some(None) => self.text(format!("{var:?}")),
                 Some(None) => panic!("Referenced local variable without name: {var:?}"),
                 None => panic!("Unbound local variable: {var:?}"),
             },

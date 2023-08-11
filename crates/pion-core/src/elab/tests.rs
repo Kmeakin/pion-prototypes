@@ -553,3 +553,109 @@ fn check_if() {
             r#type:	Int"#]],
     );
 }
+
+#[test]
+fn insert_implicit_args() {
+    synth_expr(
+        "
+let id = fun (@A: Type, a: A) => a;
+id(false)",
+        expect![[r#"
+            expr:	let id: ?0 = fun(@A: Type) => fun(a: A) => a;
+            id(@?1, false)
+            r#type:	Bool"#]],
+    );
+    synth_expr(
+        "
+let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
+always(0, false)",
+        expect![[r#"
+            expr:	let always: ?0 = fun(@A: Type) => fun(@B: Type) => fun(a: A) => fun(b: B) => a;
+            always(@?1, @?2, 0, false)
+            r#type:	Int"#]],
+    );
+
+    synth_expr(
+        "
+let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
+let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+apply(always(false), 0)",
+        expect![[r#"
+            expr:	let always: ?0 = fun(@A: Type) => fun(@B: Type) => fun(a: A) => fun(b: B) => a;
+            let apply: ?1 = fun(@A: Type) => fun(@B: Type) => fun(f: fun(_: A) -> B) => fun(a: A) => f(a);
+            apply(@?2, @?3, always(@?4, @?5, false), 0)
+            r#type:	Bool"#]],
+    );
+}
+
+#[test]
+fn specialization() {
+    synth_expr(
+        "
+let id = fun(@A: Type, a: A) => a;
+(id : Bool -> Bool)
+    ",
+        expect![[r#"
+            expr:	let id: ?0 = fun(@A: Type) => fun(a: A) => a;
+            id(@?1)
+            r#type:	fun(_: Bool) -> Bool"#]],
+    );
+    synth_expr(
+        "
+let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
+(always : Bool -> Int -> Bool)
+    ",
+        expect![[r#"
+            expr:	let always: fun(@A: Type) -> fun(@B: Type) -> fun(_: A) -> fun(_: B) -> A = fun(@A: Type) => fun(@B: Type) => fun(a: A) => fun(b: B) => a;
+            always(@?0, @?1)
+            r#type:	fun(_: Bool) -> fun(_: Int) -> Bool"#]],
+    );
+    synth_expr(
+        "
+let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+(apply : ((Bool -> Int) -> Bool -> Int))
+    ",
+        expect![[r#"
+            expr:	let apply: ?0 = fun(@A: Type) => fun(@B: Type) => fun(f: fun(_: A) -> B) => fun(a: A) => f(a);
+            apply(@?1, @?2)
+            r#type:	fun(_: fun(_: Bool) -> Int) -> fun(_: Bool) -> Int"#]],
+    );
+}
+
+#[test]
+fn generalization() {
+    synth_expr(
+        "
+let id: fun(@A : Type) -> A -> A = fun(a) => a;
+{}
+",
+        expect![[r#"
+            expr:	let id: fun(@A: Type) -> fun(_: A) -> A = fun(@A: Type) => fun(a: A) => a;
+            {}
+            r#type:	{}"#]],
+    );
+
+    synth_expr(
+        "
+let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
+let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
+{}
+",
+        expect![[r#"
+            expr:	let always: fun(@A: Type) -> fun(@B: Type) -> fun(_: A) -> fun(_: B) -> A = fun(@A: Type) => fun(@B: Type) => fun(a: A) => fun(b: B) => a;
+            let apply: fun(@A: Type) -> fun(@B: Type) -> fun(_: fun(_: A) -> B) -> fun(_: A) -> B = fun(@A: Type) => fun(@B: Type) => fun(f: fun(_: A) -> B) => fun(x: A) => f(x);
+            {}
+            r#type:	{}"#]],
+    );
+
+    synth_expr(
+        "
+let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
+{}
+",
+        expect![[r#"
+            expr:	let apply: fun(@A: Type) -> fun(@B: Type) -> fun(_: fun(_: A) -> B) -> fun(_: A) -> B = fun(@A: Type) => fun(@B: Type) => fun(f: fun(_: A) -> B) => fun(x: A) => f(x);
+            {}
+            r#type:	{}"#]],
+    );
+}

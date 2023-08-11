@@ -486,7 +486,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
-
             hir::Expr::FunLit(params, body) => {
                 if params.is_empty() {
                     cov_mark::hit!(check_empty_fun_lit);
@@ -588,10 +587,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> Expr<'core> {
-        match self.unifiy_ctx().unify(from, to) {
+        // Attempt to specialize exprs with freshly inserted implicit
+        // arguments if an explicit function was expected.
+        let (expr, from) = match (expr, to) {
+            (Expr::FunLit(..), _) => (expr, from.clone()),
+            (_, Type::FunType(Plicity::Explicit, ..)) => {
+                self.insert_implicit_apps(span, expr, from.clone())
+            }
+            _ => (expr, from.clone()),
+        };
+
+        match self.unifiy_ctx().unify(&from, to) {
             Ok(()) => expr,
             Err(error) => {
-                let found = self.pretty_value(from);
+                let found = self.pretty_value(&from);
                 let expected = self.pretty_value(to);
                 self.emit_diagnostic(ElabDiagnostic::Unification {
                     span,
@@ -691,6 +700,22 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 );
                 CheckExpr::new(expr)
             }
+            // If an implicit function is expected, try to generalize the
+            // function literal by wrapping it in an implicit function
+            Value::FunType(Plicity::Implicit, name, domain, codomain) => {
+                let domain_expr = self.quote_env().quote(domain);
+                let arg = self.local_env.next_var();
+                self.local_env.push_param(name, domain.clone());
+                let expected = self.elim_env().apply_closure(codomain, arg);
+                let Check(body_expr) = self.check_fun_lit(params, body, &expected);
+                self.local_env.pop();
+                let expr = Expr::FunLit(
+                    Plicity::Implicit,
+                    name,
+                    self.bump.alloc((domain_expr, body_expr)),
+                );
+                CheckExpr::new(expr)
+            }
             _ if expected.is_error() => CheckExpr::ERROR,
             _ => {
                 let span = self.syntax_map[body].span(); // TODO: correct span
@@ -722,7 +747,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 
     /// Synthesize the type of `expr`, wrapping it in fresh implicit
-    /// applications if the term was not an implicit function literal.
+    /// applications if the expr was not an implicit function literal.
     fn synth_and_insert_implicit_apps(
         &mut self,
         expr: &'hir hir::Expr<'hir>,
