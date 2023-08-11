@@ -104,30 +104,46 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append(self.hardline())
                     .append(body)
             }
-            Expr::FunLit(plicity, name, (domain, body)) => {
-                let param = self.fun_param(*plicity, *name, domain);
+            Expr::FunLit(..) => {
+                let initial_len = self.local_names.borrow().len();
+                let mut params = Vec::new();
+                let mut body = expr;
 
-                self.local_names.borrow_mut().push(*name);
+                while let Expr::FunLit(plicity, name, (domain, cont)) = body {
+                    let param = self.fun_param(*plicity, *name, domain);
+                    params.push(param);
+                    self.local_names.borrow_mut().push(*name);
+                    body = cont;
+                }
                 let body = self.expr(body, Prec::MAX);
-                self.local_names.borrow_mut().pop();
+                self.local_names.borrow_mut().truncate(initial_len);
 
+                let params = self.intersperse(params, self.text(", "));
                 self.text("fun")
                     .append("(")
-                    .append(param)
+                    .append(params)
                     .append(")")
                     .append(" => ")
                     .append(body)
             }
-            Expr::FunType(plicity, name, (domain, codomain)) => {
-                let param = self.fun_param(*plicity, *name, domain);
+            Expr::FunType(..) => {
+                let initial_len = self.local_names.borrow().len();
+                let mut params = Vec::new();
+                let mut codomain = expr;
 
-                self.local_names.borrow_mut().push(*name);
+                while let Expr::FunType(plicity, name, (domain, cont)) = codomain {
+                    let param = self.fun_param(*plicity, *name, domain);
+                    params.push(param);
+                    self.local_names.borrow_mut().push(*name);
+                    codomain = cont;
+                }
                 let codomain = self.expr(codomain, Prec::MAX);
-                self.local_names.borrow_mut().pop();
+                self.local_names.borrow_mut().truncate(initial_len);
 
+                let params = self.intersperse(params, self.text(", "));
                 self.text("fun")
                     .append("(")
-                    .append(param)
+                    .append(params)
                     .append(")")
                     .append(" -> ")
                     .append(codomain)
