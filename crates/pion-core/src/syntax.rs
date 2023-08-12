@@ -38,6 +38,80 @@ impl<'core> Expr<'core> {
 
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
 
+    pub fn r#let(
+        bump: &'core bumpalo::Bump,
+        name: Option<Symbol>,
+        r#type: Expr<'core>,
+        init: Expr<'core>,
+        body: Expr<'core>,
+    ) -> Self {
+        Self::Let(name, bump.alloc((r#type, init, body)))
+    }
+
+    pub fn fun_lit(
+        bump: &'core bumpalo::Bump,
+        plicity: Plicity,
+        name: Option<Symbol>,
+        domain: Expr<'core>,
+        body: Expr<'core>,
+    ) -> Self {
+        Self::FunLit(plicity, name, bump.alloc((domain, body)))
+    }
+
+    pub fn fun_type(
+        bump: &'core bumpalo::Bump,
+        plicity: Plicity,
+        name: Option<Symbol>,
+        domain: Expr<'core>,
+        codomain: Expr<'core>,
+    ) -> Self {
+        Self::FunType(plicity, name, bump.alloc((domain, codomain)))
+    }
+
+    pub fn fun_arrow(
+        bump: &'core bumpalo::Bump,
+        domain: Expr<'core>,
+        codomain: Expr<'core>,
+    ) -> Self {
+        Self::fun_type(bump, Plicity::Explicit, None, domain, codomain)
+    }
+
+    pub fn fun_app(
+        bump: &'core bumpalo::Bump,
+        plicity: Plicity,
+        fun: Expr<'core>,
+        arg: Expr<'core>,
+    ) -> Self {
+        Self::FunApp(plicity, bump.alloc((fun, arg)))
+    }
+
+    pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Expr<'core>, field: Symbol) -> Self {
+        Self::FieldProj(bump.alloc(scrut), field)
+    }
+
+    pub fn r#match(
+        bump: &'core bumpalo::Bump,
+        scrut: Expr<'core>,
+        cases: &'core [(Lit, Expr<'core>)],
+        default: Option<(Option<Symbol>, Expr<'core>)>,
+    ) -> Self {
+        Self::Match(bump.alloc((scrut, default)), cases)
+    }
+
+    pub fn r#if(
+        bump: &'core bumpalo::Bump,
+        scrut: Expr<'core>,
+        then: Expr<'core>,
+        r#else: Expr<'core>,
+    ) -> Self {
+        Self::r#match(
+            bump,
+            scrut,
+            bump.alloc_slice_copy(&[(Lit::Bool(false), r#else), (Lit::Bool(true), then)]),
+            None,
+        )
+    }
+
     pub fn binds_local(&self, var: Index) -> bool {
         match self {
             Expr::Local(v) => *v == var,
