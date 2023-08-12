@@ -37,6 +37,36 @@ impl<'core> Expr<'core> {
     pub const UNIT_TYPE: Self = Self::RecordType(&[], &[]);
 
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
+
+    pub fn binds_local(&self, var: Index) -> bool {
+        match self {
+            Expr::Local(v) => *v == var,
+            Expr::Error
+            | Expr::Lit(..)
+            | Expr::Prim(..)
+            | Expr::Meta(..)
+            | Expr::InsertedMeta(..) => false,
+            Expr::Let(_, (r#type, init, body)) => {
+                r#type.binds_local(var) || init.binds_local(var) || body.binds_local(var.next())
+            }
+            Expr::FunLit(.., (r#type, body)) | Expr::FunType(.., (r#type, body)) => {
+                r#type.binds_local(var) || body.binds_local(var.next())
+            }
+            Expr::FunApp(_, (fun, arg)) => fun.binds_local(var) || arg.binds_local(var),
+            Expr::ArrayLit(exprs) => exprs.iter().any(|expr| expr.binds_local(var)),
+            Expr::RecordType(_, types) => types
+                .iter()
+                .zip(Index::iter_from(var))
+                .any(|(r#type, var)| r#type.binds_local(var)),
+            Expr::RecordLit(_, exprs) => exprs.iter().any(|expr| expr.binds_local(var)),
+            Expr::FieldProj(scrut, _) => scrut.binds_local(var),
+            Expr::Match((scrut, default), cases) => {
+                scrut.binds_local(var)
+                    || cases.iter().any(|(_, expr)| expr.binds_local(var))
+                    || default.map_or(false, |(_, expr)| expr.binds_local(var.next()))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

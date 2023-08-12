@@ -96,7 +96,7 @@ fn synth_prims() {
         "Array",
         expect![[r#"
             expr:	Array
-            r#type:	fun(_: Type, _: Int) -> Type"#]],
+            r#type:	Type -> Int -> Type"#]],
     );
 }
 
@@ -380,13 +380,13 @@ fn synth_fun_arrow() {
     synth_expr(
         "Int -> Bool",
         expect![[r#"
-            expr:	fun(_: Int) -> Bool
+            expr:	Int -> Bool
             r#type:	Type"#]],
     );
     synth_expr(
         "Int -> Bool -> Type",
         expect![[r#"
-            expr:	fun(_: Int, _: Bool) -> Type
+            expr:	Int -> Bool -> Type
             r#type:	Type"#]],
     );
 }
@@ -398,22 +398,22 @@ fn synth_fun_type() {
         synth_expr(
             "fun() -> Int",
             expect![[r#"
-        expr:	fun(_: {}) -> Int
-        r#type:	Type"#]],
+                expr:	{} -> Int
+                r#type:	Type"#]],
         );
     }
 
     synth_expr(
         "fun(x) -> Int",
         expect![[r#"
-            expr:	fun(x: ?0) -> Int
+            expr:	?0 -> Int
             r#type:	Type"#]],
     );
 
     synth_expr(
         "fun(A: Type) -> A -> A",
         expect![[r#"
-            expr:	fun(A: Type, _: A) -> A
+            expr:	fun(A: Type) -> A -> A
             r#type:	Type"#]],
     );
 }
@@ -426,7 +426,7 @@ fn synth_fun_lit() {
             "fun() => 5",
             expect![[r#"
                 expr:	fun(_: {}) => 5
-                r#type:	fun(_: {}) -> Int"#]],
+                r#type:	{} -> Int"#]],
         );
     }
 
@@ -434,19 +434,19 @@ fn synth_fun_lit() {
         "fun(x) => x",
         expect![[r#"
             expr:	fun(x: ?0) => x
-            r#type:	fun(x: ?0) -> ?0"#]],
+            r#type:	?0 -> ?0"#]],
     );
     synth_expr(
         "fun(x: Int) => x",
         expect![[r#"
             expr:	fun(x: Int) => x
-            r#type:	fun(x: Int) -> Int"#]],
+            r#type:	Int -> Int"#]],
     );
     synth_expr(
         "fun(A: Type, a: A) => a",
         expect![[r#"
             expr:	fun(A: Type, a: A) => a
-            r#type:	fun(A: Type, a: A) -> A"#]],
+            r#type:	fun(A: Type) -> A -> A"#]],
     );
 }
 
@@ -457,15 +457,15 @@ fn check_fun_lit() {
         synth_expr(
             "((fun() => 0) : (() -> Int))",
             expect![[r#"
-            expr:	fun(_: {}) => 0
-            r#type:	fun(_: {}) -> Int"#]],
+                expr:	fun(_: {}) => 0
+                r#type:	{} -> Int"#]],
         );
     }
     synth_expr(
         "((fun(x) => false) : (Int -> Bool))",
         expect![[r#"
-    expr:	fun(x: Int) => false
-    r#type:	fun(_: Int) -> Bool"#]],
+            expr:	fun(x: Int) => false
+            r#type:	Int -> Bool"#]],
     );
 }
 
@@ -485,8 +485,8 @@ fn synth_fun_app() {
             expect![[r#"
                 expr:	let f: ?0 = fun(x: Int) => 0;
                 f
-                r#type:	fun(x: Int) -> Int
-                FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "fun(x: Int) -> Int" }
+                r#type:	Int -> Int
+                FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "Int -> Int" }
             "#]],
         );
     }
@@ -500,14 +500,14 @@ fn synth_fun_app() {
         "Array(Int)",
         expect![[r#"
             expr:	Array(Int)
-            r#type:	fun(_: Int) -> Type"#]],
+            r#type:	Int -> Type"#]],
     );
     synth_expr(
         "Array(@Int)",
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FunAppPlicity { call_span: 0..11, fun_type: "fun(_: Type, _: Int) -> Type", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
+            FunAppPlicity { call_span: 0..11, fun_type: "Type -> Int -> Type", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
         "#]],
     );
     synth_expr(
@@ -523,7 +523,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FunAppTooManyArgs { call_span: 0..16, fun_type: "fun(_: Type, _: Int) -> Type", expected_arity: 2, actual_arity: 3 }
+            FunAppTooManyArgs { call_span: 0..16, fun_type: "Type -> Int -> Type", expected_arity: 2, actual_arity: 3 }
         "#]],
     );
 }
@@ -582,7 +582,7 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 apply(always(false), 0)",
         expect![[r#"
             expr:	let always: ?0 = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            let apply: ?1 = fun(@A: Type, @B: Type, f: fun(_: A) -> B, a: A) => f(a);
+            let apply: ?1 = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             apply(@?2, @?3, always(@?4, @?5, false), 0)
             r#type:	Bool"#]],
     );
@@ -598,7 +598,7 @@ let id = fun(@A: Type, a: A) => a;
         expect![[r#"
             expr:	let id: ?0 = fun(@A: Type, a: A) => a;
             id(@?1)
-            r#type:	fun(_: Bool) -> Bool"#]],
+            r#type:	Bool -> Bool"#]],
     );
     synth_expr(
         "
@@ -606,9 +606,9 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
 (always : Bool -> Int -> Bool)
     ",
         expect![[r#"
-            expr:	let always: fun(@A: Type, @B: Type, _: A, _: B) -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             always(@?0, @?1)
-            r#type:	fun(_: Bool, _: Int) -> Bool"#]],
+            r#type:	Bool -> Int -> Bool"#]],
     );
     synth_expr(
         "
@@ -616,9 +616,9 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 (apply : ((Bool -> Int) -> Bool -> Int))
     ",
         expect![[r#"
-            expr:	let apply: ?0 = fun(@A: Type, @B: Type, f: fun(_: A) -> B, a: A) => f(a);
+            expr:	let apply: ?0 = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             apply(@?1, @?2)
-            r#type:	fun(_: fun(_: Bool) -> Int, _: Bool) -> Int"#]],
+            r#type:	(Bool -> Int) -> Bool -> Int"#]],
     );
 }
 
@@ -630,7 +630,7 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
 {}
 ",
         expect![[r#"
-            expr:	let id: fun(@A: Type, _: A) -> A = fun(@A: Type, a: A) => a;
+            expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
             {}
             r#type:	{}"#]],
     );
@@ -642,8 +642,8 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
 {}
 ",
         expect![[r#"
-            expr:	let always: fun(@A: Type, @B: Type, _: A, _: B) -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            let apply: fun(@A: Type, @B: Type, _: fun(_: A) -> B, _: A) -> B = fun(@A: Type, @B: Type, f: fun(_: A) -> B, x: A) => f(x);
+            expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             {}
             r#type:	{}"#]],
     );
@@ -654,7 +654,7 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
 {}
 ",
         expect![[r#"
-            expr:	let apply: fun(@A: Type, @B: Type, _: fun(_: A) -> B, _: A) -> B = fun(@A: Type, @B: Type, f: fun(_: A) -> B, x: A) => f(x);
+            expr:	let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             {}
             r#type:	{}"#]],
     );

@@ -5,7 +5,7 @@ use pion_utils::slice_vec::SliceVec;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
 use crate::elab::MetaSource;
-use crate::env::{Level, SliceEnv, UniqueEnv};
+use crate::env::{Index, Level, SliceEnv, UniqueEnv};
 use crate::prim::Prim;
 use crate::syntax::*;
 
@@ -131,22 +131,41 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 let mut params = Vec::new();
                 let mut codomain = expr;
 
-                while let Expr::FunType(plicity, name, (domain, cont)) = codomain {
-                    let param = self.fun_param(*plicity, *name, domain);
-                    params.push(param);
-                    self.local_names.borrow_mut().push(*name);
-                    codomain = cont;
-                }
-                let codomain = self.expr(codomain, Prec::MAX);
+                let codomain = loop {
+                    match codomain {
+                        // Use an explicit parameter if it is referenced in the body
+                        Expr::FunType(plicity, name, (domain, cont))
+                            if cont.binds_local(Index::new()) =>
+                        {
+                            let param = self.fun_param(*plicity, *name, domain);
+                            params.push(param);
+                            self.local_names.borrow_mut().push(*name);
+                            codomain = cont;
+                        }
+                        // Use arrow sugar if the parameter is not referenced in the body type.
+                        Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
+                            let domain = self.expr(domain, Prec::Proj);
+                            self.local_names.borrow_mut().push(None);
+                            let codomain = self.expr(codomain, Prec::MAX);
+                            break domain.append(" -> ").append(codomain);
+                        }
+                        _ => break self.expr(codomain, Prec::MAX),
+                    }
+                };
+
                 self.local_names.borrow_mut().truncate(initial_len);
 
-                let params = self.intersperse(params, self.text(", "));
-                self.text("fun")
-                    .append("(")
-                    .append(params)
-                    .append(")")
-                    .append(" -> ")
-                    .append(codomain)
+                if params.is_empty() {
+                    codomain
+                } else {
+                    let params = self.intersperse(params, self.text(", "));
+                    self.text("fun")
+                        .append("(")
+                        .append(params)
+                        .append(")")
+                        .append(" -> ")
+                        .append(codomain)
+                }
             }
             Expr::FunApp(..) => {
                 let mut args = Vec::new();
