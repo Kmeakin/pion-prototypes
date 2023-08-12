@@ -205,26 +205,26 @@ fn synth_tuple_lit() {
     synth_expr(
         "()",
         expect![[r#"
-        expr:	{}
-        r#type:	{}"#]],
+            expr:	()
+            r#type:	()"#]],
     );
     synth_expr(
         "(1,)",
         expect![[r#"
-        expr:	{_0 = 1}
-        r#type:	{_0: Int}"#]],
+            expr:	(1,)
+            r#type:	(Int,)"#]],
     );
     synth_expr(
         "(1,true)",
         expect![[r#"
-            expr:	{_0 = 1, _1 = true}
-            r#type:	{_0: Int, _1: Bool}"#]],
+            expr:	(1, true)
+            r#type:	(Int, Bool)"#]],
     );
     synth_expr(
         "(1,true,false)",
         expect![[r#"
-            expr:	{_0 = 1, _1 = true, _2 = false}
-            r#type:	{_0: Int, _1: Bool, _2: Bool}"#]],
+            expr:	(1, true, false)
+            r#type:	(Int, Bool, Bool)"#]],
     );
 }
 
@@ -233,39 +233,39 @@ fn check_tuple_lit() {
     synth_expr(
         "((): Type)",
         expect![[r#"
-    expr:	{}
-    r#type:	Type"#]],
+            expr:	()
+            r#type:	Type"#]],
     );
     synth_expr(
         "((Int,): Type)",
         expect![[r#"
-            expr:	{_0: Int}
+            expr:	(Int,)
             r#type:	Type"#]],
     );
     synth_expr(
         "((Int,Bool): Type)",
         expect![[r#"
-            expr:	{_0: Int, _1: Bool}
+            expr:	(Int, Bool)
             r#type:	Type"#]],
     );
 
     synth_expr(
         "((): ())",
         expect![[r#"
-            expr:	{}
-            r#type:	{}"#]],
+            expr:	()
+            r#type:	()"#]],
     );
     synth_expr(
         "((1,): (Int,))",
         expect![[r#"
-            expr:	{_0 = 1}
-            r#type:	{_0: Int}"#]],
+            expr:	(1,)
+            r#type:	(Int,)"#]],
     );
     synth_expr(
         "((1,false): (Int,Bool))",
         expect![[r#"
-            expr:	{_0 = 1, _1 = false}
-            r#type:	{_0: Int, _1: Bool}"#]],
+            expr:	(1, false)
+            r#type:	(Int, Bool)"#]],
     );
 }
 
@@ -296,8 +296,8 @@ fn synth_record_lit() {
     synth_expr(
         "{}",
         expect![[r#"
-        expr:	{}
-        r#type:	{}"#]],
+            expr:	()
+            r#type:	()"#]],
     );
     synth_expr(
         "{x=1}",
@@ -354,7 +354,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
-            FieldProjNotFound { span: 0..4, scrut_type: "{}", field: Symbol("x") }
+            FieldProjNotFound { span: 0..4, scrut_type: "()", field: Symbol("x") }
         "#]],
     );
     synth_expr(
@@ -398,7 +398,7 @@ fn synth_fun_type() {
         synth_expr(
             "fun() -> Int",
             expect![[r#"
-                expr:	{} -> Int
+                expr:	() -> Int
                 r#type:	Type"#]],
         );
     }
@@ -425,8 +425,8 @@ fn synth_fun_lit() {
         synth_expr(
             "fun() => 5",
             expect![[r#"
-                expr:	fun(_: {}) => 5
-                r#type:	{} -> Int"#]],
+                expr:	fun(_: ()) => 5
+                r#type:	() -> Int"#]],
         );
     }
 
@@ -457,8 +457,8 @@ fn check_fun_lit() {
         synth_expr(
             "((fun() => 0) : (() -> Int))",
             expect![[r#"
-                expr:	fun(_: {}) => 0
-                r#type:	{} -> Int"#]],
+                expr:	fun(_: ()) => 0
+                r#type:	() -> Int"#]],
         );
     }
     synth_expr(
@@ -476,8 +476,8 @@ fn synth_fun_app() {
         synth_expr(
             "let f = fun() => 0; f()",
             expect![[r#"
-                expr:	let f: ?0 = fun(_: {}) => 0;
-                f({})
+                expr:	let f: ?0 = fun(_: ()) => 0;
+                f(())
                 r#type:	Int"#]],
         );
         synth_expr(
@@ -631,8 +631,8 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
 ",
         expect![[r#"
             expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
-            {}
-            r#type:	{}"#]],
+            ()
+            r#type:	()"#]],
     );
 
     synth_expr(
@@ -644,8 +644,8 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
         expect![[r#"
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
-            {}
-            r#type:	{}"#]],
+            ()
+            r#type:	()"#]],
     );
 
     synth_expr(
@@ -655,7 +655,7 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
 ",
         expect![[r#"
             expr:	let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
-            {}
-            r#type:	{}"#]],
+            ()
+            r#type:	()"#]],
     );
 }

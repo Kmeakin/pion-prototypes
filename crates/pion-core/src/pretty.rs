@@ -187,6 +187,32 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append(self.intersperse(elems, self.text(", ")))
                     .append("]")
             }
+            Expr::RecordType(labels, r#types) if Symbol::are_tuple_labels(labels) => {
+                if types.len() == 1 {
+                    let r#type = self.expr(&types[0], Prec::MAX);
+                    self.text("(").append(r#type).append(",)")
+                } else {
+                    let initial_len = self.local_names.borrow().len();
+                    let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
+                        let expr = self.expr(r#type, Prec::MAX);
+                        self.local_names.borrow_mut().push(Some(*label));
+                        expr
+                    });
+                    let elems = self.intersperse(elems, self.text(", "));
+                    self.local_names.borrow_mut().truncate(initial_len);
+                    self.text("(").append(elems).append(")")
+                }
+            }
+            Expr::RecordLit(labels, exprs) if Symbol::are_tuple_labels(labels) => {
+                if exprs.len() == 1 {
+                    let expr = self.expr(&exprs[0], Prec::MAX);
+                    self.text("(").append(expr).append(",)")
+                } else {
+                    let elems = exprs.iter().map(|expr| self.expr(expr, Prec::MAX));
+                    let elems = self.intersperse(elems, self.text(", "));
+                    self.text("(").append(elems).append(")")
+                }
+            }
             Expr::RecordType(labels, r#types) => {
                 let initial_len = self.local_names.borrow().len();
                 let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
@@ -194,10 +220,9 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     self.local_names.borrow_mut().push(Some(*label));
                     self.text(label.as_str()).append(": ").append(r#type)
                 });
+                let elems = self.intersperse(elems, self.text(", "));
                 self.local_names.borrow_mut().truncate(initial_len);
-                self.text("{")
-                    .append(self.intersperse(elems, self.text(", ")))
-                    .append("}")
+                self.text("{").append(elems).append("}")
             }
             Expr::RecordLit(labels, exprs) => {
                 let elems = labels.iter().zip(exprs.iter()).map(|(label, expr)| {
