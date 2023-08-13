@@ -1,7 +1,7 @@
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
-use super::unify;
+use super::{unify, MetaSource};
 use crate::syntax::Plicity;
 
 type String = Box<str>;
@@ -55,5 +55,8 @@ pub enum ElabDiagnostic {
         span: ByteSpan,
         expected_len: u32,
         actual_len: u32,
+    },
+    UnsolvedMeta {
+        source: MetaSource,
     },
 }

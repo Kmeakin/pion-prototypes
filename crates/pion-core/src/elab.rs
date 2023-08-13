@@ -41,7 +41,26 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
-    pub fn finish(self) -> Vec<diagnostics::ElabDiagnostic> { self.diagnostics }
+    pub fn finish(mut self) -> Vec<diagnostics::ElabDiagnostic> {
+        let meta_env = std::mem::take(&mut self.meta_env);
+
+        for entry in meta_env.iter() {
+            match (entry.value, entry.source) {
+                // Ignore solved metas
+                (Some(_), _) => {}
+
+                // These should produce an unsolved UnderscoreExpr, so avoid reporting
+                // unsolved meta twice
+                (None, MetaSource::UnderscoreType { .. }) => {}
+
+                (None, source) => {
+                    self.emit_diagnostic(diagnostics::ElabDiagnostic::UnsolvedMeta { source });
+                }
+            }
+        }
+
+        self.diagnostics
+    }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
         let level = self.meta_env.len().to_level();
@@ -332,4 +351,22 @@ pub struct Check<T>(pub T);
 
 impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
+}
+
+pub fn elab_expr<'surface, 'hir, 'core>(
+    bump: &'core bumpalo::Bump,
+    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    expr: &'hir pion_hir::syntax::Expr<'hir>,
+) -> (Expr<'core>, Expr<'core>, Vec<diagnostics::ElabDiagnostic>) {
+    let temp_bump = bumpalo::Bump::new();
+    let mut ctx = ElabCtx::new(&temp_bump, syntax_map);
+
+    let Synth(expr, r#type) = ctx.synth_expr(expr);
+    let r#type = ctx.quote_env().quote(&r#type);
+
+    let expr = ctx.zonk_env(bump).zonk(&expr);
+    let r#type = ctx.zonk_env(bump).zonk(&r#type);
+    let diagnostics = ctx.finish();
+
+    (expr, r#type, diagnostics)
 }

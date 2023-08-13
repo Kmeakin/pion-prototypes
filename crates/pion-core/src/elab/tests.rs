@@ -106,11 +106,11 @@ fn synth_prims() {
 #[test]
 fn synth_underscore() {
     synth_expr(
-        "unbound",
+        "_",
         expect![[r#"
-            expr:	#error
-            r#type:	#error
-            UnboundName { span: 0..7, name: Symbol("unbound") }
+            expr:	?1
+            r#type:	?0
+            UnsolvedMeta { source: UnderscoreExpr { span: 0..1 } }
         "#]],
     );
 }
@@ -118,10 +118,12 @@ fn synth_underscore() {
 #[test]
 fn unbound_name() {
     synth_expr(
-        "_",
+        "unbound",
         expect![[r#"
-            expr:	?1
-            r#type:	?0"#]],
+            expr:	#error
+            r#type:	#error
+            UnboundName { span: 0..7, name: Symbol("unbound") }
+        "#]],
     );
 }
 
@@ -161,8 +163,10 @@ fn synth_array_lit() {
         synth_expr(
             "[]",
             expect![[r#"
-            expr:	[]
-            r#type:	Array(?0, 0)"#]],
+                expr:	[]
+                r#type:	Array(?0, 0)
+                UnsolvedMeta { source: EmptyArrayElemType { span: 0..2 } }
+            "#]],
         );
     }
     synth_expr(
@@ -199,6 +203,7 @@ fn check_array_lit() {
             expr:	#error
             r#type:	Array(?1, 2)
             ArrayLenMismatch { span: 1..4, expected_len: 2, actual_len: 1 }
+            UnsolvedMeta { source: UnderscoreExpr { span: 13..14 } }
         "#]],
     );
 }
@@ -410,7 +415,9 @@ fn synth_fun_type() {
         "fun(x) -> Int",
         expect![[r#"
             expr:	?0 -> Int
-            r#type:	Type"#]],
+            r#type:	Type
+            UnsolvedMeta { source: PatType { span: 4..5 } }
+        "#]],
     );
 
     synth_expr(
@@ -437,7 +444,9 @@ fn synth_fun_lit() {
         "fun(x) => x",
         expect![[r#"
             expr:	fun(x: ?0) => x
-            r#type:	?0 -> ?0"#]],
+            r#type:	?0 -> ?0
+            UnsolvedMeta { source: PatType { span: 4..5 } }
+        "#]],
     );
     synth_expr(
         "fun(x: Int) => x",
