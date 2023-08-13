@@ -6,7 +6,7 @@ use pion_utils::location::ByteSpan;
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
 use crate::pretty;
-use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv};
+use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv, ZonkEnv};
 use crate::syntax::{BinderInfo, Expr, Type, Value};
 
 mod diagnostics;
@@ -70,6 +70,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     pub fn quote_env(&self) -> QuoteEnv<'core, 'core, '_> {
         QuoteEnv::new(self.bump, self.elim_env(), self.local_env.values.len())
+    }
+
+    pub fn zonk_env<'out>(&mut self, bump: &'out bumpalo::Bump) -> ZonkEnv<'core, '_, 'out> {
+        ZonkEnv::new(bump, self.eval_env())
     }
 
     pub fn unifiy_ctx(&mut self) -> UnifyCtx<'core, '_> {

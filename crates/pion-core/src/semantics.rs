@@ -1,6 +1,7 @@
 // FIXME: why doesn't clippy respect `cargo.toml` for this lint?
 #![allow(clippy::option_if_let_else)]
 
+use either::*;
 use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 
@@ -379,4 +380,133 @@ impl<'out, 'core, 'env> QuoteEnv<'out, 'core, 'env> {
 
     fn push_local(&mut self) { self.local_env.push(); }
     fn pop_local(&mut self) { self.local_env.pop(); }
+}
+
+pub struct ZonkEnv<'core, 'env, 'out> {
+    bump: &'out bumpalo::Bump,
+    eval_env: EvalEnv<'core, 'env>,
+}
+
+impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
+    pub fn new(bump: &'out bumpalo::Bump, eval_env: EvalEnv<'core, 'env>) -> Self {
+        Self { bump, eval_env }
+    }
+
+    fn quote_env(&self) -> QuoteEnv<'out, 'core, 'env> {
+        QuoteEnv::new(
+            self.bump,
+            self.eval_env.elim_env,
+            self.eval_env.local_values.len(),
+        )
+    }
+
+    pub fn zonk(&mut self, expr: &Expr<'core>) -> Expr<'out> {
+        match expr {
+            Expr::Error => Expr::Error,
+            Expr::Lit(lit) => Expr::Lit(*lit),
+            Expr::Prim(prim) => Expr::Prim(*prim),
+            Expr::Local(var) => Expr::Local(*var),
+            Expr::InsertedMeta(var, infos) => match self.eval_env.elim_env.get_meta(*var) {
+                Some(value) => {
+                    let value = self.eval_env.apply_binder_infos(value.clone(), infos);
+                    self.quote_env().quote(&value)
+                }
+                None => Expr::InsertedMeta(*var, self.bump.alloc_slice_copy(infos)),
+            },
+            // These exprs might be elimination spines with metavariables at
+            // their head that need to be unfolded.
+            Expr::Meta(..) | Expr::FunApp(..) | Expr::FieldProj(..) | Expr::Match(..) => {
+                match self.zonk_meta_var_spines(expr) {
+                    Left(expr) => expr,
+                    Right(value) => self.quote_env().quote(&value),
+                }
+            }
+            Expr::Let(name, (r#type, init, body)) => {
+                let r#type = self.zonk(r#type);
+                let init = self.zonk(init);
+                let body = self.zonk_with_local(body);
+                Expr::r#let(self.bump, *name, r#type, init, body)
+            }
+            Expr::FunLit(plicity, name, (domain, body)) => {
+                let domain = self.zonk(domain);
+                let body = self.zonk_with_local(body);
+                Expr::fun_lit(self.bump, *plicity, *name, domain, body)
+            }
+            Expr::FunType(plicity, name, (domain, codomain)) => {
+                let domain = self.zonk(domain);
+                let codomain = self.zonk_with_local(codomain);
+                Expr::fun_type(self.bump, *plicity, *name, domain, codomain)
+            }
+            Expr::ArrayLit(exprs) => Expr::ArrayLit(
+                (self.bump).alloc_slice_fill_iter(exprs.iter().map(|expr| self.zonk(expr))),
+            ),
+            Expr::RecordType(labels, types) => {
+                let len = self.eval_env.local_values.len();
+                let types = self.bump.alloc_slice_fill_iter(types.iter().map(|r#type| {
+                    let r#type = self.zonk(r#type);
+                    let var = Value::local(self.eval_env.local_values.len().to_level());
+                    self.eval_env.local_values.push(var);
+                    r#type
+                }));
+                self.eval_env.local_values.truncate(len);
+                Expr::RecordType(self.bump.alloc_slice_copy(labels), types)
+            }
+            Expr::RecordLit(labels, exprs) => Expr::RecordLit(
+                self.bump.alloc_slice_copy(labels),
+                (self.bump).alloc_slice_fill_iter(exprs.iter().map(|expr| self.zonk(expr))),
+            ),
+        }
+    }
+
+    fn zonk_with_local(&mut self, expr: &Expr<'core>) -> Expr<'out> {
+        self.eval_env
+            .local_values
+            .push(Value::local(self.eval_env.local_values.len().to_level()));
+        let ret = self.zonk(expr);
+        self.eval_env.local_values.pop();
+        ret
+    }
+
+    /// Unfold elimination spines with solved metavariables at their head.
+    pub fn zonk_meta_var_spines(&mut self, expr: &Expr<'core>) -> Either<Expr<'out>, Value<'core>> {
+        match expr {
+            Expr::Meta(var) => match self.eval_env.elim_env.get_meta(*var) {
+                None => Left(Expr::Meta(*var)),
+                Some(value) => Right(value.clone()),
+            },
+            Expr::InsertedMeta(var, infos) => match self.eval_env.elim_env.get_meta(*var) {
+                None => Left(Expr::InsertedMeta(*var, self.bump.alloc_slice_copy(infos))),
+                Some(value) => Right(self.eval_env.apply_binder_infos(value.clone(), infos)),
+            },
+            Expr::FunApp(plicity, (fun, arg)) => match self.zonk_meta_var_spines(fun) {
+                Left(fun_expr) => {
+                    let arg_expr = self.zonk(arg);
+                    Left(Expr::fun_app(self.bump, *plicity, fun_expr, arg_expr))
+                }
+                Right(fun_value) => {
+                    let arg_value = self.eval_env.eval(arg);
+                    Right((self.eval_env.elim_env).fun_app(*plicity, fun_value, arg_value))
+                }
+            },
+            Expr::FieldProj(scrut, label) => match self.zonk_meta_var_spines(scrut) {
+                Left(scrut_expr) => Left(Expr::field_proj(self.bump, scrut_expr, *label)),
+                Right(scrut_value) => Right(self.eval_env.elim_env.field_proj(scrut_value, *label)),
+            },
+            Expr::Match((scrut, default), cases) => match self.zonk_meta_var_spines(scrut) {
+                Left(scrut_expr) => {
+                    let cases = self.bump.alloc_slice_fill_iter(
+                        cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
+                    );
+                    let default_expr =
+                        default.map(|(name, expr)| (name, self.zonk_with_local(&expr)));
+                    Left(Expr::r#match(self.bump, scrut_expr, cases, default_expr))
+                }
+                Right(scrut_value) => {
+                    let cases = Cases::new(self.eval_env.local_values.clone(), cases, default);
+                    Right(self.eval_env.elim_env.match_scrut(scrut_value, cases))
+                }
+            },
+            expr => Left(self.zonk(expr)),
+        }
+    }
 }

@@ -24,6 +24,9 @@ fn synth_expr(src: &str, expected: Expect) {
     let Synth(expr, r#type) = elab_ctx.synth_expr(expr);
     let r#type = elab_ctx.quote_env().quote(&r#type);
 
+    let expr = elab_ctx.zonk_env(&bump).zonk(&expr);
+    let r#type = elab_ctx.zonk_env(&bump).zonk(&r#type);
+
     let pretty_ctx = PrettyCtx::new(
         &bump,
         &mut elab_ctx.local_env.names,
@@ -127,7 +130,7 @@ fn synth_let() {
     synth_expr(
         "let x = 5; x",
         expect![[r#"
-            expr:	let x: ?0 = 5;
+            expr:	let x: Int = 5;
             x
             r#type:	Int"#]],
     );
@@ -145,7 +148,7 @@ fn check_let() {
     synth_expr(
         "((let x = 5; x): Int)",
         expect![[r#"
-            expr:	let x: ?0 = 5;
+            expr:	let x: Int = 5;
             x
             r#type:	Int"#]],
     );
@@ -476,14 +479,14 @@ fn synth_fun_app() {
         synth_expr(
             "let f = fun() => 0; f()",
             expect![[r#"
-                expr:	let f: ?0 = fun(_: ()) => 0;
+                expr:	let f: () -> Int = fun(_: ()) => 0;
                 f(())
                 r#type:	Int"#]],
         );
         synth_expr(
             "let f = fun(x: Int) => 0; f()",
             expect![[r#"
-                expr:	let f: ?0 = fun(x: Int) => 0;
+                expr:	let f: Int -> Int = fun(x: Int) => 0;
                 f
                 r#type:	Int -> Int
                 FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "Int -> Int" }
@@ -561,8 +564,8 @@ fn insert_implicit_args() {
 let id = fun (@A: Type, a: A) => a;
 id(false)",
         expect![[r#"
-            expr:	let id: ?0 = fun(@A: Type, a: A) => a;
-            id(@?1, false)
+            expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+            id(@Bool, false)
             r#type:	Bool"#]],
     );
     synth_expr(
@@ -570,8 +573,8 @@ id(false)",
 let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
 always(0, false)",
         expect![[r#"
-            expr:	let always: ?0 = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            always(@?1, @?2, 0, false)
+            expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            always(@Int, @Bool, 0, false)
             r#type:	Int"#]],
     );
 
@@ -581,9 +584,9 @@ let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
 let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 apply(always(false), 0)",
         expect![[r#"
-            expr:	let always: ?0 = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            let apply: ?1 = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
-            apply(@?2, @?3, always(@?4, @?5, false), 0)
+            expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+            apply(@Int, @Bool, always(@Bool, @Int, false), 0)
             r#type:	Bool"#]],
     );
 }
@@ -596,8 +599,8 @@ let id = fun(@A: Type, a: A) => a;
 (id : Bool -> Bool)
     ",
         expect![[r#"
-            expr:	let id: ?0 = fun(@A: Type, a: A) => a;
-            id(@?1)
+            expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+            id(@Bool)
             r#type:	Bool -> Bool"#]],
     );
     synth_expr(
@@ -607,7 +610,7 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
     ",
         expect![[r#"
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            always(@?0, @?1)
+            always(@Bool, @Int)
             r#type:	Bool -> Int -> Bool"#]],
     );
     synth_expr(
@@ -616,8 +619,8 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 (apply : ((Bool -> Int) -> Bool -> Int))
     ",
         expect![[r#"
-            expr:	let apply: ?0 = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
-            apply(@?1, @?2)
+            expr:	let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+            apply(@Bool, @Int)
             r#type:	(Bool -> Int) -> Bool -> Int"#]],
     );
 }
