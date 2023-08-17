@@ -15,5 +15,6 @@ pion-utils           = { path = "../pion-utils" }
 
 anyhow             = { workspace = true }
 bumpalo            = { workspace = true }
+camino             = { workspace = true }
 clap               = { version = "4.3.12", features = ["derive"] }
 codespan-reporting = { workspace = true }

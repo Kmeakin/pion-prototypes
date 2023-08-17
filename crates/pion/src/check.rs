@@ -1,10 +1,12 @@
 use anyhow::bail;
+use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::Severity;
 use pion_utils::source::{SourceFile, SourceMap};
 
 #[derive(clap::Args)]
 pub struct Args {
-    files: Vec<String>,
+    #[arg(required = true)]
+    files: Vec<Utf8PathBuf>,
 }
 
 fn stop_if_errors(error_count: u32) -> anyhow::Result<()> {
