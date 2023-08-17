@@ -22,7 +22,6 @@ pub enum Prec {
 
 impl Prec {
     pub const MAX: Self = Self::Let;
-    pub const MIN: Self = Self::Atom;
 }
 
 pub struct PrettyCtx<'pretty, 'env> {
@@ -42,6 +41,19 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             local_names: RefCell::new(local_names),
             meta_sources,
         }
+    }
+
+    pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty, 'env> {
+        let r#type = self.expr(&def.r#type, Prec::MAX);
+        let expr = self.expr(&def.expr, Prec::MAX);
+
+        self.text("def ")
+            .append(self.ident(def.name))
+            .append(": ")
+            .append(r#type)
+            .append(" = ")
+            .append(expr)
+            .append(";")
     }
 
     #[allow(clippy::too_many_lines)]

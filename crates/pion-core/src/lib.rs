@@ -4,3 +4,5 @@ mod pretty;
 mod prim;
 mod semantics;
 pub mod syntax;
+
+pub mod dump;

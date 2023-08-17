@@ -3,6 +3,8 @@ use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::Severity;
 use pion_utils::source::{SourceFile, SourceMap};
 
+use crate::DumpFlags;
+
 #[derive(Debug, clap::Args)]
 pub struct CheckArgs {
     #[arg(required = true)]
@@ -17,7 +19,7 @@ fn stop_if_errors(error_count: u32) -> anyhow::Result<()> {
     }
 }
 
-pub fn run(args: CheckArgs) -> anyhow::Result<()> {
+pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
     let mut source_map = SourceMap::new();
     let mut error_count = 0;
 
@@ -36,7 +38,10 @@ pub fn run(args: CheckArgs) -> anyhow::Result<()> {
     stop_if_errors(error_count)?;
 
     let bump = bumpalo::Bump::new();
-    let mut writer = codespan_reporting::term::termcolor::StandardStream::stderr(
+    let mut stderr = codespan_reporting::term::termcolor::StandardStream::stderr(
+        codespan_reporting::term::termcolor::ColorChoice::Auto,
+    );
+    let mut stdout = codespan_reporting::term::termcolor::StandardStream::stdout(
         codespan_reporting::term::termcolor::ColorChoice::Auto,
     );
     let config = codespan_reporting::term::Config::default();
@@ -50,7 +55,7 @@ pub fn run(args: CheckArgs) -> anyhow::Result<()> {
             if diagnostic.severity >= Severity::Error {
                 error_count += 1;
             }
-            codespan_reporting::term::emit(&mut writer, &config, &source_map, &diagnostic)?;
+            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
         }
 
         let (hir_module, syntax_map, diagnostics) =
@@ -61,18 +66,22 @@ pub fn run(args: CheckArgs) -> anyhow::Result<()> {
             if diagnostic.severity >= Severity::Error {
                 error_count += 1;
             }
-            codespan_reporting::term::emit(&mut writer, &config, &source_map, &diagnostic)?;
+            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
         }
 
-        let (_core_module, diagnostics) =
+        let (core_module, diagnostics) =
             pion_core::elab::elab_module(&bump, &syntax_map, &hir_module);
+
+        if dump_flags.core {
+            pion_core::dump::dump_module(&mut stdout, &core_module)?;
+        }
 
         for diag in diagnostics {
             let diagnostic = diag.to_diagnostic(file_id);
             if diagnostic.severity >= Severity::Error {
                 error_count += 1;
             }
-            codespan_reporting::term::emit(&mut writer, &config, &source_map, &diagnostic)?;
+            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
         }
     }
 
