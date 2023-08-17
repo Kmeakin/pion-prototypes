@@ -3,13 +3,14 @@ use clap::{Parser, Subcommand};
 pub mod check;
 
 #[derive(Parser)]
-pub struct Args {
+#[command(author, about)]
+pub struct Cli {
     #[clap(subcommand)]
     pub command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
-    Check(check::Args),
+    Check(check::CheckArgs),
     LanguageServer,
 }

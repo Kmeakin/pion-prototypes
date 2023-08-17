@@ -3,8 +3,8 @@ use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::Severity;
 use pion_utils::source::{SourceFile, SourceMap};
 
-#[derive(clap::Args)]
-pub struct Args {
+#[derive(Debug, clap::Args)]
+pub struct CheckArgs {
     #[arg(required = true)]
     files: Vec<Utf8PathBuf>,
 }
@@ -17,7 +17,7 @@ fn stop_if_errors(error_count: u32) -> anyhow::Result<()> {
     }
 }
 
-pub fn run(args: Args) -> anyhow::Result<()> {
+pub fn run(args: CheckArgs) -> anyhow::Result<()> {
     let mut source_map = SourceMap::new();
     let mut error_count = 0;
 
