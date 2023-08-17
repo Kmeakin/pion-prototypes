@@ -274,6 +274,8 @@ impl<'core> MetaEnv<'core> {
 
     fn len(&self) -> EnvLen { self.sources.len() }
 
+    fn is_empty(&self) -> bool { self.sources.is_empty() }
+
     fn reserve(&mut self, amount: usize) {
         self.sources.reserve(amount);
         self.types.reserve(amount);

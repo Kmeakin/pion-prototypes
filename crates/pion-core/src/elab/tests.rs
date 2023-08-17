@@ -35,7 +35,35 @@ fn synth_expr(src: &str, expected: Expect) {
     let expr = pretty_ctx.expr(&expr, Prec::MAX);
     let r#type = pretty_ctx.expr(&r#type, Prec::MAX);
 
-    let mut actual = format!("expr:\t{}\nr#type:\t{}", expr.pretty(80), r#type.pretty(80));
+    let mut actual = format!(
+        "expr:\t{}\nr#type:\t{}\n",
+        expr.pretty(80),
+        r#type.pretty(80)
+    );
+
+    drop(pretty_ctx);
+
+    if !elab_ctx.meta_env.is_empty() {
+        writeln!(actual, "metavars:");
+        for (idx, entry) in elab_ctx.meta_env.iter().enumerate() {
+            match entry.value {
+                None => writeln!(actual, "?{idx} = #unsolved").unwrap(),
+                Some(value) => {
+                    let expr = elab_ctx.quote_env().quote(value);
+
+                    let pretty_ctx = PrettyCtx::new(
+                        &bump,
+                        &mut elab_ctx.local_env.names,
+                        &elab_ctx.meta_env.sources,
+                    );
+                    let expr = pretty_ctx.expr(&expr, Prec::MAX);
+
+                    writeln!(actual, "?{idx} = {}", expr.pretty(80)).unwrap();
+                }
+            }
+        }
+    }
+
     let diagnostics = elab_ctx.finish();
 
     if !diagnostics.is_empty() {
@@ -53,15 +81,17 @@ fn synth_bool_lit() {
     synth_expr(
         "true",
         expect![[r#"
-    expr:	true
-    r#type:	Bool"#]],
+            expr:	true
+            r#type:	Bool
+        "#]],
     );
 
     synth_expr(
         "false",
         expect![[r#"
             expr:	false
-            r#type:	Bool"#]],
+            r#type:	Bool
+        "#]],
     );
 }
 
@@ -71,7 +101,8 @@ fn synth_int_lit() {
         "0",
         expect![[r#"
             expr:	0
-            r#type:	Int"#]],
+            r#type:	Int
+        "#]],
     );
 }
 
@@ -80,26 +111,30 @@ fn synth_prims() {
     synth_expr(
         "Type",
         expect![[r#"
-        expr:	Type
-        r#type:	Type"#]],
+            expr:	Type
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "Int",
         expect![[r#"
-        expr:	Int
-        r#type:	Type"#]],
+            expr:	Int
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "Bool",
         expect![[r#"
-        expr:	Bool
-        r#type:	Type"#]],
+            expr:	Bool
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "Array",
         expect![[r#"
             expr:	Array
-            r#type:	Type -> Int -> Type"#]],
+            r#type:	Type -> Int -> Type
+        "#]],
     );
 }
 
@@ -110,6 +145,10 @@ fn synth_underscore() {
         expect![[r#"
             expr:	?1
             r#type:	?0
+            metavars:
+            ?0 = #unsolved
+            ?1 = #unsolved
+
             UnsolvedMeta { source: UnderscoreExpr { span: 0..1 } }
         "#]],
     );
@@ -122,6 +161,7 @@ fn unbound_name() {
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             UnboundName { span: 0..7, name: Symbol("unbound") }
         "#]],
     );
@@ -134,14 +174,18 @@ fn synth_let() {
         expect![[r#"
             expr:	let x: Int = 5;
             x
-            r#type:	Int"#]],
+            r#type:	Int
+            metavars:
+            ?0 = Int
+        "#]],
     );
     synth_expr(
         "let x: Int = 5; x",
         expect![[r#"
             expr:	let x: Int = 5;
             x
-            r#type:	Int"#]],
+            r#type:	Int
+        "#]],
     );
 }
 
@@ -152,7 +196,10 @@ fn check_let() {
         expect![[r#"
             expr:	let x: Int = 5;
             x
-            r#type:	Int"#]],
+            r#type:	Int
+            metavars:
+            ?0 = Int
+        "#]],
     );
 }
 
@@ -165,6 +212,9 @@ fn synth_array_lit() {
             expect![[r#"
                 expr:	[]
                 r#type:	Array(?0, 0)
+                metavars:
+                ?0 = #unsolved
+
                 UnsolvedMeta { source: EmptyArrayElemType { span: 0..2 } }
             "#]],
         );
@@ -173,7 +223,8 @@ fn synth_array_lit() {
         "[1,2,3]",
         expect![[r#"
             expr:	[1, 2, 3]
-            r#type:	Array(Int, 3)"#]],
+            r#type:	Array(Int, 3)
+        "#]],
     );
 }
 
@@ -183,25 +234,35 @@ fn check_array_lit() {
         "([] : Array(Int, 0))",
         expect![[r#"
             expr:	[]
-            r#type:	Array(Int, 0)"#]],
+            r#type:	Array(Int, 0)
+        "#]],
     );
     synth_expr(
         "([1] : Array(Int, 1))",
         expect![[r#"
             expr:	[1]
-            r#type:	Array(Int, 1)"#]],
+            r#type:	Array(Int, 1)
+        "#]],
     );
     synth_expr(
         "([1] : Array(_, 1))",
         expect![[r#"
             expr:	[1]
-            r#type:	Array(Int, 1)"#]],
+            r#type:	Array(Int, 1)
+            metavars:
+            ?0 = Type
+            ?1 = Int
+        "#]],
     );
     synth_expr(
         "([1] : Array(_, 2))",
         expect![[r#"
             expr:	#error
             r#type:	Array(?1, 2)
+            metavars:
+            ?0 = Type
+            ?1 = #unsolved
+
             ArrayLenMismatch { span: 1..4, expected_len: 2, actual_len: 1 }
             UnsolvedMeta { source: UnderscoreExpr { span: 13..14 } }
         "#]],
@@ -214,25 +275,29 @@ fn synth_tuple_lit() {
         "()",
         expect![[r#"
             expr:	()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
     synth_expr(
         "(1,)",
         expect![[r#"
             expr:	(1,)
-            r#type:	(Int,)"#]],
+            r#type:	(Int,)
+        "#]],
     );
     synth_expr(
         "(1,true)",
         expect![[r#"
             expr:	(1, true)
-            r#type:	(Int, Bool)"#]],
+            r#type:	(Int, Bool)
+        "#]],
     );
     synth_expr(
         "(1,true,false)",
         expect![[r#"
             expr:	(1, true, false)
-            r#type:	(Int, Bool, Bool)"#]],
+            r#type:	(Int, Bool, Bool)
+        "#]],
     );
 }
 
@@ -242,38 +307,44 @@ fn check_tuple_lit() {
         "((): Type)",
         expect![[r#"
             expr:	()
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "((Int,): Type)",
         expect![[r#"
             expr:	(Int,)
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "((Int,Bool): Type)",
         expect![[r#"
             expr:	(Int, Bool)
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
 
     synth_expr(
         "((): ())",
         expect![[r#"
             expr:	()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
     synth_expr(
         "((1,): (Int,))",
         expect![[r#"
             expr:	(1,)
-            r#type:	(Int,)"#]],
+            r#type:	(Int,)
+        "#]],
     );
     synth_expr(
         "((1,false): (Int,Bool))",
         expect![[r#"
             expr:	(1, false)
-            r#type:	(Int, Bool)"#]],
+            r#type:	(Int, Bool)
+        "#]],
     );
 }
 
@@ -283,19 +354,22 @@ fn synth_record_type() {
         "{x:Int}",
         expect![[r#"
             expr:	{x: Int}
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "{A:Type, a:A}",
         expect![[r#"
             expr:	{A: Type, a: A}
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "{x:Int, y:Bool, z:Type}",
         expect![[r#"
             expr:	{x: Int, y: Bool, z: Type}
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
 }
 
@@ -305,25 +379,29 @@ fn synth_record_lit() {
         "{}",
         expect![[r#"
             expr:	()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
     synth_expr(
         "{x=1}",
         expect![[r#"
             expr:	{x = 1}
-            r#type:	{x: Int}"#]],
+            r#type:	{x: Int}
+        "#]],
     );
     synth_expr(
         "{x=1, y=false}",
         expect![[r#"
             expr:	{x = 1, y = false}
-            r#type:	{x: Int, y: Bool}"#]],
+            r#type:	{x: Int, y: Bool}
+        "#]],
     );
     synth_expr(
         "{x=1, y=false, z=true}",
         expect![[r#"
             expr:	{x = 1, y = false, z = true}
-            r#type:	{x: Int, y: Bool, z: Bool}"#]],
+            r#type:	{x: Int, y: Bool, z: Bool}
+        "#]],
     );
 }
 
@@ -332,8 +410,9 @@ fn check_record_lit() {
     synth_expr(
         "({x=1, y=false}: {x:Int, y: Bool})",
         expect![[r#"
-    expr:	{x = 1, y = false}
-    r#type:	{x: Int, y: Bool}"#]],
+            expr:	{x = 1, y = false}
+            r#type:	{x: Int, y: Bool}
+        "#]],
     );
 }
 
@@ -342,26 +421,30 @@ fn synth_field_proj() {
     synth_expr(
         "{x=5}.x",
         expect![[r#"
-    expr:	{x = 5}.x
-    r#type:	Int"#]],
+            expr:	{x = 5}.x
+            r#type:	Int
+        "#]],
     );
     synth_expr(
         "{x=5,y=false}.x",
         expect![[r#"
             expr:	{x = 5, y = false}.x
-            r#type:	Int"#]],
+            r#type:	Int
+        "#]],
     );
     synth_expr(
         "{x=5,y=false}.y",
         expect![[r#"
             expr:	{x = 5, y = false}.y
-            r#type:	Bool"#]],
+            r#type:	Bool
+        "#]],
     );
     synth_expr(
         "{}.x",
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FieldProjNotFound { span: 0..4, scrut_type: "()", field: Symbol("x") }
         "#]],
     );
@@ -370,6 +453,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FieldProjNotFound { span: 0..7, scrut_type: "{z: Int}", field: Symbol("x") }
         "#]],
     );
@@ -378,6 +462,7 @@ fn synth_field_proj() {
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FieldProjNotRecord { span: 0..5, scrut_type: "Type", field: Symbol("x") }
         "#]],
     );
@@ -389,13 +474,15 @@ fn synth_fun_arrow() {
         "Int -> Bool",
         expect![[r#"
             expr:	Int -> Bool
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "Int -> Bool -> Type",
         expect![[r#"
             expr:	Int -> Bool -> Type
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
 }
 
@@ -407,7 +494,8 @@ fn synth_fun_type() {
             "fun() -> Int",
             expect![[r#"
                 expr:	() -> Int
-                r#type:	Type"#]],
+                r#type:	Type
+            "#]],
         );
     }
 
@@ -416,6 +504,9 @@ fn synth_fun_type() {
         expect![[r#"
             expr:	?0 -> Int
             r#type:	Type
+            metavars:
+            ?0 = #unsolved
+
             UnsolvedMeta { source: PatType { span: 4..5 } }
         "#]],
     );
@@ -424,7 +515,8 @@ fn synth_fun_type() {
         "fun(A: Type) -> A -> A",
         expect![[r#"
             expr:	fun(A: Type) -> A -> A
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
 }
 
@@ -436,7 +528,8 @@ fn synth_fun_lit() {
             "fun() => 5",
             expect![[r#"
                 expr:	fun(_: ()) => 5
-                r#type:	() -> Int"#]],
+                r#type:	() -> Int
+            "#]],
         );
     }
 
@@ -445,6 +538,9 @@ fn synth_fun_lit() {
         expect![[r#"
             expr:	fun(x: ?0) => x
             r#type:	?0 -> ?0
+            metavars:
+            ?0 = #unsolved
+
             UnsolvedMeta { source: PatType { span: 4..5 } }
         "#]],
     );
@@ -452,13 +548,15 @@ fn synth_fun_lit() {
         "fun(x: Int) => x",
         expect![[r#"
             expr:	fun(x: Int) => x
-            r#type:	Int -> Int"#]],
+            r#type:	Int -> Int
+        "#]],
     );
     synth_expr(
         "fun(A: Type, a: A) => a",
         expect![[r#"
             expr:	fun(A: Type, a: A) => a
-            r#type:	fun(A: Type) -> A -> A"#]],
+            r#type:	fun(A: Type) -> A -> A
+        "#]],
     );
 }
 
@@ -470,14 +568,16 @@ fn check_fun_lit() {
             "((fun() => 0) : (() -> Int))",
             expect![[r#"
                 expr:	fun(_: ()) => 0
-                r#type:	() -> Int"#]],
+                r#type:	() -> Int
+            "#]],
         );
     }
     synth_expr(
         "((fun(x) => false) : (Int -> Bool))",
         expect![[r#"
             expr:	fun(x: Int) => false
-            r#type:	Int -> Bool"#]],
+            r#type:	Int -> Bool
+        "#]],
     );
 }
 
@@ -490,7 +590,10 @@ fn synth_fun_app() {
             expect![[r#"
                 expr:	let f: () -> Int = fun(_: ()) => 0;
                 f(())
-                r#type:	Int"#]],
+                r#type:	Int
+                metavars:
+                ?0 = () -> Int
+            "#]],
         );
         synth_expr(
             "let f = fun(x: Int) => 0; f()",
@@ -498,6 +601,9 @@ fn synth_fun_app() {
                 expr:	let f: Int -> Int = fun(x: Int) => 0;
                 f
                 r#type:	Int -> Int
+                metavars:
+                ?0 = Int -> Int
+
                 FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "Int -> Int" }
             "#]],
         );
@@ -506,19 +612,22 @@ fn synth_fun_app() {
         "Array(Int, 5)",
         expect![[r#"
             expr:	Array(Int, 5)
-            r#type:	Type"#]],
+            r#type:	Type
+        "#]],
     );
     synth_expr(
         "Array(Int)",
         expect![[r#"
             expr:	Array(Int)
-            r#type:	Int -> Type"#]],
+            r#type:	Int -> Type
+        "#]],
     );
     synth_expr(
         "Array(@Int)",
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FunAppPlicity { call_span: 0..11, fun_type: "Type -> Int -> Type", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
         "#]],
     );
@@ -527,6 +636,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FunAppNotFun { call_span: 0..6, fun_type: "Type", num_args: 1 }
         "#]],
     );
@@ -535,6 +645,7 @@ fn synth_fun_app() {
         expect![[r#"
             expr:	#error
             r#type:	#error
+
             FunAppTooManyArgs { call_span: 0..16, fun_type: "Type -> Int -> Type", expected_arity: 2, actual_arity: 3 }
         "#]],
     );
@@ -549,7 +660,8 @@ fn synth_if() {
                 false => 0,
                 true => 1,
             }
-            r#type:	Int"#]],
+            r#type:	Int
+        "#]],
     );
 }
 
@@ -562,7 +674,8 @@ fn check_if() {
                 false => 0,
                 true => 1,
             }
-            r#type:	Int"#]],
+            r#type:	Int
+        "#]],
     );
 }
 
@@ -575,7 +688,11 @@ id(false)",
         expect![[r#"
             expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
             id(@Bool, false)
-            r#type:	Bool"#]],
+            r#type:	Bool
+            metavars:
+            ?0 = fun(@A: Type) -> A -> A
+            ?1 = Bool
+        "#]],
     );
     synth_expr(
         "
@@ -584,7 +701,12 @@ always(0, false)",
         expect![[r#"
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             always(@Int, @Bool, 0, false)
-            r#type:	Int"#]],
+            r#type:	Int
+            metavars:
+            ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
+            ?1 = Int
+            ?2 = Bool
+        "#]],
     );
 
     synth_expr(
@@ -596,7 +718,15 @@ apply(always(false), 0)",
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             apply(@Int, @Bool, always(@Bool, @Int, false), 0)
-            r#type:	Bool"#]],
+            r#type:	Bool
+            metavars:
+            ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
+            ?1 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            ?2 = Int
+            ?3 = Bool
+            ?4 = Bool
+            ?5 = Int
+        "#]],
     );
 }
 
@@ -610,7 +740,11 @@ let id = fun(@A: Type, a: A) => a;
         expect![[r#"
             expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
             id(@Bool)
-            r#type:	Bool -> Bool"#]],
+            r#type:	Bool -> Bool
+            metavars:
+            ?0 = fun(@A: Type) -> A -> A
+            ?1 = Bool
+        "#]],
     );
     synth_expr(
         "
@@ -620,7 +754,11 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
         expect![[r#"
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             always(@Bool, @Int)
-            r#type:	Bool -> Int -> Bool"#]],
+            r#type:	Bool -> Int -> Bool
+            metavars:
+            ?0 = Bool
+            ?1 = Int
+        "#]],
     );
     synth_expr(
         "
@@ -630,7 +768,12 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
         expect![[r#"
             expr:	let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             apply(@Bool, @Int)
-            r#type:	(Bool -> Int) -> Bool -> Int"#]],
+            r#type:	(Bool -> Int) -> Bool -> Int
+            metavars:
+            ?0 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            ?1 = Bool
+            ?2 = Int
+        "#]],
     );
 }
 
@@ -644,7 +787,8 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
         expect![[r#"
             expr:	let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
             ()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
 
     synth_expr(
@@ -657,7 +801,8 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             expr:	let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             ()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
 
     synth_expr(
@@ -668,6 +813,7 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
         expect![[r#"
             expr:	let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             ()
-            r#type:	()"#]],
+            r#type:	()
+        "#]],
     );
 }

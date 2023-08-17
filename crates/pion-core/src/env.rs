@@ -179,6 +179,8 @@ pub struct SliceEnv<T> {
 impl<T> SliceEnv<T> {
     pub fn len(&self) -> EnvLen { EnvLen(self.elems.len()) }
 
+    pub fn is_empty(&self) -> bool { self.elems.is_empty() }
+
     pub fn iter(&self) -> std::slice::Iter<T> { self.elems.iter() }
 
     pub fn get_level(&self, level: Level) -> Option<&T> { self.elems.get(level.0) }
