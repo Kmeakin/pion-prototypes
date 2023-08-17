@@ -43,10 +43,32 @@ pub fn run(args: CheckArgs) -> anyhow::Result<()> {
 
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
-        let (_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
+        let (surface_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
 
         for error in errors {
             let diagnostic = error.to_diagnostic(file_id);
+            if diagnostic.severity >= Severity::Error {
+                error_count += 1;
+            }
+            codespan_reporting::term::emit(&mut writer, &config, &source_map, &diagnostic)?;
+        }
+
+        let (hir_module, syntax_map, diagnostics) =
+            pion_hir::lower::lower_module(&bump, &surface_module);
+
+        for diag in diagnostics {
+            let diagnostic = diag.to_diagnostic(file_id);
+            if diagnostic.severity >= Severity::Error {
+                error_count += 1;
+            }
+            codespan_reporting::term::emit(&mut writer, &config, &source_map, &diagnostic)?;
+        }
+
+        let (_core_module, diagnostics) =
+            pion_core::elab::elab_module(&bump, &syntax_map, &hir_module);
+
+        for diag in diagnostics {
+            let diagnostic = diag.to_diagnostic(file_id);
             if diagnostic.severity >= Severity::Error {
                 error_count += 1;
             }

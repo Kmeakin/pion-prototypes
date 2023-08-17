@@ -391,7 +391,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
-                Elim::FieldProj(label) => return Err(SpineError::RecordProj(*label)),
+                Elim::FieldProj(label) => return Err(SpineError::FieldProj(*label)),
                 Elim::Match(_) => return Err(SpineError::Match),
             }
         }
@@ -630,7 +630,7 @@ pub enum SpineError {
     /// metavariable.
     NonLocalFunApp,
     /// A record projection was found in the problem spine.
-    RecordProj(Symbol),
+    FieldProj(Symbol),
     /// A match was found in the problem spine.
     Match,
 }

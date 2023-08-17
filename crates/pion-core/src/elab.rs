@@ -2,12 +2,13 @@ use std::fmt;
 
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
+use pion_utils::slice_vec::SliceVec;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
 use crate::pretty;
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv, ZonkEnv};
-use crate::syntax::{BinderInfo, Expr, Type, Value};
+use crate::syntax::*;
 
 mod diagnostics;
 mod expr;
@@ -371,4 +372,73 @@ pub fn elab_expr<'surface, 'hir, 'core>(
     let diagnostics = ctx.finish();
 
     (expr, r#type, diagnostics)
+}
+
+pub fn elab_module<'surface, 'hir, 'core>(
+    bump: &'core bumpalo::Bump,
+    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    module: &'hir pion_hir::syntax::Module<'hir>,
+) -> (Module<'core>, Vec<diagnostics::ElabDiagnostic>) {
+    let mut diagnostics = Vec::new();
+    let mut core_items = SliceVec::new(bump, module.items.len());
+
+    for item in module.items {
+        match item {
+            pion_hir::syntax::Item::Error => continue,
+            pion_hir::syntax::Item::Def(def) => {
+                let (def, diags) = elab_def(bump, syntax_map, def);
+                core_items.push(Item::Def(def));
+                diagnostics.extend(diags);
+            }
+        }
+    }
+
+    let module = Module {
+        items: core_items.into(),
+    };
+    (module, diagnostics)
+}
+
+pub fn elab_def<'surface, 'hir, 'core>(
+    bump: &'core bumpalo::Bump,
+    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    def: &'hir pion_hir::syntax::Def<'hir>,
+) -> (Def<'core>, Vec<diagnostics::ElabDiagnostic>) {
+    let mut ctx = ElabCtx::new(bump, syntax_map);
+
+    let (expr, r#type) = match &def.r#type {
+        None => {
+            let Synth(expr, r#type) = ctx.synth_expr(&def.expr);
+            let r#type = ctx.quote_env().quote(&r#type);
+
+            (expr, r#type)
+        }
+        Some(r#type) => {
+            let Check(r#type) = ctx.check_expr(r#type, &Type::TYPE);
+            let type_value = ctx.eval_env().eval(&r#type);
+            let Check(expr) = ctx.check_expr(&def.expr, &type_value);
+
+            (expr, r#type)
+        }
+    };
+    let expr = ctx.zonk_env(bump).zonk(&expr);
+    let r#type = ctx.zonk_env(bump).zonk(&r#type);
+
+    let metavars = bump.alloc_slice_fill_iter(
+        ctx.meta_env
+            .values
+            .iter()
+            .map(|value| value.as_ref().map(|value| ctx.quote_env().quote(value))),
+    );
+
+    let diagnostics = ctx.finish();
+
+    let def = Def {
+        name: def.name,
+        r#type,
+        expr,
+        metavars,
+    };
+
+    (def, diagnostics)
 }

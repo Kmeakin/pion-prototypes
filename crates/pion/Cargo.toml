@@ -8,6 +8,8 @@ version = { workspace = true }
 workspace = true
 
 [dependencies]
+pion-core            = { path = "../pion-core" }
+pion-hir             = { path = "../pion-hir" }
 pion-language-server = { path = "../pion-language-server" }
 pion-lexer           = { path = "../pion-lexer" }
 pion-surface         = { path = "../pion-surface" }

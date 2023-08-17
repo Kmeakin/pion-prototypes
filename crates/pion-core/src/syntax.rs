@@ -1,3 +1,5 @@
+use core::fmt;
+
 use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
 
@@ -5,6 +7,24 @@ use crate::env::{Index, Level, SharedEnv};
 use crate::prim::Prim;
 
 mod iterators;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Module<'core> {
+    pub items: &'core [Item<'core>],
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Item<'core> {
+    Def(Def<'core>),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Def<'core> {
+    pub name: Symbol,
+    pub r#type: Expr<'core>,
+    pub expr: Expr<'core>,
+    pub metavars: &'core [Option<Expr<'core>>],
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {
@@ -178,6 +198,15 @@ impl From<hir::Plicity> for Plicity {
         match value {
             hir::Plicity::Implicit => Self::Implicit,
             hir::Plicity::Explicit => Self::Explicit,
+        }
+    }
+}
+
+impl fmt::Display for Plicity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Implicit => f.write_str("implicit"),
+            Self::Explicit => f.write_str("explicit"),
         }
     }
 }

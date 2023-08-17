@@ -1,20 +1,30 @@
-use std::num::ParseIntError;
-
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
+
+mod diagnostics;
+pub use diagnostics::LowerDiagnostic;
 
 #[allow(clippy::wildcard_imports)]
 use crate::syntax::*;
 
+pub fn lower_module<'surface, 'hir>(
+    bump: &'hir bumpalo::Bump,
+    module: &'surface surface::Module<'surface>,
+) -> (
+    Module<'hir>,
+    LocalSyntaxMap<'surface, 'hir>,
+    Vec<LowerDiagnostic>,
+) {
+    let mut ctx = Ctx::new(bump);
+    let module = ctx.module_to_hir(module);
+    let (syntax_map, errors) = ctx.finish();
+    (module, syntax_map, errors)
+}
+
 pub struct Ctx<'surface, 'hir> {
     bump: &'hir bumpalo::Bump,
     syntax_map: LocalSyntaxMap<'surface, 'hir>,
-    errors: Vec<LowerError>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum LowerError {
-    ParseInt(ByteSpan, ParseIntError),
+    diagnostics: Vec<LowerDiagnostic>,
 }
 
 // Creation and destruction
@@ -23,18 +33,18 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         Self {
             bump,
             syntax_map: LocalSyntaxMap::new(),
-            errors: Vec::new(),
+            diagnostics: Vec::new(),
         }
     }
 
-    pub fn finish(self) -> (LocalSyntaxMap<'surface, 'hir>, Vec<LowerError>) {
-        (self.syntax_map, self.errors)
+    pub fn finish(self) -> (LocalSyntaxMap<'surface, 'hir>, Vec<LowerDiagnostic>) {
+        (self.syntax_map, self.diagnostics)
     }
 }
 
 // Modules and items
 impl<'surface, 'hir> Ctx<'surface, 'hir> {
-    pub fn module_to_hir(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
+    fn module_to_hir(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
         let items = self.lower_items(module.items);
         Module { items }
     }
@@ -375,7 +385,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         match u32::from_str_radix(s, radix) {
             Ok(int) => Ok(int),
             Err(error) => {
-                self.errors.push(LowerError::ParseInt(span, error));
+                self.diagnostics
+                    .push(LowerDiagnostic::ParseIntError(span, error));
                 Err(())
             }
         }

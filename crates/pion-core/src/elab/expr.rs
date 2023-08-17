@@ -275,12 +275,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             return SynthExpr::new(expr, r#type);
                         }
                         Value::FunType(Plicity::Explicit, _, domain, _) => {
-                            let domain_type = self.pretty_value(domain);
                             let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppEmptyArgsMismatch {
                                 call_span,
                                 fun_type,
-                                domain_type,
                             });
                         }
                         _ => {
@@ -288,7 +286,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
                                 call_span,
                                 fun_type,
-                                num_args: args.len(),
                             });
                             return SynthExpr::ERROR;
                         }
@@ -330,7 +327,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
                                 call_span,
                                 fun_type,
-                                num_args: args.len(),
                             });
                             return SynthExpr::ERROR;
                         }
