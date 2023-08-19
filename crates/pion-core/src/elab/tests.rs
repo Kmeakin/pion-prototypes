@@ -150,8 +150,8 @@ fn synth_let() {
     synth_expr(
         "let x = 5; x",
         expect![[r#"
-            (let x: Int = 5;
-            x : Int)
+            ((let x: Int = 5;
+            x) : Int)
             metavars:
             ?0 = Int
             types of expressions:
@@ -165,8 +165,8 @@ fn synth_let() {
     synth_expr(
         "let x: Int = 5; x",
         expect![[r#"
-            (let x: Int = 5;
-            x : Int)
+            ((let x: Int = 5;
+            x) : Int)
             types of expressions:
             7..10 = Type
             13..14 = Int
@@ -183,8 +183,8 @@ fn check_let() {
     synth_expr(
         "((let x = 5; x): Int)",
         expect![[r#"
-            (let x: Int = 5;
-            x : Int)
+            ((let x: Int = 5;
+            x) : Int)
             metavars:
             ?0 = Int
             types of expressions:
@@ -587,7 +587,7 @@ fn synth_fun_arrow() {
     synth_expr(
         "Int -> Bool",
         expect![[r#"
-            (Int -> Bool : Type)
+            ((Int -> Bool) : Type)
             types of expressions:
             0..3 = Type
             7..11 = Type
@@ -597,7 +597,7 @@ fn synth_fun_arrow() {
     synth_expr(
         "Int -> Bool -> Type",
         expect![[r#"
-            (Int -> Bool -> Type : Type)
+            ((Int -> Bool -> Type) : Type)
             types of expressions:
             7..11 = Type
             15..19 = Type
@@ -615,7 +615,7 @@ fn synth_fun_type() {
         synth_expr(
             "fun() -> Int",
             expect![[r#"
-                (() -> Int : Type)
+                ((() -> Int) : Type)
                 types of expressions:
                 9..12 = Type
                 0..12 = Type
@@ -626,7 +626,7 @@ fn synth_fun_type() {
     synth_expr(
         "fun(x) -> Int",
         expect![[r#"
-            (?0 -> Int : Type)
+            ((?0 -> Int) : Type)
             metavars:
             ?0 = <unsolved>
             types of expressions:
@@ -643,7 +643,7 @@ fn synth_fun_type() {
     synth_expr(
         "fun(A: Type) -> A -> A",
         expect![[r#"
-            (fun(A: Type) -> A -> A : Type)
+            ((fun(A: Type) -> A -> A) : Type)
             types of expressions:
             7..11 = Type
             16..17 = Type
@@ -663,7 +663,7 @@ fn synth_fun_lit() {
         synth_expr(
             "fun() => 5",
             expect![[r#"
-                (fun(_: ()) => 5 : () -> Int)
+                ((fun(_: ()) => 5) : () -> Int)
                 types of expressions:
                 9..10 = Int
                 0..10 = () -> Int
@@ -674,7 +674,7 @@ fn synth_fun_lit() {
     synth_expr(
         "fun(x) => x",
         expect![[r#"
-            (fun(x: ?0) => x : ?0 -> ?0)
+            ((fun(x: ?0) => x) : ?0 -> ?0)
             metavars:
             ?0 = <unsolved>
             types of expressions:
@@ -690,7 +690,7 @@ fn synth_fun_lit() {
     synth_expr(
         "fun(x: Int) => x",
         expect![[r#"
-            (fun(x: Int) => x : Int -> Int)
+            ((fun(x: Int) => x) : Int -> Int)
             types of expressions:
             7..10 = Type
             15..16 = Int
@@ -702,7 +702,7 @@ fn synth_fun_lit() {
     synth_expr(
         "fun(A: Type, a: A) => a",
         expect![[r#"
-            (fun(A: Type, a: A) => a : fun(A: Type) -> A -> A)
+            ((fun(A: Type, a: A) => a) : fun(A: Type) -> A -> A)
             types of expressions:
             7..11 = Type
             16..17 = Type
@@ -722,7 +722,7 @@ fn check_fun_lit() {
         synth_expr(
             "((fun() => 0) : (() -> Int))",
             expect![[r#"
-                (fun(_: ()) => 0 : () -> Int)
+                ((fun(_: ()) => 0) : () -> Int)
                 types of expressions:
                 11..12 = Int
                 17..19 = Type
@@ -736,7 +736,7 @@ fn check_fun_lit() {
     synth_expr(
         "((fun(x) => false) : (Int -> Bool))",
         expect![[r#"
-            (fun(x: Int) => false : Int -> Bool)
+            ((fun(x: Int) => false) : Int -> Bool)
             types of expressions:
             12..17 = Bool
             22..25 = Type
@@ -757,8 +757,8 @@ fn synth_fun_app() {
         synth_expr(
             "let f = fun() => 0; f()",
             expect![[r#"
-                (let f: () -> Int = fun(_: ()) => 0;
-                f(()) : Int)
+                ((let f: () -> Int = fun(_: ()) => 0;
+                f(())) : Int)
                 metavars:
                 ?0 = () -> Int
                 types of expressions:
@@ -774,8 +774,8 @@ fn synth_fun_app() {
         synth_expr(
             "let f = fun(x: Int) => 0; f()",
             expect![[r#"
-                (let f: Int -> Int = fun(x: Int) => 0;
-                f : Int -> Int)
+                ((let f: Int -> Int = fun(x: Int) => 0;
+                f) : Int -> Int)
                 metavars:
                 ?0 = Int -> Int
                 types of expressions:
@@ -797,7 +797,7 @@ fn synth_fun_app() {
     synth_expr(
         "Array(Int, 5)",
         expect![[r#"
-            (Array(Int, 5) : Type)
+            ((Array(Int, 5)) : Type)
             types of expressions:
             0..5 = Type -> Int -> Type
             6..9 = Type
@@ -808,7 +808,7 @@ fn synth_fun_app() {
     synth_expr(
         "Array(Int)",
         expect![[r#"
-            (Array(Int) : Int -> Type)
+            ((Array(Int)) : Int -> Type)
             types of expressions:
             0..5 = Type -> Int -> Type
             6..9 = Type
@@ -903,8 +903,8 @@ fn insert_implicit_args() {
 let id = fun (@A: Type, a: A) => a;
 id(false)",
         expect![[r#"
-            (let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
-            id(@Bool, false) : Bool)
+            ((let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+            id(@Bool, false)) : Bool)
             metavars:
             ?0 = fun(@A: Type) -> A -> A
             ?1 = Bool
@@ -928,8 +928,8 @@ id(false)",
 let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
 always(0, false)",
         expect![[r#"
-            (let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            always(@Int, @Bool, 0, false) : Int)
+            ((let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            always(@Int, @Bool, 0, false)) : Int)
             metavars:
             ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
             ?1 = Int
@@ -961,9 +961,9 @@ let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
 let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 apply(always(false), 0)",
         expect![[r#"
-            (let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            ((let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
-            apply(@Int, @Bool, always(@Bool, @Int, false), 0) : Bool)
+            apply(@Int, @Bool, always(@Bool, @Int, false), 0)) : Bool)
             metavars:
             ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
             ?1 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
@@ -974,12 +974,12 @@ apply(always(false), 0)",
             types of expressions:
             22..26 = Type
             95..101 = Type
-            56..141 = Bool
+            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
             47..48 = Type
             86..90 = Type
             112..116 = Index(2)
             124..130 = fun(@A: Type, @B: Type) -> A -> B -> A
-            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            118..141 = Bool
             41..42 = Type
             95..96 = Type
             76..80 = Type
@@ -987,14 +987,14 @@ apply(always(false), 0)",
             118..123 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             131..136 = Bool
             139..140 = Int
-            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
+            56..141 = Bool
             32..36 = Type
             53..54 = Index(3)
             100..101 = Type
             106..107 = Type
             114..115 = Index(3)
             124..137 = ?2 -> Bool
-            118..141 = Bool
+            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             1..141 = Bool
             types of patterns:
             19..20 = Type
@@ -1019,8 +1019,8 @@ let id = fun(@A: Type, a: A) => a;
 (id : Bool -> Bool)
     ",
         expect![[r#"
-            (let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
-            id(@Bool) : Bool -> Bool)
+            ((let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+            id(@Bool)) : Bool -> Bool)
             metavars:
             ?0 = fun(@A: Type) -> A -> A
             ?1 = Bool
@@ -1047,8 +1047,8 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
 (always : Bool -> Int -> Bool)
     ",
         expect![[r#"
-            (let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-            always(@Bool, @Int) : Bool -> Int -> Bool)
+            ((let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            always(@Bool, @Int)) : Bool -> Int -> Bool)
             metavars:
             ?0 = Bool
             ?1 = Int
@@ -1085,8 +1085,8 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 (apply : ((Bool -> Int) -> Bool -> Int))
     ",
         expect![[r#"
-            (let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
-            apply(@Bool, @Int) : (Bool -> Int) -> Bool -> Int)
+            ((let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+            apply(@Bool, @Int)) : (Bool -> Int) -> Bool -> Int)
             metavars:
             ?0 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             ?1 = Bool
@@ -1130,8 +1130,8 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
 {}
 ",
         expect![[r#"
-            (let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
-            () : ())
+            ((let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+            ()) : ())
             types of expressions:
             32..33 = Type
             27..33 = Type
@@ -1156,9 +1156,9 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
 {}
 ",
         expect![[r#"
-            (let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+            ((let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
-            () : ())
+            ()) : ())
             types of expressions:
             47..48 = Type
             112..120 = Type
@@ -1207,8 +1207,8 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
 {}
 ",
         expect![[r#"
-            (let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
-            () : ())
+            ((let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
+            ()) : ())
             types of expressions:
             42..43 = Type
             77..78 = Index(3)

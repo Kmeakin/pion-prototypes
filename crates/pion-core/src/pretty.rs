@@ -61,8 +61,8 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         expr: &Expr<'_>,
         r#type: &Expr<'_>,
     ) -> DocBuilder<'pretty, 'env> {
-        let expr = self.expr(expr, Prec::MAX);
-        let r#type = self.expr(r#type, Prec::MAX);
+        let expr = self.expr(expr, Prec::Proj);
+        let r#type = self.expr(r#type, Prec::Fun);
         self.text("(")
             .append(expr)
             .append(" : ")
