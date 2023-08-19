@@ -1,6 +1,6 @@
 use anyhow::bail;
 use camino::Utf8PathBuf;
-use codespan_reporting::diagnostic::Severity;
+use codespan_reporting::diagnostic::{Diagnostic, Severity};
 use pion_utils::source::{SourceFile, SourceMap};
 
 use crate::DumpFlags;
@@ -45,6 +45,12 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         codespan_reporting::term::termcolor::ColorChoice::Auto,
     );
     let config = codespan_reporting::term::Config::default();
+    let mut emit = |diagnostic: &Diagnostic<_>| {
+        if diagnostic.severity >= Severity::Error {
+            error_count += 1;
+        }
+        codespan_reporting::term::emit(&mut stderr, &config, &source_map, diagnostic)
+    };
 
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
@@ -52,10 +58,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
         for error in errors {
             let diagnostic = error.to_diagnostic(file_id);
-            if diagnostic.severity >= Severity::Error {
-                error_count += 1;
-            }
-            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
+            emit(&diagnostic)?;
         }
 
         let (hir_module, syntax_map, diagnostics) =
@@ -63,10 +66,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
         for diag in diagnostics {
             let diagnostic = diag.to_diagnostic(file_id);
-            if diagnostic.severity >= Severity::Error {
-                error_count += 1;
-            }
-            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
+            emit(&diagnostic)?;
         }
 
         let (core_module, diagnostics) =
@@ -78,10 +78,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
         for diag in diagnostics {
             let diagnostic = diag.to_diagnostic(file_id);
-            if diagnostic.severity >= Severity::Error {
-                error_count += 1;
-            }
-            codespan_reporting::term::emit(&mut stderr, &config, &source_map, &diagnostic)?;
+            emit(&diagnostic)?;
         }
     }
 
