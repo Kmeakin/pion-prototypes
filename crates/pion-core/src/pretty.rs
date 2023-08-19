@@ -80,6 +80,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 Some(Some(name)) => self.ident(*name),
                 Some(None) => self.text(format!("{var:?}")),
                 Some(None) => panic!("Referenced local variable without name: {var:?}"),
+                None => self.text(format!("{var:?}")),
                 None => panic!("Unbound local variable: {var:?}"),
             },
             Expr::Meta(var) => self
