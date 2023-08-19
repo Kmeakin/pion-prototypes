@@ -1,5 +1,8 @@
 use std::fmt;
+use std::hash::BuildHasherDefault;
 
+use nohash::IntMap;
+use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
@@ -24,6 +27,7 @@ pub struct ElabCtx<'surface, 'hir, 'core> {
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
     renaming: unify::PartialRenaming,
+    type_map: TypeMap<'hir, 'core>,
     diagnostics: Vec<diagnostics::ElabDiagnostic>,
 }
 
@@ -34,6 +38,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     ) -> Self {
         Self {
             bump,
+            type_map: TypeMap::with_capacity(syntax_map.exprs.len(), syntax_map.pats.len()),
             syntax_map,
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
@@ -42,7 +47,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
-    pub fn finish(mut self) -> Vec<diagnostics::ElabDiagnostic> {
+    pub fn finish(mut self) -> (TypeMap<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
         let meta_env = std::mem::take(&mut self.meta_env);
 
         for entry in meta_env.iter() {
@@ -60,7 +65,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
         }
 
-        self.diagnostics
+        (self.type_map, self.diagnostics)
     }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
@@ -342,6 +347,52 @@ pub enum MetaSource {
     },
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct TypeMap<'hir, 'core> {
+    pub exprs: IntMap<Identity<&'hir pion_hir::syntax::Expr<'hir>>, Expr<'core>>,
+    pub pats: IntMap<Identity<&'hir pion_hir::syntax::Pat<'hir>>, Expr<'core>>,
+}
+
+impl<'hir, 'core> TypeMap<'hir, 'core> {
+    pub fn new() -> Self { Self::default() }
+
+    pub fn with_capacity(exprs: usize, pats: usize) -> Self {
+        Self {
+            exprs: IntMap::with_capacity_and_hasher(exprs, BuildHasherDefault::default()),
+            pats: IntMap::with_capacity_and_hasher(pats, BuildHasherDefault::default()),
+        }
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.exprs.shrink_to_fit();
+        self.pats.shrink_to_fit();
+    }
+
+    pub fn insert_expr(&mut self, expr: &'hir pion_hir::syntax::Expr<'hir>, core: Expr<'core>) {
+        self.exprs.insert(Identity(expr), core);
+    }
+
+    pub fn insert_pat(&mut self, pat: &'hir pion_hir::syntax::Pat<'hir>, core: Expr<'core>) {
+        self.pats.insert(Identity(pat), core);
+    }
+}
+
+impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Expr<'hir>> for TypeMap<'hir, 'core> {
+    type Output = Expr<'core>;
+
+    fn index(&self, expr: &'hir pion_hir::syntax::Expr<'hir>) -> &Self::Output {
+        &self.exprs[&Identity(expr)]
+    }
+}
+
+impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Pat<'hir>> for TypeMap<'hir, 'core> {
+    type Output = Expr<'core>;
+
+    fn index(&self, pat: &'hir pion_hir::syntax::Pat<'hir>) -> &Self::Output {
+        &self.pats[&Identity(pat)]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Synth<'core, T>(pub T, pub Type<'core>);
 
@@ -369,16 +420,16 @@ pub fn elab_expr<'surface, 'hir, 'core>(
 
     let expr = ctx.zonk_env(bump).zonk(&expr);
     let r#type = ctx.zonk_env(bump).zonk(&r#type);
-    let diagnostics = ctx.finish();
+    let (_, diagnostics) = ctx.finish();
 
     (expr, r#type, diagnostics)
 }
 
 pub fn elab_module<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
-    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     module: &'hir pion_hir::syntax::Module<'hir>,
-) -> (Module<'core>, Vec<diagnostics::ElabDiagnostic>) {
+) -> (Module<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
     let mut diagnostics = Vec::new();
     let mut core_items = SliceVec::new(bump, module.items.len());
 
@@ -401,9 +452,9 @@ pub fn elab_module<'surface, 'hir, 'core>(
 
 pub fn elab_def<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
-    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     def: &'hir pion_hir::syntax::Def<'hir>,
-) -> (Def<'core>, Vec<diagnostics::ElabDiagnostic>) {
+) -> (Def<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
     let mut ctx = ElabCtx::new(bump, syntax_map);
 
     let (expr, r#type) = match &def.r#type {
@@ -431,13 +482,14 @@ pub fn elab_def<'surface, 'hir, 'core>(
             .map(|value| value.as_ref().map(|value| ctx.quote_env().quote(value))),
     );
 
-    let diagnostics = ctx.finish();
+    let (type_map, diagnostics) = ctx.finish();
 
     let def = Def {
         name: def.name,
         r#type,
         expr,
         metavars,
+        type_map,
     };
 
     (def, diagnostics)

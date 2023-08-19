@@ -17,7 +17,7 @@ impl<'core> CheckPat<'core> {
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn synth_pat(&mut self, pat: &'hir hir::Pat<'hir>) -> SynthPat<'core> {
-        match pat {
+        let Synth(core_pat, r#type) = match pat {
             hir::Pat::Error => SynthPat::ERROR,
             hir::Pat::Lit(lit) => {
                 let Synth(result, r#type) = expr::synth_lit(lit);
@@ -39,7 +39,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Pat::TupleLit(..) => todo!(),
             hir::Pat::RecordLit(..) => todo!(),
-        }
+        };
+
+        (self.type_map).insert_pat(pat, self.quote_env().quote(&r#type));
+        Synth(core_pat, r#type)
     }
 
     pub fn check_pat(
@@ -47,7 +50,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
     ) -> CheckPat<'core> {
-        match pat {
+        let Check(core_pat) = match pat {
             hir::Pat::Error => CheckPat::ERROR,
             hir::Pat::Underscore => CheckPat::new(Pat::Underscore),
             hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(*name)),
@@ -56,7 +59,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let Synth(pat, r#type) = self.synth_pat(pat);
                 CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
             }
-        }
+        };
+
+        (self.type_map).insert_pat(pat, self.quote_env().quote(expected));
+        Check(core_pat)
     }
 }
 

@@ -43,7 +43,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         }
     }
 
-    pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty, 'env> {
+    pub fn def(&'pretty self, def: &Def<'_, '_>) -> DocBuilder<'pretty, 'env> {
         let r#type = self.expr(&def.r#type, Prec::MAX);
         let expr = self.expr(&def.expr, Prec::MAX);
 

@@ -66,7 +66,7 @@ fn synth_expr(src: &str, expected: Expect) {
         }
     }
 
-    let diagnostics = elab_ctx.finish();
+    let (_, diagnostics) = elab_ctx.finish();
 
     if !diagnostics.is_empty() {
         writeln!(actual, "\ndiagnostics:").unwrap();
@@ -791,7 +791,7 @@ fn synth_fun_app() {
                 ?0 = Int -> Int
 
                 diagnostics:
-                FunAppEmptyArgsMismatch { call_span: 26..29, domain_type: "Int", fun_type: "Int -> Int" }
+                FunAppEmptyArgsMismatch { call_span: 26..29, fun_type: "Int -> Int" }
             "#]],
         );
     }
@@ -838,7 +838,7 @@ fn synth_fun_app() {
             #error
 
             diagnostics:
-            FunAppNotFun { call_span: 0..6, fun_type: "Type", num_args: 1 }
+            FunAppNotFun { call_span: 0..6, fun_type: "Type" }
         "#]],
     );
     synth_expr(

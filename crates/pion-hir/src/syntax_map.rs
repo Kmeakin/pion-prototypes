@@ -1,3 +1,5 @@
+use std::collections::hash_map::Iter;
+
 use nohash::IntMap;
 use pion_utils::identity::Identity;
 
@@ -35,5 +37,13 @@ impl<'surface, 'hir, Surface, Hir> SyntaxMap<'surface, 'hir, Surface, Hir> {
 
     pub fn hir(&self, surface: &'surface Surface) -> Option<&'hir Hir> {
         self.surface_to_hir.get(&Identity(surface)).copied()
+    }
+
+    pub fn len(&self) -> usize { self.surface_to_hir.len() }
+
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    pub fn iter(&self) -> Iter<'_, Identity<&'surface Surface>, &'hir Hir> {
+        self.surface_to_hir.iter()
     }
 }

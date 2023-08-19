@@ -23,7 +23,7 @@ impl<'core> CheckExpr<'core> {
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     #[allow(clippy::too_many_lines)]
     pub fn synth_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> SynthExpr<'core> {
-        match expr {
+        let Synth(core_expr, r#type) = (|| match expr {
             hir::Expr::Error => SynthExpr::ERROR,
             hir::Expr::Lit(lit) => {
                 let Synth(result, r#type) = synth_lit(lit);
@@ -353,7 +353,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
                 SynthExpr::new(expr, then_type)
             }
-        }
+        })();
+
+        (self.type_map).insert_expr(expr, self.quote_env().quote(&r#type));
+        Synth(core_expr, r#type)
     }
 
     #[allow(clippy::too_many_lines)]
@@ -364,7 +367,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     ) -> CheckExpr<'core> {
         let expected = self.elim_env().update_metas(expected);
 
-        match expr {
+        let Check(core_expr) = (|| match expr {
             hir::Expr::Error => CheckExpr::ERROR,
 
             hir::Expr::Let((pat, r#type, init, body)) => {
@@ -408,7 +411,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }));
                 CheckExpr::new(Expr::ArrayLit(elem_exprs))
             }
-            hir::Expr::TupleLit(elems) => match expected {
+            hir::Expr::TupleLit(elems) => match &expected {
                 #[rustfmt::skip]
                 Value::RecordType(labels, telescope) if labels.len() == elems.len() && Symbol::are_tuple_labels(labels) => {
                     let mut exprs = SliceVec::new(self.bump, elems.len());
@@ -448,7 +451,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
-            hir::Expr::RecordLit(fields) => match expected {
+            hir::Expr::RecordLit(fields) => match &expected {
                 Value::RecordType(labels, telescope)
                     if Iterator::eq(fields.iter().map(|field| &field.label), labels.iter()) =>
                 {
@@ -547,7 +550,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             | hir::Expr::FunArrow(..)
             | hir::Expr::FunType(..)
             | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, &expected),
-        }
+        })();
+
+        (self.type_map).insert_expr(expr, self.quote_env().quote(&expected));
+        Check(core_expr)
     }
 
     fn synth_and_convert_expr(

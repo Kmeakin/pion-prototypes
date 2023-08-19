@@ -73,7 +73,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
             pion_core::elab::elab_module(&bump, &syntax_map, &hir_module);
 
         if dump_flags.core {
-            pion_core::dump::dump_module(&mut stdout, &core_module)?;
+            pion_core::dump::dump_module(&mut stdout, &syntax_map, &core_module)?;
         }
 
         for diag in diagnostics {
