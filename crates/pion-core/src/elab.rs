@@ -47,9 +47,15 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
-    pub fn finish(mut self) -> (TypeMap<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
-        let meta_env = std::mem::take(&mut self.meta_env);
+    pub fn finish_with<T>(mut self, value: T) -> ElabResult<'hir, 'core, T> {
+        let metavars = self
+            .meta_env
+            .values
+            .iter()
+            .map(|value| value.as_ref().map(|value| self.quote_env().quote(value)));
+        let metavars = self.bump.alloc_slice_fill_iter(metavars);
 
+        let meta_env = std::mem::take(&mut self.meta_env);
         for entry in meta_env.iter() {
             match (entry.value, entry.source) {
                 // Ignore solved metas
@@ -65,7 +71,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
         }
 
-        (self.type_map, self.diagnostics)
+        ElabResult {
+            value,
+            metavars,
+            type_map: self.type_map,
+            diagnostics: self.diagnostics,
+        }
     }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
@@ -394,6 +405,14 @@ impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Pat<'hir>> for TypeMap
 }
 
 #[derive(Debug, Clone)]
+pub struct ElabResult<'hir, 'core, T> {
+    pub value: T,
+    pub metavars: &'core [Option<Expr<'core>>],
+    pub type_map: TypeMap<'hir, 'core>,
+    pub diagnostics: Vec<diagnostics::ElabDiagnostic>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Synth<'core, T>(pub T, pub Type<'core>);
 
 impl<'core, T> Synth<'core, T> {
@@ -407,54 +426,33 @@ impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
 }
 
-pub fn elab_expr<'surface, 'hir, 'core>(
-    bump: &'core bumpalo::Bump,
-    syntax_map: &pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
-    expr: &'hir pion_hir::syntax::Expr<'hir>,
-) -> (Expr<'core>, Expr<'core>, Vec<diagnostics::ElabDiagnostic>) {
-    let temp_bump = bumpalo::Bump::new();
-    let mut ctx = ElabCtx::new(&temp_bump, syntax_map);
-
-    let Synth(expr, r#type) = ctx.synth_expr(expr);
-    let r#type = ctx.quote_env().quote(&r#type);
-
-    let expr = ctx.zonk_env(bump).zonk(&expr);
-    let r#type = ctx.zonk_env(bump).zonk(&r#type);
-    let (_, diagnostics) = ctx.finish();
-
-    (expr, r#type, diagnostics)
-}
-
 pub fn elab_module<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     module: &'hir pion_hir::syntax::Module<'hir>,
-) -> (Module<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
-    let mut diagnostics = Vec::new();
+) -> Module<'hir, 'core> {
     let mut core_items = SliceVec::new(bump, module.items.len());
 
     for item in module.items {
         match item {
             pion_hir::syntax::Item::Error => continue,
             pion_hir::syntax::Item::Def(def) => {
-                let (def, diags) = elab_def(bump, syntax_map, def);
+                let def = elab_def(bump, syntax_map, def);
                 core_items.push(Item::Def(def));
-                diagnostics.extend(diags);
             }
         }
     }
 
-    let module = Module {
+    Module {
         items: core_items.into(),
-    };
-    (module, diagnostics)
+    }
 }
 
 pub fn elab_def<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     def: &'hir pion_hir::syntax::Def<'hir>,
-) -> (Def<'hir, 'core>, Vec<diagnostics::ElabDiagnostic>) {
+) -> ElabResult<'hir, 'core, Def<'core>> {
     let mut ctx = ElabCtx::new(bump, syntax_map);
 
     let (expr, r#type) = match &def.r#type {
@@ -482,15 +480,26 @@ pub fn elab_def<'surface, 'hir, 'core>(
             .map(|value| value.as_ref().map(|value| ctx.quote_env().quote(value))),
     );
 
-    let (type_map, diagnostics) = ctx.finish();
-
     let def = Def {
         name: def.name,
         r#type,
         expr,
-        metavars,
-        type_map,
     };
 
-    (def, diagnostics)
+    ctx.finish_with(def)
+}
+
+pub fn elab_expr<'surface, 'hir, 'core>(
+    bump: &'core bumpalo::Bump,
+    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
+    expr: &'hir pion_hir::syntax::Expr<'hir>,
+) -> ElabResult<'hir, 'core, (Expr<'core>, Expr<'core>)> {
+    let mut ctx = ElabCtx::new(bump, syntax_map);
+
+    let Synth(expr, r#type) = ctx.synth_expr(expr);
+    let r#type = ctx.quote_env().quote(&r#type);
+
+    let expr = ctx.zonk_env(bump).zonk(&expr);
+    let r#type = ctx.zonk_env(bump).zonk(&r#type);
+    ctx.finish_with((expr, r#type))
 }

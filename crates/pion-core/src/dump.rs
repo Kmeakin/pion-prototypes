@@ -1,11 +1,10 @@
 use pion_hir::syntax::LocalSyntaxMap;
-use pion_hir::syntax_map;
 use pion_utils::identity::Identity;
 
-use crate::elab::TypeMap;
+use crate::elab::{ElabResult, TypeMap};
 use crate::env::UniqueEnv;
 use crate::pretty::{Prec, PrettyCtx};
-use crate::syntax::Expr;
+use crate::syntax::{Def, Expr};
 
 pub fn dump_module(
     writer: &mut dyn std::io::Write,
@@ -24,38 +23,52 @@ pub fn dump_module(
     Ok(())
 }
 
-fn dump_def(
+pub fn dump_def(
     writer: &mut dyn std::io::Write,
     syntax_map: &LocalSyntaxMap,
-    def: &crate::syntax::Def,
+    def: &ElabResult<Def>,
 ) -> std::io::Result<()> {
-    let bump = bumpalo::Bump::new();
-
     let mut local_names = UniqueEnv::default();
     let meta_sources = UniqueEnv::default();
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
 
-    let pretty_ctx = crate::pretty::PrettyCtx::new(&bump, &mut local_names, &meta_sources);
-
-    let doc = pretty_ctx.def(def);
-
-    writeln!(writer, "{}", doc.pretty(80))?;
-
-    dump_expr_types(writer, &pretty_ctx, syntax_map, &def.type_map)?;
-    dump_pat_types(writer, &pretty_ctx, syntax_map, &def.type_map)?;
-    dump_metavars(writer, &pretty_ctx, def.metavars)?;
+    writeln!(writer, "{}", pretty_ctx.def(&def.value).pretty(80))?;
+    dump_expr_types(writer, syntax_map, &def.type_map)?;
+    dump_pat_types(writer, syntax_map, &def.type_map)?;
+    dump_metavars(writer, def.metavars)?;
 
     Ok(())
 }
 
-fn dump_expr_types(
+pub fn dump_annotated_expr(
     writer: &mut dyn std::io::Write,
-    pretty_ctx: &PrettyCtx,
+    expr: &Expr,
+    r#type: &Expr,
+) -> std::io::Result<()> {
+    let mut local_names = UniqueEnv::default();
+    let meta_sources = UniqueEnv::default();
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+
+    writeln!(writer, "{}", pretty_ctx.ann_expr(expr, r#type).pretty(80))?;
+
+    Ok(())
+}
+
+pub fn dump_expr_types(
+    writer: &mut dyn std::io::Write,
     syntax_map: &LocalSyntaxMap,
     type_map: &TypeMap,
 ) -> std::io::Result<()> {
     if syntax_map.exprs.is_empty() {
         return Ok(());
     }
+
+    let mut local_names = UniqueEnv::default();
+    let meta_sources = UniqueEnv::default();
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
 
     writeln!(writer, "types of expressions:")?;
     for (surface, hir) in syntax_map.exprs.iter() {
@@ -73,15 +86,19 @@ fn dump_expr_types(
     Ok(())
 }
 
-fn dump_pat_types(
+pub fn dump_pat_types(
     writer: &mut dyn std::io::Write,
-    pretty_ctx: &PrettyCtx,
     syntax_map: &LocalSyntaxMap,
     type_map: &TypeMap,
 ) -> std::io::Result<()> {
     if syntax_map.pats.is_empty() {
         return Ok(());
     }
+
+    let mut local_names = UniqueEnv::default();
+    let meta_sources = UniqueEnv::default();
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
 
     writeln!(writer, "types of patterns:")?;
     for (surface, hir) in syntax_map.pats.iter() {
@@ -99,14 +116,18 @@ fn dump_pat_types(
     Ok(())
 }
 
-fn dump_metavars(
+pub fn dump_metavars(
     writer: &mut dyn std::io::Write,
-    pretty_ctx: &PrettyCtx,
     metavars: &[Option<Expr>],
 ) -> std::io::Result<()> {
     if metavars.is_empty() {
         return Ok(());
     }
+
+    let mut local_names = UniqueEnv::default();
+    let meta_sources = UniqueEnv::default();
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
 
     writeln!(writer, "metavars:")?;
     for (idx, expr) in metavars.iter().enumerate() {

@@ -8,7 +8,7 @@ use crate::syntax::Plicity;
 
 type String = Box<str>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ElabDiagnostic {
     UnboundName {
         span: ByteSpan,

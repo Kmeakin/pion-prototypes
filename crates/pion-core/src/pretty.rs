@@ -43,7 +43,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         }
     }
 
-    pub fn def(&'pretty self, def: &Def<'_, '_>) -> DocBuilder<'pretty, 'env> {
+    pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty, 'env> {
         let r#type = self.expr(&def.r#type, Prec::MAX);
         let expr = self.expr(&def.expr, Prec::MAX);
 
@@ -54,6 +54,20 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             .append(" = ")
             .append(expr)
             .append(";")
+    }
+
+    pub fn ann_expr(
+        &'pretty self,
+        expr: &Expr<'_>,
+        r#type: &Expr<'_>,
+    ) -> DocBuilder<'pretty, 'env> {
+        let expr = self.expr(expr, Prec::MAX);
+        let r#type = self.expr(r#type, Prec::MAX);
+        self.text("(")
+            .append(expr)
+            .append(" : ")
+            .append(r#type)
+            .append(")")
     }
 
     #[allow(clippy::too_many_lines)]
@@ -68,12 +82,9 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 Some(None) => panic!("Referenced local variable without name: {var:?}"),
                 None => panic!("Unbound local variable: {var:?}"),
             },
-            Expr::Meta(var) => match self.meta_sources.get_level(*var) {
-                Some(_) => self
-                    .text("?")
-                    .append(self.text(usize::from(*var).to_string())),
-                None => panic!("Unbound meta variable: {var:?}"),
-            },
+            Expr::Meta(var) => self
+                .text("?")
+                .append(self.text(usize::from(*var).to_string())),
             Expr::InsertedMeta(var, spine) => {
                 let fun = self.expr(&Expr::Meta(*var), Prec::MAX);
                 let num_params = spine
