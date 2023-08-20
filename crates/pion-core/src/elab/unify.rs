@@ -2,7 +2,6 @@ use pion_utils::slice_vec::SliceVec;
 
 use super::*;
 use crate::env::{EnvLen, Level, SliceEnv};
-use crate::syntax::*;
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {

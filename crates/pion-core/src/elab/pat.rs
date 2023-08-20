@@ -2,7 +2,6 @@ use pion_hir::syntax as hir;
 
 use super::diagnostics::ElabDiagnostic;
 use super::*;
-use crate::syntax::*;
 
 pub type SynthPat<'core> = Synth<'core, Pat<'core>>;
 pub type CheckPat<'core> = Check<Pat<'core>>;

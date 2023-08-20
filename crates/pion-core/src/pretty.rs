@@ -1,15 +1,12 @@
-use std::cell::RefCell;
-
 use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-use crate::elab::MetaSource;
-use crate::env::{Index, Level, SliceEnv, UniqueEnv};
+use crate::env::{Index, Level};
 use crate::prim::Prim;
 use crate::syntax::*;
 
-type DocBuilder<'pretty, 'env> = pretty::DocBuilder<'pretty, PrettyCtx<'pretty, 'env>>;
+type DocBuilder<'pretty> = pretty::DocBuilder<'pretty, PrettyCtx<'pretty>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
@@ -24,26 +21,14 @@ impl Prec {
     pub const MAX: Self = Self::Let;
 }
 
-pub struct PrettyCtx<'pretty, 'env> {
+pub struct PrettyCtx<'pretty> {
     bump: &'pretty bumpalo::Bump,
-    local_names: RefCell<&'env mut UniqueEnv<Option<Symbol>>>,
-    meta_sources: &'env SliceEnv<MetaSource>,
 }
 
-impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
-    pub fn new(
-        bump: &'pretty bumpalo::Bump,
-        local_names: &'env mut UniqueEnv<Option<Symbol>>,
-        meta_sources: &'env SliceEnv<MetaSource>,
-    ) -> Self {
-        Self {
-            bump,
-            local_names: RefCell::new(local_names),
-            meta_sources,
-        }
-    }
+impl<'pretty, 'env> PrettyCtx<'pretty> {
+    pub fn new(bump: &'pretty bumpalo::Bump) -> Self { Self { bump } }
 
-    pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty, 'env> {
+    pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty> {
         let r#type = self.expr(&def.r#type, Prec::MAX);
         let expr = self.expr(&def.expr, Prec::MAX);
 
@@ -56,11 +41,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             .append(";")
     }
 
-    pub fn ann_expr(
-        &'pretty self,
-        expr: &Expr<'_>,
-        r#type: &Expr<'_>,
-    ) -> DocBuilder<'pretty, 'env> {
+    pub fn ann_expr(&'pretty self, expr: &Expr<'_>, r#type: &Expr<'_>) -> DocBuilder<'pretty> {
         let expr = self.expr(expr, Prec::Proj);
         let r#type = self.expr(r#type, Prec::Fun);
         self.text("(")
@@ -71,7 +52,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
     }
 
     #[allow(clippy::too_many_lines)]
-    pub fn expr(&'pretty self, expr: &Expr<'_>, prec: Prec) -> DocBuilder<'pretty, 'env> {
+    pub fn expr(&'pretty self, expr: &Expr<'_>, prec: Prec) -> DocBuilder<'pretty> {
         let pretty_expr = match expr {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
@@ -95,8 +76,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     match info {
                         BinderInfo::Def => {}
                         BinderInfo::Param => {
-                            let var = self.local_names.borrow().len().level_to_index(var).unwrap();
-                            args.push(var);
+                            args.push(Index::default()); // FIXME
                         }
                     }
                 }
@@ -112,9 +92,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.expr(r#type, Prec::MAX);
                 let init = self.expr(init, Prec::MAX);
-                self.local_names.borrow_mut().push(*name);
                 let body = self.expr(body, Prec::MAX);
-                self.local_names.borrow_mut().pop();
                 self.text("let ")
                     .append(self.name(*name))
                     .append(": ")
@@ -126,18 +104,15 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append(body)
             }
             Expr::FunLit(..) => {
-                let initial_len = self.local_names.borrow().len();
                 let mut params = Vec::new();
                 let mut body = expr;
 
                 while let Expr::FunLit(plicity, name, (domain, cont)) = body {
                     let param = self.fun_param(*plicity, *name, domain);
                     params.push(param);
-                    self.local_names.borrow_mut().push(*name);
                     body = cont;
                 }
                 let body = self.expr(body, Prec::MAX);
-                self.local_names.borrow_mut().truncate(initial_len);
 
                 let params = self.intersperse(params, self.text(", "));
                 self.text("fun")
@@ -148,7 +123,6 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     .append(body)
             }
             Expr::FunType(..) => {
-                let initial_len = self.local_names.borrow().len();
                 let mut params = Vec::new();
                 let mut codomain = expr;
 
@@ -160,21 +134,17 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                         {
                             let param = self.fun_param(*plicity, *name, domain);
                             params.push(param);
-                            self.local_names.borrow_mut().push(*name);
                             codomain = cont;
                         }
                         // Use arrow sugar if the parameter is not referenced in the body type.
                         Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
                             let domain = self.expr(domain, Prec::Proj);
-                            self.local_names.borrow_mut().push(None);
                             let codomain = self.expr(codomain, Prec::MAX);
                             break domain.append(" -> ").append(codomain);
                         }
                         _ => break self.expr(codomain, Prec::MAX),
                     }
                 };
-
-                self.local_names.borrow_mut().truncate(initial_len);
 
                 if params.is_empty() {
                     codomain
@@ -213,14 +183,11 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                     let r#type = self.expr(&types[0], Prec::MAX);
                     self.text("(").append(r#type).append(",)")
                 } else {
-                    let initial_len = self.local_names.borrow().len();
                     let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
                         let expr = self.expr(r#type, Prec::MAX);
-                        self.local_names.borrow_mut().push(Some(*label));
                         expr
                     });
                     let elems = self.intersperse(elems, self.text(", "));
-                    self.local_names.borrow_mut().truncate(initial_len);
                     self.text("(").append(elems).append(")")
                 }
             }
@@ -235,14 +202,11 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                 }
             }
             Expr::RecordType(labels, r#types) => {
-                let initial_len = self.local_names.borrow().len();
                 let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
                     let r#type = self.expr(r#type, Prec::MAX);
-                    self.local_names.borrow_mut().push(Some(*label));
                     self.text(label.as_str()).append(": ").append(r#type)
                 });
                 let elems = self.intersperse(elems, self.text(", "));
-                self.local_names.borrow_mut().truncate(initial_len);
                 self.text("{").append(elems).append("}")
             }
             Expr::RecordLit(labels, exprs) => {
@@ -267,10 +231,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                         .append(self.expr(expr, Prec::MAX))
                 });
                 let default = default.as_ref().map(|(name, expr)| {
-                    self.local_names.borrow_mut().push(*name);
                     let expr = self.expr(expr, Prec::MAX);
-                    self.local_names.borrow_mut().pop();
-
                     self.name(*name).append(" => ").append(expr)
                 });
                 let cases = cases.chain(default);
@@ -288,7 +249,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         self.paren(pretty_expr, prec > expr_prec(expr))
     }
 
-    pub fn pat(&'pretty self, pat: &Pat<'_>) -> DocBuilder<'pretty, 'env> {
+    pub fn pat(&'pretty self, pat: &Pat<'_>) -> DocBuilder<'pretty> {
         match pat {
             Pat::Error => self.text("#error"),
             Pat::Underscore => self.text("_"),
@@ -312,20 +273,20 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         plicity: Plicity,
         name: Option<Symbol>,
         domain: &Expr<'_>,
-    ) -> DocBuilder<'pretty, 'env> {
+    ) -> DocBuilder<'pretty> {
         let plicity = plicity.pretty(self);
         let name = self.name(name);
         let domain = self.expr(domain, Prec::MAX);
         plicity.append(name).append(": ").append(domain)
     }
 
-    fn fun_arg(&'pretty self, plicity: Plicity, expr: &Expr<'_>) -> DocBuilder<'pretty, 'env> {
+    fn fun_arg(&'pretty self, plicity: Plicity, expr: &Expr<'_>) -> DocBuilder<'pretty> {
         let plicity = plicity.pretty(self);
         let expr = self.expr(expr, Prec::MAX);
         plicity.append(expr)
     }
 
-    pub fn lit(&'pretty self, lit: Lit) -> DocBuilder<'pretty, 'env> {
+    pub fn lit(&'pretty self, lit: Lit) -> DocBuilder<'pretty> {
         match lit {
             Lit::Bool(true) => self.text("true"),
             Lit::Bool(false) => self.text("false"),
@@ -333,16 +294,16 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
         }
     }
 
-    pub fn prim(&'pretty self, prim: Prim) -> DocBuilder<'pretty, 'env> { self.text(prim.name()) }
+    pub fn prim(&'pretty self, prim: Prim) -> DocBuilder<'pretty> { self.text(prim.name()) }
 
-    pub fn name(&'pretty self, name: Option<Symbol>) -> DocBuilder<'pretty, 'env> {
+    pub fn name(&'pretty self, name: Option<Symbol>) -> DocBuilder<'pretty> {
         match name {
             Some(sym) => self.ident(sym),
             None => self.text("_"),
         }
     }
 
-    pub fn ident(&'pretty self, sym: Symbol) -> DocBuilder<'pretty, 'env> {
+    pub fn ident(&'pretty self, sym: Symbol) -> DocBuilder<'pretty> {
         if sym.is_keyword() {
             self.text("r#").append(sym.as_str())
         } else {
@@ -352,12 +313,8 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
 }
 
 // helpers
-impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
-    fn paren(
-        &'pretty self,
-        doc: DocBuilder<'pretty, 'env>,
-        cond: bool,
-    ) -> DocBuilder<'pretty, 'env> {
+impl<'pretty> PrettyCtx<'pretty> {
+    fn paren(&'pretty self, doc: DocBuilder<'pretty>, cond: bool) -> DocBuilder<'pretty> {
         if cond {
             self.text("(").append(doc).append(")")
         } else {
@@ -395,7 +352,7 @@ impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Plicity {
     }
 }
 
-impl<'pretty, 'env, A: 'pretty> DocAllocator<'pretty, A> for PrettyCtx<'pretty, 'env> {
+impl<'pretty, A: 'pretty> DocAllocator<'pretty, A> for PrettyCtx<'pretty> {
     type Doc = RefDoc<'pretty, A>;
 
     fn alloc(&'pretty self, doc: Doc<'pretty, Self::Doc, A>) -> Self::Doc {

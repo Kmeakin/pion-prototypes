@@ -2,7 +2,6 @@ use pion_hir::syntax::LocalSyntaxMap;
 use pion_utils::identity::Identity;
 
 use crate::elab::{ElabResult, TypeMap};
-use crate::env::UniqueEnv;
 use crate::pretty::{Prec, PrettyCtx};
 use crate::syntax::{Def, Expr};
 
@@ -28,10 +27,8 @@ pub fn dump_def(
     syntax_map: &LocalSyntaxMap,
     def: &ElabResult<Def>,
 ) -> std::io::Result<()> {
-    let mut local_names = UniqueEnv::default();
-    let meta_sources = UniqueEnv::default();
     let bump = bumpalo::Bump::new();
-    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+    let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "{}", pretty_ctx.def(&def.value).pretty(80))?;
     dump_expr_types(writer, syntax_map, &def.type_map)?;
@@ -46,10 +43,8 @@ pub fn dump_annotated_expr(
     expr: &Expr,
     r#type: &Expr,
 ) -> std::io::Result<()> {
-    let mut local_names = UniqueEnv::default();
-    let meta_sources = UniqueEnv::default();
     let bump = bumpalo::Bump::new();
-    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+    let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "{}", pretty_ctx.ann_expr(expr, r#type).pretty(80))?;
 
@@ -65,10 +60,8 @@ pub fn dump_expr_types(
         return Ok(());
     }
 
-    let mut local_names = UniqueEnv::default();
-    let meta_sources = UniqueEnv::default();
     let bump = bumpalo::Bump::new();
-    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+    let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "types of expressions:")?;
     for (surface, hir) in syntax_map.exprs.iter() {
@@ -95,10 +88,8 @@ pub fn dump_pat_types(
         return Ok(());
     }
 
-    let mut local_names = UniqueEnv::default();
-    let meta_sources = UniqueEnv::default();
     let bump = bumpalo::Bump::new();
-    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+    let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "types of patterns:")?;
     for (surface, hir) in syntax_map.pats.iter() {
@@ -124,10 +115,8 @@ pub fn dump_metavars(
         return Ok(());
     }
 
-    let mut local_names = UniqueEnv::default();
-    let meta_sources = UniqueEnv::default();
     let bump = bumpalo::Bump::new();
-    let pretty_ctx = PrettyCtx::new(&bump, &mut local_names, &meta_sources);
+    let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "metavars:")?;
     for (idx, expr) in metavars.iter().enumerate() {

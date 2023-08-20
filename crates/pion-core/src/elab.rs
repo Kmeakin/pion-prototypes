@@ -164,8 +164,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     fn pretty_value(&mut self, value: &Value<'_>) -> Box<str> {
         let expr = self.quote_env().quote(value);
-        let pretty_ctx =
-            pretty::PrettyCtx::new(self.bump, &mut self.local_env.names, &self.meta_env.sources);
+        let pretty_ctx = pretty::PrettyCtx::new(self.bump);
         let doc = pretty_ctx.expr(&expr, pretty::Prec::MAX);
         doc.pretty(80).to_string().into()
     }
