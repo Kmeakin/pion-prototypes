@@ -1,3 +1,5 @@
+#![allow(clippy::too_many_lines)]
+
 use std::fmt::Write as _;
 
 use expect_test::*;

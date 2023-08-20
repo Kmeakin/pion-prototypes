@@ -7,7 +7,6 @@ use pion_utils::slice_vec::SliceVec;
 use super::diagnostics::ElabDiagnostic;
 use super::*;
 use crate::prim::Prim;
-use crate::syntax::*;
 
 pub type SynthExpr<'core> = Synth<'core, Expr<'core>>;
 pub type CheckExpr<'core> = Check<Expr<'core>>;
@@ -274,7 +273,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                 self.elim_env().apply_closure(codomain, Value::unit_type());
                             return SynthExpr::new(expr, r#type);
                         }
-                        Value::FunType(Plicity::Explicit, _, domain, _) => {
+                        Value::FunType(Plicity::Explicit, ..) => {
                             let fun_type = self.pretty_value(&r#type);
                             self.emit_diagnostic(ElabDiagnostic::FunAppEmptyArgsMismatch {
                                 call_span,

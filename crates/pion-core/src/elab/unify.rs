@@ -506,7 +506,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::ArrayLit(values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());
 
-                for value in values.iter() {
+                for value in values {
                     exprs.push(self.rename(meta_var, value)?);
                 }
 
@@ -519,7 +519,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::RecordLit(labels, values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());
 
-                for value in values.iter() {
+                for value in values {
                     exprs.push(self.rename(meta_var, value)?);
                 }
 

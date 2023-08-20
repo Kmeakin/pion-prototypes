@@ -61,7 +61,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
         };
 
-        let type_expr = self.quote_env().quote(&expected);
+        let type_expr = self.quote_env().quote(expected);
         self.type_map.insert_pat(pat, type_expr);
         Check(core_pat)
     }

@@ -6,13 +6,14 @@ use pion_utils::location::ByteSpan;
 use pion_utils::source::{FileId, SourceFile};
 
 pub fn path_to_url(path: &Utf8Path) -> anyhow::Result<lsp_types::Url> {
-    lsp_types::Url::from_file_path(path).map_err(|_| anyhow!("cannot convert path {path:?} to URL"))
+    lsp_types::Url::from_file_path(path)
+        .map_err(|()| anyhow!("cannot convert path {path:?} to URL"))
 }
 
 pub fn url_to_path(url: &lsp_types::Url) -> anyhow::Result<Utf8PathBuf> {
     let path = url
         .to_file_path()
-        .map_err(|_| anyhow::anyhow!("cannot convert url to path: {url}"))?;
+        .map_err(|()| anyhow::anyhow!("cannot convert url to path: {url}"))?;
     Ok(Utf8PathBuf::try_from(path)?)
 }
 

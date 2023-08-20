@@ -183,7 +183,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty> {
                     let r#type = self.expr(&types[0], Prec::MAX);
                     self.text("(").append(r#type).append(",)")
                 } else {
-                    let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
+                    let elems = types.iter().map(|r#type| {
                         let expr = self.expr(r#type, Prec::MAX);
                         expr
                     });
@@ -323,6 +323,7 @@ impl<'pretty> PrettyCtx<'pretty> {
     }
 }
 
+#[allow(clippy::match_same_arms)]
 fn expr_prec(expr: &Expr<'_>) -> Prec {
     match expr {
         Expr::Error => Prec::Atom,
@@ -346,8 +347,8 @@ fn expr_prec(expr: &Expr<'_>) -> Prec {
 impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Plicity {
     fn pretty(self, allocator: &'a D) -> pretty::DocBuilder<'a, D, ()> {
         match self {
-            Plicity::Implicit => allocator.text("@"),
-            Plicity::Explicit => allocator.nil(),
+            Self::Implicit => allocator.text("@"),
+            Self::Explicit => allocator.nil(),
         }
     }
 }
