@@ -440,7 +440,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Head::Prim(prim) => Expr::Prim(prim),
                     Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
                         None => return Err(RenameError::EscapingLocalVar(source_var)),
-                        Some(target_var) => Expr::Local(target_var),
+                        Some(target_var) => Expr::Local(Symbol::intern("TODO"), target_var),
                     },
                     Head::Meta(var) => match meta_var == var {
                         true => return Err(RenameError::InfiniteSolution),

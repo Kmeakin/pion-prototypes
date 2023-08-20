@@ -46,7 +46,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Ident(name) => {
                 if let Some((index, entry)) = self.local_env.lookup(*name) {
-                    return SynthExpr::new(Expr::Local(index), entry.r#type.clone());
+                    return SynthExpr::new(Expr::Local(*name, index), entry.r#type.clone());
                 };
 
                 if let Ok(prim) = Prim::from_str(name.as_str()) {
@@ -355,7 +355,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
         })();
 
-        (self.type_map).insert_expr(expr, self.quote_env().quote(&r#type));
+        let type_expr = self.quote_env().quote(&r#type);
+        self.type_map.insert_expr(expr, type_expr);
         Synth(core_expr, r#type)
     }
 
@@ -552,7 +553,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, &expected),
         })();
 
-        (self.type_map).insert_expr(expr, self.quote_env().quote(&expected));
+        let type_expr = self.quote_env().quote(&expected);
+        self.type_map.insert_expr(expr, type_expr);
         Check(core_expr)
     }
 

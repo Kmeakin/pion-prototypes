@@ -48,12 +48,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 
     pub fn finish_with<T>(mut self, value: T) -> ElabResult<'hir, 'core, T> {
-        let metavars = self
-            .meta_env
-            .values
-            .iter()
-            .map(|value| value.as_ref().map(|value| self.quote_env().quote(value)));
-        let metavars = self.bump.alloc_slice_fill_iter(metavars);
+        let mut quote_env =
+            QuoteEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.names);
+        let metavars = self.bump.alloc_slice_fill_iter(
+            self.meta_env
+                .values
+                .iter()
+                .map(|value| value.as_ref().map(|value| quote_env.quote(value))),
+        );
 
         let meta_env = std::mem::take(&mut self.meta_env);
         for entry in meta_env.iter() {
@@ -100,16 +102,21 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.bump, &self.meta_env.values) }
 
     pub fn eval_env(&mut self) -> EvalEnv<'core, '_> {
-        let elim_env = ElimEnv::new(self.bump, &self.meta_env.values);
-        elim_env.eval_env(&mut self.local_env.values)
+        EvalEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.values)
     }
 
-    pub fn quote_env(&self) -> QuoteEnv<'core, 'core, '_> {
-        QuoteEnv::new(self.bump, self.elim_env(), self.local_env.values.len())
+    pub fn quote_env(&mut self) -> QuoteEnv<'core, '_> {
+        QuoteEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.names)
     }
 
-    pub fn zonk_env<'out>(&mut self, bump: &'out bumpalo::Bump) -> ZonkEnv<'core, '_, 'out> {
-        ZonkEnv::new(bump, self.eval_env())
+    pub fn zonk_env<'out>(&mut self, out_bump: &'out bumpalo::Bump) -> ZonkEnv<'core, '_, 'out> {
+        ZonkEnv::new(
+            out_bump,
+            self.bump,
+            &self.meta_env.values,
+            &mut self.local_env.values,
+            &mut self.local_env.names,
+        )
     }
 
     pub fn unifiy_ctx(&mut self) -> UnifyCtx<'core, '_> {
@@ -472,13 +479,6 @@ pub fn elab_def<'surface, 'hir, 'core>(
     };
     let expr = ctx.zonk_env(bump).zonk(&expr);
     let r#type = ctx.zonk_env(bump).zonk(&r#type);
-
-    let metavars = bump.alloc_slice_fill_iter(
-        ctx.meta_env
-            .values
-            .iter()
-            .map(|value| value.as_ref().map(|value| ctx.quote_env().quote(value))),
-    );
 
     let def = Def {
         name: def.name,

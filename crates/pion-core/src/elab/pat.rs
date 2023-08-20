@@ -41,7 +41,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Pat::RecordLit(..) => todo!(),
         };
 
-        (self.type_map).insert_pat(pat, self.quote_env().quote(&r#type));
+        let type_expr = self.quote_env().quote(&r#type);
+        self.type_map.insert_pat(pat, type_expr);
         Synth(core_pat, r#type)
     }
 
@@ -61,7 +62,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
         };
 
-        (self.type_map).insert_pat(pat, self.quote_env().quote(expected));
+        let type_expr = self.quote_env().quote(&expected);
+        self.type_map.insert_pat(pat, type_expr);
         Check(core_pat)
     }
 }

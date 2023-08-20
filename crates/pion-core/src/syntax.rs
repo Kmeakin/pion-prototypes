@@ -31,7 +31,7 @@ pub enum Expr<'core> {
     Error,
     Lit(Lit),
     Prim(Prim),
-    Local(Index),
+    Local(Symbol, Index),
     Meta(Level),
     InsertedMeta(Level, &'core [BinderInfo]),
 
@@ -134,7 +134,7 @@ impl<'core> Expr<'core> {
 
     pub fn binds_local(&self, var: Index) -> bool {
         match self {
-            Expr::Local(v) => *v == var,
+            Expr::Local(.., v) => *v == var,
             Expr::Error
             | Expr::Lit(..)
             | Expr::Prim(..)

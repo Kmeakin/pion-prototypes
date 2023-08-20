@@ -76,13 +76,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
-            Expr::Local(var) => match self.local_names.borrow().get_index(*var) {
-                Some(Some(name)) => self.ident(*name),
-                Some(None) => self.text(format!("{var:?}")),
-                Some(None) => panic!("Referenced local variable without name: {var:?}"),
-                None => self.text(format!("{var:?}")),
-                None => panic!("Unbound local variable: {var:?}"),
-            },
+            Expr::Local(name, ..) => self.ident(*name),
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
@@ -106,9 +100,12 @@ impl<'pretty, 'env> PrettyCtx<'pretty, 'env> {
                         }
                     }
                 }
-                let args = args
-                    .iter()
-                    .map(|var| self.fun_arg(Plicity::Explicit, &Expr::Local(*var)));
+                let args = args.iter().map(|var| {
+                    self.fun_arg(
+                        Plicity::Explicit,
+                        &Expr::Local(Symbol::intern("TODO"), *var),
+                    )
+                });
                 let args = self.intersperse(args, self.text(", "));
                 fun.append("(").append(args).append(")")
             }
@@ -374,7 +371,7 @@ fn expr_prec(expr: &Expr<'_>) -> Prec {
         Expr::Error => Prec::Atom,
         Expr::Lit(_) => Prec::Atom,
         Expr::Prim(_) => Prec::Atom,
-        Expr::Local(_) => Prec::Atom,
+        Expr::Local(..) => Prec::Atom,
         Expr::Meta(_) => Prec::Atom,
         Expr::InsertedMeta(..) => Prec::App,
         Expr::Let(..) => Prec::Let,

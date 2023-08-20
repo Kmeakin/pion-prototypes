@@ -706,11 +706,11 @@ fn synth_fun_lit() {
             types of expressions:
             7..11 = Type
             16..17 = Type
-            22..23 = Index(1)
+            22..23 = A
             0..23 = fun(A: Type) -> A -> A
             types of patterns:
             4..5 = Type
-            13..14 = Index(0)
+            13..14 = A
         "#]],
     );
 }
@@ -913,13 +913,13 @@ id(false)",
             40..45 = Bool
             1..46 = Bool
             28..29 = Type
-            34..35 = Index(1)
+            34..35 = A
             37..39 = fun(@A: Type) -> A -> A
             10..35 = fun(@A: Type) -> A -> A
             37..46 = Bool
             types of patterns:
             16..17 = Type
-            25..26 = Index(0)
+            25..26 = A
             5..7 = ?0
         "#]],
     );
@@ -943,14 +943,14 @@ always(0, false)",
             1..72 = Int
             32..36 = Type
             47..48 = Type
-            53..54 = Index(3)
+            53..54 = A
             56..62 = fun(@A: Type, @B: Type) -> A -> B -> A
             66..71 = Bool
             types of patterns:
             19..20 = Type
             29..30 = Type
-            38..39 = Index(1)
-            44..45 = Index(1)
+            38..39 = A
+            44..45 = B
             5..11 = ?0
         "#]],
     );
@@ -974,38 +974,38 @@ apply(always(false), 0)",
             types of expressions:
             22..26 = Type
             95..101 = Type
-            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
+            56..141 = Bool
             47..48 = Type
             86..90 = Type
-            112..116 = Index(2)
+            112..116 = B
             124..130 = fun(@A: Type, @B: Type) -> A -> B -> A
-            118..141 = Bool
+            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             41..42 = Type
             95..96 = Type
             76..80 = Type
-            112..113 = Index(3) -> Index(3)
+            112..113 = A -> B
             118..123 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             131..136 = Bool
             139..140 = Int
-            56..141 = Bool
+            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
             32..36 = Type
-            53..54 = Index(3)
+            53..54 = A
             100..101 = Type
             106..107 = Type
-            114..115 = Index(3)
+            114..115 = A
             124..137 = ?2 -> Bool
-            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            118..141 = Bool
             1..141 = Bool
             types of patterns:
             19..20 = Type
-            38..39 = Index(1)
+            38..39 = A
             73..74 = Type
-            92..93 = Index(1) -> Index(1)
+            92..93 = A -> B
             5..11 = ?0
             29..30 = Type
-            44..45 = Index(1)
+            44..45 = B
             83..84 = Type
-            103..104 = Index(2)
+            103..104 = A
             60..65 = ?1
         "#]],
     );
@@ -1030,14 +1030,14 @@ let id = fun(@A: Type, a: A) => a;
             42..54 = Type
             1..55 = Bool -> Bool
             27..28 = Type
-            33..34 = Index(1)
+            33..34 = A
             42..46 = Type
             37..39 = Bool -> Bool
             10..34 = fun(@A: Type) -> A -> A
             36..55 = Bool -> Bool
             types of patterns:
             15..16 = Type
-            24..25 = Index(0)
+            24..25 = A
             5..7 = ?0
         "#]],
     );
@@ -1068,14 +1068,14 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
             33..37 = Type
             52..53 = Type
             42..53 = Type
-            69..70 = Index(3)
+            69..70 = A
             82..86 = Type
             13..53 = Type
             types of patterns:
             18..19 = Type
             29..30 = Type
-            60..61 = Index(1)
-            63..64 = Index(1)
+            60..61 = A
+            63..64 = B
             5..11 = fun(@A: Type, @B: Type) -> A -> B -> A
         "#]],
     );
@@ -1100,23 +1100,23 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             13..61 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             45..46 = Type
             51..52 = Type
-            57..61 = Index(2)
+            57..61 = B
             98..101 = Type
             40..46 = Type
-            57..58 = Index(3) -> Index(3)
+            57..58 = A -> B
             73..86 = Type
             63..103 = (Bool -> Int) -> Bool -> Int
             1..103 = (Bool -> Int) -> Bool -> Int
             31..35 = Type
-            59..60 = Index(3)
+            59..60 = A
             74..78 = Type
             90..101 = Type
             64..69 = (Bool -> Int) -> Bool -> Int
             types of patterns:
             18..19 = Type
             28..29 = Type
-            37..38 = Index(1) -> Index(1)
-            48..49 = Index(2)
+            37..38 = A -> B
+            48..49 = A
             5..10 = ?0
         "#]],
     );
@@ -1135,7 +1135,7 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
             types of expressions:
             32..33 = Type
             27..33 = Type
-            46..47 = Index(1)
+            46..47 = A
             9..33 = Type
             1..51 = ()
             18..22 = Type
@@ -1144,7 +1144,7 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
             49..51 = ()
             types of patterns:
             14..15 = Type
-            40..41 = Index(0)
+            40..41 = A
             5..7 = fun(@A: Type) -> A -> A
         "#]],
     );
@@ -1162,41 +1162,41 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             types of expressions:
             47..48 = Type
             112..120 = Type
-            146..150 = Index(2)
-            72..154 = ()
+            83..130 = Type
+            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
             33..37 = Type
             52..53 = Type
             42..53 = Type
-            69..70 = Index(3)
+            69..70 = A
             113..114 = Type
             124..130 = Type
-            146..147 = Index(3) -> Index(3)
-            133..150 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            152..154 = ()
+            13..53 = Type
             22..26 = Type
             42..43 = Type
             103..107 = Type
             118..119 = Type
             124..125 = Type
-            148..149 = Index(3)
-            83..130 = Type
-            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
+            148..149 = A
+            146..150 = B
+            72..154 = ()
             47..53 = Type
             92..96 = Type
             129..130 = Type
             112..130 = Type
-            152..154 = ()
-            13..53 = Type
+            146..147 = A -> B
+            133..150 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             1..154 = ()
             types of patterns:
             18..19 = Type
-            60..61 = Index(1)
+            60..61 = A
             99..100 = Type
-            140..141 = Index(2)
+            140..141 = A
             5..11 = fun(@A: Type, @B: Type) -> A -> B -> A
             29..30 = Type
-            63..64 = Index(1)
+            63..64 = B
             88..89 = Type
-            137..138 = Index(1) -> Index(1)
+            137..138 = A -> B
             76..81 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
         "#]],
     );
@@ -1211,7 +1211,7 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             ()) : ())
             types of expressions:
             42..43 = Type
-            77..78 = Index(3)
+            77..78 = A
             12..59 = Type
             32..36 = Type
             47..48 = Type
@@ -1221,16 +1221,16 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             21..25 = Type
             58..59 = Type
             41..49 = Type
-            75..79 = Index(2)
+            75..79 = B
             1..83 = ()
             53..59 = Type
-            75..76 = Index(3) -> Index(3)
+            75..76 = A -> B
             62..79 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             types of patterns:
             17..18 = Type
             28..29 = Type
-            66..67 = Index(1) -> Index(1)
-            69..70 = Index(2)
+            66..67 = A -> B
+            69..70 = A
             5..10 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
         "#]],
     );
