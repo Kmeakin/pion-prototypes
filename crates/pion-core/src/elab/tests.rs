@@ -155,9 +155,9 @@ fn synth_let() {
             metavars:
             ?0 = Int
             types of expressions:
+            0..12 = Int
             8..9 = Int
             11..12 = Int
-            0..12 = Int
             types of patterns:
             4..5 = ?0
         "#]],
@@ -168,10 +168,10 @@ fn synth_let() {
             ((let x: Int = 5;
             x) : Int)
             types of expressions:
+            0..17 = Int
             7..10 = Type
             13..14 = Int
             16..17 = Int
-            0..17 = Int
             types of patterns:
             4..5 = Int
         "#]],
@@ -188,11 +188,11 @@ fn check_let() {
             metavars:
             ?0 = Int
             types of expressions:
+            0..21 = Int
+            1..15 = Int
             10..11 = Int
             13..14 = Int
-            1..15 = Int
             17..20 = Type
-            0..21 = Int
             types of patterns:
             6..7 = ?0
         "#]],
@@ -222,10 +222,10 @@ fn synth_array_lit() {
         expect![[r#"
             ([1, 2, 3] : Array(Int, 3))
             types of expressions:
+            0..7 = Array(Int, 3)
             1..2 = Int
             3..4 = Int
             5..6 = Int
-            0..7 = Array(Int, 3)
         "#]],
     );
 }
@@ -237,12 +237,12 @@ fn check_array_lit() {
         expect![[r#"
             ([] : Array(Int, 0))
             types of expressions:
+            0..20 = Array(Int, 0)
+            1..3 = Array(Int, 0)
             6..11 = Type -> Int -> Type
+            6..19 = Type
             12..15 = Type
             17..18 = Int
-            1..3 = Array(Int, 0)
-            6..19 = Type
-            0..20 = Array(Int, 0)
         "#]],
     );
     synth_expr(
@@ -250,13 +250,13 @@ fn check_array_lit() {
         expect![[r#"
             ([1] : Array(Int, 1))
             types of expressions:
+            0..21 = Array(Int, 1)
+            1..4 = Array(Int, 1)
             2..3 = Int
             7..12 = Type -> Int -> Type
+            7..20 = Type
             13..16 = Type
             18..19 = Int
-            1..4 = Array(Int, 1)
-            7..20 = Type
-            0..21 = Array(Int, 1)
         "#]],
     );
     synth_expr(
@@ -267,13 +267,13 @@ fn check_array_lit() {
             ?0 = Type
             ?1 = Int
             types of expressions:
+            0..19 = Array(Int, 1)
+            1..4 = Array(Int, 1)
             2..3 = Int
             7..12 = Type -> Int -> Type
+            7..18 = Type
             13..14 = Type
             16..17 = Int
-            1..4 = Array(Int, 1)
-            7..18 = Type
-            0..19 = Array(Int, 1)
         "#]],
     );
     synth_expr(
@@ -284,13 +284,13 @@ fn check_array_lit() {
             ?0 = Type
             ?1 = <unsolved>
             types of expressions:
+            0..19 = Array(?1, 2)
+            1..4 = Array(?1, 2)
             2..3 = <missing>
             7..12 = Type -> Int -> Type
+            7..18 = Type
             13..14 = Type
             16..17 = Int
-            1..4 = Array(?1, 2)
-            7..18 = Type
-            0..19 = Array(?1, 2)
 
             diagnostics:
             ArrayLenMismatch { span: 1..4, expected_len: 2, actual_len: 1 }
@@ -314,8 +314,8 @@ fn synth_tuple_lit() {
         expect![[r#"
             ((1,) : (Int,))
             types of expressions:
-            1..2 = Int
             0..4 = (Int,)
+            1..2 = Int
         "#]],
     );
     synth_expr(
@@ -323,9 +323,9 @@ fn synth_tuple_lit() {
         expect![[r#"
             ((1, true) : (Int, Bool))
             types of expressions:
+            0..8 = (Int, Bool)
             1..2 = Int
             3..7 = Bool
-            0..8 = (Int, Bool)
         "#]],
     );
     synth_expr(
@@ -333,10 +333,10 @@ fn synth_tuple_lit() {
         expect![[r#"
             ((1, true, false) : (Int, Bool, Bool))
             types of expressions:
+            0..14 = (Int, Bool, Bool)
             1..2 = Int
             3..7 = Bool
             8..13 = Bool
-            0..14 = (Int, Bool, Bool)
         "#]],
     );
 }
@@ -348,9 +348,9 @@ fn check_tuple_lit() {
         expect![[r#"
             (() : Type)
             types of expressions:
+            0..10 = Type
             1..3 = Type
             5..9 = Type
-            0..10 = Type
         "#]],
     );
     synth_expr(
@@ -358,10 +358,10 @@ fn check_tuple_lit() {
         expect![[r#"
             ((Int,) : Type)
             types of expressions:
-            2..5 = Type
-            1..7 = Type
-            9..13 = Type
             0..14 = Type
+            1..7 = Type
+            2..5 = Type
+            9..13 = Type
         "#]],
     );
     synth_expr(
@@ -369,11 +369,11 @@ fn check_tuple_lit() {
         expect![[r#"
             ((Int, Bool) : Type)
             types of expressions:
+            0..18 = Type
+            1..11 = Type
             2..5 = Type
             6..10 = Type
-            1..11 = Type
             13..17 = Type
-            0..18 = Type
         "#]],
     );
 
@@ -382,9 +382,9 @@ fn check_tuple_lit() {
         expect![[r#"
             (() : ())
             types of expressions:
+            0..8 = ()
             1..3 = ()
             5..7 = Type
-            0..8 = ()
         "#]],
     );
     synth_expr(
@@ -392,11 +392,11 @@ fn check_tuple_lit() {
         expect![[r#"
             ((1,) : (Int,))
             types of expressions:
-            2..3 = Int
-            8..11 = Type
-            1..5 = (Int,)
-            7..13 = Type
             0..14 = (Int,)
+            1..5 = (Int,)
+            2..3 = Int
+            7..13 = Type
+            8..11 = Type
         "#]],
     );
     synth_expr(
@@ -404,13 +404,13 @@ fn check_tuple_lit() {
         expect![[r#"
             ((1, false) : (Int, Bool))
             types of expressions:
+            0..23 = (Int, Bool)
+            1..10 = (Int, Bool)
             2..3 = Int
             4..9 = Bool
+            12..22 = Type
             13..16 = Type
             17..21 = Type
-            1..10 = (Int, Bool)
-            12..22 = Type
-            0..23 = (Int, Bool)
         "#]],
     );
 }
@@ -422,8 +422,8 @@ fn synth_record_type() {
         expect![[r#"
             ({x: Int} : Type)
             types of expressions:
-            3..6 = Type
             0..7 = Type
+            3..6 = Type
         "#]],
     );
     synth_expr(
@@ -431,9 +431,9 @@ fn synth_record_type() {
         expect![[r#"
             ({A: Type, a: A} : Type)
             types of expressions:
+            0..13 = Type
             3..7 = Type
             11..12 = Type
-            0..13 = Type
         "#]],
     );
     synth_expr(
@@ -441,10 +441,10 @@ fn synth_record_type() {
         expect![[r#"
             ({x: Int, y: Bool, z: Type} : Type)
             types of expressions:
+            0..23 = Type
             3..6 = Type
             10..14 = Type
             18..22 = Type
-            0..23 = Type
         "#]],
     );
 }
@@ -464,8 +464,8 @@ fn synth_record_lit() {
         expect![[r#"
             ({x = 1} : {x: Int})
             types of expressions:
-            3..4 = Int
             0..5 = {x: Int}
+            3..4 = Int
         "#]],
     );
     synth_expr(
@@ -473,9 +473,9 @@ fn synth_record_lit() {
         expect![[r#"
             ({x = 1, y = false} : {x: Int, y: Bool})
             types of expressions:
+            0..14 = {x: Int, y: Bool}
             3..4 = Int
             8..13 = Bool
-            0..14 = {x: Int, y: Bool}
         "#]],
     );
     synth_expr(
@@ -483,10 +483,10 @@ fn synth_record_lit() {
         expect![[r#"
             ({x = 1, y = false, z = true} : {x: Int, y: Bool, z: Bool})
             types of expressions:
+            0..22 = {x: Int, y: Bool, z: Bool}
             3..4 = Int
             8..13 = Bool
             17..21 = Bool
-            0..22 = {x: Int, y: Bool, z: Bool}
         "#]],
     );
 }
@@ -498,13 +498,13 @@ fn check_record_lit() {
         expect![[r#"
             ({x = 1, y = false} : {x: Int, y: Bool})
             types of expressions:
+            0..34 = {x: Int, y: Bool}
+            1..15 = {x: Int, y: Bool}
             4..5 = Int
             9..14 = Bool
+            17..33 = Type
             20..23 = Type
             28..32 = Type
-            1..15 = {x: Int, y: Bool}
-            17..33 = Type
-            0..34 = {x: Int, y: Bool}
         "#]],
     );
 }
@@ -516,9 +516,9 @@ fn synth_field_proj() {
         expect![[r#"
             ({x = 5}.x : Int)
             types of expressions:
-            3..4 = Int
             0..5 = {x: Int}
             0..7 = Int
+            3..4 = Int
         "#]],
     );
     synth_expr(
@@ -526,10 +526,10 @@ fn synth_field_proj() {
         expect![[r#"
             ({x = 5, y = false}.x : Int)
             types of expressions:
-            3..4 = Int
-            7..12 = Bool
             0..13 = {x: Int, y: Bool}
             0..15 = Int
+            3..4 = Int
+            7..12 = Bool
         "#]],
     );
     synth_expr(
@@ -537,10 +537,10 @@ fn synth_field_proj() {
         expect![[r#"
             ({x = 5, y = false}.y : Bool)
             types of expressions:
-            3..4 = Int
-            7..12 = Bool
             0..13 = {x: Int, y: Bool}
             0..15 = Bool
+            3..4 = Int
+            7..12 = Bool
         "#]],
     );
     synth_expr(
@@ -560,9 +560,9 @@ fn synth_field_proj() {
         expect![[r#"
             (#error : #error)
             types of expressions:
-            3..4 = Int
             0..5 = {z: Int}
             0..7 = #error
+            3..4 = Int
 
             diagnostics:
             FieldProjNotFound { span: 0..7, scrut_type: "{z: Int}", field: Symbol("x") }
@@ -590,8 +590,8 @@ fn synth_fun_arrow() {
             ((Int -> Bool) : Type)
             types of expressions:
             0..3 = Type
-            7..11 = Type
             0..11 = Type
+            7..11 = Type
         "#]],
     );
     synth_expr(
@@ -599,11 +599,11 @@ fn synth_fun_arrow() {
         expect![[r#"
             ((Int -> Bool -> Type) : Type)
             types of expressions:
-            7..11 = Type
-            15..19 = Type
             0..3 = Type
-            7..19 = Type
             0..19 = Type
+            7..11 = Type
+            7..19 = Type
+            15..19 = Type
         "#]],
     );
 }
@@ -617,8 +617,8 @@ fn synth_fun_type() {
             expect![[r#"
                 ((() -> Int) : Type)
                 types of expressions:
-                9..12 = Type
                 0..12 = Type
+                9..12 = Type
             "#]],
         );
     }
@@ -630,8 +630,8 @@ fn synth_fun_type() {
             metavars:
             ?0 = <unsolved>
             types of expressions:
-            10..13 = Type
             0..13 = Type
+            10..13 = Type
             types of patterns:
             4..5 = ?0
 
@@ -645,11 +645,11 @@ fn synth_fun_type() {
         expect![[r#"
             ((fun(A: Type) -> A -> A) : Type)
             types of expressions:
+            0..22 = Type
             7..11 = Type
             16..17 = Type
-            21..22 = Type
             16..22 = Type
-            0..22 = Type
+            21..22 = Type
             types of patterns:
             4..5 = Type
         "#]],
@@ -665,8 +665,8 @@ fn synth_fun_lit() {
             expect![[r#"
                 ((fun(_: ()) => 5) : () -> Int)
                 types of expressions:
-                9..10 = Int
                 0..10 = () -> Int
+                9..10 = Int
             "#]],
         );
     }
@@ -678,8 +678,8 @@ fn synth_fun_lit() {
             metavars:
             ?0 = <unsolved>
             types of expressions:
-            10..11 = ?0
             0..11 = ?0 -> ?0
+            10..11 = ?0
             types of patterns:
             4..5 = ?0
 
@@ -692,9 +692,9 @@ fn synth_fun_lit() {
         expect![[r#"
             ((fun(x: Int) => x) : Int -> Int)
             types of expressions:
+            0..16 = Int -> Int
             7..10 = Type
             15..16 = Int
-            0..16 = Int -> Int
             types of patterns:
             4..5 = Int
         "#]],
@@ -704,10 +704,10 @@ fn synth_fun_lit() {
         expect![[r#"
             ((fun(A: Type, a: A) => a) : fun(A: Type) -> A -> A)
             types of expressions:
+            0..23 = fun(A: Type) -> A -> A
             7..11 = Type
             16..17 = Type
             22..23 = A
-            0..23 = fun(A: Type) -> A -> A
             types of patterns:
             4..5 = Type
             13..14 = A
@@ -724,12 +724,12 @@ fn check_fun_lit() {
             expect![[r#"
                 ((fun(_: ()) => 0) : () -> Int)
                 types of expressions:
+                0..28 = () -> Int
+                1..13 = () -> Int
                 11..12 = Int
+                16..27 = Type
                 17..19 = Type
                 23..26 = Type
-                1..13 = () -> Int
-                16..27 = Type
-                0..28 = () -> Int
             "#]],
         );
     }
@@ -738,12 +738,12 @@ fn check_fun_lit() {
         expect![[r#"
             ((fun(x: Int) => false) : Int -> Bool)
             types of expressions:
+            0..35 = Int -> Bool
+            1..18 = Int -> Bool
             12..17 = Bool
+            21..34 = Type
             22..25 = Type
             29..33 = Type
-            1..18 = Int -> Bool
-            21..34 = Type
-            0..35 = Int -> Bool
             types of patterns:
             6..7 = Int
         "#]],
@@ -762,11 +762,11 @@ fn synth_fun_app() {
                 metavars:
                 ?0 = () -> Int
                 types of expressions:
+                0..23 = Int
+                8..18 = () -> Int
                 17..18 = Int
                 20..21 = () -> Int
-                8..18 = () -> Int
                 20..23 = Int
-                0..23 = Int
                 types of patterns:
                 4..5 = ?0
             "#]],
@@ -779,15 +779,15 @@ fn synth_fun_app() {
                 metavars:
                 ?0 = Int -> Int
                 types of expressions:
+                0..29 = Int -> Int
+                8..24 = Int -> Int
                 15..18 = Type
                 23..24 = Int
                 26..27 = Int -> Int
-                8..24 = Int -> Int
                 26..29 = Int -> Int
-                0..29 = Int -> Int
                 types of patterns:
-                12..13 = Int
                 4..5 = ?0
+                12..13 = Int
 
                 diagnostics:
                 FunAppEmptyArgsMismatch { call_span: 26..29, fun_type: "Int -> Int" }
@@ -800,9 +800,9 @@ fn synth_fun_app() {
             ((Array(Int, 5)) : Type)
             types of expressions:
             0..5 = Type -> Int -> Type
+            0..13 = Type
             6..9 = Type
             11..12 = Int
-            0..13 = Type
         "#]],
     );
     synth_expr(
@@ -811,8 +811,8 @@ fn synth_fun_app() {
             ((Array(Int)) : Int -> Type)
             types of expressions:
             0..5 = Type -> Int -> Type
-            6..9 = Type
             0..10 = Int -> Type
+            6..9 = Type
         "#]],
     );
     synth_expr(
@@ -821,8 +821,8 @@ fn synth_fun_app() {
             (#error : #error)
             types of expressions:
             0..5 = Type -> Int -> Type
-            7..10 = <missing>
             0..11 = #error
+            7..10 = <missing>
 
             diagnostics:
             FunAppPlicity { call_span: 0..11, fun_type: "Type -> Int -> Type", fun_plicity: Explicit, arg_span: 7..10, arg_plicity: Implicit }
@@ -834,8 +834,8 @@ fn synth_fun_app() {
             (#error : #error)
             types of expressions:
             0..3 = Type
-            4..5 = <missing>
             0..6 = #error
+            4..5 = <missing>
 
             diagnostics:
             FunAppNotFun { call_span: 0..6, fun_type: "Type" }
@@ -847,10 +847,10 @@ fn synth_fun_app() {
             (#error : #error)
             types of expressions:
             0..5 = Type -> Int -> Type
+            0..16 = #error
             6..9 = Type
             11..12 = Int
             14..15 = <missing>
-            0..16 = #error
 
             diagnostics:
             FunAppTooManyArgs { call_span: 0..16, fun_type: "Type -> Int -> Type", expected_arity: 2, actual_arity: 3 }
@@ -868,10 +868,10 @@ fn synth_if() {
                 true => 1,
             } : Int)
             types of expressions:
+            0..21 = Int
             3..7 = Bool
             13..14 = Int
             20..21 = Int
-            0..21 = Int
         "#]],
     );
 }
@@ -886,12 +886,12 @@ fn check_if() {
                 true => 1,
             } : Int)
             types of expressions:
+            0..30 = Int
+            1..24 = Int
             5..9 = Bool
             15..16 = Int
             22..23 = Int
-            1..24 = Int
             26..29 = Type
-            0..30 = Int
         "#]],
     );
 }
@@ -909,18 +909,18 @@ id(false)",
             ?0 = fun(@A: Type) -> A -> A
             ?1 = Bool
             types of expressions:
-            19..23 = Type
-            40..45 = Bool
             1..46 = Bool
+            10..35 = fun(@A: Type) -> A -> A
+            19..23 = Type
             28..29 = Type
             34..35 = A
             37..39 = fun(@A: Type) -> A -> A
-            10..35 = fun(@A: Type) -> A -> A
             37..46 = Bool
+            40..45 = Bool
             types of patterns:
+            5..7 = ?0
             16..17 = Type
             25..26 = A
-            5..7 = ?0
         "#]],
     );
     synth_expr(
@@ -935,23 +935,23 @@ always(0, false)",
             ?1 = Int
             ?2 = Bool
             types of expressions:
-            22..26 = Type
-            41..42 = Type
-            63..64 = Int
-            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
-            56..72 = Int
             1..72 = Int
+            14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
+            22..26 = Type
             32..36 = Type
+            41..42 = Type
             47..48 = Type
             53..54 = A
             56..62 = fun(@A: Type, @B: Type) -> A -> B -> A
+            56..72 = Int
+            63..64 = Int
             66..71 = Bool
             types of patterns:
+            5..11 = ?0
             19..20 = Type
             29..30 = Type
             38..39 = A
             44..45 = B
-            5..11 = ?0
         "#]],
     );
 
@@ -972,41 +972,41 @@ apply(always(false), 0)",
             ?4 = Bool
             ?5 = Int
             types of expressions:
-            22..26 = Type
-            95..101 = Type
-            56..141 = Bool
-            47..48 = Type
-            86..90 = Type
-            112..116 = B
-            124..130 = fun(@A: Type, @B: Type) -> A -> B -> A
-            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-            41..42 = Type
-            95..96 = Type
-            76..80 = Type
-            112..113 = A -> B
-            118..123 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-            131..136 = Bool
-            139..140 = Int
+            1..141 = Bool
             14..54 = fun(@A: Type, @B: Type) -> A -> B -> A
+            22..26 = Type
             32..36 = Type
+            41..42 = Type
+            47..48 = Type
             53..54 = A
+            56..141 = Bool
+            68..116 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            76..80 = Type
+            86..90 = Type
+            95..96 = Type
+            95..101 = Type
             100..101 = Type
             106..107 = Type
+            112..113 = A -> B
+            112..116 = B
             114..115 = A
-            124..137 = ?2 -> Bool
+            118..123 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             118..141 = Bool
-            1..141 = Bool
+            124..130 = fun(@A: Type, @B: Type) -> A -> B -> A
+            124..137 = ?2 -> Bool
+            131..136 = Bool
+            139..140 = Int
             types of patterns:
-            19..20 = Type
-            38..39 = A
-            73..74 = Type
-            92..93 = A -> B
             5..11 = ?0
+            19..20 = Type
             29..30 = Type
+            38..39 = A
             44..45 = B
-            83..84 = Type
-            103..104 = A
             60..65 = ?1
+            73..74 = Type
+            83..84 = Type
+            92..93 = A -> B
+            103..104 = A
         "#]],
     );
 }
@@ -1025,20 +1025,20 @@ let id = fun(@A: Type, a: A) => a;
             ?0 = fun(@A: Type) -> A -> A
             ?1 = Bool
             types of expressions:
-            18..22 = Type
-            50..54 = Type
-            42..54 = Type
             1..55 = Bool -> Bool
+            10..34 = fun(@A: Type) -> A -> A
+            18..22 = Type
             27..28 = Type
             33..34 = A
-            42..46 = Type
-            37..39 = Bool -> Bool
-            10..34 = fun(@A: Type) -> A -> A
             36..55 = Bool -> Bool
+            37..39 = Bool -> Bool
+            42..46 = Type
+            42..54 = Type
+            50..54 = Type
             types of patterns:
+            5..7 = ?0
             15..16 = Type
             24..25 = A
-            5..7 = ?0
         "#]],
     );
     synth_expr(
@@ -1053,30 +1053,30 @@ let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
             ?0 = Bool
             ?1 = Int
             types of expressions:
-            22..26 = Type
-            42..43 = Type
-            90..101 = Type
-            72..102 = Bool -> Int -> Bool
-            47..53 = Type
-            90..93 = Type
-            73..79 = Bool -> Int -> Bool
-            47..48 = Type
-            97..101 = Type
-            82..101 = Type
-            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
             1..102 = Bool -> Int -> Bool
-            33..37 = Type
-            52..53 = Type
-            42..53 = Type
-            69..70 = A
-            82..86 = Type
             13..53 = Type
+            22..26 = Type
+            33..37 = Type
+            42..43 = Type
+            42..53 = Type
+            47..48 = Type
+            47..53 = Type
+            52..53 = Type
+            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
+            69..70 = A
+            72..102 = Bool -> Int -> Bool
+            73..79 = Bool -> Int -> Bool
+            82..86 = Type
+            82..101 = Type
+            90..93 = Type
+            90..101 = Type
+            97..101 = Type
             types of patterns:
+            5..11 = fun(@A: Type, @B: Type) -> A -> B -> A
             18..19 = Type
             29..30 = Type
             60..61 = A
             63..64 = B
-            5..11 = fun(@A: Type, @B: Type) -> A -> B -> A
         "#]],
     );
     synth_expr(
@@ -1092,32 +1092,32 @@ let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
             ?1 = Bool
             ?2 = Int
             types of expressions:
-            40..41 = Type
-            21..25 = Type
-            82..85 = Type
-            90..94 = Type
-            72..102 = Type
+            1..103 = (Bool -> Int) -> Bool -> Int
             13..61 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            21..25 = Type
+            31..35 = Type
+            40..41 = Type
+            40..46 = Type
             45..46 = Type
             51..52 = Type
-            57..61 = B
-            98..101 = Type
-            40..46 = Type
             57..58 = A -> B
-            73..86 = Type
-            63..103 = (Bool -> Int) -> Bool -> Int
-            1..103 = (Bool -> Int) -> Bool -> Int
-            31..35 = Type
+            57..61 = B
             59..60 = A
-            74..78 = Type
-            90..101 = Type
+            63..103 = (Bool -> Int) -> Bool -> Int
             64..69 = (Bool -> Int) -> Bool -> Int
+            72..102 = Type
+            73..86 = Type
+            74..78 = Type
+            82..85 = Type
+            90..94 = Type
+            90..101 = Type
+            98..101 = Type
             types of patterns:
+            5..10 = ?0
             18..19 = Type
             28..29 = Type
             37..38 = A -> B
             48..49 = A
-            5..10 = ?0
         "#]],
     );
 }
@@ -1133,19 +1133,19 @@ let id: fun(@A : Type) -> A -> A = fun(a) => a;
             ((let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
             ()) : ())
             types of expressions:
-            32..33 = Type
-            27..33 = Type
-            46..47 = A
-            9..33 = Type
             1..51 = ()
+            9..33 = Type
             18..22 = Type
             27..28 = Type
+            27..33 = Type
+            32..33 = Type
             36..47 = fun(@A: Type) -> A -> A
+            46..47 = A
             49..51 = ()
             types of patterns:
+            5..7 = fun(@A: Type) -> A -> A
             14..15 = Type
             40..41 = A
-            5..7 = fun(@A: Type) -> A -> A
         "#]],
     );
 
@@ -1160,44 +1160,44 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             ()) : ())
             types of expressions:
-            47..48 = Type
-            112..120 = Type
-            146..150 = B
-            72..154 = ()
-            33..37 = Type
-            52..53 = Type
-            42..53 = Type
-            69..70 = A
-            113..114 = Type
-            124..130 = Type
-            146..147 = A -> B
-            133..150 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            1..154 = ()
+            13..53 = Type
             22..26 = Type
+            33..37 = Type
             42..43 = Type
+            42..53 = Type
+            47..48 = Type
+            47..53 = Type
+            52..53 = Type
+            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
+            69..70 = A
+            72..154 = ()
+            83..130 = Type
+            92..96 = Type
             103..107 = Type
+            112..120 = Type
+            112..130 = Type
+            113..114 = Type
             118..119 = Type
             124..125 = Type
-            148..149 = A
-            83..130 = Type
-            56..70 = fun(@A: Type, @B: Type) -> A -> B -> A
-            47..53 = Type
-            92..96 = Type
+            124..130 = Type
             129..130 = Type
-            112..130 = Type
+            133..150 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            146..147 = A -> B
+            146..150 = B
+            148..149 = A
             152..154 = ()
-            13..53 = Type
-            1..154 = ()
             types of patterns:
-            18..19 = Type
-            60..61 = A
-            99..100 = Type
-            140..141 = A
             5..11 = fun(@A: Type, @B: Type) -> A -> B -> A
+            18..19 = Type
             29..30 = Type
+            60..61 = A
             63..64 = B
-            88..89 = Type
-            137..138 = A -> B
             76..81 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            88..89 = Type
+            99..100 = Type
+            137..138 = A -> B
+            140..141 = A
         "#]],
     );
 
@@ -1210,28 +1210,28 @@ let apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);
             ((let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
             ()) : ())
             types of expressions:
-            42..43 = Type
-            77..78 = A
+            1..83 = ()
             12..59 = Type
+            21..25 = Type
             32..36 = Type
+            41..49 = Type
+            41..59 = Type
+            42..43 = Type
             47..48 = Type
             53..54 = Type
-            41..59 = Type
-            81..83 = ()
-            21..25 = Type
-            58..59 = Type
-            41..49 = Type
-            75..79 = B
-            1..83 = ()
             53..59 = Type
-            75..76 = A -> B
+            58..59 = Type
             62..79 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+            75..76 = A -> B
+            75..79 = B
+            77..78 = A
+            81..83 = ()
             types of patterns:
+            5..10 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
             17..18 = Type
             28..29 = Type
             66..67 = A -> B
             69..70 = A
-            5..10 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
         "#]],
     );
 }
