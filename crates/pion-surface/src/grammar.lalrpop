@@ -130,11 +130,11 @@ MatchCase: MatchCase<'surface> = {
 }
 
 ExprField: ExprField<'surface> = {
-    <label: SpannedIdent> "=" <expr: Expr> => ExprField {label, expr},
+    <label: SpannedIdent> "=" <expr: Expr> => ExprField {label_span: label.0, label: label.1, expr},
 }
 
 TypeField: TypeField<'surface> = {
-    <label: SpannedIdent> ":" <r#type: Expr> => TypeField {label, r#type},
+    <label: SpannedIdent> ":" <r#type: Expr> => TypeField {label_span: label.0, label: label.1, r#type},
 }
 
 // ==== Patterns ====
@@ -154,7 +154,7 @@ AtomPat: Pat<'surface> = {
 }
 
 PatField: PatField<'surface> = {
-    <label: SpannedIdent> "=" <pat: Pat> => PatField {label, pat},
+    <label: SpannedIdent> "=" <pat: Pat> => PatField {label_span: label.0, label: label.1, pat},
 }
 
 // ==== Literals ====

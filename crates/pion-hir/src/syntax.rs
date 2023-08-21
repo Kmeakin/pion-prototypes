@@ -3,6 +3,7 @@ use std::ops::Index;
 use pion_surface::syntax as surface;
 use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
+use pion_utils::location::ByteSpan;
 
 use crate::syntax_map::SyntaxMap;
 
@@ -100,18 +101,21 @@ impl From<Plicity> for surface::Plicity {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'hir> {
+    pub label_span: ByteSpan,
     pub label: Symbol,
     pub r#type: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'hir> {
+    pub label_span: ByteSpan,
     pub label: Symbol,
     pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'hir> {
+    pub label_span: ByteSpan,
     pub label: Symbol,
     pub pat: Pat<'hir>,
 }

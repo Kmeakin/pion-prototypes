@@ -449,6 +449,20 @@ fn synth_record_type() {
             18..22 = Type
         "#]],
     );
+    synth_expr(
+        "{x: Int, y: Bool, x: ()}",
+        expect![[r#"
+        ({x: Int, y: Bool} : Type)
+        types of expressions:
+        0..24 = Type
+        4..7 = Type
+        12..16 = Type
+        21..23 = <missing>
+
+        diagnostics:
+        RecordFieldDuplicate { name: "record type", label: Symbol("x"), first_span: 1..2, duplicate_span: 18..19 }
+    "#]],
+    );
 }
 
 #[test]
@@ -490,6 +504,20 @@ fn synth_record_lit() {
             8..13 = Bool
             17..21 = Bool
         "#]],
+    );
+    synth_expr(
+        "{x=5, y=false, x=()}",
+        expect![[r#"
+        ({x = 5, y = false} : {x: Int, y: Bool})
+        types of expressions:
+        0..20 = {x: Int, y: Bool}
+        3..4 = Int
+        8..13 = Bool
+        17..19 = <missing>
+
+        diagnostics:
+        RecordFieldDuplicate { name: "record type", label: Symbol("x"), first_span: 1..2, duplicate_span: 15..16 }
+    "#]],
     );
 }
 

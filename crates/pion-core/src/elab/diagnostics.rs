@@ -51,6 +51,12 @@ pub enum ElabDiagnostic {
         scrut_type: String,
         field: Symbol,
     },
+    RecordFieldDuplicate {
+        name: &'static str,
+        label: Symbol,
+        first_span: ByteSpan,
+        duplicate_span: ByteSpan,
+    },
     ArrayLenMismatch {
         span: ByteSpan,
         expected_len: u32,
@@ -70,7 +76,6 @@ impl ElabDiagnostic {
             Self::UnboundName { span, name } => CodeSpanDiagnostic::error()
                 .with_message(format!("unbound name `{name}`"))
                 .with_labels(vec![primary(*span)]),
-
             Self::FunAppPlicity {
                 call_span,
                 fun_type,
@@ -144,6 +149,17 @@ impl ElabDiagnostic {
                 .with_notes(vec![format!(
                     "help: the type of this expression is `{scrut_type}`"
                 )]),
+            Self::RecordFieldDuplicate {
+                name,
+                label,
+                first_span,
+                duplicate_span,
+            } => CodeSpanDiagnostic::error()
+                .with_message(format!("duplicate field `{label}` in {name}"))
+                .with_labels(vec![
+                    secondary(*first_span).with_message("first field"),
+                    primary(*duplicate_span).with_message("duplicate field"),
+                ]),
             Self::ArrayLenMismatch {
                 span,
                 expected_len,

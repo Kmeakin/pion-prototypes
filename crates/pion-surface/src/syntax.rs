@@ -146,19 +146,22 @@ pub enum Plicity {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'surface> {
-    pub label: (ByteSpan, Symbol),
+    pub label_span: ByteSpan,
+    pub label: Symbol,
     pub r#type: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'surface> {
-    pub label: (ByteSpan, Symbol),
+    pub label_span: ByteSpan,
+    pub label: Symbol,
     pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'surface> {
-    pub label: (ByteSpan, Symbol),
+    pub label_span: ByteSpan,
+    pub label: Symbol,
     pub pat: Pat<'surface>,
 }
 
@@ -188,7 +191,7 @@ impl<'surface> Pat<'surface> {
             | Pat::Ident(span, ..)
             | Pat::Paren(span, ..)
             | Pat::TupleLit(span, ..)
-            | Pat::RecordLit( span,..) => *span,
+            | Pat::RecordLit(span, ..) => *span,
         }
     }
 }

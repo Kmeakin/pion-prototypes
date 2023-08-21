@@ -203,7 +203,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         field: &'surface surface::TypeField<'surface>,
     ) -> TypeField<'hir> {
         TypeField {
-            label: field.label.1,
+            label_span: field.label_span,
+            label: field.label,
             r#type: self.expr_to_hir(&field.r#type),
         }
     }
@@ -226,7 +227,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         field: &'surface surface::ExprField<'surface>,
     ) -> ExprField<'hir> {
         ExprField {
-            label: field.label.1,
+            label_span: field.label_span,
+            label: field.label,
             r#expr: self.expr_to_hir(&field.expr),
         }
     }
@@ -345,7 +347,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
 
     fn pat_field_to_hir(&mut self, field: &'surface surface::PatField<'surface>) -> PatField<'hir> {
         PatField {
-            label: field.label.1,
+            label_span: field.label_span,
+            label: field.label,
             pat: self.pat_to_hir(&field.pat),
         }
     }

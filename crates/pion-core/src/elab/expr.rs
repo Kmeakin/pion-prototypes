@@ -117,17 +117,28 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = Type::record_type(labels, r#types.into());
                 SynthExpr::new(expr, r#type)
             }
-            // FIXME: check for duplicate fields
             hir::Expr::RecordType(fields) => {
                 let mut types = SliceVec::new(self.bump, fields.len());
                 let mut labels = SliceVec::new(self.bump, fields.len());
+                let mut label_spans = SliceVec::new(self.bump, fields.len());
 
                 self.with_scope(|this| {
                     for field in *fields {
+                        if let Some(idx) = labels.iter().position(|label| *label == field.label) {
+                            this.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
+                                name: "record type",
+                                label: field.label,
+                                first_span: label_spans[idx],
+                                duplicate_span: field.label_span,
+                            });
+                            continue;
+                        }
+
                         let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
                         let type_value = this.eval_env().eval(&r#type);
                         types.push(r#type);
                         labels.push(field.label);
+                        label_spans.push(field.label_span);
                         this.local_env.push_param(Some(field.label), type_value);
                     }
                 });
@@ -141,12 +152,24 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut exprs = SliceVec::new(self.bump, fields.len());
                 let mut types = SliceVec::new(self.bump, fields.len());
                 let mut labels = SliceVec::new(self.bump, fields.len());
+                let mut label_spans = SliceVec::new(self.bump, fields.len());
 
                 for field in *fields {
+                    if let Some(idx) = labels.iter().position(|label| *label == field.label) {
+                        self.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
+                            name: "record type",
+                            label: field.label,
+                            first_span: label_spans[idx],
+                            duplicate_span: field.label_span,
+                        });
+                        continue;
+                    }
+
                     let Synth(field_expr, field_type) = self.synth_expr(&field.expr);
                     exprs.push(field_expr);
                     types.push(self.quote_env().quote(&field_type));
                     labels.push(field.label);
+                    label_spans.push(field.label_span);
                 }
 
                 let labels = labels.into();
@@ -453,7 +476,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
-            // FIXME: check for duplicate fields
             hir::Expr::RecordLit(fields) => match &expected {
                 Value::RecordType(labels, telescope)
                     if Iterator::eq(fields.iter().map(|field| &field.label), labels.iter()) =>
