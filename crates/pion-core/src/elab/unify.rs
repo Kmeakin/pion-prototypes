@@ -421,7 +421,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     *plicity,
                     None,
                     self.bump.alloc((
-                        Expr::Error, // TODO: what should the type be?
+                        Expr::Error, // FIXME: what should the type be?
                         expr,
                     )),
                 )

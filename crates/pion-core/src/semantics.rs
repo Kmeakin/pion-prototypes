@@ -1,4 +1,4 @@
-// FIXME: why doesn't clippy respect `cargo.toml` for this lint?
+// TODO: why doesn't clippy respect `cargo.toml` for this lint?
 #![allow(clippy::option_if_let_else)]
 
 use either::*;

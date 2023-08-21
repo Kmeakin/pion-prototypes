@@ -117,6 +117,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = Type::record_type(labels, r#types.into());
                 SynthExpr::new(expr, r#type)
             }
+            // FIXME: check for duplicate fields
             hir::Expr::RecordType(fields) => {
                 let mut types = SliceVec::new(self.bump, fields.len());
                 let mut labels = SliceVec::new(self.bump, fields.len());
@@ -135,6 +136,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let expr = Expr::RecordType(labels, types.into());
                 SynthExpr::new(expr, Type::TYPE)
             }
+            // TODO: check for duplicate fields
             hir::Expr::RecordLit(fields) => {
                 let mut exprs = SliceVec::new(self.bump, fields.len());
                 let mut types = SliceVec::new(self.bump, fields.len());
@@ -451,6 +453,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
+            // FIXME: check for duplicate fields
             hir::Expr::RecordLit(fields) => match &expected {
                 Value::RecordType(labels, telescope)
                     if Iterator::eq(fields.iter().map(|field| &field.label), labels.iter()) =>
@@ -471,6 +474,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
+            // TODO: check for duplicate params
             hir::Expr::FunLit(params, body) => {
                 if params.is_empty() {
                     cov_mark::hit!(check_empty_fun_lit);
@@ -602,6 +606,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    // FIXME: check for duplicate params
     fn synth_fun_type(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
@@ -624,6 +629,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         SynthExpr::new(expr, Type::TYPE)
     }
 
+    // FIXME: check for duplicate params
     fn synth_fun_lit(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
@@ -653,6 +659,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         SynthExpr::new(expr, r#type)
     }
 
+    // FIXME: check for duplicate params
     fn check_fun_lit(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],

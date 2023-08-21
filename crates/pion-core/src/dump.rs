@@ -63,7 +63,7 @@ pub fn dump_expr_types(
     let bump = bumpalo::Bump::new();
     let pretty_ctx = PrettyCtx::new(&bump);
 
-    // FIXME: use map with deterministic iteration order
+    // TODO: use map with deterministic iteration order
     let mut exprs: Vec<_> = syntax_map.exprs.iter().collect();
     exprs.sort_by_key(|(surface, _)| surface.0.span());
 
@@ -95,7 +95,7 @@ pub fn dump_pat_types(
     let bump = bumpalo::Bump::new();
     let pretty_ctx = PrettyCtx::new(&bump);
 
-    // FIXME: use map with deterministic iteration order
+    // TODO: use map with deterministic iteration order
     let mut pats: Vec<_> = syntax_map.pats.iter().collect();
     pats.sort_by_key(|(surface, _)| surface.0.span());
 

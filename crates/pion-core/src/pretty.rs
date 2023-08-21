@@ -83,7 +83,7 @@ impl<'pretty, 'env> PrettyCtx<'pretty> {
                 let args = args.iter().map(|var| {
                     self.fun_arg(
                         Plicity::Explicit,
-                        &Expr::Local(Symbol::intern("TODO"), *var),
+                        &Expr::Local(Symbol::intern("FIXME"), *var),
                     )
                 });
                 let args = self.intersperse(args, self.text(", "));
