@@ -52,6 +52,7 @@ impl Server {
             inlay_hint_provider: None,
             linked_editing_range_provider: None,
             experimental: None,
+            diagnostic_provider: None,
         }
     }
 
