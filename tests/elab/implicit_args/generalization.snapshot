@@ -1,0 +1,60 @@
+exit status: 0
+
+stdout = """
+def id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+types of expressions:
+8..32 = Type
+17..21 = Type
+26..27 = Type
+26..32 = Type
+31..32 = Type
+35..46 = fun(@A: Type) -> A -> A
+45..46 = A
+types of patterns:
+13..14 = Type
+39..40 = A
+
+def always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+types of expressions:
+61..101 = Type
+70..74 = Type
+81..85 = Type
+90..91 = Type
+90..101 = Type
+95..96 = Type
+95..101 = Type
+100..101 = Type
+104..118 = fun(@A: Type, @B: Type) -> A -> B -> A
+117..118 = A
+types of patterns:
+66..67 = Type
+77..78 = Type
+108..109 = A
+111..112 = B
+
+def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
+types of expressions:
+132..179 = Type
+141..145 = Type
+152..156 = Type
+161..169 = Type
+161..179 = Type
+162..163 = Type
+167..168 = Type
+173..174 = Type
+173..179 = Type
+178..179 = Type
+182..199 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+195..196 = A -> B
+195..199 = B
+197..198 = A
+types of patterns:
+137..138 = Type
+148..149 = Type
+186..187 = A -> B
+189..190 = A
+"""
+
+stderr = """
+
+"""

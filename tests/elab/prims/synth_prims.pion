@@ -1,0 +1,4 @@
+def x1 = Type;
+def x2 = Int;
+def x3 = Bool;
+def x4 = Array;

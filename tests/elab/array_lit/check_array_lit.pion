@@ -1,0 +1,7 @@
+def a: Array(Int, 0) = [];
+
+def b: Array(Int, 1) = [1];
+
+def c: Array(_, 1) = [1];
+
+def d: Array(_, 2) = [1];

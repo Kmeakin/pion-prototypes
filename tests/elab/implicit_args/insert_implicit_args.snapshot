@@ -1,0 +1,98 @@
+exit status: 0
+
+stdout = """
+def a: Bool = let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+id(@Bool, false);
+types of expressions:
+12..61 = Bool
+21..46 = fun(@A: Type) -> A -> A
+30..34 = Type
+39..40 = Type
+45..46 = A
+52..54 = fun(@A: Type) -> A -> A
+52..61 = Bool
+55..60 = Bool
+types of patterns:
+16..18 = ?0
+27..28 = Type
+36..37 = A
+metavars:
+?0 = fun(@A: Type) -> A -> A
+?1 = Bool
+
+def b: Int = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+always(@Int, @Bool, 0, false);
+types of expressions:
+76..151 = Int
+89..129 = fun(@A: Type, @B: Type) -> A -> B -> A
+97..101 = Type
+107..111 = Type
+116..117 = Type
+122..123 = Type
+128..129 = A
+135..141 = fun(@A: Type, @B: Type) -> A -> B -> A
+135..151 = Int
+142..143 = Int
+145..150 = Bool
+types of patterns:
+80..86 = ?0
+94..95 = Type
+104..105 = Type
+113..114 = A
+119..120 = B
+metavars:
+?0 = fun(@A: Type, @B: Type) -> A -> B -> A
+?1 = Int
+?2 = Bool
+
+def c: Bool = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+apply(@Int, @Bool, always(@Bool, @Int, false), 0);
+types of expressions:
+166..314 = Bool
+179..219 = fun(@A: Type, @B: Type) -> A -> B -> A
+187..191 = Type
+197..201 = Type
+206..207 = Type
+212..213 = Type
+218..219 = A
+225..314 = Bool
+237..285 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+245..249 = Type
+255..259 = Type
+264..265 = Type
+264..270 = Type
+269..270 = Type
+275..276 = Type
+281..282 = A -> B
+281..285 = B
+283..284 = A
+291..296 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+291..314 = Bool
+297..303 = fun(@A: Type, @B: Type) -> A -> B -> A
+297..310 = ?2 -> Bool
+304..309 = Bool
+312..313 = Int
+types of patterns:
+170..176 = ?0
+184..185 = Type
+194..195 = Type
+203..204 = A
+209..210 = B
+229..234 = ?1
+242..243 = Type
+252..253 = Type
+261..262 = A -> B
+272..273 = A
+metavars:
+?0 = fun(@A: Type, @B: Type) -> A -> B -> A
+?1 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+?2 = Int
+?3 = Bool
+?4 = Bool
+?5 = Int
+"""
+
+stderr = """
+
+"""

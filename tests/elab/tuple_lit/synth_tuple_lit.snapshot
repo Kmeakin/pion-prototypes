@@ -1,0 +1,29 @@
+exit status: 0
+
+stdout = """
+def tuple0: () = ();
+types of expressions:
+13..15 = ()
+
+def tuple1: (Int,) = (1,);
+types of expressions:
+31..35 = (Int,)
+32..33 = Int
+
+def tuple2: (Int, Int) = (1, 2);
+types of expressions:
+51..56 = (Int, Int)
+52..53 = Int
+54..55 = Int
+
+def tuple3: (Int, Int, Int) = (1, 2, 3);
+types of expressions:
+73..80 = (Int, Int, Int)
+74..75 = Int
+76..77 = Int
+78..79 = Int
+"""
+
+stderr = """
+
+"""

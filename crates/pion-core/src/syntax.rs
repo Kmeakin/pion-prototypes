@@ -3,20 +3,19 @@ use core::fmt;
 use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
 
-use crate::elab::ElabResult;
 use crate::env::{Index, Level, SharedEnv};
 use crate::prim::Prim;
 
 mod iterators;
 
-#[derive(Debug, Clone)]
-pub struct Module<'hir, 'core> {
-    pub items: &'core [Item<'hir, 'core>],
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Module<'core> {
+    pub items: &'core [Item<'core>],
 }
 
-#[derive(Debug, Clone)]
-pub enum Item<'hir, 'core> {
-    Def(ElabResult<'hir, 'core, Def<'core>>),
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Item<'core> {
+    Def(Def<'core>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

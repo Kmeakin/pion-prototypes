@@ -1,0 +1,17 @@
+exit status: 0
+
+stdout = """
+def a: Int = match true {
+    false => 0,
+    true => 1,
+};
+types of expressions:
+8..29 = Int
+11..15 = Bool
+21..22 = Int
+28..29 = Int
+"""
+
+stderr = """
+
+"""

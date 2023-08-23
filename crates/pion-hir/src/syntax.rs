@@ -23,8 +23,8 @@ pub enum Item<'hir> {
 #[derive(Debug, Copy, Clone)]
 pub struct Def<'hir> {
     pub name: Symbol,
-    pub r#type: Option<Expr<'hir>>,
-    pub expr: Expr<'hir>,
+    pub r#type: Option<&'hir Expr<'hir>>,
+    pub expr: &'hir Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

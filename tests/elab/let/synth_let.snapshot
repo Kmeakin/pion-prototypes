@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+def a: Int = let x: Int = 5;
+x;
+types of expressions:
+12..28 = Int
+20..21 = Int
+27..28 = Int
+types of patterns:
+16..17 = ?0
+metavars:
+?0 = Int
+"""
+
+stderr = """
+
+"""

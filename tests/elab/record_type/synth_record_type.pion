@@ -1,0 +1,7 @@
+def singleton = {x: Int};
+
+def point = {x: Int, y: Int};
+
+def Any = {A: Type, a: A};
+
+def error = {x: Int, y: Bool, x: ()};

@@ -1,0 +1,21 @@
+exit status: 0
+
+stdout = """
+def fun1: Type = Int -> Bool;
+types of expressions:
+11..14 = Type
+11..22 = Type
+18..22 = Type
+
+def fun2: Type = Int -> Bool -> Type;
+types of expressions:
+36..39 = Type
+36..55 = Type
+43..47 = Type
+43..55 = Type
+51..55 = Type
+"""
+
+stderr = """
+
+"""

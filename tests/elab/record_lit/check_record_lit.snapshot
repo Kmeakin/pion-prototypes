@@ -1,0 +1,16 @@
+exit status: 0
+
+stdout = """
+def foo: {x: Int, y: Bool} = {x = 1, y = false};
+types of expressions:
+9..26 = Type
+13..16 = Type
+21..25 = Type
+29..43 = {x: Int, y: Bool}
+32..33 = Int
+37..42 = Bool
+"""
+
+stderr = """
+
+"""

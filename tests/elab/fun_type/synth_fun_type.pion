@@ -1,0 +1,5 @@
+def fun0 = fun() -> Int;
+
+def fun1 = fun(x: Int) -> Int;
+
+def IdType = fun(A: Type) -> A -> A;

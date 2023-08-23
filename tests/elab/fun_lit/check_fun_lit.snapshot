@@ -1,0 +1,25 @@
+exit status: 0
+
+stdout = """
+def fun0: () -> Int = fun(_: ()) => 0;
+types of expressions:
+10..12 = Type
+10..19 = Type
+16..19 = Type
+22..32 = () -> Int
+31..32 = Int
+
+def fun1: Int -> Bool = fun(x: Int) => false;
+types of expressions:
+45..48 = Type
+45..56 = Type
+52..56 = Type
+59..74 = Int -> Bool
+69..74 = Bool
+types of patterns:
+63..64 = Int
+"""
+
+stderr = """
+
+"""

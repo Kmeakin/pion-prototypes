@@ -1,0 +1,45 @@
+exit status: 1
+
+stdout = """
+def fun0: () -> Int = fun(_: ()) => 5;
+types of expressions:
+11..21 = () -> Int
+20..21 = Int
+
+def fun1: ?0 -> ?0 = fun(x: ?0) => x;
+types of expressions:
+35..46 = ?0 -> ?0
+45..46 = ?0
+types of patterns:
+39..40 = ?0
+metavars:
+?0 = <unsolved>
+
+def fun1a: Int -> Int = fun(x: Int) => x;
+types of expressions:
+61..78 = Int -> Int
+69..72 = Type
+77..78 = Int
+types of patterns:
+65..66 = Int
+
+def id: fun(A: Type) -> A -> A = fun(A: Type, a: A) => a;
+types of expressions:
+90..113 = fun(A: Type) -> A -> A
+97..101 = Type
+106..107 = Type
+112..113 = A
+types of patterns:
+94..95 = Type
+103..104 = A
+"""
+
+stderr = """
+error: unable to infer pattern type
+  ┌─ tests/elab/fun_lit/synth_fun_lit.pion:3:16
+  │
+3 │ def fun1 = fun(x) => x;
+  │                ^
+
+aborting due to 1 previous error
+"""

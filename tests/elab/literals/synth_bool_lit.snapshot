@@ -1,0 +1,15 @@
+exit status: 0
+
+stdout = """
+def foo: Bool = true;
+types of expressions:
+10..14 = Bool
+
+def bar: Bool = false;
+types of expressions:
+26..31 = Bool
+"""
+
+stderr = """
+
+"""

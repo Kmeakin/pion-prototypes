@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use anyhow::bail;
 use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::{Diagnostic, Severity};
@@ -38,12 +40,13 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
     stop_if_errors(error_count)?;
 
     let bump = bumpalo::Bump::new();
-    let mut stderr = codespan_reporting::term::termcolor::StandardStream::stderr(
-        codespan_reporting::term::termcolor::ColorChoice::Auto,
-    );
-    let mut stdout = codespan_reporting::term::termcolor::StandardStream::stdout(
-        codespan_reporting::term::termcolor::ColorChoice::Auto,
-    );
+    let color_choice = if std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+        codespan_reporting::term::termcolor::ColorChoice::Auto
+    } else {
+        codespan_reporting::term::termcolor::ColorChoice::Never
+    };
+    let mut stderr = codespan_reporting::term::termcolor::StandardStream::stderr(color_choice);
+    let mut stdout = std::io::stdout();
     let config = codespan_reporting::term::Config::default();
     let mut emit = |diagnostic: &Diagnostic<_>| {
         if diagnostic.severity >= Severity::Error {
@@ -52,39 +55,37 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         codespan_reporting::term::emit(&mut stderr, &config, &source_map, diagnostic)
     };
 
+    let mut diagnostics = Vec::new();
+
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
         let (surface_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
+        diagnostics.extend(errors.iter().map(|error| error.to_diagnostic(file_id)));
 
-        for error in errors {
-            let diagnostic = error.to_diagnostic(file_id);
-            emit(&diagnostic)?;
-        }
+        for surface_item in surface_module.items {
+            let (hir_item, syntax_map, errors) = pion_hir::lower::lower_item(&bump, surface_item);
+            diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
 
-        let (hir_module, syntax_map, diagnostics) =
-            pion_hir::lower::lower_module(&bump, &surface_module);
+            if let pion_hir::syntax::Item::Def(def) = hir_item {
+                let result = pion_core::elab::elab_def(&bump, &syntax_map, &def);
 
-        for diag in diagnostics {
-            let diagnostic = diag.to_diagnostic(file_id);
-            emit(&diagnostic)?;
-        }
-
-        let core_module = pion_core::elab::elab_module(&bump, &syntax_map, &hir_module);
-
-        if dump_flags.core {
-            pion_core::dump::dump_module(&mut stdout, &syntax_map, &core_module)?;
-        }
-
-        for item in core_module.items {
-            match item {
-                pion_core::syntax::Item::Def(def) => {
-                    for diag in &def.diagnostics {
-                        let diagnostic = diag.to_diagnostic(file_id);
-                        emit(&diagnostic)?;
-                    }
+                if dump_flags.core {
+                    pion_core::dump::dump_def(&mut stdout, &syntax_map, &result)?;
+                    writeln!(&mut stdout)?;
                 }
+
+                diagnostics.extend(
+                    result
+                        .diagnostics
+                        .iter()
+                        .map(|diag| diag.to_diagnostic(file_id)),
+                );
             }
         }
+    }
+
+    for diagnostic in diagnostics {
+        emit(&diagnostic)?;
     }
 
     stop_if_errors(error_count)?;

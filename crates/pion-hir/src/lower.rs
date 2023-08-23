@@ -10,15 +10,25 @@ use crate::syntax::*;
 pub fn lower_module<'surface, 'hir>(
     bump: &'hir bumpalo::Bump,
     module: &'surface surface::Module<'surface>,
+) -> (Module<'hir>, Vec<LowerDiagnostic>) {
+    let mut ctx = Ctx::new(bump);
+    let module = ctx.module_to_hir(module);
+    let (_, errors) = ctx.finish();
+    (module, errors)
+}
+
+pub fn lower_item<'surface, 'hir>(
+    bump: &'hir bumpalo::Bump,
+    item: &'surface surface::Item<'surface>,
 ) -> (
-    Module<'hir>,
+    Item<'hir>,
     LocalSyntaxMap<'surface, 'hir>,
     Vec<LowerDiagnostic>,
 ) {
     let mut ctx = Ctx::new(bump);
-    let module = ctx.module_to_hir(module);
+    let item = ctx.item_to_hir(item);
     let (syntax_map, errors) = ctx.finish();
-    (module, syntax_map, errors)
+    (item, syntax_map, errors)
 }
 
 pub struct Ctx<'surface, 'hir> {
@@ -57,27 +67,13 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
     }
 
     fn lower_items(&mut self, items: &'surface [surface::Item<'surface>]) -> &'hir [Item<'hir>] {
-        let hir = self
-            .bump
-            .alloc_slice_fill_iter(items.iter().map(|item| self.item_to_hir(item)));
-        for (item, hir) in items.iter().zip(hir.iter()) {
-            match (item, hir) {
-                (surface::Item::Error(_), Item::Error) => {}
-                (surface::Item::Def(def), Item::Def(hir)) => {
-                    if let (Some(r#type), Some(hir)) = (&def.r#type, &hir.r#type) {
-                        self.syntax_map.exprs.insert(r#type, hir);
-                    }
-                    self.syntax_map.exprs.insert(&def.expr, &hir.expr);
-                }
-                _ => unreachable!(),
-            }
-        }
-        hir
+        self.bump
+            .alloc_slice_fill_iter(items.iter().map(|item| self.item_to_hir(item)))
     }
 
     fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
-        let r#type = def.r#type.as_ref().map(|r#type| self.expr_to_hir(r#type));
-        let expr = self.expr_to_hir(&def.expr);
+        let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
+        let expr = self.lower_expr(&def.expr);
         Def {
             name: def.name.1,
             r#type,

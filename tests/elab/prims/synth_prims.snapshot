@@ -1,0 +1,23 @@
+exit status: 0
+
+stdout = """
+def x1: Type = Type;
+types of expressions:
+9..13 = Type
+
+def x2: Type = Int;
+types of expressions:
+24..27 = Type
+
+def x3: Type = Bool;
+types of expressions:
+38..42 = Type
+
+def x4: Type -> Int -> Type = Array;
+types of expressions:
+53..58 = Type -> Int -> Type
+"""
+
+stderr = """
+
+"""

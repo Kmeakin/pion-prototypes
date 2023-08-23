@@ -4,6 +4,9 @@ name = "pion"
 edition = { workspace = true }
 version = { workspace = true }
 
+[[test]]
+name = "integration_tests"
+
 [lints]
 workspace = true
 
@@ -20,3 +23,6 @@ bumpalo            = { workspace = true }
 camino             = { workspace = true }
 clap               = { version = "4.3.12", features = ["derive"] }
 codespan-reporting = { workspace = true }
+
+[dev-dependencies]
+snapbox = { version = "0.4.11", features = ["harness"] }

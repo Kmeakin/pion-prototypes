@@ -18,9 +18,6 @@ mod expr;
 mod pat;
 mod unify;
 
-#[cfg(test)]
-mod tests;
-
 pub struct ElabCtx<'surface, 'hir, 'core> {
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
@@ -418,6 +415,17 @@ pub struct ElabResult<'hir, 'core, T> {
     pub diagnostics: Vec<diagnostics::ElabDiagnostic>,
 }
 
+impl<'hir, 'core, T> ElabResult<'hir, 'core, T> {
+    pub fn map<V>(self, f: impl Fn(T) -> V) -> ElabResult<'hir, 'core, V> {
+        ElabResult {
+            value: f(self.value),
+            metavars: self.metavars,
+            type_map: self.type_map,
+            diagnostics: self.diagnostics,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Synth<'core, T>(pub T, pub Type<'core>);
 
@@ -432,27 +440,8 @@ impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
 }
 
-pub fn elab_module<'surface, 'hir, 'core>(
-    bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
-    module: &'hir pion_hir::syntax::Module<'hir>,
-) -> Module<'hir, 'core> {
-    let mut core_items = SliceVec::new(bump, module.items.len());
-
-    for item in module.items {
-        match item {
-            pion_hir::syntax::Item::Error => continue,
-            pion_hir::syntax::Item::Def(def) => {
-                let def = elab_def(bump, syntax_map, def);
-                core_items.push(Item::Def(def));
-            }
-        }
-    }
-
-    Module {
-        items: core_items.into(),
-    }
-}
+pub type ItemMap<'hir, 'core> = Vec<ItemData<'hir, 'core>>;
+pub type ItemData<'hir, 'core> = ElabResult<'hir, 'core, ()>;
 
 pub fn elab_def<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,

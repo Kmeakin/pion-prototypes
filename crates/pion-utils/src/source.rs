@@ -63,14 +63,10 @@ impl SourceFile {
     }
 
     pub fn read(path: impl AsRef<Utf8Path>) -> anyhow::Result<Self> {
-        let path = Utf8Path::new(path.as_ref());
+        let path = path.as_ref();
 
-        let path = path
-            .canonicalize_utf8()
-            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
-
-        let mut file = std::fs::File::open(&path)
-            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
+        let mut file =
+            std::fs::File::open(path).map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
 
         let metadata = file
             .metadata()
@@ -92,7 +88,7 @@ impl SourceFile {
         let contents = String32::try_from(contents)
             .map_err(|_| anyhow!("pion source files must be 4GB or less"))?;
 
-        let path: Arc<str> = Arc::from(String::from(path));
+        let path: Arc<str> = Arc::from(path.to_string());
         // SAFETY: `Utf8Path` has the same representation as `str`
         let path: Arc<Utf8Path> = unsafe { std::mem::transmute(path) };
 

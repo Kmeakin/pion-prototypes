@@ -1,0 +1,62 @@
+exit status: 1
+
+stdout = """
+def a: Array(Int, 0) = [];
+types of expressions:
+7..12 = Type -> Int -> Type
+7..20 = Type
+13..16 = Type
+18..19 = Int
+23..25 = Array(Int, 0)
+
+def b: Array(Int, 1) = [1];
+types of expressions:
+35..40 = Type -> Int -> Type
+35..48 = Type
+41..44 = Type
+46..47 = Int
+51..54 = Array(Int, 1)
+52..53 = Int
+
+def c: Array(Int, 1) = [1];
+types of expressions:
+64..69 = Type -> Int -> Type
+64..75 = Type
+70..71 = Type
+73..74 = Int
+78..81 = Array(Int, 1)
+79..80 = Int
+metavars:
+?0 = Type
+?1 = Int
+
+def d: Array(?1, 2) = #error;
+types of expressions:
+91..96 = Type -> Int -> Type
+91..102 = Type
+97..98 = Type
+100..101 = Int
+105..108 = Array(?1, 2)
+106..107 = <missing>
+metavars:
+?0 = Type
+?1 = <unsolved>
+"""
+
+stderr = """
+error: incorrect length of array literal
+  ┌─ tests/elab/array_lit/check_array_lit.pion:7:22
+  │
+7 │ def d: Array(_, 2) = [1];
+  │                      ^^^
+  │
+  = help: the array is expected to have 2 elements, but has 1 elements
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/array_lit/check_array_lit.pion:7:14
+  │
+7 │ def d: Array(_, 2) = [1];
+  │              ^
+
+aborting due to 2 previous errors
+"""

@@ -1,0 +1,7 @@
+def fun0 = fun() => 5;
+
+def fun1 = fun(x) => x;
+
+def fun1a = fun(x : Int) => x;
+
+def id = fun(A: Type, a: A) => a;

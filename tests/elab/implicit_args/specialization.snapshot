@@ -1,0 +1,93 @@
+exit status: 0
+
+stdout = """
+def a: Bool -> Bool = let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+id(@Bool);
+types of expressions:
+12..70 = Bool -> Bool
+21..45 = fun(@A: Type) -> A -> A
+29..33 = Type
+38..39 = Type
+44..45 = A
+51..70 = Bool -> Bool
+52..54 = Bool -> Bool
+57..61 = Type
+57..69 = Type
+65..69 = Type
+types of patterns:
+16..18 = ?0
+26..27 = Type
+35..36 = A
+metavars:
+?0 = fun(@A: Type) -> A -> A
+?1 = Bool
+
+def b: Bool -> Int -> Bool = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+always(@Bool, @Int);
+types of expressions:
+85..190 = Bool -> Int -> Bool
+97..137 = Type
+106..110 = Type
+117..121 = Type
+126..127 = Type
+126..137 = Type
+131..132 = Type
+131..137 = Type
+136..137 = Type
+140..154 = fun(@A: Type, @B: Type) -> A -> B -> A
+153..154 = A
+160..190 = Bool -> Int -> Bool
+161..167 = Bool -> Int -> Bool
+170..174 = Type
+170..189 = Type
+178..181 = Type
+178..189 = Type
+185..189 = Type
+types of patterns:
+89..95 = fun(@A: Type, @B: Type) -> A -> B -> A
+102..103 = Type
+113..114 = Type
+144..145 = A
+147..148 = B
+metavars:
+?0 = Bool
+?1 = Int
+
+def c: (Bool -> Int) -> Bool -> Int = let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+apply(@Bool, @Int);
+types of expressions:
+205..311 = (Bool -> Int) -> Bool -> Int
+217..265 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+225..229 = Type
+235..239 = Type
+244..245 = Type
+244..250 = Type
+249..250 = Type
+255..256 = Type
+261..262 = A -> B
+261..265 = B
+263..264 = A
+271..311 = (Bool -> Int) -> Bool -> Int
+272..277 = (Bool -> Int) -> Bool -> Int
+280..310 = Type
+281..294 = Type
+282..286 = Type
+290..293 = Type
+298..302 = Type
+298..309 = Type
+306..309 = Type
+types of patterns:
+209..214 = ?0
+222..223 = Type
+232..233 = Type
+241..242 = A -> B
+252..253 = A
+metavars:
+?0 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+?1 = Bool
+?2 = Int
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,30 @@
+exit status: 0
+
+stdout = """
+def unit_type: Type = ();
+types of expressions:
+15..19 = Type
+22..24 = Type
+
+def tuple1: Type = (Int,);
+types of expressions:
+39..43 = Type
+46..52 = Type
+47..50 = Type
+
+def tuple2: Type = (Int, Bool);
+types of expressions:
+67..71 = Type
+74..84 = Type
+75..78 = Type
+79..83 = Type
+
+def unit_lit: () = ();
+types of expressions:
+101..103 = Type
+106..108 = ()
+"""
+
+stderr = """
+
+"""

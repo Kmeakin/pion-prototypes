@@ -1,0 +1,7 @@
+def record0 = {};
+
+def record1 = {x=1};
+
+def record2 = {x=1,y=false};
+
+def error = {x=1,y=false,x=true};

@@ -78,8 +78,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::ArrayLit(elems) => {
                 let Some((first, rest)) = elems.split_first() else {
-                    cov_mark::hit!(synth_empty_array);
-
                     let span = self.syntax_map[expr].span();
                     let elem_type =
                         self.push_unsolved_type(MetaSource::EmptyArrayElemType { span });
@@ -235,8 +233,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunType(params, codomain) => {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
-                    cov_mark::hit!(synth_empty_fun_type);
-
                     let Check(codomain_expr) = self.with_param(None, Type::unit_type(), |this| {
                         this.check_expr(codomain, &Type::TYPE)
                     });
@@ -249,8 +245,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunLit(params, body) => {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
-                    cov_mark::hit!(synth_empty_fun_lit);
-
                     let Synth(body_expr, body_type) =
                         self.with_param(None, Type::unit_type(), |this| this.synth_expr(body));
                     let body_type = self.quote_env().quote(&body_type);
@@ -283,8 +277,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut r#type = fun_type.clone();
 
                 if args.is_empty() {
-                    cov_mark::hit!(synth_empty_fun_call);
-
                     r#type = self.elim_env().update_metas(&r#type);
                     (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
 
@@ -499,7 +491,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             // TODO: check for duplicate params
             hir::Expr::FunLit(params, body) => {
                 if params.is_empty() {
-                    cov_mark::hit!(check_empty_fun_lit);
                     let span = self.syntax_map[expr].span();
 
                     match expected {

@@ -1,0 +1,110 @@
+exit status: 1
+
+stdout = """
+def app0: Bool = let f: () -> Bool = fun(_: ()) => false;
+f(());
+types of expressions:
+15..46 = Bool
+23..37 = () -> Bool
+32..37 = Bool
+43..44 = () -> Bool
+43..46 = Bool
+types of patterns:
+19..20 = ?0
+metavars:
+?0 = () -> Bool
+
+def app1: Int = let f: Int -> Int = fun(x: Int) => x;
+f(1);
+types of expressions:
+64..98 = Int
+72..88 = Int -> Int
+79..82 = Type
+87..88 = Int
+94..95 = Int -> Int
+94..98 = Int
+96..97 = Int
+types of patterns:
+68..69 = ?0
+76..77 = Int
+metavars:
+?0 = Int -> Int
+
+def curried: Int -> Type = Array(Int);
+types of expressions:
+115..120 = Type -> Int -> Type
+115..125 = Int -> Type
+121..124 = Type
+
+def error1: Int -> Int = let f: Int -> Int = fun(x: Int) => x;
+f;
+types of expressions:
+145..178 = Int -> Int
+153..169 = Int -> Int
+160..163 = Type
+168..169 = Int
+175..176 = Int -> Int
+175..178 = Int -> Int
+types of patterns:
+149..150 = ?0
+157..158 = Int
+metavars:
+?0 = Int -> Int
+
+def error2: #error = #error;
+types of expressions:
+194..197 = Type
+194..199 = #error
+
+def error3: #error = #error;
+types of expressions:
+215..220 = Type -> Int -> Type
+215..226 = #error
+222..225 = <missing>
+
+def error4: #error = #error;
+types of expressions:
+242..247 = Type -> Int -> Type
+242..258 = #error
+248..251 = Type
+253..254 = Int
+256..257 = <missing>
+"""
+
+stderr = """
+error: tried to call function with argument of incorrect type
+   ┌─ tests/elab/fun_app/synth_fun_app.pion:13:5
+   │
+13 │     f();
+   │     ^^^
+   │
+   = help: the type of the function is `Int -> Int`
+   = help: empty argument lists are the same as passing a single unit argument
+
+error: tried to call non-function expression
+   ┌─ tests/elab/fun_app/synth_fun_app.pion:15:14
+   │
+15 │ def error2 = Int();
+   │              ^^^^^
+   │
+   = help: the type of this expression is `Type`
+
+error: tried to call function with an implicit argument when an explicit argument was expected
+   ┌─ tests/elab/fun_app/synth_fun_app.pion:17:21
+   │
+17 │ def error3 = Array(@Int);
+   │              -------^^^-
+   │
+   = help: the type of the function is `Type -> Int -> Type`
+
+error: called function with too many arguments
+   ┌─ tests/elab/fun_app/synth_fun_app.pion:19:14
+   │
+19 │ def error4 = Array(Int, 0, 0);
+   │              ^^^^^^^^^^^^^^^^
+   │
+   = help: the function expects 2 arguments, but recieved 3 arguments
+   = help: the type of the function is `Type -> Int -> Type`
+
+aborting due to 4 previous errors
+"""
