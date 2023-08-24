@@ -210,12 +210,12 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
             Expr::FunType(plicity, name, (domain, codomain)) => {
                 let domain_value = self.eval(domain);
                 let codomain = Closure::new(self.local_values.clone(), codomain);
-                Value::FunType(*plicity, *name, self.bump.alloc(domain_value), codomain)
+                Value::fun_type(self.bump, *plicity, *name, domain_value, codomain)
             }
             Expr::FunLit(plicity, name, (domain, body)) => {
-                let type_value = self.eval(domain);
+                let domain_value = self.eval(domain);
                 let body = Closure::new(self.local_values.clone(), body);
-                Value::FunLit(*plicity, *name, self.bump.alloc(type_value), body)
+                Value::fun_lit(self.bump, *plicity, *name, domain_value, body)
             }
             Expr::FunApp(plicity, (fun, arg)) => {
                 let fun_value = self.eval(fun);

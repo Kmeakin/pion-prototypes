@@ -438,13 +438,12 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn fun_intros(&self, spine: &[Elim<'core>], expr: Expr<'core>) -> Expr<'core> {
         spine.iter().fold(expr, |expr, elim| match elim {
             Elim::FunApp(plicity, ..) => {
-                Expr::FunLit(
+                Expr::fun_lit(
+                    self.bump,
                     *plicity,
                     None,
-                    self.bump.alloc((
-                        Expr::Error, // FIXME: what should the type be?
-                        expr,
-                    )),
+                    Expr::Error, // FIXME: what should the type be?
+                    expr,
                 )
             }
             Elim::FieldProj(_) | Elim::Match(_) => {
@@ -485,7 +484,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 (spine.iter()).try_fold(head, |head, elim| match elim {
                     Elim::FunApp(plicity, arg) => {
                         let arg = self.rename(meta_var, arg)?;
-                        Ok(Expr::FunApp(*plicity, self.bump.alloc((head, arg))))
+                        Ok(Expr::fun_app(self.bump, *plicity, head, arg))
                     }
                     Elim::FieldProj(label) => Ok(Expr::FieldProj(self.bump.alloc(head), *label)),
                     Elim::Match(cases) => {
@@ -513,16 +512,12 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.rename(meta_var, domain)?;
                 let codomain = self.rename_closure(meta_var, &codomain)?;
-                Ok(Expr::FunType(
-                    plicity,
-                    name,
-                    self.bump.alloc((domain, codomain)),
-                ))
+                Ok(Expr::fun_type(self.bump, plicity, name, domain, codomain))
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.rename(meta_var, domain)?;
                 let body = self.rename_closure(meta_var, &body)?;
-                Ok(Expr::FunLit(plicity, name, self.bump.alloc((domain, body))))
+                Ok(Expr::fun_lit(self.bump, plicity, name, domain, body))
             }
             Value::ArrayLit(values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());

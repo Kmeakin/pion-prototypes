@@ -241,6 +241,26 @@ impl<'core> Value<'core> {
 
     pub const fn meta(level: Level) -> Self { Self::Stuck(Head::Meta(level), Vec::new()) }
 
+    pub fn fun_type(
+        bump: &'core bumpalo::Bump,
+        plicity: Plicity,
+        name: Option<Symbol>,
+        domain: Value<'core>,
+        codomain: Closure<'core>,
+    ) -> Self {
+        Self::FunType(plicity, name, bump.alloc(domain), codomain)
+    }
+
+    pub fn fun_lit(
+        bump: &'core bumpalo::Bump,
+        plicity: Plicity,
+        name: Option<Symbol>,
+        domain: Value<'core>,
+        body: Closure<'core>,
+    ) -> Self {
+        Self::FunLit(plicity, name, bump.alloc(domain), body)
+    }
+
     pub fn array_type(r#type: Type<'core>, len: u32) -> Self {
         Self::Stuck(
             Head::Prim(Prim::Array),
@@ -256,6 +276,10 @@ impl<'core> Value<'core> {
     }
 
     pub fn unit_type() -> Self { Self::record_type(&[]) }
+}
+
+impl<'core> Value<'core> {
+    pub const fn is_error(&self) -> bool { matches!(self, Self::Stuck(Head::Error, _)) }
 
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())
@@ -264,8 +288,6 @@ impl<'core> Value<'core> {
     pub fn is_unit_type(&self) -> bool {
         matches!(self, Value::RecordType(telescope) if telescope.is_empty())
     }
-
-    pub const fn is_error(&self) -> bool { matches!(self, Self::Stuck(Head::Error, _)) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
