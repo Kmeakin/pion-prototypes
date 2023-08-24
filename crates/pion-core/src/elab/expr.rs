@@ -253,10 +253,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         Expr::UNIT_TYPE,
                         body_expr,
                     );
-                    let r#type = Type::FunType(
+                    let r#type = Type::fun_type(
+                        self.bump,
                         Plicity::Explicit,
                         None,
-                        self.bump.alloc(Type::unit_type()),
+                        Type::unit_type(),
                         Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
                     );
                     return SynthExpr::new(expr, r#type);
@@ -536,10 +537,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                 Expr::UNIT_LIT,
                                 body_expr,
                             );
-                            let r#type = Type::FunType(
+                            let r#type = Type::fun_type(
+                                self.bump,
                                 Plicity::Explicit,
                                 None,
-                                self.bump.alloc(Type::unit_type()),
+                                Type::unit_type(),
                                 Closure::new(
                                     self.local_env.values.clone(),
                                     self.bump.alloc(body_type),
@@ -668,10 +670,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         self.local_env.pop();
 
         let expr = Expr::fun_lit(self.bump, plicity, name, domain_expr, body_expr);
-        let r#type = Type::FunType(
+        let r#type = Type::fun_type(
+            self.bump,
             plicity,
             name,
-            self.bump.alloc(domain),
+            domain,
             Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
         );
         SynthExpr::new(expr, r#type)

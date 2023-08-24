@@ -295,15 +295,14 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     /// Quote a [value][Value] back into a [expr][Expr].
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
         let value = self.elim_env().update_metas(value);
-        let bump = self.bump;
         match value {
             Value::Lit(lit) => Expr::Lit(lit),
             Value::Stuck(head, spine) => {
                 (spine.iter()).fold(self.quote_head(head), |head, elim| match elim {
                     Elim::FunApp(plicity, arg) => {
-                        Expr::FunApp(*plicity, bump.alloc((head, self.quote(arg))))
+                        Expr::fun_app(self.bump, *plicity, head, self.quote(arg))
                     }
-                    Elim::FieldProj(label) => Expr::FieldProj(bump.alloc(head), *label),
+                    Elim::FieldProj(label) => Expr::field_proj(self.bump, head, *label),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
                         let mut pattern_cases = Vec::new();
@@ -320,8 +319,8 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                             }
                         };
                         Expr::Match(
-                            bump.alloc((head, default)),
-                            bump.alloc_slice_fill_iter(pattern_cases),
+                            self.bump.alloc((head, default)),
+                            self.bump.alloc_slice_fill_iter(pattern_cases),
                         )
                     }
                 })
@@ -329,27 +328,28 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.quote(domain);
                 let codomain = self.quote_closure(name, &codomain);
-                Expr::FunType(plicity, name, bump.alloc((domain, codomain)))
+                Expr::fun_type(self.bump, plicity, name, domain, codomain)
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.quote(domain);
                 let body = self.quote_closure(name, &body);
-                Expr::FunType(plicity, name, bump.alloc((domain, body)))
+                Expr::fun_lit(self.bump, plicity, name, domain, body)
             }
-            Value::ArrayLit(values) => {
-                let exprs = values.iter().map(|value| self.quote(value));
-                Expr::ArrayLit(bump.alloc_slice_fill_iter(exprs))
-            }
+            Value::ArrayLit(values) => Expr::ArrayLit(
+                self.bump
+                    .alloc_slice_fill_iter(values.iter().map(|value| self.quote(value))),
+            ),
             Value::RecordType(telescope) => {
                 let type_fields = self.quote_telescope(telescope);
                 Expr::RecordType(type_fields)
             }
-            Value::RecordLit(value_fields) => {
-                let expr_fields = value_fields
-                    .iter()
-                    .map(|(label, value)| (*label, self.quote(value)));
-                Expr::RecordLit(bump.alloc_slice_fill_iter(expr_fields))
-            }
+            Value::RecordLit(value_fields) => Expr::RecordLit(
+                self.bump.alloc_slice_fill_iter(
+                    value_fields
+                        .iter()
+                        .map(|(label, value)| (*label, self.quote(value))),
+                ),
+            ),
         }
     }
 
