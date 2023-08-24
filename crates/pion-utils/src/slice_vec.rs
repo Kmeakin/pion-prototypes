@@ -109,8 +109,7 @@ impl<'a, Elem> From<SliceVec<'a, Elem>> for &'a [Elem] {
 /// See [`assume_init_ref`] for more details and examples.
 ///
 /// [`assume_init_ref`]: MaybeUninit::assume_init_ref
-#[allow(clippy::needless_lifetimes)] // These serve as important documentation
-pub unsafe fn slice_assume_init_ref<'a, T>(slice: &'a [MaybeUninit<T>]) -> &'a [T] {
+pub unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
     // SAFETY: casting slice to a `*const [T]` is safe since the caller guarantees
     // that `slice` is initialized, and`MaybeUninit` is guaranteed to have the
     // same layout as `T`. The pointer obtained is valid since it refers to

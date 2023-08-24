@@ -19,7 +19,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let Synth(core_pat, r#type) = match pat {
             hir::Pat::Error => SynthPat::ERROR,
             hir::Pat::Lit(lit) => {
-                let Synth(result, r#type) = expr::synth_lit(lit);
+                let Synth(result, r#type) = expr::synth_lit(*lit);
                 let pat = match result {
                     Ok(lit) => Pat::Lit(lit),
                     Err(()) => Pat::Error,

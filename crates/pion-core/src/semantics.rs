@@ -1,6 +1,3 @@
-// TODO: why doesn't clippy respect `cargo.toml` for this lint?
-#![allow(clippy::option_if_let_else)]
-
 use either::*;
 use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
@@ -72,6 +69,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }
     }
 
+    #[allow(clippy::unused_self)]
+    // REASON: makes `field_proj` consistent with the other beta-reduction functions
     pub fn field_proj(&self, head: Value<'core>, label: Symbol) -> Value<'core> {
         match head {
             Value::Stuck(head, mut spine) => {

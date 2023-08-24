@@ -5,7 +5,6 @@ use nohash::IntMap;
 use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
-use pion_utils::slice_vec::SliceVec;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
@@ -56,17 +55,16 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         let meta_env = std::mem::take(&mut self.meta_env);
         for entry in meta_env.iter() {
-            match (entry.value, entry.source) {
-                // Ignore solved metas
-                (Some(_), _) => {}
-
-                // These should produce an unsolved UnderscoreExpr, so avoid reporting
-                // unsolved meta twice
-                (None, MetaSource::UnderscoreType { .. }) => {}
-
-                (None, source) => {
-                    self.emit_diagnostic(diagnostics::ElabDiagnostic::UnsolvedMeta { source });
+            if entry.value.is_none() {
+                // `UnderscoreType` and `UnderscoreExpr` are produced in pairs, so dont report
+                // unsolved metas twice
+                if let MetaSource::UnderscoreType { .. } = entry.source {
+                    continue;
                 }
+
+                self.emit_diagnostic(diagnostics::ElabDiagnostic::UnsolvedMeta {
+                    source: entry.source,
+                });
             }
         }
 
@@ -176,6 +174,7 @@ struct LocalEnv<'core> {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct LocalEntry<'env, 'core> {
     name: Option<Symbol>,
     info: BinderInfo,
@@ -183,6 +182,7 @@ struct LocalEntry<'env, 'core> {
     value: &'env Value<'core>,
 }
 
+#[allow(dead_code)]
 impl<'core> LocalEnv<'core> {
     fn new() -> Self { Self::default() }
 
@@ -278,17 +278,19 @@ impl<'core> fmt::Debug for LocalEnv<'core> {
 #[derive(Default)]
 struct MetaEnv<'core> {
     sources: UniqueEnv<MetaSource>,
-    types: UniqueEnv<Type<'core>>,
+    types: UniqueEnv<Type<'core>>, // TODO: do we actually need to track types of metavars?
     values: UniqueEnv<Option<Value<'core>>>,
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 struct MetaEntry<'env, 'core> {
     source: MetaSource,
     r#type: &'env Type<'core>,
     value: &'env Option<Value<'core>>,
 }
 
+#[allow(dead_code)]
 impl<'core> MetaEnv<'core> {
     fn new() -> Self { Self::default() }
 
@@ -443,6 +445,8 @@ impl<T> Check<T> {
 pub type ItemMap<'hir, 'core> = Vec<ItemData<'hir, 'core>>;
 pub type ItemData<'hir, 'core> = ElabResult<'hir, 'core, ()>;
 
+// REASON: keep all lifetimes explicit for clarity
+#[allow(clippy::needless_lifetimes)]
 pub fn elab_def<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
@@ -452,7 +456,7 @@ pub fn elab_def<'surface, 'hir, 'core>(
 
     let (expr, r#type) = match &def.r#type {
         None => {
-            let Synth(expr, r#type) = ctx.synth_expr(&def.expr);
+            let Synth(expr, r#type) = ctx.synth_expr(def.expr);
             let r#type = ctx.quote_env().quote(&r#type);
 
             (expr, r#type)
@@ -460,7 +464,7 @@ pub fn elab_def<'surface, 'hir, 'core>(
         Some(r#type) => {
             let Check(r#type) = ctx.check_expr(r#type, &Type::TYPE);
             let type_value = ctx.eval_env().eval(&r#type);
-            let Check(expr) = ctx.check_expr(&def.expr, &type_value);
+            let Check(expr) = ctx.check_expr(def.expr, &type_value);
 
             (expr, r#type)
         }
@@ -477,6 +481,8 @@ pub fn elab_def<'surface, 'hir, 'core>(
     ctx.finish_with(def)
 }
 
+// REASON: keep all lifetimes explicit for clarity
+#[allow(clippy::needless_lifetimes)]
 pub fn elab_expr<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,

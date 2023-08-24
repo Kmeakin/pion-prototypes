@@ -20,12 +20,11 @@ impl<'core> CheckExpr<'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    #[allow(clippy::too_many_lines)]
     pub fn synth_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> SynthExpr<'core> {
         let Synth(core_expr, r#type) = (|| match expr {
             hir::Expr::Error => SynthExpr::ERROR,
             hir::Expr::Lit(lit) => {
-                let Synth(result, r#type) = synth_lit(lit);
+                let Synth(result, r#type) = synth_lit(*lit);
                 let expr = match result {
                     Ok(lit) => Expr::Lit(lit),
                     Err(()) => Expr::Error,
@@ -95,6 +94,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let exprs = exprs.into();
 
                 let expr = Expr::ArrayLit(exprs);
+                #[allow(clippy::cast_possible_truncation)]
+                // REASON: files cannot be more than 4GiB in size, so array literals will always
+                // have less than `u32::MAX` elements
                 let r#type = Type::array_type(elem_type, exprs.len() as u32);
                 SynthExpr::new(expr, r#type)
             }
@@ -376,7 +378,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         Synth(core_expr, r#type)
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn check_expr(
         &mut self,
         expr: &'hir hir::Expr<'hir>,
@@ -414,10 +415,15 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     return self.synth_and_convert_expr(expr, &expected);
                 };
                 if elems.len() != *expected_len as usize {
+                    #[allow(clippy::cast_possible_truncation)]
+                    // REASON: files cannot be more than 4GiB in size, so array literals will always
+                    // have less than `u32::MAX` elements
+                    let actual_len = elems.len() as u32;
+
                     self.emit_diagnostic(ElabDiagnostic::ArrayLenMismatch {
                         span: self.syntax_map[expr].span(),
                         expected_len: *expected_len,
-                        actual_len: elems.len() as u32,
+                        actual_len,
                     });
                     return CheckExpr::ERROR;
                 }
@@ -720,7 +726,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             _ if expected.is_error() => CheckExpr::ERROR,
             _ => {
-                let span = self.syntax_map[body].span(); // TODO: correct span
+                let span = self.syntax_map[body].span(); // FIXME: correct span
                 let Synth(expr, r#type) = self.synth_fun_lit(params, body);
                 Check::new(self.convert_expr(span, expr, &r#type, &expected))
             }
@@ -762,10 +768,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 }
 
-pub fn synth_lit<'core>(lit: &hir::Lit) -> Synth<'core, Result<Lit, ()>> {
+pub fn synth_lit<'core>(lit: hir::Lit) -> Synth<'core, Result<Lit, ()>> {
     match lit {
-        hir::Lit::Bool(b) => Synth::new(Ok(Lit::Bool(*b)), Type::BOOL),
-        hir::Lit::Int(Ok(i)) => Synth::new(Ok(Lit::Int(*i)), Type::INT),
+        hir::Lit::Bool(b) => Synth::new(Ok(Lit::Bool(b)), Type::BOOL),
+        hir::Lit::Int(Ok(i)) => Synth::new(Ok(Lit::Int(i)), Type::INT),
         hir::Lit::Int(Err(())) => Synth::new(Err(()), Type::INT),
     }
 }

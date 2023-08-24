@@ -4,7 +4,6 @@ use pion_utils::location::ByteSpan;
 mod diagnostics;
 pub use diagnostics::LowerDiagnostic;
 
-#[allow(clippy::wildcard_imports)]
 use crate::syntax::*;
 
 pub fn lower_module<'surface, 'hir>(

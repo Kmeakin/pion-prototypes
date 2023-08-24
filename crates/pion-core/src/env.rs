@@ -219,19 +219,17 @@ impl<T> SliceEnv<T> {
 }
 
 impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
-    #[allow(clippy::transmute_ptr_to_ptr)]
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { std::mem::transmute(slice) }
+        unsafe { &*(slice as *const [T] as *mut SliceEnv<T>) }
     }
 }
 
 impl<'a, T> From<&'a mut [T]> for &'a mut SliceEnv<T> {
-    #[allow(clippy::transmute_ptr_to_ptr)]
     fn from(slice: &'a mut [T]) -> &'a mut SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { std::mem::transmute(slice) }
+        unsafe { &mut *(slice as *mut [T] as *mut SliceEnv<T>) }
     }
 }

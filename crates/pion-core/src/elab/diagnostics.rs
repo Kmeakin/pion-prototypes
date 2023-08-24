@@ -67,7 +67,6 @@ pub enum ElabDiagnostic {
     },
 }
 impl ElabDiagnostic {
-    #[allow(clippy::too_many_lines)]
     pub fn to_diagnostic(&self, file_id: FileId) -> CodeSpanDiagnostic<FileId> {
         let primary = |span: ByteSpan| Label::primary(file_id, span);
         let secondary = |span: ByteSpan| Label::secondary(file_id, span);

@@ -45,26 +45,18 @@ define_prims! {
 }
 
 impl Prim {
-    #[allow(clippy::use_self)]
     pub fn r#type(self) -> Type<'static> {
         const TYPE: &Type = &Type::TYPE;
 
-        #[allow(clippy::match_same_arms)]
         match self {
-            Self::Type => Type::TYPE,
-            Self::Bool => Type::TYPE,
-            Self::Int => Type::TYPE,
+            Self::Type | Self::Bool | Self::Int => Type::TYPE,
             Self::Array => Type::FunType(
                 Plicity::Explicit,
                 None,
                 TYPE,
                 Closure::new(
                     SharedEnv::new(),
-                    &Expr::FunType(
-                        Plicity::Explicit,
-                        None,
-                        &(Expr::Prim(Prim::Int), Expr::Prim(Prim::Type)),
-                    ),
+                    &Expr::FunType(Plicity::Explicit, None, &(Expr::INT, Expr::TYPE)),
                 ),
             ),
         }

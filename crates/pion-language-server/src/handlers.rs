@@ -32,6 +32,8 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
                         let selection_range = convert::bytespan_to_lsp(def.name.0, &file)?;
 
                         #[allow(deprecated)]
+                        // REASON: `deprecated` field is deprecated, but there is no other way to
+                        // construct a `DocumentSymbol`
                         DocumentSymbol {
                             name,
                             detail: None,

@@ -18,8 +18,7 @@ impl From<FileId> for u32 {
 }
 
 impl From<FileId> for usize {
-    #[allow(clippy::use_self)]
-    fn from(val: FileId) -> Self { val.0 as usize }
+    fn from(val: FileId) -> Self { val.0 as Self }
 }
 
 #[derive(Default)]

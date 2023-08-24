@@ -7,12 +7,17 @@ use string32::{Str32 as str32, String32};
 pub struct BytePos(u32);
 
 #[allow(clippy::cast_possible_truncation)]
+// REASON: truncations are made explicit by the methods
 impl BytePos {
     pub fn new(value: u32) -> Self { Self(value) }
 
     pub const fn truncate_usize(value: usize) -> Self { Self(value as u32) }
 
     pub const fn truncate_u64(value: u64) -> Self { Self(value as u32) }
+
+    pub const fn extend_u64(self) -> u64 { self.0 as u64 }
+
+    pub const fn extend_usize(self) -> usize { self.0 as usize }
 }
 
 impl From<u32> for BytePos {
@@ -23,9 +28,12 @@ impl From<BytePos> for u32 {
     fn from(pos: BytePos) -> Self { pos.0 }
 }
 
+impl From<BytePos> for u64 {
+    fn from(pos: BytePos) -> Self { pos.extend_u64() }
+}
+
 impl From<BytePos> for usize {
-    #[allow(clippy::use_self)]
-    fn from(pos: BytePos) -> Self { pos.0 as usize }
+    fn from(pos: BytePos) -> Self { pos.extend_usize() }
 }
 
 impl fmt::Debug for BytePos {
@@ -53,8 +61,7 @@ impl Index<ByteSpan> for String {
 }
 
 impl Index<ByteSpan> for str32 {
-    #[allow(clippy::use_self)]
-    type Output = str32;
+    type Output = Self;
     fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
 }
 

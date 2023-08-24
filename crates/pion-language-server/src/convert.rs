@@ -22,6 +22,8 @@ pub fn bytespan_to_lsp(span: ByteSpan, file: &SourceFile) -> anyhow::Result<lsp_
 }
 
 #[allow(clippy::cast_possible_truncation)]
+// REASON: files cannot be more than 4GiB in size, so locations will always fit
+// in a `u32`
 pub fn range_to_lsp(
     range: std::ops::Range<usize>,
     file: &SourceFile,

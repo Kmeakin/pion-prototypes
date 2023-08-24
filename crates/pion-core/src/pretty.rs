@@ -1,8 +1,7 @@
 use pion_utils::interner::Symbol;
-use pion_utils::slice_vec::SliceVec;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-use crate::env::{Index, Level};
+use crate::env::Index;
 use crate::prim::Prim;
 use crate::syntax::*;
 
@@ -25,7 +24,7 @@ pub struct PrettyCtx<'pretty> {
     bump: &'pretty bumpalo::Bump,
 }
 
-impl<'pretty, 'env> PrettyCtx<'pretty> {
+impl<'pretty> PrettyCtx<'pretty> {
     pub fn new(bump: &'pretty bumpalo::Bump) -> Self { Self { bump } }
 
     pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty> {
@@ -51,7 +50,6 @@ impl<'pretty, 'env> PrettyCtx<'pretty> {
             .append(")")
     }
 
-    #[allow(clippy::too_many_lines)]
     pub fn expr(&'pretty self, expr: &Expr<'_>, prec: Prec) -> DocBuilder<'pretty> {
         let pretty_expr = match expr {
             Expr::Error => self.text("#error"),
@@ -71,20 +69,12 @@ impl<'pretty, 'env> PrettyCtx<'pretty> {
                     return fun;
                 }
 
-                let mut args = SliceVec::new(self.bump, num_params);
-                for (var, info) in Level::iter().zip(spine.iter()) {
-                    match info {
-                        BinderInfo::Def => {}
-                        BinderInfo::Param => {
-                            args.push(Index::default()); // FIXME
-                        }
-                    }
-                }
-                let args = args.iter().map(|var| {
-                    self.fun_arg(
+                let args = spine.iter().filter_map(|info| match info {
+                    BinderInfo::Def => None,
+                    BinderInfo::Param => Some(self.fun_arg(
                         Plicity::Explicit,
-                        &Expr::Local(Symbol::intern("FIXME"), *var),
-                    )
+                        &Expr::Local(Symbol::intern("FIXME"), Index::default()),
+                    )),
                 });
                 let args = self.intersperse(args, self.text(", "));
                 fun.append("(").append(args).append(")")
@@ -249,25 +239,6 @@ impl<'pretty, 'env> PrettyCtx<'pretty> {
         self.paren(pretty_expr, prec > expr_prec(expr))
     }
 
-    pub fn pat(&'pretty self, pat: &Pat<'_>) -> DocBuilder<'pretty> {
-        match pat {
-            Pat::Error => self.text("#error"),
-            Pat::Underscore => self.text("_"),
-            Pat::Ident(sym) => self.text(sym.as_str()),
-            Pat::Lit(lit) => self.lit(*lit),
-            Pat::RecordLit(labels, pats) => {
-                let elems = labels.iter().zip(pats.iter()).map(|(label, pat)| {
-                    self.text(label.as_str())
-                        .append(" = ")
-                        .append(self.pat(pat))
-                });
-                self.text("{")
-                    .append(self.intersperse(elems, self.text(", ")))
-                    .append("}")
-            }
-        }
-    }
-
     fn fun_param(
         &'pretty self,
         plicity: Plicity,
@@ -324,6 +295,7 @@ impl<'pretty> PrettyCtx<'pretty> {
 }
 
 #[allow(clippy::match_same_arms)]
+// REASON: readability
 fn expr_prec(expr: &Expr<'_>) -> Prec {
     match expr {
         Expr::Error => Prec::Atom,
