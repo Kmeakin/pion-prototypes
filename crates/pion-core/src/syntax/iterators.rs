@@ -41,8 +41,11 @@ impl<'core> Subexprs<'core> {
                 f(init)?;
                 f(body)?;
             }
-            Expr::ArrayLit(exprs) | Expr::RecordType(.., exprs) | Expr::RecordLit(.., exprs) => {
+            Expr::ArrayLit(exprs) => {
                 exprs.iter().try_for_each(f)?;
+            }
+            Expr::RecordType(.., fields) | Expr::RecordLit(.., fields) => {
+                fields.iter().try_for_each(|(_, expr)| f(expr))?;
             }
             Expr::FieldProj(scrut, _) => f(scrut)?,
             Expr::FunType(.., (param, body)) | Expr::FunLit(.., (param, body)) => {
@@ -87,11 +90,11 @@ impl<'core> Subpats<'core> {
     {
         f(pat)?;
 
-        let f = |expr| Self::recurse(expr, f);
+        let mut f = |expr| Self::recurse(expr, f);
 
         match pat {
             Pat::Error | Pat::Lit(..) | Pat::Underscore | Pat::Ident(..) => {}
-            Pat::RecordLit(.., pats) => pats.iter().try_for_each(f)?,
+            Pat::RecordLit(.., pat_fields) => pat_fields.iter().try_for_each(|(_, pat)| f(pat))?,
         }
 
         ControlFlow::Continue(())

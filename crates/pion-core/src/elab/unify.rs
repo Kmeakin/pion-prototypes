@@ -159,21 +159,17 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 self.unify_all(left_values, right_values)
             }
 
-            (
-                Value::RecordType(left_labels, left_telescope),
-                Value::RecordType(right_labels, right_telescope),
-            ) if left_labels == right_labels => {
+            (Value::RecordType(left_telescope), Value::RecordType(right_telescope)) => {
                 self.unify_telescopes(left_telescope, right_telescope)
             }
 
-            (
-                Value::RecordLit(left_labels, left_values),
-                Value::RecordLit(right_labels, right_values),
-            ) if left_labels == right_labels => self.unify_all(left_values, right_values),
+            (Value::RecordLit(left_fields), Value::RecordLit(right_fields)) => {
+                self.unify_record_lit_fields(left_fields, right_fields)
+            }
 
-            (Value::RecordLit(left_labels, left_exprs), right_value)
-            | (right_value, Value::RecordLit(left_labels, left_exprs)) => {
-                self.unify_record_lit(left_labels, left_exprs, right_value)
+            (Value::RecordLit(left_fields), right_value)
+            | (right_value, Value::RecordLit(left_fields)) => {
+                self.unify_record_lit(left_fields, right_value)
             }
 
             // One of the values has a metavariable at its head, so we
@@ -199,6 +195,28 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         }
 
         for (left_value, right_value) in left_values.iter().zip(right_values) {
+            self.unify(left_value, right_value)?;
+        }
+        Ok(())
+    }
+
+    fn unify_record_lit_fields(
+        &mut self,
+        left_fields: &[(Symbol, Value<'core>)],
+        right_fields: &[(Symbol, Value<'core>)],
+    ) -> Result<(), UnifyError> {
+        if left_fields.len() != right_fields.len() {
+            return Err(UnifyError::Mismatch);
+        }
+
+        if (left_fields.iter())
+            .map(|(left_label, _)| left_label)
+            .ne(right_fields.iter().map(|(right_label, _)| right_label))
+        {
+            return Err(UnifyError::Mismatch);
+        }
+
+        for ((_, left_value), (_, right_value)) in left_fields.iter().zip(right_fields) {
             self.unify(left_value, right_value)?;
         }
         Ok(())
@@ -264,11 +282,15 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             return Err(UnifyError::Mismatch);
         }
 
+        if left_telescope.labels().ne(right_telescope.labels()) {
+            return Err(UnifyError::Mismatch);
+        }
+
         let len = self.local_env;
         let mut left_telescope = left_telescope.clone();
         let mut right_telescope = right_telescope.clone();
 
-        while let Some(((left_value, left_cont), (right_value, right_cont))) = Option::zip(
+        while let Some(((_, left_value, left_cont), (_, right_value, right_cont))) = Option::zip(
             self.elim_env().split_telescope(left_telescope),
             self.elim_env().split_telescope(right_telescope),
         ) {
@@ -351,12 +373,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// ```
     fn unify_record_lit(
         &mut self,
-        labels: &[Symbol],
-        exprs: &[Value<'core>],
-        value: &Value<'core>,
+        left_fields: &[(Symbol, Value<'core>)],
+        right_value: &Value<'core>,
     ) -> Result<(), UnifyError> {
-        for (label, left_value) in labels.iter().zip(exprs.iter()) {
-            let right_value = self.elim_env().field_proj(value.clone(), *label);
+        for (left_label, left_value) in left_fields {
+            let right_value = self.elim_env().field_proj(right_value.clone(), *left_label);
             self.unify(left_value, &right_value)?;
         }
         Ok(())
@@ -512,18 +533,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
                 Ok(Expr::ArrayLit(exprs.into()))
             }
-            Value::RecordType(labels, telescope) => {
-                let types = self.rename_telescope(meta_var, telescope)?;
-                Ok(Expr::RecordType(labels, types))
+            Value::RecordType(telescope) => {
+                let type_fields = self.rename_telescope(meta_var, telescope)?;
+                Ok(Expr::RecordType(type_fields))
             }
-            Value::RecordLit(labels, values) => {
-                let mut exprs = SliceVec::new(self.bump, values.len());
+            Value::RecordLit(value_fields) => {
+                let mut expr_fields = SliceVec::new(self.bump, value_fields.len());
 
-                for value in values {
-                    exprs.push(self.rename(meta_var, value)?);
+                for (label, value) in value_fields {
+                    expr_fields.push((*label, self.rename(meta_var, value)?));
                 }
 
-                Ok(Expr::RecordLit(labels, exprs.into()))
+                Ok(Expr::RecordLit(expr_fields.into()))
             }
         }
     }
@@ -549,15 +570,15 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         &mut self,
         meta_var: Level,
         telescope: Telescope<'core>,
-    ) -> Result<&'core [Expr<'core>], RenameError> {
+    ) -> Result<&'core [(Symbol, Expr<'core>)], RenameError> {
         let initial_renaming_len = self.renaming.len();
         let mut telescope = telescope;
-        let mut exprs = SliceVec::new(self.bump, telescope.len());
+        let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
-        while let Some((value, cont)) = self.elim_env().split_telescope(telescope) {
+        while let Some((label, value, cont)) = self.elim_env().split_telescope(telescope) {
             match self.rename(meta_var, &value) {
                 Ok(expr) => {
-                    exprs.push(expr);
+                    expr_fields.push((label, expr));
                     let source_var = self.renaming.next_local_var();
                     telescope = cont(source_var);
                     self.renaming.push_local();
@@ -570,7 +591,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         }
 
         self.renaming.truncate(initial_renaming_len);
-        Ok(exprs.into())
+        Ok(expr_fields.into())
     }
 }
 

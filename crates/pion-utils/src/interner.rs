@@ -26,9 +26,9 @@ impl Symbol {
         )
     }
 
-    pub fn are_tuple_labels(labels: &[Self]) -> bool {
+    pub fn are_tuple_labels(labels: impl IntoIterator<Item = Self>) -> bool {
         labels
-            .iter()
+            .into_iter()
             .enumerate()
             .all(|(idx, symbol)| symbol.as_str() == format!("_{idx}"))
     }

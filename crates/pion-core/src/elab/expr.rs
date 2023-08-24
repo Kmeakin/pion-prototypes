@@ -101,30 +101,30 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::TupleLit(elems) => {
-                let mut exprs = SliceVec::new(self.bump, elems.len());
-                let mut types = SliceVec::new(self.bump, elems.len());
-                let mut labels = SliceVec::new(self.bump, elems.len());
+                let mut expr_fields = SliceVec::new(self.bump, elems.len());
+                let mut type_fields = SliceVec::new(self.bump, elems.len());
 
                 for (index, elem) in elems.iter().enumerate() {
                     let Synth(elem_expr, elem_type) = self.synth_expr(elem);
-                    exprs.push(elem_expr);
-                    types.push(self.quote_env().quote(&elem_type));
-                    labels.push(Symbol::intern(format!("_{index}")));
+                    let label = Symbol::intern(format!("_{index}"));
+                    expr_fields.push((label, elem_expr));
+                    type_fields.push((label, self.quote_env().quote(&elem_type)));
                 }
 
-                let labels = labels.into();
-                let expr = Expr::RecordLit(labels, exprs.into());
-                let r#type = Type::record_type(labels, r#types.into());
+                let expr = Expr::RecordLit(expr_fields.into());
+                let r#type = Type::record_type(type_fields.into());
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::RecordType(fields) => {
-                let mut types = SliceVec::new(self.bump, fields.len());
-                let mut labels = SliceVec::new(self.bump, fields.len());
+                let mut type_fields = SliceVec::new(self.bump, fields.len());
                 let mut label_spans = SliceVec::new(self.bump, fields.len());
 
                 self.with_scope(|this| {
                     for field in *fields {
-                        if let Some(idx) = labels.iter().position(|label| *label == field.label) {
+                        if let Some(idx) = type_fields
+                            .iter()
+                            .position(|(label, _)| *label == field.label)
+                        {
                             this.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
                                 name: "record type",
                                 label: field.label,
@@ -136,26 +136,26 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                         let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
                         let type_value = this.eval_env().eval(&r#type);
-                        types.push(r#type);
-                        labels.push(field.label);
+                        type_fields.push((field.label, r#type));
                         label_spans.push(field.label_span);
                         this.local_env.push_param(Some(field.label), type_value);
                     }
                 });
 
-                let labels = labels.into();
-                let expr = Expr::RecordType(labels, types.into());
+                let expr = Expr::RecordType(type_fields.into());
                 SynthExpr::new(expr, Type::TYPE)
             }
             // TODO: check for duplicate fields
             hir::Expr::RecordLit(fields) => {
-                let mut exprs = SliceVec::new(self.bump, fields.len());
-                let mut types = SliceVec::new(self.bump, fields.len());
-                let mut labels = SliceVec::new(self.bump, fields.len());
+                let mut expr_fields = SliceVec::new(self.bump, fields.len());
+                let mut type_fields = SliceVec::new(self.bump, fields.len());
                 let mut label_spans = SliceVec::new(self.bump, fields.len());
 
                 for field in *fields {
-                    if let Some(idx) = labels.iter().position(|label| *label == field.label) {
+                    if let Some(idx) = expr_fields
+                        .iter()
+                        .position(|(label, _)| *label == field.label)
+                    {
                         self.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
                             name: "record type",
                             label: field.label,
@@ -166,15 +166,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
 
                     let Synth(field_expr, field_type) = self.synth_expr(&field.expr);
-                    exprs.push(field_expr);
-                    types.push(self.quote_env().quote(&field_type));
-                    labels.push(field.label);
+                    expr_fields.push((field.label, field_expr));
+                    type_fields.push((field.label, self.quote_env().quote(&field_type)));
                     label_spans.push(field.label_span);
                 }
 
-                let labels = labels.into();
-                let expr = Expr::RecordLit(labels, exprs.into());
-                let r#type = Type::record_type(labels, r#types.into());
+                let expr = Expr::RecordLit(expr_fields.into());
+                let r#type = Type::record_type(type_fields.into());
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::FieldProj(scrut, field) => {
@@ -182,8 +180,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let scrut_value = self.eval_env().eval(&scrut_expr);
 
                 match &scrut_type {
-                    Value::RecordType(labels, telescope) => {
-                        if !labels.contains(field) {
+                    Value::RecordType(telescope) => {
+                        if !telescope.fields.iter().any(|(label, _)| label == field) {
                             let scrut_type = self.pretty_value(&scrut_type);
                             self.emit_diagnostic(ElabDiagnostic::FieldProjNotFound {
                                 span: self.syntax_map[expr].span(),
@@ -194,13 +192,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         }
 
                         let mut telescope = telescope.clone();
-                        let mut labels = labels.iter();
-
                         let r#type = loop {
-                            let label = labels.next().unwrap();
-                            let (r#type, cont) =
+                            let (label, r#type, cont) =
                                 self.elim_env().split_telescope(telescope.clone()).unwrap();
-                            if label == field {
+                            if label == *field {
                                 break r#type;
                             }
 
@@ -435,61 +430,65 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 CheckExpr::new(Expr::ArrayLit(elem_exprs))
             }
             hir::Expr::TupleLit(elems) => match &expected {
-                #[rustfmt::skip]
-                Value::RecordType(labels, telescope) if labels.len() == elems.len() && Symbol::are_tuple_labels(labels) => {
-                    let mut exprs = SliceVec::new(self.bump, elems.len());
+                Value::RecordType(telescope)
+                    if telescope.len() == elems.len()
+                        && Symbol::are_tuple_labels(telescope.labels()) =>
+                {
+                    let mut expr_fields = SliceVec::new(self.bump, elems.len());
                     let mut telescope = telescope.clone();
 
                     for elem in *elems {
-                        let (r#type, cont) =
+                        let (label, r#type, cont) =
                             self.elim_env().split_telescope(telescope.clone()).unwrap();
 
                         let Check(elem_expr) = self.check_expr(elem, &r#type);
                         let elem_value = self.eval_env().eval(&elem_expr);
                         telescope = cont(elem_value);
-                        exprs.push(elem_expr);
+                        expr_fields.push((label, elem_expr));
                     }
 
-                    let expr = Expr::RecordLit(labels, exprs.into());
+                    let expr = Expr::RecordLit(expr_fields.into());
                     CheckExpr::new(expr)
                 }
                 _ if expected.is_type() => {
-                    let mut types = SliceVec::new(self.bump, elems.len());
-                    let mut labels = SliceVec::new(self.bump, elems.len());
+                    let mut type_fields = SliceVec::new(self.bump, elems.len());
 
                     self.with_scope(|this| {
                         for (idx, elem) in elems.iter().enumerate() {
                             let Check(r#type) = this.check_expr(elem, &Type::TYPE);
                             let type_value = this.eval_env().eval(&r#type);
                             let label = Symbol::intern(format!("_{idx}"));
-                            types.push(r#type);
-                            labels.push(label);
+                            type_fields.push((label, r#type));
                             this.local_env.push_param(Some(label), type_value);
                         }
                     });
 
-                    let labels = labels.into();
-                    let expr = Expr::RecordType(labels, types.into());
+                    let expr = Expr::RecordType(type_fields.into());
                     CheckExpr::new(expr)
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
             },
             hir::Expr::RecordLit(fields) => match &expected {
-                Value::RecordType(labels, telescope)
-                    if Iterator::eq(fields.iter().map(|field| &field.label), labels.iter()) =>
+                Value::RecordType(telescope)
+                    if fields.len() == telescope.len()
+                        && Iterator::eq(
+                            fields.iter().map(|field| field.label),
+                            telescope.labels(),
+                        ) =>
                 {
-                    let mut exprs = SliceVec::new(self.bump, fields.len());
+                    let mut expr_fields = SliceVec::new(self.bump, fields.len());
                     let mut telescope = telescope.clone();
 
                     for field in *fields {
-                        let (r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+                        let (label, r#type, cont) =
+                            self.elim_env().split_telescope(telescope).unwrap();
                         let Check(field_expr) = self.check_expr(&field.expr, &r#type);
                         let field_value = self.eval_env().eval(&field_expr);
                         telescope = cont(field_value);
-                        exprs.push(field_expr);
+                        expr_fields.push((label, field_expr));
                     }
 
-                    let expr = Expr::RecordLit(labels, exprs.into());
+                    let expr = Expr::RecordLit(expr_fields.into());
                     CheckExpr::new(expr)
                 }
                 _ => self.synth_and_convert_expr(expr, &expected),
@@ -510,7 +509,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                 self.with_param(name, Type::unit_type(), |this| {
                                     let expected = this
                                         .elim_env()
-                                        .apply_closure(next_expected.clone(), Value::unit_lit());
+                                        .apply_closure(next_expected.clone(), Value::UNIT_LIT);
                                     this.check_expr(body, &expected)
                                 });
 

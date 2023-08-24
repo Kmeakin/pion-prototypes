@@ -77,10 +77,12 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 spine.push(Elim::FieldProj(label));
                 Value::Stuck(head, spine)
             }
-            Value::RecordLit(labels, values) => {
-                match labels.iter().zip(values.iter()).find(|(l, _)| **l == label) {
+            Value::RecordLit(value_fields) => {
+                match (value_fields.iter()).find(|(l, _)| *l == label) {
                     Some((_, value)) => value.clone(),
-                    None => panic!("Bad record proj: label `{label}` not found in `{labels:?}`"),
+                    None => {
+                        panic!("Bad record proj: label `{label}` not found in `{value_fields:?}`")
+                    }
                 }
             }
             _ => panic!("Bad record proj: {head:?}.{label}"),
@@ -119,12 +121,16 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     pub fn split_telescope(
         &self,
         mut telescope: Telescope<'core>,
-    ) -> Option<(Value<'core>, impl FnOnce(Value<'core>) -> Telescope<'core>)> {
-        let (expr, exprs) = telescope.exprs.split_first()?;
+    ) -> Option<(
+        Symbol,
+        Value<'core>,
+        impl FnOnce(Value<'core>) -> Telescope<'core>,
+    )> {
+        let ((label, expr), fields) = telescope.fields.split_first()?;
         let value = self.eval_env(&mut telescope.local_values).eval(expr);
-        Some((value, move |prev| {
+        Some((*label, value, move |prev| {
             telescope.local_values.push(prev);
-            telescope.exprs = exprs;
+            telescope.fields = fields;
             telescope
         }))
     }
@@ -221,14 +227,16 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 let exprs = exprs.iter().map(|expr| self.eval(expr));
                 Value::ArrayLit(bump.alloc_slice_fill_iter(exprs))
             }
-            Expr::RecordType(labels, types) => {
-                let telescope = Telescope::new(self.local_values.clone(), types);
-                Value::RecordType(labels, telescope)
+            Expr::RecordType(type_fields) => {
+                let telescope = Telescope::new(self.local_values.clone(), type_fields);
+                Value::RecordType(telescope)
             }
-            Expr::RecordLit(labels, exprs) => {
+            Expr::RecordLit(expr_fields) => {
                 let bump = self.bump;
-                let exprs = exprs.iter().map(|expr| self.eval(expr));
-                Value::RecordLit(labels, bump.alloc_slice_fill_iter(exprs))
+                let expr_fields = expr_fields
+                    .iter()
+                    .map(|(label, expr)| (*label, self.eval(expr)));
+                Value::RecordLit(bump.alloc_slice_fill_iter(expr_fields))
             }
             Expr::FieldProj(head, label) => {
                 let head = self.eval(head);
@@ -332,16 +340,15 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                 let exprs = values.iter().map(|value| self.quote(value));
                 Expr::ArrayLit(bump.alloc_slice_fill_iter(exprs))
             }
-            Value::RecordType(labels, telescope) => {
-                let types = self.quote_telescope(labels, telescope);
-                Expr::RecordType(bump.alloc_slice_fill_iter(labels.iter().copied()), types)
+            Value::RecordType(telescope) => {
+                let type_fields = self.quote_telescope(telescope);
+                Expr::RecordType(type_fields)
             }
-            Value::RecordLit(labels, values) => {
-                let values = values.iter().map(|value| self.quote(value));
-                Expr::RecordLit(
-                    bump.alloc_slice_fill_iter(labels.iter().copied()),
-                    bump.alloc_slice_fill_iter(values),
-                )
+            Value::RecordLit(value_fields) => {
+                let expr_fields = value_fields
+                    .iter()
+                    .map(|(label, value)| (*label, self.quote(value)));
+                Expr::RecordLit(bump.alloc_slice_fill_iter(expr_fields))
             }
         }
     }
@@ -379,26 +386,20 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [telescope][Telescope] back into a slice of [exprs][Expr].
-    fn quote_telescope(
-        &mut self,
-        labels: &[Symbol],
-        telescope: Telescope<'core>,
-    ) -> &'core [Expr<'core>] {
+    fn quote_telescope(&mut self, telescope: Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
         let initial_local_len = self.local_names.len();
         let mut telescope = telescope;
-        let mut exprs = SliceVec::new(self.bump, telescope.len());
-        let mut labels = labels.iter();
+        let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
-        while let Some((value, cont)) = self.elim_env().split_telescope(telescope) {
-            let name = labels.next().unwrap();
+        while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
             let var = Value::local(self.local_names.len().to_level());
             telescope = cont(var);
-            exprs.push(self.quote(&value));
-            self.push_local(Some(*name));
+            expr_fields.push((name, self.quote(&value)));
+            self.push_local(Some(name));
         }
 
         self.local_names.truncate(initial_local_len);
-        exprs.into()
+        expr_fields.into()
     }
 
     fn push_local(&mut self, name: Option<Symbol>) { self.local_names.push(name); }
@@ -494,21 +495,24 @@ where
             Expr::ArrayLit(exprs) => Expr::ArrayLit(
                 (self.out_bump).alloc_slice_fill_iter(exprs.iter().map(|expr| self.zonk(expr))),
             ),
-            Expr::RecordType(labels, types) => {
+            Expr::RecordType(type_fields) => {
                 let len = self.local_len();
-                let types = (self.out_bump).alloc_slice_fill_iter(
-                    labels.iter().zip(types.iter()).map(|(name, r#type)| {
+                let type_fields = self.out_bump.alloc_slice_fill_iter(type_fields.iter().map(
+                    |(label, r#type)| {
                         let r#type = self.zonk(r#type);
-                        self.push_local(Some(*name));
-                        r#type
-                    }),
-                );
+                        self.push_local(Some(*label));
+                        (*label, r#type)
+                    },
+                ));
                 self.truncate_local(len);
-                Expr::RecordType(self.out_bump.alloc_slice_copy(labels), types)
+                Expr::RecordType(type_fields)
             }
-            Expr::RecordLit(labels, exprs) => Expr::RecordLit(
-                self.out_bump.alloc_slice_copy(labels),
-                (self.out_bump).alloc_slice_fill_iter(exprs.iter().map(|expr| self.zonk(expr))),
+            Expr::RecordLit(expr_fields) => Expr::RecordLit(
+                self.out_bump.alloc_slice_fill_iter(
+                    expr_fields
+                        .iter()
+                        .map(|(label, expr)| (*label, self.zonk(expr))),
+                ),
             ),
         }
     }

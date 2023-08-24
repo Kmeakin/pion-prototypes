@@ -168,12 +168,14 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(self.intersperse(elems, self.text(", ")))
                     .append("]")
             }
-            Expr::RecordType(labels, r#types) if Symbol::are_tuple_labels(labels) => {
-                if types.len() == 1 {
-                    let r#type = self.expr(&types[0], Prec::MAX);
+            Expr::RecordType(type_fields)
+                if Symbol::are_tuple_labels(type_fields.iter().map(|(label, _)| *label)) =>
+            {
+                if type_fields.len() == 1 {
+                    let r#type = self.expr(&type_fields[0].1, Prec::MAX);
                     self.text("(").append(r#type).append(",)")
                 } else {
-                    let elems = types.iter().map(|r#type| {
+                    let elems = type_fields.iter().map(|(_, r#type)| {
                         let expr = self.expr(r#type, Prec::MAX);
                         expr
                     });
@@ -181,26 +183,30 @@ impl<'pretty> PrettyCtx<'pretty> {
                     self.text("(").append(elems).append(")")
                 }
             }
-            Expr::RecordLit(labels, exprs) if Symbol::are_tuple_labels(labels) => {
-                if exprs.len() == 1 {
-                    let expr = self.expr(&exprs[0], Prec::MAX);
+            Expr::RecordLit(expr_fields)
+                if Symbol::are_tuple_labels(expr_fields.iter().map(|(label, _)| *label)) =>
+            {
+                if expr_fields.len() == 1 {
+                    let expr = self.expr(&expr_fields[0].1, Prec::MAX);
                     self.text("(").append(expr).append(",)")
                 } else {
-                    let elems = exprs.iter().map(|expr| self.expr(expr, Prec::MAX));
+                    let elems = expr_fields
+                        .iter()
+                        .map(|(_, expr)| self.expr(expr, Prec::MAX));
                     let elems = self.intersperse(elems, self.text(", "));
                     self.text("(").append(elems).append(")")
                 }
             }
-            Expr::RecordType(labels, r#types) => {
-                let elems = labels.iter().zip(types.iter()).map(|(label, r#type)| {
+            Expr::RecordType(type_fields) => {
+                let elems = type_fields.iter().map(|(label, r#type)| {
                     let r#type = self.expr(r#type, Prec::MAX);
                     self.text(label.as_str()).append(": ").append(r#type)
                 });
                 let elems = self.intersperse(elems, self.text(", "));
                 self.text("{").append(elems).append("}")
             }
-            Expr::RecordLit(labels, exprs) => {
-                let elems = labels.iter().zip(exprs.iter()).map(|(label, expr)| {
+            Expr::RecordLit(expr_fields) => {
+                let elems = expr_fields.iter().map(|(label, expr)| {
                     self.text(label.as_str())
                         .append(" = ")
                         .append(self.expr(expr, Prec::MAX))

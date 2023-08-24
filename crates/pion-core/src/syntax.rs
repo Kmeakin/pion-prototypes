@@ -41,8 +41,8 @@ pub enum Expr<'core> {
     FunApp(Plicity, &'core (Self, Self)),
 
     ArrayLit(&'core [Self]),
-    RecordType(&'core [Symbol], &'core [Self]),
-    RecordLit(&'core [Symbol], &'core [Self]),
+    RecordType(&'core [(Symbol, Self)]),
+    RecordLit(&'core [(Symbol, Self)]),
     FieldProj(&'core Self, Symbol),
 
     Match(
@@ -52,8 +52,8 @@ pub enum Expr<'core> {
 }
 
 impl<'core> Expr<'core> {
-    pub const UNIT_LIT: Self = Self::RecordLit(&[], &[]);
-    pub const UNIT_TYPE: Self = Self::RecordType(&[], &[]);
+    pub const UNIT_LIT: Self = Self::RecordLit(&[]);
+    pub const UNIT_TYPE: Self = Self::RecordType(&[]);
 
     pub const TYPE: Self = Self::Prim(Prim::Type);
     pub const INT: Self = Self::Prim(Prim::Int);
@@ -150,11 +150,11 @@ impl<'core> Expr<'core> {
             }
             Expr::FunApp(_, (fun, arg)) => fun.binds_local(var) || arg.binds_local(var),
             Expr::ArrayLit(exprs) => exprs.iter().any(|expr| expr.binds_local(var)),
-            Expr::RecordType(_, types) => types
+            Expr::RecordType(fields) => fields
                 .iter()
                 .zip(Index::iter_from(var))
-                .any(|(r#type, var)| r#type.binds_local(var)),
-            Expr::RecordLit(_, exprs) => exprs.iter().any(|expr| expr.binds_local(var)),
+                .any(|((_, r#type), var)| r#type.binds_local(var)),
+            Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.binds_local(var)),
             Expr::FieldProj(scrut, _) => scrut.binds_local(var),
             Expr::Match((scrut, default), cases) => {
                 scrut.binds_local(var)
@@ -171,7 +171,7 @@ pub enum Pat<'core> {
     Underscore,
     Ident(Symbol),
     Lit(Lit),
-    RecordLit(&'core [Symbol], &'core [Self]),
+    RecordLit(&'core [(Symbol, Self)]),
 }
 
 impl<'core> Pat<'core> {
@@ -222,8 +222,8 @@ pub enum Value<'core> {
     FunType(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
     FunLit(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
     ArrayLit(&'core [Self]),
-    RecordType(&'core [Symbol], Telescope<'core>),
-    RecordLit(&'core [Symbol], &'core [Self]),
+    RecordType(Telescope<'core>),
+    RecordLit(&'core [(Symbol, Self)]),
 }
 
 impl<'core> Value<'core> {
@@ -232,6 +232,8 @@ impl<'core> Value<'core> {
     pub const TYPE: Self = Self::prim(Prim::Type);
     pub const BOOL: Self = Self::prim(Prim::Bool);
     pub const INT: Self = Self::prim(Prim::Int);
+
+    pub const UNIT_LIT: Self = Self::RecordLit(&[]);
 
     pub const fn prim(prim: Prim) -> Self { Self::Stuck(Head::Prim(prim), Vec::new()) }
 
@@ -249,20 +251,18 @@ impl<'core> Value<'core> {
         )
     }
 
-    pub fn record_type(labels: &'core [Symbol], types: &'core [Expr<'core>]) -> Self {
-        Self::RecordType(labels, Telescope::new(SharedEnv::new(), types))
+    pub fn record_type(type_fields: &'core [(Symbol, Expr<'core>)]) -> Self {
+        Self::RecordType(Telescope::new(SharedEnv::new(), type_fields))
     }
 
-    pub fn unit_type() -> Self { Self::record_type(&[], &[]) }
-
-    pub fn unit_lit() -> Self { Self::RecordLit(&[], &[]) }
+    pub fn unit_type() -> Self { Self::record_type(&[]) }
 
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())
     }
 
     pub fn is_unit_type(&self) -> bool {
-        matches!(self, Value::RecordType(labels, types) if labels.is_empty() && types.is_empty())
+        matches!(self, Value::RecordType(telescope) if telescope.is_empty())
     }
 
     pub const fn is_error(&self) -> bool { matches!(self, Self::Stuck(Head::Error, _)) }
@@ -298,20 +298,31 @@ impl<'arena> Closure<'arena> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Telescope<'arena> {
     pub local_values: SharedEnv<Value<'arena>>,
-    pub exprs: &'arena [Expr<'arena>],
+    pub fields: &'arena [(Symbol, Expr<'arena>)],
 }
 
 impl<'arena> Telescope<'arena> {
-    pub fn new(local_values: SharedEnv<Value<'arena>>, exprs: &'arena [Expr<'arena>]) -> Self {
+    pub fn new(
+        local_values: SharedEnv<Value<'arena>>,
+        fields: &'arena [(Symbol, Expr<'arena>)],
+    ) -> Self {
         Self {
             local_values,
-            exprs,
+            fields,
         }
     }
 
-    pub fn len(&self) -> usize { self.exprs.len() }
+    pub fn len(&self) -> usize { self.fields.len() }
 
     pub fn is_empty(&self) -> bool { self.len() == 0 }
+
+    pub fn exprs(&self) -> impl ExactSizeIterator<Item = &Expr<'arena>> + '_ {
+        self.fields.iter().map(|(_, expr)| expr)
+    }
+
+    pub fn labels(&self) -> impl ExactSizeIterator<Item = Symbol> + '_ {
+        self.fields.iter().map(|(label, _)| *label)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -361,16 +372,31 @@ mod size_tests {
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr>(), 40);
+        assert_eq!(std::mem::size_of::<Expr>(), 32);
+    }
+
+    #[test]
+    fn expr_field_size() {
+        assert_eq!(std::mem::size_of::<(Symbol, Expr)>(), 40);
     }
 
     #[test]
     fn pat_size() {
-        assert_eq!(std::mem::size_of::<Pat>(), 40);
+        assert_eq!(std::mem::size_of::<Pat>(), 24);
+    }
+
+    #[test]
+    fn pat_field_size() {
+        assert_eq!(std::mem::size_of::<(Symbol, Pat)>(), 32);
     }
 
     #[test]
     fn value_size() {
-        assert_eq!(std::mem::size_of::<Value>(), 48);
+        assert_eq!(std::mem::size_of::<Value>(), 40);
+    }
+
+    #[test]
+    fn value_field_size() {
+        assert_eq!(std::mem::size_of::<(Symbol, Value)>(), 48);
     }
 }
