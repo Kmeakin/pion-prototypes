@@ -1,6 +1,7 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
-use std::rc::Rc;
+
+use ecow::EcoVec;
 
 type Repr = usize;
 
@@ -126,31 +127,27 @@ impl<T> DerefMut for UniqueEnv<T> {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct SharedEnv<T> {
-    elems: Rc<Vec<T>>,
+    elems: EcoVec<T>,
 }
 
 impl<T> SharedEnv<T> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            elems: Rc::new(Vec::new()),
+            elems: EcoVec::new(),
         }
     }
 }
 
 impl<T: Clone> SharedEnv<T> {
-    pub fn push(&mut self, elem: T) { Rc::make_mut(&mut self.elems).push(elem) }
+    pub fn push(&mut self, elem: T) { self.elems.push(elem) }
 
-    pub fn pop(&mut self) -> Option<T> { Rc::make_mut(&mut self.elems).pop() }
+    pub fn pop(&mut self) -> Option<T> { self.elems.pop() }
 
-    pub fn reserve(&mut self, amount: usize) { Rc::make_mut(&mut self.elems).reserve(amount) }
+    pub fn reserve(&mut self, amount: usize) { self.elems.reserve(amount) }
 
-    pub fn truncate(&mut self, len: EnvLen) { Rc::make_mut(&mut self.elems).truncate(len.0) }
+    pub fn truncate(&mut self, len: EnvLen) { self.elems.truncate(len.0) }
 
-    pub fn clear(&mut self) { Rc::make_mut(&mut self.elems).clear() }
-
-    pub fn resize(&mut self, len: EnvLen, elem: T) {
-        Rc::make_mut(&mut self.elems).resize(len.0, elem);
-    }
+    pub fn clear(&mut self) { self.elems.clear() }
 }
 
 impl<T> Default for SharedEnv<T> {

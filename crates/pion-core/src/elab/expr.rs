@@ -230,7 +230,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunType(params, codomain) => {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
-                    let Check(codomain_expr) = self.with_param(None, Type::unit_type(), |this| {
+                    let Check(codomain_expr) = self.with_param(None, Type::UNIT_TYPE, |this| {
                         this.check_expr(codomain, &Type::TYPE)
                     });
                     let expr = Expr::fun_arrow(self.bump, Expr::UNIT_TYPE, codomain_expr);
@@ -243,7 +243,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
                     let Synth(body_expr, body_type) =
-                        self.with_param(None, Type::unit_type(), |this| this.synth_expr(body));
+                        self.with_param(None, Type::UNIT_TYPE, |this| this.synth_expr(body));
                     let body_type = self.quote_env().quote(&body_type);
 
                     let expr = Expr::fun_lit(
@@ -257,7 +257,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         self.bump,
                         Plicity::Explicit,
                         None,
-                        Type::unit_type(),
+                        Type::UNIT_TYPE,
                         Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
                     );
                     return SynthExpr::new(expr, r#type);
@@ -284,8 +284,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         {
                             let expr =
                                 Expr::fun_app(self.bump, Plicity::Explicit, expr, Expr::UNIT_LIT);
-                            let r#type =
-                                self.elim_env().apply_closure(codomain, Value::unit_type());
+                            let r#type = self.elim_env().apply_closure(codomain, Type::UNIT_TYPE);
                             return SynthExpr::new(expr, r#type);
                         }
                         Value::FunType(Plicity::Explicit, ..) => {
@@ -506,13 +505,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             expected_domain,
                             ref next_expected,
                         ) if expected_domain.is_unit_type() => {
-                            let Check(body_expr) =
-                                self.with_param(name, Type::unit_type(), |this| {
-                                    let expected = this
-                                        .elim_env()
-                                        .apply_closure(next_expected.clone(), Value::UNIT_LIT);
-                                    this.check_expr(body, &expected)
-                                });
+                            let Check(body_expr) = self.with_param(name, Type::UNIT_TYPE, |this| {
+                                let expected = this
+                                    .elim_env()
+                                    .apply_closure(next_expected.clone(), Value::UNIT_LIT);
+                                this.check_expr(body, &expected)
+                            });
 
                             let domain_expr = self.quote_env().quote(expected_domain);
                             let expr = Expr::fun_lit(
@@ -526,7 +524,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         }
                         _ => {
                             let Synth(body_expr, body_type) =
-                                self.with_param(None, Type::unit_type(), |this| {
+                                self.with_param(None, Type::UNIT_TYPE, |this| {
                                     this.synth_expr(body)
                                 });
                             let body_type = self.quote_env().quote(&body_type);
@@ -541,7 +539,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                 self.bump,
                                 Plicity::Explicit,
                                 None,
-                                Type::unit_type(),
+                                Type::UNIT_TYPE,
                                 Closure::new(
                                     self.local_env.values.clone(),
                                     self.bump.alloc(body_type),

@@ -1,5 +1,6 @@
 use core::fmt;
 
+use ecow::{eco_vec, EcoVec};
 use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
 
@@ -218,7 +219,7 @@ pub type Type<'core> = Value<'core>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'core> {
     Lit(Lit),
-    Stuck(Head, Vec<Elim<'core>>),
+    Stuck(Head, EcoVec<Elim<'core>>),
     FunType(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
     FunLit(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
     ArrayLit(&'core [Self]),
@@ -227,19 +228,20 @@ pub enum Value<'core> {
 }
 
 impl<'core> Value<'core> {
-    pub const ERROR: Self = Self::Stuck(Head::Error, Vec::new());
+    pub const ERROR: Self = Self::Stuck(Head::Error, EcoVec::new());
 
     pub const TYPE: Self = Self::prim(Prim::Type);
     pub const BOOL: Self = Self::prim(Prim::Bool);
     pub const INT: Self = Self::prim(Prim::Int);
 
     pub const UNIT_LIT: Self = Self::RecordLit(&[]);
+    pub const UNIT_TYPE: Self = Self::record_type(&[]);
 
-    pub const fn prim(prim: Prim) -> Self { Self::Stuck(Head::Prim(prim), Vec::new()) }
+    pub const fn prim(prim: Prim) -> Self { Self::Stuck(Head::Prim(prim), EcoVec::new()) }
 
-    pub const fn local(level: Level) -> Self { Self::Stuck(Head::Local(level), Vec::new()) }
+    pub const fn local(level: Level) -> Self { Self::Stuck(Head::Local(level), EcoVec::new()) }
 
-    pub const fn meta(level: Level) -> Self { Self::Stuck(Head::Meta(level), Vec::new()) }
+    pub const fn meta(level: Level) -> Self { Self::Stuck(Head::Meta(level), EcoVec::new()) }
 
     pub fn fun_type(
         bump: &'core bumpalo::Bump,
@@ -264,18 +266,16 @@ impl<'core> Value<'core> {
     pub fn array_type(r#type: Type<'core>, len: u32) -> Self {
         Self::Stuck(
             Head::Prim(Prim::Array),
-            vec![
+            eco_vec![
                 Elim::FunApp(Plicity::Explicit, r#type),
                 Elim::FunApp(Plicity::Explicit, Value::Lit(Lit::Int(len))),
             ],
         )
     }
 
-    pub fn record_type(type_fields: &'core [(Symbol, Expr<'core>)]) -> Self {
+    pub const fn record_type(type_fields: &'core [(Symbol, Expr<'core>)]) -> Self {
         Self::RecordType(Telescope::new(SharedEnv::new(), type_fields))
     }
-
-    pub fn unit_type() -> Self { Self::record_type(&[]) }
 }
 
 impl<'core> Value<'core> {
@@ -324,7 +324,7 @@ pub struct Telescope<'arena> {
 }
 
 impl<'arena> Telescope<'arena> {
-    pub fn new(
+    pub const fn new(
         local_values: SharedEnv<Value<'arena>>,
         fields: &'arena [(Symbol, Expr<'arena>)],
     ) -> Self {

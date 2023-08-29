@@ -45,7 +45,7 @@ define_prims! {
 }
 
 impl Prim {
-    pub fn r#type(self) -> Type<'static> {
+    pub const fn r#type(self) -> Type<'static> {
         const TYPE: &Type = &Type::TYPE;
 
         match self {
