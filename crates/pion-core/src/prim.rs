@@ -21,7 +21,7 @@ macro_rules! define_prims {
         }
 
         impl Prim {
-            pub const ALL: &[Self] = &[$(Self::$name,)*];
+            pub const ALL: &'static [Self] = &[$(Self::$name,)*];
         }
 
         impl std::str::FromStr for Prim {
