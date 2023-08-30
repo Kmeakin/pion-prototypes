@@ -1,0 +1,3 @@
+def a: Array(Int, _) = [];
+def b: Array(Int, 1) = [1];
+def c: Array(_, 1) = [1];

@@ -1,0 +1,42 @@
+exit status: 0
+
+stdout = """
+def app0: Bool = let f: () -> Bool = fun(_: ()) => false;
+f(());
+types of expressions:
+15..46 = Bool
+23..37 = () -> Bool
+32..37 = Bool
+43..44 = () -> Bool
+43..46 = Bool
+types of patterns:
+19..20 = ?0
+metavars:
+?0 = () -> Bool
+
+def app1: Int = let f: Int -> Int = fun(x: Int) => x;
+f(1);
+types of expressions:
+64..98 = Int
+72..88 = Int -> Int
+79..82 = Type
+87..88 = Int
+94..95 = Int -> Int
+94..98 = Int
+96..97 = Int
+types of patterns:
+68..69 = ?0
+76..77 = Int
+metavars:
+?0 = Int -> Int
+
+def curried: Int -> Type = Array(Int);
+types of expressions:
+115..120 = Type -> Int -> Type
+115..125 = Int -> Type
+121..124 = Type
+"""
+
+stderr = """
+
+"""

@@ -1,3 +1,0 @@
-def fun1 = Int -> Bool;
-
-def fun2 = Int -> Bool -> Type;

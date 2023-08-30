@@ -1,0 +1,3 @@
+def a = {x=5}.x;
+def b = {x=5,y=false}.x;
+def c = {x=5,y=false}.y;

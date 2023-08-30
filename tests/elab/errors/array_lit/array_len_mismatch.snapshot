@@ -1,0 +1,33 @@
+exit status: 1
+
+stdout = """
+def error: Array(?1, 2) = #error;
+types of expressions:
+11..16 = Type -> Int -> Type
+11..22 = Type
+17..18 = Type
+20..21 = Int
+25..28 = Array(?1, 2)
+26..27 = <missing>
+metavars:
+?0 = Type
+?1 = <unsolved>
+"""
+
+stderr = """
+error: incorrect length of array literal
+  ┌─ tests/elab/errors/array_lit/array_len_mismatch.pion:1:26
+  │
+1 │ def error: Array(_, 2) = [1];
+  │                          ^^^
+  │
+  = help: the array is expected to have 2 elements, but has 1 elements
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/errors/array_lit/array_len_mismatch.pion:1:18
+  │
+1 │ def error: Array(_, 2) = [1];
+  │                  ^
+
+aborting due to 2 previous errors
+"""

@@ -1,0 +1,47 @@
+exit status: 1
+
+stdout = """
+def error1: #error = #error;
+types of expressions:
+13..15 = ()
+13..17 = #error
+
+def error2: #error = #error;
+types of expressions:
+32..37 = {z: Int}
+32..39 = #error
+35..36 = Int
+
+def error3: #error = #error;
+types of expressions:
+54..57 = Type
+54..59 = #error
+"""
+
+stderr = """
+error: field `x` not found
+  ┌─ tests/elab/errors/field_proj/field_missing.pion:1:14
+  │
+1 │ def error1 = {}.x;
+  │              ^^^^
+  │
+  = help: the type of this expression is `()`
+
+error: field `x` not found
+  ┌─ tests/elab/errors/field_proj/field_missing.pion:2:14
+  │
+2 │ def error2 = {z=0}.x;
+  │              ^^^^^^^
+  │
+  = help: the type of this expression is `{z: Int}`
+
+error: tried to access field `x` of non-record expression
+  ┌─ tests/elab/errors/field_proj/field_missing.pion:3:14
+  │
+3 │ def error3 = Int.x;
+  │              ^^^^^
+  │
+  = help: the type of this expression is `Type`
+
+aborting due to 3 previous errors
+"""

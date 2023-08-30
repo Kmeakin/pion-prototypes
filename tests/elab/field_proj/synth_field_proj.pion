@@ -1,9 +1,0 @@
-def a = {x=5}.x;
-
-def b = {x=5,y=false}.x;
-
-def c = {x=5,y=false}.y;
-
-def error1 = {}.x;
-def error2 = {z=0}.x;
-def error3 = Int.x;

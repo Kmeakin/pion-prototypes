@@ -1,7 +1,0 @@
-def unit_type: Type = ();
-
-def tuple1: Type = (Int,);
-
-def tuple2: Type = (Int,Bool);
-
-def unit_lit: () = ();

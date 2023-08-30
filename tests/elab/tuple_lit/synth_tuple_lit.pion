@@ -1,8 +1,0 @@
-def tuple0 = ();
-
-def tuple1 = (1,);
-
-def tuple2 = (1,2);
-
-
-def tuple3 = (1,2,3);

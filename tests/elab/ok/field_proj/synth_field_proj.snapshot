@@ -1,0 +1,27 @@
+exit status: 0
+
+stdout = """
+def a: Int = {x = 5}.x;
+types of expressions:
+8..13 = {x: Int}
+8..15 = Int
+11..12 = Int
+
+def b: Int = {x = 5, y = false}.x;
+types of expressions:
+25..38 = {x: Int, y: Bool}
+25..40 = Int
+28..29 = Int
+32..37 = Bool
+
+def c: Bool = {x = 5, y = false}.y;
+types of expressions:
+50..63 = {x: Int, y: Bool}
+50..65 = Bool
+53..54 = Int
+57..62 = Bool
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,21 @@
+exit status: 1
+
+stdout = """
+def error: #error = #error;
+types of expressions:
+12..17 = Type -> Int -> Type
+12..23 = #error
+19..22 = <missing>
+"""
+
+stderr = """
+error: tried to call function with an implicit argument when an explicit argument was expected
+  ┌─ tests/elab/errors/fun_app/plicity_mismatch.pion:1:20
+  │
+1 │ def error = Array(@Int);
+  │             -------^^^-
+  │
+  = help: the type of the function is `Type -> Int -> Type`
+
+aborting due to 1 previous error
+"""

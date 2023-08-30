@@ -1,0 +1,30 @@
+exit status: 0
+
+stdout = """
+def const5: () -> Int = fun(_: ()) => 5;
+types of expressions:
+13..23 = () -> Int
+22..23 = Int
+
+def id_int: Int -> Int = fun(x: Int) => x;
+types of expressions:
+38..55 = Int -> Int
+46..49 = Type
+54..55 = Int
+types of patterns:
+42..43 = Int
+
+def id_poly: fun(A: Type) -> A -> A = fun(A: Type, a: A) => a;
+types of expressions:
+71..94 = fun(A: Type) -> A -> A
+78..82 = Type
+87..88 = Type
+93..94 = A
+types of patterns:
+75..76 = Type
+84..85 = A
+"""
+
+stderr = """
+
+"""

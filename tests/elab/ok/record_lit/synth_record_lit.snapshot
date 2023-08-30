@@ -1,0 +1,22 @@
+exit status: 0
+
+stdout = """
+def record0: () = ();
+types of expressions:
+14..16 = ()
+
+def record1: {x: Int} = {x = 1};
+types of expressions:
+32..37 = {x: Int}
+35..36 = Int
+
+def record2: {x: Int, y: Bool} = {x = 1, y = false};
+types of expressions:
+53..66 = {x: Int, y: Bool}
+56..57 = Int
+60..65 = Bool
+"""
+
+stderr = """
+
+"""

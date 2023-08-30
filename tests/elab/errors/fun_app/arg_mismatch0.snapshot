@@ -1,0 +1,31 @@
+exit status: 1
+
+stdout = """
+def error: Int -> Int = let f: Int -> Int = fun(x: Int) => x;
+f;
+types of expressions:
+16..49 = Int -> Int
+24..40 = Int -> Int
+31..34 = Type
+39..40 = Int
+46..47 = Int -> Int
+46..49 = Int -> Int
+types of patterns:
+20..21 = ?0
+28..29 = Int
+metavars:
+?0 = Int -> Int
+"""
+
+stderr = """
+error: tried to call function with argument of incorrect type
+  ┌─ tests/elab/errors/fun_app/arg_mismatch0.pion:3:5
+  │
+3 │     f();
+  │     ^^^
+  │
+  = help: the type of the function is `Int -> Int`
+  = help: empty argument lists are the same as passing a single unit argument
+
+aborting due to 1 previous error
+"""

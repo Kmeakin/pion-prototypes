@@ -1,0 +1,3 @@
+def Singleton = {x: Int};
+def Point = {x: Int, y: Int};
+def Any = {A: Type, a: A};

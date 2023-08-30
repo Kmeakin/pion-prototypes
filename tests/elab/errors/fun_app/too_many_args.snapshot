@@ -1,0 +1,24 @@
+exit status: 1
+
+stdout = """
+def error: #error = #error;
+types of expressions:
+12..17 = Type -> Int -> Type
+12..28 = #error
+18..21 = Type
+23..24 = Int
+26..27 = <missing>
+"""
+
+stderr = """
+error: called function with too many arguments
+  ┌─ tests/elab/errors/fun_app/too_many_args.pion:1:13
+  │
+1 │ def error = Array(Int, 0, 0);
+  │             ^^^^^^^^^^^^^^^^
+  │
+  = help: the function expects 2 arguments, but recieved 3 arguments
+  = help: the type of the function is `Type -> Int -> Type`
+
+aborting due to 1 previous error
+"""

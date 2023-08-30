@@ -1,0 +1,4 @@
+def Unit: Type = ();
+def Tuple1: Type = (Int,);
+def Tuple2: Type = (Int,Bool);
+def unit: () = ();

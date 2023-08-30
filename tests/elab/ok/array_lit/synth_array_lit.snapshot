@@ -1,0 +1,14 @@
+exit status: 0
+
+stdout = """
+def a: Array(Int, 3) = [1, 2, 3];
+types of expressions:
+8..17 = Array(Int, 3)
+9..10 = Int
+12..13 = Int
+15..16 = Int
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,3 @@
+def error1 = {}.x;
+def error2 = {z=0}.x;
+def error3 = Int.x;

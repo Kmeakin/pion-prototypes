@@ -1,0 +1,40 @@
+exit status: 0
+
+stdout = """
+def a: Array(Int, 0) = [];
+types of expressions:
+7..12 = Type -> Int -> Type
+7..20 = Type
+13..16 = Type
+18..19 = Int
+23..25 = Array(Int, 0)
+metavars:
+?0 = Int
+?1 = 0
+?2 = Int
+
+def b: Array(Int, 1) = [1];
+types of expressions:
+34..39 = Type -> Int -> Type
+34..47 = Type
+40..43 = Type
+45..46 = Int
+50..53 = Array(Int, 1)
+51..52 = Int
+
+def c: Array(Int, 1) = [1];
+types of expressions:
+62..67 = Type -> Int -> Type
+62..73 = Type
+68..69 = Type
+71..72 = Int
+76..79 = Array(Int, 1)
+77..78 = Int
+metavars:
+?0 = Type
+?1 = Int
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,3 @@
+def const5 = fun() => 5;
+def id_int = fun(x : Int) => x;
+def id_poly = fun(A: Type, a: A) => a;
