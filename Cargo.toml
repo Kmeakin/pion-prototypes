@@ -38,3 +38,7 @@ triomphe           = { version = "0.1.8" }
 
 [profile.release]
 lto = "fat"
+
+[profile.profiling]
+debug    = "full"
+inherits = "release"
