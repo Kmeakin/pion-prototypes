@@ -99,8 +99,51 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Pat::Error => CheckPat::ERROR,
             hir::Pat::Underscore => CheckPat::new(Pat::Underscore),
             hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(*name)),
-            hir::Pat::TupleLit(..) => todo!(),
-            hir::Pat::RecordLit(..) => todo!(),
+            hir::Pat::TupleLit(elems) => match expected {
+                Value::RecordType(telescope) if elems.len() == telescope.len() => {
+                    let mut pat_fields = SliceVec::new(self.bump, elems.len());
+                    let mut telescope = telescope.clone();
+
+                    for elem in *elems {
+                        let (name, r#type, cont) =
+                            self.elim_env().split_telescope(telescope.clone()).unwrap();
+
+                        let Check(elem_pat) = self.check_pat(elem, &r#type);
+                        let elem_value = self.local_env.next_var();
+                        telescope = cont(elem_value);
+                        pat_fields.push((name, elem_pat));
+                    }
+
+                    let pat = Pat::RecordLit(pat_fields.into());
+                    CheckPat::new(pat)
+                }
+                _ => self.synth_and_convert_pat(pat, expected),
+            },
+            hir::Pat::RecordLit(fields) => match expected {
+                Type::RecordType(telescope)
+                    if fields.len() == telescope.len()
+                        && Iterator::eq(
+                            fields.iter().map(|field| FieldName::User(field.symbol)),
+                            telescope.field_names(),
+                        ) =>
+                {
+                    let mut pat_fields = SliceVec::new(self.bump, fields.len());
+                    let mut telescope = telescope.clone();
+
+                    for field in *fields {
+                        let (name, r#type, cont) =
+                            self.elim_env().split_telescope(telescope).unwrap();
+                        let Check(field_pat) = self.check_pat(&field.pat, &r#type);
+                        let field_value = self.local_env.next_var();
+                        telescope = cont(field_value);
+                        pat_fields.push((name, field_pat));
+                    }
+
+                    let expt = Pat::RecordLit(pat_fields.into());
+                    CheckPat::new(expt)
+                }
+                _ => self.synth_and_convert_pat(pat, expected),
+            },
             hir::Pat::Lit(..) => {
                 let span = self.syntax_map[pat].span();
                 let Synth(pat, r#type) = self.synth_pat(pat);
@@ -111,6 +154,16 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let type_expr = self.quote_env().quote(expected);
         self.type_map.insert_pat(pat, type_expr);
         Check(core_pat)
+    }
+
+    fn synth_and_convert_pat(
+        &mut self,
+        pat: &'hir hir::Pat<'hir>,
+        expected: &Type<'core>,
+    ) -> CheckPat<'core> {
+        let span = self.syntax_map[pat].span();
+        let Synth(pat, r#type) = self.synth_pat(pat);
+        CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
     }
 }
 
