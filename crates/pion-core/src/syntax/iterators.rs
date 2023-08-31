@@ -93,7 +93,7 @@ impl<'core> Subpats<'core> {
         let mut f = |expr| Self::recurse(expr, f);
 
         match pat {
-            Pat::Error | Pat::Lit(..) | Pat::Underscore | Pat::Ident(..) => {}
+            Pat::Error(..) | Pat::Lit(..) | Pat::Underscore(..) | Pat::Ident(..) => {}
             Pat::RecordLit(.., pat_fields) => pat_fields.iter().try_for_each(|(_, pat)| f(pat))?,
         }
 

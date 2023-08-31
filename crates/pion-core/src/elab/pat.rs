@@ -9,34 +9,36 @@ pub type SynthPat<'core> = Synth<'core, Pat<'core>>;
 pub type CheckPat<'core> = Check<Pat<'core>>;
 
 impl<'core> SynthPat<'core> {
-    pub const ERROR: Self = Self::new(Pat::Error, Type::ERROR);
+    pub fn error(span: ByteSpan) -> Self { Self::new(Pat::Error(span), Type::ERROR) }
 }
 
 impl<'core> CheckPat<'core> {
-    pub const ERROR: Self = Self::new(Pat::Error);
+    pub fn error(span: ByteSpan) -> Self { Self::new(Pat::Error(span)) }
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn synth_pat(&mut self, pat: &'hir hir::Pat<'hir>) -> SynthPat<'core> {
+        let span = self.syntax_map[pat].span();
+
         let Synth(core_pat, r#type) = match pat {
-            hir::Pat::Error => SynthPat::ERROR,
+            hir::Pat::Error => SynthPat::error(span),
             hir::Pat::Lit(lit) => {
                 let Synth(result, r#type) = expr::synth_lit(*lit);
                 let pat = match result {
-                    Ok(lit) => Pat::Lit(lit),
-                    Err(()) => Pat::Error,
+                    Ok(lit) => Pat::Lit(span, lit),
+                    Err(()) => Pat::Error(span),
                 };
                 SynthPat::new(pat, r#type)
             }
             hir::Pat::Underscore => {
                 let span = self.syntax_map[pat].span();
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
-                SynthPat::new(Pat::Underscore, r#type)
+                SynthPat::new(Pat::Underscore(span), r#type)
             }
             hir::Pat::Ident(name) => {
                 let span = self.syntax_map[pat].span();
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
-                SynthPat::new(Pat::Ident(*name), r#type)
+                SynthPat::new(Pat::Ident(span, *name), r#type)
             }
             hir::Pat::TupleLit(elems) => {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
@@ -49,7 +51,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     type_fields.push((name, self.quote_env().quote(&elem_type)));
                 }
 
-                let pat = Pat::RecordLit(pat_fields.into());
+                let pat = Pat::RecordLit(span, pat_fields.into());
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
@@ -79,7 +81,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     name_spans.push(field.symbol_span);
                 }
 
-                let pat = Pat::RecordLit(pat_fields.into());
+                let pat = Pat::RecordLit(span, pat_fields.into());
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
@@ -95,10 +97,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
     ) -> CheckPat<'core> {
+        let span = self.syntax_map[pat].span();
+
         let Check(core_pat) = match pat {
-            hir::Pat::Error => CheckPat::ERROR,
-            hir::Pat::Underscore => CheckPat::new(Pat::Underscore),
-            hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(*name)),
+            hir::Pat::Error => CheckPat::error(span),
+            hir::Pat::Underscore => CheckPat::new(Pat::Underscore(span)),
+            hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(span, *name)),
             hir::Pat::TupleLit(elems) => match expected {
                 Value::RecordType(telescope) if elems.len() == telescope.len() => {
                     let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -114,7 +118,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         pat_fields.push((name, elem_pat));
                     }
 
-                    let pat = Pat::RecordLit(pat_fields.into());
+                    let pat = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(pat)
                 }
                 _ => self.synth_and_convert_pat(pat, expected),
@@ -139,16 +143,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         pat_fields.push((name, field_pat));
                     }
 
-                    let expt = Pat::RecordLit(pat_fields.into());
+                    let expt = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(expt)
                 }
                 _ => self.synth_and_convert_pat(pat, expected),
             },
-            hir::Pat::Lit(..) => {
-                let span = self.syntax_map[pat].span();
-                let Synth(pat, r#type) = self.synth_pat(pat);
-                CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
-            }
+            hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected),
         };
 
         let type_expr = self.quote_env().quote(expected);
@@ -161,9 +161,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
     ) -> CheckPat<'core> {
-        let span = self.syntax_map[pat].span();
         let Synth(pat, r#type) = self.synth_pat(pat);
-        CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
+        CheckPat::new(self.convert_pat(pat, &r#type, expected))
     }
 }
 
@@ -193,9 +192,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match r#type {
             None => self.check_pat(pat, expected),
             Some(r#type) => {
-                let span = self.syntax_map[pat].span();
                 let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type));
-                CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
+                CheckPat::new(self.convert_pat(pat, &r#type, expected))
             }
         }
     }
@@ -212,16 +210,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected)
     }
 
-    fn convert_pat(
-        &mut self,
-        span: ByteSpan,
-        pat: Pat<'core>,
-        from: &Type<'core>,
-        to: &Type<'core>,
-    ) -> Pat<'core> {
+    fn convert_pat(&mut self, pat: Pat<'core>, from: &Type<'core>, to: &Type<'core>) -> Pat<'core> {
         match self.unifiy_ctx().unify(from, to) {
             Ok(()) => pat,
             Err(error) => {
+                let span = pat.span();
                 let found = self.pretty_value(from);
                 let expected = self.pretty_value(to);
                 self.emit_diagnostic(ElabDiagnostic::Unification {
@@ -230,7 +223,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     expected,
                     error,
                 });
-                Pat::Error
+                Pat::Error(span)
             }
         }
     }

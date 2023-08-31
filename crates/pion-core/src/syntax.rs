@@ -3,6 +3,7 @@ use core::fmt;
 use ecow::{eco_vec, EcoVec};
 use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
+use pion_utils::location::ByteSpan;
 
 use crate::env::{Index, Level, SharedEnv};
 use crate::name::{BinderName, FieldName, LocalName};
@@ -175,17 +176,27 @@ impl<'core> Expr<'core> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Pat<'core> {
-    Error,
-    Underscore,
-    Ident(Symbol),
-    Lit(Lit),
-    RecordLit(&'core [(FieldName, Self)]),
+    Error(ByteSpan),
+    Underscore(ByteSpan),
+    Ident(ByteSpan, Symbol),
+    Lit(ByteSpan, Lit),
+    RecordLit(ByteSpan, &'core [(FieldName, Self)]),
 }
 
 impl<'core> Pat<'core> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Pat::Error(span, ..)
+            | Pat::Underscore(span, ..)
+            | Pat::Ident(span, ..)
+            | Pat::Lit(span, ..)
+            | Pat::RecordLit(span, ..) => *span,
+        }
+    }
+
     pub fn name(&self) -> BinderName {
         match self {
-            Pat::Ident(symbol) => BinderName::User(*symbol),
+            Pat::Ident(_, symbol) => BinderName::User(*symbol),
             _ => BinderName::Underscore,
         }
     }
@@ -407,12 +418,12 @@ mod size_tests {
 
     #[test]
     fn pat_size() {
-        assert_eq!(std::mem::size_of::<Pat>(), 24);
+        assert_eq!(std::mem::size_of::<Pat>(), 32);
     }
 
     #[test]
     fn pat_field_size() {
-        assert_eq!(std::mem::size_of::<(FieldName, Pat)>(), 32);
+        assert_eq!(std::mem::size_of::<(FieldName, Pat)>(), 40);
     }
 
     #[test]
