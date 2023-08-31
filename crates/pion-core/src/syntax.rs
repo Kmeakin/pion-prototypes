@@ -179,7 +179,7 @@ pub enum Pat<'core> {
     Underscore,
     Ident(Symbol),
     Lit(Lit),
-    RecordLit(&'core [(Symbol, Self)]),
+    RecordLit(&'core [(FieldName, Self)]),
 }
 
 impl<'core> Pat<'core> {

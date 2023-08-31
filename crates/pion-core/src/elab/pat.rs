@@ -1,7 +1,9 @@
 use pion_hir::syntax as hir;
+use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
 use super::*;
+use crate::name::FieldName;
 
 pub type SynthPat<'core> = Synth<'core, Pat<'core>>;
 pub type CheckPat<'core> = Check<Pat<'core>>;
@@ -36,8 +38,51 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                 SynthPat::new(Pat::Ident(*name), r#type)
             }
-            hir::Pat::TupleLit(..) => todo!(),
-            hir::Pat::RecordLit(..) => todo!(),
+            hir::Pat::TupleLit(elems) => {
+                let mut type_fields = SliceVec::new(self.bump, elems.len());
+                let mut pat_fields = SliceVec::new(self.bump, elems.len());
+
+                for (index, elem) in elems.iter().enumerate() {
+                    let name = FieldName::tuple(index);
+                    let Synth(elem_pat, elem_type) = self.synth_pat(elem);
+                    pat_fields.push((name, elem_pat));
+                    type_fields.push((name, self.quote_env().quote(&elem_type)));
+                }
+
+                let pat = Pat::RecordLit(pat_fields.into());
+                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                SynthPat::new(pat, Type::RecordType(telescope))
+            }
+            hir::Pat::RecordLit(fields) => {
+                let mut pat_fields = SliceVec::new(self.bump, fields.len());
+                let mut type_fields = SliceVec::new(self.bump, fields.len());
+                let mut name_spans = SliceVec::new(self.bump, fields.len());
+
+                for field in *fields {
+                    let name = FieldName::User(field.symbol);
+                    if let Some(idx) = pat_fields
+                        .iter()
+                        .position(|(potential_name, _)| *potential_name == name)
+                    {
+                        self.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
+                            kind: "record type",
+                            name,
+                            first_span: name_spans[idx],
+                            duplicate_span: field.symbol_span,
+                        });
+                        continue;
+                    }
+
+                    let Synth(field_pat, field_type) = self.synth_pat(&field.pat);
+                    pat_fields.push((name, field_pat));
+                    type_fields.push((name, self.quote_env().quote(&field_type)));
+                    name_spans.push(field.symbol_span);
+                }
+
+                let pat = Pat::RecordLit(pat_fields.into());
+                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                SynthPat::new(pat, Type::RecordType(telescope))
+            }
         };
 
         let type_expr = self.quote_env().quote(&r#type);
@@ -54,7 +99,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Pat::Error => CheckPat::ERROR,
             hir::Pat::Underscore => CheckPat::new(Pat::Underscore),
             hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(*name)),
-            _ => {
+            hir::Pat::TupleLit(..) => todo!(),
+            hir::Pat::RecordLit(..) => todo!(),
+            hir::Pat::Lit(..) => {
                 let span = self.syntax_map[pat].span();
                 let Synth(pat, r#type) = self.synth_pat(pat);
                 CheckPat::new(self.convert_pat(span, pat, &r#type, expected))
