@@ -114,8 +114,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());
-                let r#type = Type::record_type(type_fields.into());
-                SynthExpr::new(expr, r#type)
+                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                SynthExpr::new(expr, Type::RecordType(telescope))
             }
             hir::Expr::RecordType(fields) => {
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
@@ -177,8 +177,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());
-                let r#type = Type::record_type(type_fields.into());
-                SynthExpr::new(expr, r#type)
+                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                SynthExpr::new(expr, Type::RecordType(telescope))
             }
             hir::Expr::FieldProj(scrut, symbol) => {
                 let name = FieldName::User(*symbol);

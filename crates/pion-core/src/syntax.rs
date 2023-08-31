@@ -242,7 +242,7 @@ impl<'core> Value<'core> {
     pub const INT: Self = Self::prim(Prim::Int);
 
     pub const UNIT_LIT: Self = Self::RecordLit(&[]);
-    pub const UNIT_TYPE: Self = Self::record_type(&[]);
+    pub const UNIT_TYPE: Self = Self::RecordType(Telescope::new(SharedEnv::new(), &[]));
 
     pub const fn prim(prim: Prim) -> Self { Self::Stuck(Head::Prim(prim), EcoVec::new()) }
 
@@ -278,10 +278,6 @@ impl<'core> Value<'core> {
                 Elim::FunApp(Plicity::Explicit, Value::Lit(Lit::Int(len))),
             ],
         )
-    }
-
-    pub const fn record_type(type_fields: &'core [(FieldName, Expr<'core>)]) -> Self {
-        Self::RecordType(Telescope::new(SharedEnv::new(), type_fields))
     }
 }
 
