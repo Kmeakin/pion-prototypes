@@ -135,7 +135,7 @@ mod tests {
         let expr2 = Expr::FunApp(Plicity::Explicit, bump.alloc((expr0, expr1)));
         assert_eq!(subexprs(&expr2), [&expr2, &expr0, &expr1]);
 
-        let expr4 = Expr::Let(None, bump.alloc((expr0, expr1, expr2)));
+        let expr4 = Expr::Let(BinderName::Underscore, bump.alloc((expr0, expr1, expr2)));
         assert_eq!(
             subexprs(&expr4),
             vec![&expr4, &expr0, &expr1, &expr2, &expr0, &expr1]

@@ -146,22 +146,22 @@ pub enum Plicity {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'surface> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub r#type: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'surface> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'surface> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub pat: Pat<'surface>,
 }
 

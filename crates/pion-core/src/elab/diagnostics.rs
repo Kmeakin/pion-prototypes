@@ -1,9 +1,9 @@
 use codespan_reporting::diagnostic::{Diagnostic as CodeSpanDiagnostic, Label};
-use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
 
 use super::{unify, MetaSource};
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::syntax::Plicity;
 
 type String = Box<str>;
@@ -12,7 +12,7 @@ type String = Box<str>;
 pub enum ElabDiagnostic {
     UnboundName {
         span: ByteSpan,
-        name: Symbol,
+        name: LocalName,
     },
     Unification {
         span: ByteSpan,
@@ -44,16 +44,16 @@ pub enum ElabDiagnostic {
     FieldProjNotFound {
         span: ByteSpan,
         scrut_type: String,
-        field: Symbol,
+        name: FieldName,
     },
     FieldProjNotRecord {
         span: ByteSpan,
         scrut_type: String,
-        field: Symbol,
+        name: FieldName,
     },
     RecordFieldDuplicate {
-        name: &'static str,
-        label: Symbol,
+        kind: &'static str,
+        name: FieldName,
         first_span: ByteSpan,
         duplicate_span: ByteSpan,
     },
@@ -129,9 +129,9 @@ impl ElabDiagnostic {
             Self::FieldProjNotFound {
                 span,
                 scrut_type,
-                field,
+                name,
             } => CodeSpanDiagnostic::error()
-                .with_message(format!("field `{field}` not found"))
+                .with_message(format!("field `{name}` not found"))
                 .with_labels(vec![primary(*span)])
                 .with_notes(vec![format!(
                     "help: the type of this expression is `{scrut_type}`"
@@ -139,22 +139,22 @@ impl ElabDiagnostic {
             Self::FieldProjNotRecord {
                 span,
                 scrut_type,
-                field,
+                name,
             } => CodeSpanDiagnostic::error()
                 .with_message(format!(
-                    "tried to access field `{field}` of non-record expression"
+                    "tried to access field `{name}` of non-record expression"
                 ))
                 .with_labels(vec![primary(*span)])
                 .with_notes(vec![format!(
                     "help: the type of this expression is `{scrut_type}`"
                 )]),
             Self::RecordFieldDuplicate {
+                kind,
                 name,
-                label,
                 first_span,
                 duplicate_span,
             } => CodeSpanDiagnostic::error()
-                .with_message(format!("duplicate field `{label}` in {name}"))
+                .with_message(format!("duplicate field `{name}` in {kind}"))
                 .with_labels(vec![
                     secondary(*first_span).with_message("first field"),
                     primary(*duplicate_span).with_message("duplicate field"),
@@ -179,12 +179,13 @@ impl ElabDiagnostic {
                     MetaSource::EmptyArrayElemType { span } => {
                         (span, "element type of empty array literal".into())
                     }
-                    MetaSource::ImplicitArg { span, name: None } => {
-                        (span, "implicit argument".into())
-                    }
                     MetaSource::ImplicitArg {
                         span,
-                        name: Some(name),
+                        name: BinderName::Underscore,
+                    } => (span, "implicit argument".into()),
+                    MetaSource::ImplicitArg {
+                        span,
+                        name: BinderName::User(name),
                     } => (span, format!("implicit argument `{name}`")),
                     MetaSource::PatType { span } => (span, "pattern type".into()),
                 };

@@ -88,7 +88,7 @@ FunExpr: Expr<'surface> = {
 }
 
 ProjExpr: Expr<'surface> = {
-    <start: @L> <head: ProjExpr> "." <label: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), label),
+    <start: @L> <head: ProjExpr> "." <name: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), name),
     CallExpr => <>,
 }
 
@@ -130,11 +130,11 @@ MatchCase: MatchCase<'surface> = {
 }
 
 ExprField: ExprField<'surface> = {
-    <label: SpannedIdent> "=" <expr: Expr> => ExprField {label_span: label.0, label: label.1, expr},
+    <name: SpannedIdent> "=" <expr: Expr> => ExprField {symbol_span: name.0, symbol: name.1, expr},
 }
 
 TypeField: TypeField<'surface> = {
-    <label: SpannedIdent> ":" <r#type: Expr> => TypeField {label_span: label.0, label: label.1, r#type},
+    <name: SpannedIdent> ":" <r#type: Expr> => TypeField {symbol_span: name.0, symbol: name.1, r#type},
 }
 
 // ==== Patterns ====
@@ -154,7 +154,7 @@ AtomPat: Pat<'surface> = {
 }
 
 PatField: PatField<'surface> = {
-    <label: SpannedIdent> "=" <pat: Pat> => PatField {label_span: label.0, label: label.1, pat},
+    <name: SpannedIdent> "=" <pat: Pat> => PatField {symbol_span: name.0, symbol: name.1, pat},
 }
 
 // ==== Literals ====

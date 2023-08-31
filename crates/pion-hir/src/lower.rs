@@ -125,9 +125,9 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
                 Expr::RecordType(self.lower_type_fields(fields))
             }
             surface::Expr::RecordLit(_, fields) => Expr::RecordLit(self.lower_expr_fields(fields)),
-            surface::Expr::FieldProj(.., scrut, label) => {
+            surface::Expr::FieldProj(.., scrut, (_, symbol)) => {
                 let scrut = self.lower_expr(scrut);
-                Expr::FieldProj(scrut, label.1)
+                Expr::FieldProj(scrut, *symbol)
             }
 
             surface::Expr::FunArrow(.., surface @ (domain, codomain)) => {
@@ -198,8 +198,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         field: &'surface surface::TypeField<'surface>,
     ) -> TypeField<'hir> {
         TypeField {
-            label_span: field.label_span,
-            label: field.label,
+            symbol_span: field.symbol_span,
+            symbol: field.symbol,
             r#type: self.expr_to_hir(&field.r#type),
         }
     }
@@ -222,8 +222,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         field: &'surface surface::ExprField<'surface>,
     ) -> ExprField<'hir> {
         ExprField {
-            label_span: field.label_span,
-            label: field.label,
+            symbol_span: field.symbol_span,
+            symbol: field.symbol,
             r#expr: self.expr_to_hir(&field.expr),
         }
     }
@@ -342,8 +342,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
 
     fn pat_field_to_hir(&mut self, field: &'surface surface::PatField<'surface>) -> PatField<'hir> {
         PatField {
-            label_span: field.label_span,
-            label: field.label,
+            symbol_span: field.symbol_span,
+            symbol: field.symbol,
             pat: self.pat_to_hir(&field.pat),
         }
     }

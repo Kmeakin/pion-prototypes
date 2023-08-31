@@ -1,4 +1,5 @@
 use crate::env::SharedEnv;
+use crate::name::BinderName;
 use crate::syntax::*;
 
 macro_rules! define_prims {
@@ -52,11 +53,15 @@ impl Prim {
             Self::Type | Self::Bool | Self::Int => Type::TYPE,
             Self::Array => Type::FunType(
                 Plicity::Explicit,
-                None,
+                BinderName::Underscore,
                 TYPE,
                 Closure::new(
                     SharedEnv::new(),
-                    &Expr::FunType(Plicity::Explicit, None, &(Expr::INT, Expr::TYPE)),
+                    &Expr::FunType(
+                        Plicity::Explicit,
+                        BinderName::Underscore,
+                        &(Expr::INT, Expr::TYPE),
+                    ),
                 ),
             ),
         }

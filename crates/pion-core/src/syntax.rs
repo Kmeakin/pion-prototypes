@@ -5,6 +5,7 @@ use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
 
 use crate::env::{Index, Level, SharedEnv};
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 
 mod iterators;
@@ -31,23 +32,23 @@ pub enum Expr<'core> {
     Error,
     Lit(Lit),
     Prim(Prim),
-    Local(Symbol, Index),
+    Local(LocalName, Index),
     Meta(Level),
     InsertedMeta(Level, &'core [BinderInfo]),
 
-    Let(Option<Symbol>, &'core (Self, Self, Self)),
+    Let(BinderName, &'core (Self, Self, Self)),
 
-    FunLit(Plicity, Option<Symbol>, &'core (Self, Self)),
-    FunType(Plicity, Option<Symbol>, &'core (Self, Self)),
+    FunLit(Plicity, BinderName, &'core (Self, Self)),
+    FunType(Plicity, BinderName, &'core (Self, Self)),
     FunApp(Plicity, &'core (Self, Self)),
 
     ArrayLit(&'core [Self]),
-    RecordType(&'core [(Symbol, Self)]),
-    RecordLit(&'core [(Symbol, Self)]),
-    FieldProj(&'core Self, Symbol),
+    RecordType(&'core [(FieldName, Self)]),
+    RecordLit(&'core [(FieldName, Self)]),
+    FieldProj(&'core Self, FieldName),
 
     Match(
-        &'core (Self, Option<(Option<Symbol>, Self)>),
+        &'core (Self, Option<(BinderName, Self)>),
         &'core [(Lit, Self)],
     ),
 }
@@ -63,7 +64,7 @@ impl<'core> Expr<'core> {
 
     pub fn r#let(
         bump: &'core bumpalo::Bump,
-        name: Option<Symbol>,
+        name: BinderName,
         r#type: Expr<'core>,
         init: Expr<'core>,
         body: Expr<'core>,
@@ -74,7 +75,7 @@ impl<'core> Expr<'core> {
     pub fn fun_lit(
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
-        name: Option<Symbol>,
+        name: BinderName,
         domain: Expr<'core>,
         body: Expr<'core>,
     ) -> Self {
@@ -84,7 +85,7 @@ impl<'core> Expr<'core> {
     pub fn fun_type(
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
-        name: Option<Symbol>,
+        name: BinderName,
         domain: Expr<'core>,
         codomain: Expr<'core>,
     ) -> Self {
@@ -96,7 +97,13 @@ impl<'core> Expr<'core> {
         domain: Expr<'core>,
         codomain: Expr<'core>,
     ) -> Self {
-        Self::fun_type(bump, Plicity::Explicit, None, domain, codomain)
+        Self::fun_type(
+            bump,
+            Plicity::Explicit,
+            BinderName::Underscore,
+            domain,
+            codomain,
+        )
     }
 
     pub fn fun_app(
@@ -108,15 +115,15 @@ impl<'core> Expr<'core> {
         Self::FunApp(plicity, bump.alloc((fun, arg)))
     }
 
-    pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Expr<'core>, field: Symbol) -> Self {
-        Self::FieldProj(bump.alloc(scrut), field)
+    pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Expr<'core>, name: FieldName) -> Self {
+        Self::FieldProj(bump.alloc(scrut), name)
     }
 
     pub fn r#match(
         bump: &'core bumpalo::Bump,
         scrut: Expr<'core>,
         cases: &'core [(Lit, Expr<'core>)],
-        default: Option<(Option<Symbol>, Expr<'core>)>,
+        default: Option<(BinderName, Expr<'core>)>,
     ) -> Self {
         Self::Match(bump.alloc((scrut, default)), cases)
     }
@@ -176,10 +183,10 @@ pub enum Pat<'core> {
 }
 
 impl<'core> Pat<'core> {
-    pub fn name(&self) -> Option<Symbol> {
+    pub fn name(&self) -> BinderName {
         match self {
-            Pat::Ident(name) => Some(*name),
-            _ => None,
+            Pat::Ident(symbol) => BinderName::User(*symbol),
+            _ => BinderName::Underscore,
         }
     }
 }
@@ -220,11 +227,11 @@ pub type Type<'core> = Value<'core>;
 pub enum Value<'core> {
     Lit(Lit),
     Stuck(Head, EcoVec<Elim<'core>>),
-    FunType(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
-    FunLit(Plicity, Option<Symbol>, &'core Self, Closure<'core>),
+    FunType(Plicity, BinderName, &'core Self, Closure<'core>),
+    FunLit(Plicity, BinderName, &'core Self, Closure<'core>),
     ArrayLit(&'core [Self]),
     RecordType(Telescope<'core>),
-    RecordLit(&'core [(Symbol, Self)]),
+    RecordLit(&'core [(FieldName, Self)]),
 }
 
 impl<'core> Value<'core> {
@@ -246,7 +253,7 @@ impl<'core> Value<'core> {
     pub fn fun_type(
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
-        name: Option<Symbol>,
+        name: BinderName,
         domain: Value<'core>,
         codomain: Closure<'core>,
     ) -> Self {
@@ -256,7 +263,7 @@ impl<'core> Value<'core> {
     pub fn fun_lit(
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
-        name: Option<Symbol>,
+        name: BinderName,
         domain: Value<'core>,
         body: Closure<'core>,
     ) -> Self {
@@ -273,7 +280,7 @@ impl<'core> Value<'core> {
         )
     }
 
-    pub const fn record_type(type_fields: &'core [(Symbol, Expr<'core>)]) -> Self {
+    pub const fn record_type(type_fields: &'core [(FieldName, Expr<'core>)]) -> Self {
         Self::RecordType(Telescope::new(SharedEnv::new(), type_fields))
     }
 }
@@ -301,7 +308,7 @@ pub enum Head {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Elim<'core> {
     FunApp(Plicity, Value<'core>),
-    FieldProj(Symbol),
+    FieldProj(FieldName),
     Match(Cases<'core, Lit>),
 }
 
@@ -320,13 +327,13 @@ impl<'arena> Closure<'arena> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Telescope<'arena> {
     pub local_values: SharedEnv<Value<'arena>>,
-    pub fields: &'arena [(Symbol, Expr<'arena>)],
+    pub fields: &'arena [(FieldName, Expr<'arena>)],
 }
 
 impl<'arena> Telescope<'arena> {
     pub const fn new(
         local_values: SharedEnv<Value<'arena>>,
-        fields: &'arena [(Symbol, Expr<'arena>)],
+        fields: &'arena [(FieldName, Expr<'arena>)],
     ) -> Self {
         Self {
             local_values,
@@ -342,8 +349,8 @@ impl<'arena> Telescope<'arena> {
         self.fields.iter().map(|(_, expr)| expr)
     }
 
-    pub fn labels(&self) -> impl ExactSizeIterator<Item = Symbol> + '_ {
-        self.fields.iter().map(|(label, _)| *label)
+    pub fn field_names(&self) -> impl ExactSizeIterator<Item = FieldName> + '_ {
+        self.fields.iter().map(|(name, _)| *name)
     }
 }
 
@@ -351,14 +358,14 @@ impl<'arena> Telescope<'arena> {
 pub struct Cases<'arena, P> {
     pub local_values: SharedEnv<Value<'arena>>,
     pub pattern_cases: &'arena [(P, Expr<'arena>)],
-    pub default_case: &'arena Option<(Option<Symbol>, Expr<'arena>)>,
+    pub default_case: &'arena Option<(BinderName, Expr<'arena>)>,
 }
 
 impl<'arena, P> Cases<'arena, P> {
     pub fn new(
         local_values: SharedEnv<Value<'arena>>,
         pattern_cases: &'arena [(P, Expr<'arena>)],
-        default_case: &'arena Option<(Option<Symbol>, Expr<'arena>)>,
+        default_case: &'arena Option<(BinderName, Expr<'arena>)>,
     ) -> Self {
         Self {
             local_values,
@@ -373,7 +380,7 @@ pub type PatternCase<'arena, P> = (P, Value<'arena>);
 #[derive(Debug, Clone)]
 pub enum SplitCases<'arena, P> {
     Case(PatternCase<'arena, P>, Cases<'arena, P>),
-    Default(Option<Symbol>, Closure<'arena>),
+    Default(BinderName, Closure<'arena>),
     None,
 }
 
@@ -399,7 +406,7 @@ mod size_tests {
 
     #[test]
     fn expr_field_size() {
-        assert_eq!(std::mem::size_of::<(Symbol, Expr)>(), 40);
+        assert_eq!(std::mem::size_of::<(FieldName, Expr)>(), 40);
     }
 
     #[test]
@@ -409,7 +416,7 @@ mod size_tests {
 
     #[test]
     fn pat_field_size() {
-        assert_eq!(std::mem::size_of::<(Symbol, Pat)>(), 32);
+        assert_eq!(std::mem::size_of::<(FieldName, Pat)>(), 32);
     }
 
     #[test]
@@ -419,6 +426,6 @@ mod size_tests {
 
     #[test]
     fn value_field_size() {
-        assert_eq!(std::mem::size_of::<(Symbol, Value)>(), 48);
+        assert_eq!(std::mem::size_of::<(FieldName, Value)>(), 48);
     }
 }

@@ -6,6 +6,7 @@ use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
 use super::*;
+use crate::name::{FieldName, LocalName};
 use crate::prim::Prim;
 
 pub type SynthExpr<'core> = Synth<'core, Expr<'core>>;
@@ -42,17 +43,18 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::Ident(name) => {
-                if let Some((index, entry)) = self.local_env.lookup(*name) {
-                    return SynthExpr::new(Expr::Local(*name, index), entry.r#type.clone());
+            hir::Expr::Ident(symbol) => {
+                let name = LocalName::User(*symbol);
+                if let Some((index, entry)) = self.local_env.lookup(name) {
+                    return SynthExpr::new(Expr::Local(name, index), entry.r#type.clone());
                 };
 
-                if let Ok(prim) = Prim::from_str(name.as_str()) {
+                if let Ok(prim) = Prim::from_str(symbol.as_str()) {
                     return SynthExpr::new(Expr::Prim(prim), prim.r#type());
                 }
 
                 let span = self.syntax_map[expr].span();
-                self.emit_diagnostic(ElabDiagnostic::UnboundName { name: *name, span });
+                self.emit_diagnostic(ElabDiagnostic::UnboundName { name, span });
                 SynthExpr::ERROR
             }
             hir::Expr::Ann((expr, r#type)) => {
@@ -105,10 +107,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
 
                 for (index, elem) in elems.iter().enumerate() {
+                    let name = FieldName::tuple(index);
                     let Synth(elem_expr, elem_type) = self.synth_expr(elem);
-                    let label = Symbol::intern(format!("_{index}"));
-                    expr_fields.push((label, elem_expr));
-                    type_fields.push((label, self.quote_env().quote(&elem_type)));
+                    expr_fields.push((name, elem_expr));
+                    type_fields.push((name, self.quote_env().quote(&elem_type)));
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());
@@ -117,93 +119,100 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::RecordType(fields) => {
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
-                let mut label_spans = SliceVec::new(self.bump, fields.len());
+                let mut name_spans = SliceVec::new(self.bump, fields.len());
 
                 self.with_scope(|this| {
                     for field in *fields {
+                        let name = FieldName::User(field.symbol);
+
                         if let Some(idx) = type_fields
                             .iter()
-                            .position(|(label, _)| *label == field.label)
+                            .position(|(potential_name, _)| *potential_name == name)
                         {
                             this.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
-                                name: "record type",
-                                label: field.label,
-                                first_span: label_spans[idx],
-                                duplicate_span: field.label_span,
+                                kind: "record type",
+                                name,
+                                first_span: name_spans[idx],
+                                duplicate_span: field.symbol_span,
                             });
                             continue;
                         }
 
                         let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
                         let type_value = this.eval_env().eval(&r#type);
-                        type_fields.push((field.label, r#type));
-                        label_spans.push(field.label_span);
-                        this.local_env.push_param(Some(field.label), type_value);
+                        type_fields.push((FieldName::User(field.symbol), r#type));
+                        name_spans.push(field.symbol_span);
+                        this.local_env
+                            .push_param(BinderName::from(name), type_value);
                     }
                 });
 
                 let expr = Expr::RecordType(type_fields.into());
                 SynthExpr::new(expr, Type::TYPE)
             }
-            // TODO: check for duplicate fields
             hir::Expr::RecordLit(fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, fields.len());
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
-                let mut label_spans = SliceVec::new(self.bump, fields.len());
+                let mut name_spans = SliceVec::new(self.bump, fields.len());
 
                 for field in *fields {
+                    let name = FieldName::User(field.symbol);
                     if let Some(idx) = expr_fields
                         .iter()
-                        .position(|(label, _)| *label == field.label)
+                        .position(|(potential_name, _)| *potential_name == name)
                     {
                         self.emit_diagnostic(ElabDiagnostic::RecordFieldDuplicate {
-                            name: "record type",
-                            label: field.label,
-                            first_span: label_spans[idx],
-                            duplicate_span: field.label_span,
+                            kind: "record type",
+                            name,
+                            first_span: name_spans[idx],
+                            duplicate_span: field.symbol_span,
                         });
                         continue;
                     }
 
                     let Synth(field_expr, field_type) = self.synth_expr(&field.expr);
-                    expr_fields.push((field.label, field_expr));
-                    type_fields.push((field.label, self.quote_env().quote(&field_type)));
-                    label_spans.push(field.label_span);
+                    expr_fields.push((name, field_expr));
+                    type_fields.push((name, self.quote_env().quote(&field_type)));
+                    name_spans.push(field.symbol_span);
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());
                 let r#type = Type::record_type(type_fields.into());
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::FieldProj(scrut, field) => {
+            hir::Expr::FieldProj(scrut, symbol) => {
+                let name = FieldName::User(*symbol);
                 let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
                 let scrut_value = self.eval_env().eval(&scrut_expr);
 
                 match &scrut_type {
                     Value::RecordType(telescope) => {
-                        if !telescope.fields.iter().any(|(label, _)| label == field) {
+                        if !telescope
+                            .field_names()
+                            .any(|potential_name| potential_name == name)
+                        {
                             let scrut_type = self.pretty_value(&scrut_type);
                             self.emit_diagnostic(ElabDiagnostic::FieldProjNotFound {
                                 span: self.syntax_map[expr].span(),
                                 scrut_type,
-                                field: *field,
+                                name,
                             });
                             return SynthExpr::ERROR;
                         }
 
                         let mut telescope = telescope.clone();
                         let r#type = loop {
-                            let (label, r#type, cont) =
+                            let (potential_name, r#type, cont) =
                                 self.elim_env().split_telescope(telescope.clone()).unwrap();
-                            if label == *field {
+                            if potential_name == name {
                                 break r#type;
                             }
 
-                            let projected = self.elim_env().field_proj(scrut_value.clone(), *field);
+                            let projected = self.elim_env().field_proj(scrut_value.clone(), name);
                             telescope = cont(projected);
                         };
 
-                        let expr = Expr::field_proj(self.bump, scrut_expr, *field);
+                        let expr = Expr::field_proj(self.bump, scrut_expr, name);
                         SynthExpr::new(expr, r#type)
                     }
                     _ if scrut_type.is_error() => SynthExpr::ERROR,
@@ -212,7 +221,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         self.emit_diagnostic(ElabDiagnostic::FieldProjNotRecord {
                             span: self.syntax_map[expr].span(),
                             scrut_type,
-                            field: *field,
+                            name,
                         });
                         SynthExpr::ERROR
                     }
@@ -221,18 +230,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunArrow((domain, codomain)) => {
                 let Check(domain_expr) = self.check_expr(domain, &Type::TYPE);
                 let domain_value = self.eval_env().eval(&domain_expr);
-                let Check(codomain_expr) = self.with_param(None, domain_value, |this| {
-                    this.check_expr(codomain, &Type::TYPE)
-                });
+                let Check(codomain_expr) =
+                    self.with_param(BinderName::Underscore, domain_value, |this| {
+                        this.check_expr(codomain, &Type::TYPE)
+                    });
                 let expr = Expr::fun_arrow(self.bump, domain_expr, codomain_expr);
                 SynthExpr::new(expr, Type::TYPE)
             }
             hir::Expr::FunType(params, codomain) => {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
-                    let Check(codomain_expr) = self.with_param(None, Type::UNIT_TYPE, |this| {
-                        this.check_expr(codomain, &Type::TYPE)
-                    });
+                    let Check(codomain_expr) =
+                        self.with_param(BinderName::Underscore, Type::UNIT_TYPE, |this| {
+                            this.check_expr(codomain, &Type::TYPE)
+                        });
                     let expr = Expr::fun_arrow(self.bump, Expr::UNIT_TYPE, codomain_expr);
                     return SynthExpr::new(expr, Type::TYPE);
                 }
@@ -242,21 +253,22 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::FunLit(params, body) => {
                 // empty parameter list is treated as a single unit parameter
                 if params.is_empty() {
+                    let name = BinderName::Underscore;
                     let Synth(body_expr, body_type) =
-                        self.with_param(None, Type::UNIT_TYPE, |this| this.synth_expr(body));
+                        self.with_param(name, Type::UNIT_TYPE, |this| this.synth_expr(body));
                     let body_type = self.quote_env().quote(&body_type);
 
                     let expr = Expr::fun_lit(
                         self.bump,
                         Plicity::Explicit,
-                        None,
+                        name,
                         Expr::UNIT_TYPE,
                         body_expr,
                     );
                     let r#type = Type::fun_type(
                         self.bump,
                         Plicity::Explicit,
-                        None,
+                        name,
                         Type::UNIT_TYPE,
                         Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
                     );
@@ -432,19 +444,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::TupleLit(elems) => match &expected {
                 Value::RecordType(telescope)
                     if telescope.len() == elems.len()
-                        && Symbol::are_tuple_labels(telescope.labels()) =>
+                        && FieldName::are_tuple_field_names(telescope.field_names()) =>
                 {
                     let mut expr_fields = SliceVec::new(self.bump, elems.len());
                     let mut telescope = telescope.clone();
 
                     for elem in *elems {
-                        let (label, r#type, cont) =
+                        let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope.clone()).unwrap();
 
                         let Check(elem_expr) = self.check_expr(elem, &r#type);
                         let elem_value = self.eval_env().eval(&elem_expr);
                         telescope = cont(elem_value);
-                        expr_fields.push((label, elem_expr));
+                        expr_fields.push((name, elem_expr));
                     }
 
                     let expr = Expr::RecordLit(expr_fields.into());
@@ -454,12 +466,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let mut type_fields = SliceVec::new(self.bump, elems.len());
 
                     self.with_scope(|this| {
-                        for (idx, elem) in elems.iter().enumerate() {
+                        for (index, elem) in elems.iter().enumerate() {
+                            let name = FieldName::tuple(index);
                             let Check(r#type) = this.check_expr(elem, &Type::TYPE);
                             let type_value = this.eval_env().eval(&r#type);
-                            let label = Symbol::intern(format!("_{idx}"));
-                            type_fields.push((label, r#type));
-                            this.local_env.push_param(Some(label), type_value);
+                            type_fields.push((name, r#type));
+                            this.local_env
+                                .push_param(BinderName::from(name), type_value);
                         }
                     });
 
@@ -472,20 +485,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 Value::RecordType(telescope)
                     if fields.len() == telescope.len()
                         && Iterator::eq(
-                            fields.iter().map(|field| field.label),
-                            telescope.labels(),
+                            fields.iter().map(|field| FieldName::User(field.symbol)),
+                            telescope.field_names(),
                         ) =>
                 {
                     let mut expr_fields = SliceVec::new(self.bump, fields.len());
                     let mut telescope = telescope.clone();
 
                     for field in *fields {
-                        let (label, r#type, cont) =
+                        let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
                         let Check(field_expr) = self.check_expr(&field.expr, &r#type);
                         let field_value = self.eval_env().eval(&field_expr);
                         telescope = cont(field_value);
-                        expr_fields.push((label, field_expr));
+                        expr_fields.push((name, field_expr));
                     }
 
                     let expr = Expr::RecordLit(expr_fields.into());
@@ -523,22 +536,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             return Check::new(expr);
                         }
                         _ => {
+                            let name = BinderName::Underscore;
                             let Synth(body_expr, body_type) =
-                                self.with_param(None, Type::UNIT_TYPE, |this| {
+                                self.with_param(name, Type::UNIT_TYPE, |this| {
                                     this.synth_expr(body)
                                 });
                             let body_type = self.quote_env().quote(&body_type);
                             let expr = Expr::fun_lit(
                                 self.bump,
                                 Plicity::Explicit,
-                                None,
+                                name,
                                 Expr::UNIT_LIT,
                                 body_expr,
                             );
                             let r#type = Type::fun_type(
                                 self.bump,
                                 Plicity::Explicit,
-                                None,
+                                name,
                                 Type::UNIT_TYPE,
                                 Closure::new(
                                     self.local_env.values.clone(),

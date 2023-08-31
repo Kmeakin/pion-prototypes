@@ -1,8 +1,8 @@
 use either::*;
-use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::syntax::{
     BinderInfo, Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value,
 };
@@ -53,7 +53,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     fn apply_spine(&self, head: Value<'core>, spine: &[Elim<'core>]) -> Value<'core> {
         (spine.iter()).fold(head, |head, elim| match elim {
             Elim::FunApp(plicity, arg) => self.fun_app(*plicity, head, arg.clone()),
-            Elim::FieldProj(label) => self.field_proj(head, *label),
+            Elim::FieldProj(name) => self.field_proj(head, *name),
             Elim::Match(cases) => self.match_scrut(head, cases.clone()),
         })
     }
@@ -71,21 +71,21 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     #[allow(clippy::unused_self)]
     // REASON: makes `field_proj` consistent with the other beta-reduction functions
-    pub fn field_proj(&self, head: Value<'core>, label: Symbol) -> Value<'core> {
+    pub fn field_proj(&self, head: Value<'core>, name: FieldName) -> Value<'core> {
         match head {
             Value::Stuck(head, mut spine) => {
-                spine.push(Elim::FieldProj(label));
+                spine.push(Elim::FieldProj(name));
                 Value::Stuck(head, spine)
             }
             Value::RecordLit(value_fields) => {
-                match (value_fields.iter()).find(|(l, _)| *l == label) {
+                match (value_fields.iter()).find(|(potential_name, _)| *potential_name == name) {
                     Some((_, value)) => value.clone(),
                     None => {
-                        panic!("Bad record proj: label `{label}` not found in `{value_fields:?}`")
+                        panic!("Bad record proj: field `{name}` not found in `{value_fields:?}`")
                     }
                 }
             }
-            _ => panic!("Bad record proj: {head:?}.{label}"),
+            _ => panic!("Bad record proj: {head:?}.{name}"),
         }
     }
 
@@ -122,13 +122,13 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         &self,
         mut telescope: Telescope<'core>,
     ) -> Option<(
-        Symbol,
+        FieldName,
         Value<'core>,
         impl FnOnce(Value<'core>) -> Telescope<'core>,
     )> {
-        let ((label, expr), fields) = telescope.fields.split_first()?;
+        let ((name, expr), fields) = telescope.fields.split_first()?;
         let value = self.eval_env(&mut telescope.local_values).eval(expr);
-        Some((*label, value, move |prev| {
+        Some((*name, value, move |prev| {
             telescope.local_values.push(prev);
             telescope.fields = fields;
             telescope
@@ -235,12 +235,12 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 let bump = self.bump;
                 let expr_fields = expr_fields
                     .iter()
-                    .map(|(label, expr)| (*label, self.eval(expr)));
+                    .map(|(name, expr)| (*name, self.eval(expr)));
                 Value::RecordLit(bump.alloc_slice_fill_iter(expr_fields))
             }
-            Expr::FieldProj(head, label) => {
+            Expr::FieldProj(head, name) => {
                 let head = self.eval(head);
-                self.elim_env().field_proj(head, *label)
+                self.elim_env().field_proj(head, *name)
             }
             Expr::Match((scrut, default), cases) => {
                 let scrut = self.eval(scrut);
@@ -267,14 +267,14 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
 pub struct QuoteEnv<'core, 'env> {
     bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
-    local_names: &'env mut UniqueEnv<Option<Symbol>>,
+    local_names: &'env mut UniqueEnv<BinderName>,
 }
 
 impl<'core, 'env> QuoteEnv<'core, 'env> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
-        local_names: &'env mut UniqueEnv<Option<Symbol>>,
+        local_names: &'env mut UniqueEnv<BinderName>,
     ) -> Self {
         Self {
             bump,
@@ -302,7 +302,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                     Elim::FunApp(plicity, arg) => {
                         Expr::fun_app(self.bump, *plicity, head, self.quote(arg))
                     }
-                    Elim::FieldProj(label) => Expr::field_proj(self.bump, head, *label),
+                    Elim::FieldProj(name) => Expr::field_proj(self.bump, head, *name),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
                         let mut pattern_cases = Vec::new();
@@ -347,7 +347,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                 self.bump.alloc_slice_fill_iter(
                     value_fields
                         .iter()
-                        .map(|(label, value)| (*label, self.quote(value))),
+                        .map(|(name, field_value)| (*name, self.quote(field_value))),
                 ),
             ),
         }
@@ -359,11 +359,11 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             Head::Error => Expr::Error,
             Head::Prim(prim) => Expr::Prim(prim),
             Head::Local(var) => match self.local_names.get_level(var) {
-                Some(Some(name)) => {
+                Some(BinderName::User(symbol)) => {
                     let var = self.local_names.len().level_to_index(var).unwrap();
-                    Expr::Local(*name, var)
+                    Expr::Local(LocalName::User(*symbol), var)
                 }
-                Some(None) => panic!("Unnamed local variable: {var:?}"),
+                Some(BinderName::Underscore) => panic!("Unnamed local variable: {var:?}"),
                 None => panic!("Unbound local variable: {var:?}"),
             },
             Head::Meta(var) => match self.get_meta(var) {
@@ -374,7 +374,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [closure][Closure] back into an [expr][Expr].
-    fn quote_closure(&mut self, name: Option<Symbol>, closure: &Closure<'core>) -> Expr<'core> {
+    fn quote_closure(&mut self, name: BinderName, closure: &Closure<'core>) -> Expr<'core> {
         let arg = Value::local(self.local_names.len().to_level());
         let value = self.elim_env().apply_closure(closure.clone(), arg);
 
@@ -386,7 +386,10 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [telescope][Telescope] back into a slice of [exprs][Expr].
-    fn quote_telescope(&mut self, telescope: Telescope<'core>) -> &'core [(Symbol, Expr<'core>)] {
+    fn quote_telescope(
+        &mut self,
+        telescope: Telescope<'core>,
+    ) -> &'core [(FieldName, Expr<'core>)] {
         let initial_local_len = self.local_names.len();
         let mut telescope = telescope;
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
@@ -395,14 +398,14 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             let var = Value::local(self.local_names.len().to_level());
             telescope = cont(var);
             expr_fields.push((name, self.quote(&value)));
-            self.push_local(Some(name));
+            self.push_local(BinderName::from(name));
         }
 
         self.local_names.truncate(initial_local_len);
         expr_fields.into()
     }
 
-    fn push_local(&mut self, name: Option<Symbol>) { self.local_names.push(name); }
+    fn push_local(&mut self, name: BinderName) { self.local_names.push(name); }
     fn pop_local(&mut self) { self.local_names.pop(); }
 }
 
@@ -414,7 +417,7 @@ where
     inner_bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
     local_values: &'env mut SharedEnv<Value<'core>>,
-    local_names: &'env mut UniqueEnv<Option<Symbol>>,
+    local_names: &'env mut UniqueEnv<BinderName>,
 }
 
 impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out>
@@ -426,7 +429,7 @@ where
         inner_bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
         local_values: &'env mut SharedEnv<Value<'core>>,
-        local_names: &'env mut UniqueEnv<Option<Symbol>>,
+        local_names: &'env mut UniqueEnv<BinderName>,
     ) -> Self {
         Self {
             out_bump,
@@ -479,17 +482,17 @@ where
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.zonk(r#type);
                 let init = self.zonk(init);
-                let body = self.zonk_with_local(*name, body);
+                let body = self.zonk_with_binder(*name, body);
                 Expr::r#let(self.out_bump, *name, r#type, init, body)
             }
             Expr::FunLit(plicity, name, (domain, body)) => {
                 let domain = self.zonk(domain);
-                let body = self.zonk_with_local(*name, body);
+                let body = self.zonk_with_binder(*name, body);
                 Expr::fun_lit(self.out_bump, *plicity, *name, domain, body)
             }
             Expr::FunType(plicity, name, (domain, codomain)) => {
                 let domain = self.zonk(domain);
-                let codomain = self.zonk_with_local(*name, codomain);
+                let codomain = self.zonk_with_binder(*name, codomain);
                 Expr::fun_type(self.out_bump, *plicity, *name, domain, codomain)
             }
             Expr::ArrayLit(exprs) => Expr::ArrayLit(
@@ -498,10 +501,10 @@ where
             Expr::RecordType(type_fields) => {
                 let len = self.local_len();
                 let type_fields = self.out_bump.alloc_slice_fill_iter(type_fields.iter().map(
-                    |(label, r#type)| {
+                    |(name, r#type)| {
                         let r#type = self.zonk(r#type);
-                        self.push_local(Some(*label));
-                        (*label, r#type)
+                        self.push_local(BinderName::from(*name));
+                        (*name, r#type)
                     },
                 ));
                 self.truncate_local(len);
@@ -511,13 +514,13 @@ where
                 self.out_bump.alloc_slice_fill_iter(
                     expr_fields
                         .iter()
-                        .map(|(label, expr)| (*label, self.zonk(expr))),
+                        .map(|(name, expr)| (*name, self.zonk(expr))),
                 ),
             ),
         }
     }
 
-    fn zonk_with_local(&mut self, name: Option<Symbol>, expr: &Expr<'core>) -> Expr<'out> {
+    fn zonk_with_binder(&mut self, name: BinderName, expr: &Expr<'core>) -> Expr<'out> {
         self.push_local(name);
         let ret = self.zonk(expr);
         self.pop_local();
@@ -548,9 +551,9 @@ where
                     Right(self.elim_env().fun_app(*plicity, fun_value, arg_value))
                 }
             },
-            Expr::FieldProj(scrut, label) => match self.zonk_meta_var_spines(scrut) {
-                Left(scrut_expr) => Left(Expr::field_proj(self.out_bump, scrut_expr, *label)),
-                Right(scrut_value) => Right(self.elim_env().field_proj(scrut_value, *label)),
+            Expr::FieldProj(scrut, name) => match self.zonk_meta_var_spines(scrut) {
+                Left(scrut_expr) => Left(Expr::field_proj(self.out_bump, scrut_expr, *name)),
+                Right(scrut_value) => Right(self.elim_env().field_proj(scrut_value, *name)),
             },
             Expr::Match((scrut, default), cases) => match self.zonk_meta_var_spines(scrut) {
                 Left(scrut_expr) => {
@@ -558,7 +561,7 @@ where
                         cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
                     );
                     let default_expr =
-                        default.map(|(name, expr)| (name, self.zonk_with_local(name, &expr)));
+                        default.map(|(name, expr)| (name, self.zonk_with_binder(name, &expr)));
                     Left(Expr::r#match(
                         self.out_bump,
                         scrut_expr,
@@ -575,7 +578,7 @@ where
         }
     }
 
-    fn push_local(&mut self, name: Option<Symbol>) {
+    fn push_local(&mut self, name: BinderName) {
         debug_assert_eq!(self.local_names.len(), self.local_values.len());
 
         let var = Value::local(self.local_values.len().to_level());

@@ -2,6 +2,7 @@ use pion_utils::interner::Symbol;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
 use crate::env::Index;
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 use crate::syntax::*;
 
@@ -55,7 +56,7 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
-            Expr::Local(name, ..) => self.ident(*name),
+            Expr::Local(name, ..) => self.local_name(*name),
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
@@ -73,7 +74,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                     BinderInfo::Def => None,
                     BinderInfo::Param => Some(self.fun_arg(
                         Plicity::Explicit,
-                        &Expr::Local(Symbol::intern("FIXME"), Index::default()),
+                        &Expr::Local(LocalName::User(Symbol::intern("FIXME")), Index::default()),
                     )),
                 });
                 let args = self.intersperse(args, self.text(", "));
@@ -84,7 +85,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                 let init = self.expr(init, Prec::MAX);
                 let body = self.expr(body, Prec::MAX);
                 self.text("let ")
-                    .append(self.name(*name))
+                    .append(self.binder_name(*name))
                     .append(": ")
                     .append(r#type)
                     .append(" = ")
@@ -169,7 +170,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append("]")
             }
             Expr::RecordType(type_fields)
-                if Symbol::are_tuple_labels(type_fields.iter().map(|(label, _)| *label)) =>
+                if FieldName::are_tuple_field_names(type_fields.iter().map(|(name, _)| *name)) =>
             {
                 if type_fields.len() == 1 {
                     let r#type = self.expr(&type_fields[0].1, Prec::MAX);
@@ -184,7 +185,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                 }
             }
             Expr::RecordLit(expr_fields)
-                if Symbol::are_tuple_labels(expr_fields.iter().map(|(label, _)| *label)) =>
+                if FieldName::are_tuple_field_names(expr_fields.iter().map(|(name, _)| *name)) =>
             {
                 if expr_fields.len() == 1 {
                     let expr = self.expr(&expr_fields[0].1, Prec::MAX);
@@ -198,26 +199,28 @@ impl<'pretty> PrettyCtx<'pretty> {
                 }
             }
             Expr::RecordType(type_fields) => {
-                let elems = type_fields.iter().map(|(label, r#type)| {
-                    let r#type = self.expr(r#type, Prec::MAX);
-                    self.text(label.as_str()).append(": ").append(r#type)
+                let type_fields = type_fields.iter().map(|(name, r#type)| {
+                    self.field_name(*name)
+                        .append(": ")
+                        .append(self.expr(r#type, Prec::MAX))
                 });
-                let elems = self.intersperse(elems, self.text(", "));
-                self.text("{").append(elems).append("}")
+                self.text("{")
+                    .append(self.intersperse(type_fields, self.text(", ")))
+                    .append("}")
             }
             Expr::RecordLit(expr_fields) => {
-                let elems = expr_fields.iter().map(|(label, expr)| {
-                    self.text(label.as_str())
+                let expr_fields = expr_fields.iter().map(|(name, expr)| {
+                    self.field_name(*name)
                         .append(" = ")
                         .append(self.expr(expr, Prec::MAX))
                 });
                 self.text("{")
-                    .append(self.intersperse(elems, self.text(", ")))
+                    .append(self.intersperse(expr_fields, self.text(", ")))
                     .append("}")
             }
-            Expr::FieldProj(scrut, label) => {
+            Expr::FieldProj(scrut, name) => {
                 let scrut = self.expr(scrut, Prec::Proj);
-                scrut.append(".").append(label.as_str())
+                scrut.append(".").append(self.field_name(*name))
             }
             Expr::Match((scrut, default), cases) => {
                 let scrut = self.expr(scrut, Prec::MAX);
@@ -228,7 +231,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                 });
                 let default = default.as_ref().map(|(name, expr)| {
                     let expr = self.expr(expr, Prec::MAX);
-                    self.name(*name).append(" => ").append(expr)
+                    self.binder_name(*name).append(" => ").append(expr)
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));
@@ -248,11 +251,11 @@ impl<'pretty> PrettyCtx<'pretty> {
     fn fun_param(
         &'pretty self,
         plicity: Plicity,
-        name: Option<Symbol>,
+        name: BinderName,
         domain: &Expr<'_>,
     ) -> DocBuilder<'pretty> {
         let plicity = plicity.pretty(self);
-        let name = self.name(name);
+        let name = self.binder_name(name);
         let domain = self.expr(domain, Prec::MAX);
         plicity.append(name).append(": ").append(domain)
     }
@@ -273,18 +276,30 @@ impl<'pretty> PrettyCtx<'pretty> {
 
     pub fn prim(&'pretty self, prim: Prim) -> DocBuilder<'pretty> { self.text(prim.name()) }
 
-    pub fn name(&'pretty self, name: Option<Symbol>) -> DocBuilder<'pretty> {
+    pub fn binder_name(&'pretty self, name: BinderName) -> DocBuilder<'pretty> {
         match name {
-            Some(sym) => self.ident(sym),
-            None => self.text("_"),
+            BinderName::Underscore => self.text("_"),
+            BinderName::User(symbol) => self.ident(symbol),
         }
     }
 
-    pub fn ident(&'pretty self, sym: Symbol) -> DocBuilder<'pretty> {
-        if sym.is_keyword() {
-            self.text("r#").append(sym.as_str())
+    pub fn local_name(&'pretty self, name: LocalName) -> DocBuilder<'pretty> {
+        match name {
+            LocalName::User(symbol) => self.ident(symbol),
+        }
+    }
+
+    pub fn field_name(&'pretty self, name: FieldName) -> DocBuilder<'pretty> {
+        match name {
+            FieldName::User(symbol) => self.ident(symbol),
+        }
+    }
+
+    pub fn ident(&'pretty self, symbol: Symbol) -> DocBuilder<'pretty> {
+        if symbol.is_keyword() {
+            self.text("r#").append(symbol.as_str())
         } else {
-            self.text(sym.as_str())
+            self.text(symbol.as_str())
         }
     }
 }

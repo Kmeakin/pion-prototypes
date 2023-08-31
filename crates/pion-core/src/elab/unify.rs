@@ -2,6 +2,7 @@ use pion_utils::slice_vec::SliceVec;
 
 use super::*;
 use crate::env::{EnvLen, Level, SliceEnv};
+use crate::name::FieldName;
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {
@@ -202,17 +203,16 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
     fn unify_record_lit_fields(
         &mut self,
-        left_fields: &[(Symbol, Value<'core>)],
-        right_fields: &[(Symbol, Value<'core>)],
+        left_fields: &[(FieldName, Value<'core>)],
+        right_fields: &[(FieldName, Value<'core>)],
     ) -> Result<(), UnifyError> {
         if left_fields.len() != right_fields.len() {
             return Err(UnifyError::Mismatch);
         }
 
-        if (left_fields.iter())
-            .map(|(left_label, _)| left_label)
-            .ne(right_fields.iter().map(|(right_label, _)| right_label))
-        {
+        let left_names = left_fields.iter().map(|(name, _)| *name);
+        let right_names = right_fields.iter().map(|(name, _)| *name);
+        if left_names.ne(right_names) {
             return Err(UnifyError::Mismatch);
         }
 
@@ -239,8 +239,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 {
                     self.unify(left_arg, right_arg)?;
                 }
-                (Elim::FieldProj(left_label), Elim::FieldProj(right_label))
-                    if left_label == right_label => {}
+                (Elim::FieldProj(left_name), Elim::FieldProj(right_name))
+                    if left_name == right_name => {}
                 (Elim::Match(left_cases), Elim::Match(right_cases)) => {
                     self.unify_cases(left_cases, right_cases)?;
                 }
@@ -282,7 +282,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             return Err(UnifyError::Mismatch);
         }
 
-        if left_telescope.labels().ne(right_telescope.labels()) {
+        if (left_telescope.field_names()).ne(right_telescope.field_names()) {
             return Err(UnifyError::Mismatch);
         }
 
@@ -373,11 +373,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// ```
     fn unify_record_lit(
         &mut self,
-        left_fields: &[(Symbol, Value<'core>)],
+        left_fields: &[(FieldName, Value<'core>)],
         right_value: &Value<'core>,
     ) -> Result<(), UnifyError> {
-        for (left_label, left_value) in left_fields {
-            let right_value = self.elim_env().field_proj(right_value.clone(), *left_label);
+        for (left_name, left_value) in left_fields {
+            let right_value = self.elim_env().field_proj(right_value.clone(), *left_name);
             self.unify(left_value, &right_value)?;
         }
         Ok(())
@@ -426,7 +426,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
-                Elim::FieldProj(label) => return Err(SpineError::FieldProj(*label)),
+                Elim::FieldProj(name) => return Err(SpineError::FieldProj(*name)),
                 Elim::Match(_) => return Err(SpineError::Match),
             }
         }
@@ -441,7 +441,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 Expr::fun_lit(
                     self.bump,
                     *plicity,
-                    None,
+                    BinderName::Underscore,
                     Expr::Error, // FIXME: what should the type be?
                     expr,
                 )
@@ -474,7 +474,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Head::Prim(prim) => Expr::Prim(prim),
                     Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
                         None => return Err(RenameError::EscapingLocalVar(source_var)),
-                        Some(target_var) => Expr::Local(Symbol::intern("FIXME"), target_var),
+                        Some(target_var) => {
+                            Expr::Local(LocalName::User(Symbol::intern("FIXME")), target_var)
+                        }
                     },
                     Head::Meta(var) => match meta_var == var {
                         true => return Err(RenameError::InfiniteSolution),
@@ -486,7 +488,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let arg = self.rename(meta_var, arg)?;
                         Ok(Expr::fun_app(self.bump, *plicity, head, arg))
                     }
-                    Elim::FieldProj(label) => Ok(Expr::FieldProj(self.bump.alloc(head), *label)),
+                    Elim::FieldProj(name) => Ok(Expr::FieldProj(self.bump.alloc(head), *name)),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
                         let mut pattern_cases = Vec::new();
@@ -535,8 +537,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::RecordLit(value_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, value_fields.len());
 
-                for (label, value) in value_fields {
-                    expr_fields.push((*label, self.rename(meta_var, value)?));
+                for (name, value) in value_fields {
+                    expr_fields.push((*name, self.rename(meta_var, value)?));
                 }
 
                 Ok(Expr::RecordLit(expr_fields.into()))
@@ -565,15 +567,15 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         &mut self,
         meta_var: Level,
         telescope: Telescope<'core>,
-    ) -> Result<&'core [(Symbol, Expr<'core>)], RenameError> {
+    ) -> Result<&'core [(FieldName, Expr<'core>)], RenameError> {
         let initial_renaming_len = self.renaming.len();
         let mut telescope = telescope;
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
-        while let Some((label, value, cont)) = self.elim_env().split_telescope(telescope) {
+        while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
             match self.rename(meta_var, &value) {
                 Ok(expr) => {
-                    expr_fields.push((label, expr));
+                    expr_fields.push((name, expr));
                     let source_var = self.renaming.next_local_var();
                     telescope = cont(source_var);
                     self.renaming.push_local();
@@ -660,7 +662,7 @@ pub enum SpineError {
     /// metavariable.
     NonLocalFunApp,
     /// A record projection was found in the problem spine.
-    FieldProj(Symbol),
+    FieldProj(FieldName),
     /// A match was found in the problem spine.
     Match,
 }

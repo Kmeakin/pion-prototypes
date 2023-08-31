@@ -101,22 +101,22 @@ impl From<Plicity> for surface::Plicity {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'hir> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub r#type: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'hir> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'hir> {
-    pub label_span: ByteSpan,
-    pub label: Symbol,
+    pub symbol_span: ByteSpan,
+    pub symbol: Symbol,
     pub pat: Pat<'hir>,
 }
 

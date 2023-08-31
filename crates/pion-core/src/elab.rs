@@ -8,6 +8,7 @@ use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
+use crate::name::{BinderName, LocalName};
 use crate::pretty;
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv, ZonkEnv};
 use crate::syntax::*;
@@ -134,7 +135,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     fn with_param<T>(
         &mut self,
-        name: Option<Symbol>,
+        name: BinderName,
         r#type: Type<'core>,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
@@ -146,7 +147,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     fn with_def<T>(
         &mut self,
-        name: Option<Symbol>,
+        name: BinderName,
         r#type: Type<'core>,
         value: Value<'core>,
         f: impl FnOnce(&mut Self) -> T,
@@ -167,7 +168,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
 #[derive(Default)]
 struct LocalEnv<'core> {
-    names: UniqueEnv<Option<Symbol>>,
+    names: UniqueEnv<BinderName>,
     infos: UniqueEnv<BinderInfo>,
     types: UniqueEnv<Type<'core>>,
     values: SharedEnv<Value<'core>>,
@@ -176,7 +177,7 @@ struct LocalEnv<'core> {
 #[derive(Debug)]
 #[allow(dead_code)]
 struct LocalEntry<'env, 'core> {
-    name: Option<Symbol>,
+    name: BinderName,
     info: BinderInfo,
     r#type: &'env Type<'core>,
     value: &'env Value<'core>,
@@ -197,7 +198,7 @@ impl<'core> LocalEnv<'core> {
 
     fn push(
         &mut self,
-        name: Option<Symbol>,
+        name: BinderName,
         info: BinderInfo,
         r#type: Type<'core>,
         value: Value<'core>,
@@ -208,11 +209,11 @@ impl<'core> LocalEnv<'core> {
         self.values.push(value);
     }
 
-    fn push_def(&mut self, name: Option<Symbol>, r#type: Type<'core>, value: Value<'core>) {
+    fn push_def(&mut self, name: BinderName, r#type: Type<'core>, value: Value<'core>) {
         self.push(name, BinderInfo::Def, r#type, value);
     }
 
-    fn push_param(&mut self, name: Option<Symbol>, r#type: Type<'core>) {
+    fn push_param(&mut self, name: BinderName, r#type: Type<'core>) {
         let value = self.next_var();
         self.push(name, BinderInfo::Param, r#type, value);
     }
@@ -233,8 +234,8 @@ impl<'core> LocalEnv<'core> {
         self.values.truncate(len);
     }
 
-    fn lookup(&self, name: Symbol) -> Option<(Index, LocalEntry<'_, 'core>)> {
-        let index = self.names.index_of_elem(&Some(name))?;
+    fn lookup(&self, name: LocalName) -> Option<(Index, LocalEntry<'_, 'core>)> {
+        let index = self.names.index_of_elem(&BinderName::from(name))?;
 
         let name = self.names.get_index(index).copied()?;
         let info = self.infos.get_index(index).copied()?;
@@ -345,22 +346,11 @@ impl<'core> fmt::Debug for MetaEnv<'core> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MetaSource {
-    UnderscoreType {
-        span: ByteSpan,
-    },
-    UnderscoreExpr {
-        span: ByteSpan,
-    },
-    EmptyArrayElemType {
-        span: ByteSpan,
-    },
-    ImplicitArg {
-        span: ByteSpan,
-        name: Option<Symbol>,
-    },
-    PatType {
-        span: ByteSpan,
-    },
+    UnderscoreType { span: ByteSpan },
+    UnderscoreExpr { span: ByteSpan },
+    EmptyArrayElemType { span: ByteSpan },
+    ImplicitArg { span: ByteSpan, name: BinderName },
+    PatType { span: ByteSpan },
 }
 
 #[derive(Debug, Clone, Default)]
