@@ -211,7 +211,7 @@ impl ElabDiagnostic {
                             "variable appeared more than once in problem spine"
                         }
                         unify::SpineError::NonLocalFunApp => {
-                            "non-variable function application in problem spine"
+                            "application in problem spine was not a local variable"
                         }
                         unify::SpineError::FieldProj(_) => "field projection in problem spine",
                         unify::SpineError::Match => "pattern match in problem spine",

@@ -74,7 +74,10 @@ impl<'pretty> PrettyCtx<'pretty> {
                     BinderInfo::Def => None,
                     BinderInfo::Param => Some(self.fun_arg(
                         Plicity::Explicit,
-                        &Expr::Local(LocalName::User(Symbol::intern("FIXME")), Index::default()),
+                        &Expr::Local(
+                            LocalName::User(Symbol::intern("FIXME_PRETTY_INSERTED_META")),
+                            Index::default(),
+                        ),
                     )),
                 });
                 let args = self.intersperse(args, self.text(", "));

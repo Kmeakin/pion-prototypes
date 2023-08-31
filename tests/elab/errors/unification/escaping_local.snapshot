@@ -1,0 +1,39 @@
+exit status: 1
+
+stdout = """
+def bar: fun(x: ?0) -> ?1(x) = fun(x: ?0) => let a: ?1(x) = #error;
+a;
+types of expressions:
+244..274 = fun(x: ?0) -> ?1(x)
+258..274 = ?1(x)
+266..267 = ?1(x)
+273..274 = ?1(x)
+types of patterns:
+248..249 = ?0
+262..263 = ?1(x)
+metavars:
+?0 = <unsolved>
+?1 = <unsolved>
+"""
+
+stderr = """
+error: escaping local variable
+  ┌─ tests/elab/errors/unification/escaping_local.pion:6:13
+  │
+6 │     let a = x;
+  │             ^
+
+error: unable to infer pattern type
+  ┌─ tests/elab/errors/unification/escaping_local.pion:5:15
+  │
+5 │ def bar = fun(x) =>
+  │               ^
+
+error: unable to infer pattern type
+  ┌─ tests/elab/errors/unification/escaping_local.pion:6:9
+  │
+6 │     let a = x;
+  │         ^
+
+aborting due to 3 previous errors
+"""

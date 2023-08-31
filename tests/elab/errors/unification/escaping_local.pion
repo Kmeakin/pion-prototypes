@@ -1,0 +1,8 @@
+// FIXME: Currently we report 3 errors: unable to infer type of `x` pattern,
+// unable to infer type of `a` pattern, and escaping local variable at the `a`
+// body. It would be nicer to just report a single error at the `x` pattern.
+
+def bar = fun(x) =>
+    let a = x;
+    a
+;

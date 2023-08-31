@@ -1,4 +1,5 @@
 use either::*;
+use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
@@ -363,7 +364,13 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                     let var = self.local_names.len().level_to_index(var).unwrap();
                     Expr::Local(LocalName::User(*symbol), var)
                 }
-                Some(BinderName::Underscore) => panic!("Unnamed local variable: {var:?}"),
+                Some(BinderName::Underscore) => {
+                    let var = self.local_names.len().level_to_index(var).unwrap();
+                    Expr::Local(
+                        LocalName::User(Symbol::intern("FIXME_QUOTE_UNNAMED_LOCAL")),
+                        var,
+                    )
+                }
                 None => panic!("Unbound local variable: {var:?}"),
             },
             Head::Meta(var) => match self.get_meta(var) {

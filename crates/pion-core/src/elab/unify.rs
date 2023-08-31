@@ -474,9 +474,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Head::Prim(prim) => Expr::Prim(prim),
                     Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
                         None => return Err(RenameError::EscapingLocalVar(source_var)),
-                        Some(target_var) => {
-                            Expr::Local(LocalName::User(Symbol::intern("FIXME")), target_var)
-                        }
+                        Some(target_var) => Expr::Local(
+                            LocalName::User(Symbol::intern("FIXME_UNIFY_LOCAL")),
+                            target_var,
+                        ),
                     },
                     Head::Meta(var) => match meta_var == var {
                         true => return Err(RenameError::InfiniteSolution),
@@ -657,13 +658,16 @@ pub enum SpineError {
     /// variables, even if the return type is dependent, local variables block
     /// all computation in the return type, and the pattern solution is
     /// guaranteed to be well-typed.
+    /// TODO: add test
     NonLinearSpine(Level),
-    /// An eliminator was found in the problem spine which was not a
-    /// metavariable.
+    /// A function application was in the problem spine, but it wasn't a local
+    /// variable.
     NonLocalFunApp,
     /// A record projection was found in the problem spine.
+    /// TODO: add test
     FieldProj(FieldName),
     /// A match was found in the problem spine.
+    /// TODO: add test
     Match,
 }
 
