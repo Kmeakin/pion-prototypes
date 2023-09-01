@@ -1,0 +1,53 @@
+exit status: 0
+
+stdout = """
+def fst: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+x;
+types of expressions:
+10..66 = fun(A: Type, B: Type) -> (A, B) -> A
+18..22 = Type
+28..32 = Type
+38..44 = Type
+39..40 = Type
+42..43 = Type
+49..66 = A
+62..63 = (A, B)
+65..66 = A
+types of patterns:
+14..15 = Type
+24..25 = Type
+34..35 = (A, B)
+53..59 = (?0(A, B, p), ?1(B, p, _0))
+54..55 = ?0(A, B, p)
+57..58 = ?1(A, B, p)
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?1 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+
+def snd: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
+y;
+types of expressions:
+78..134 = fun(A: Type, B: Type) -> (A, B) -> B
+86..90 = Type
+96..100 = Type
+106..112 = Type
+107..108 = Type
+110..111 = Type
+117..134 = B
+130..131 = (A, B)
+133..134 = B
+types of patterns:
+82..83 = Type
+92..93 = Type
+102..103 = (A, B)
+121..127 = (?0(A, B, p), ?1(B, p, _0))
+122..123 = ?0(A, B, p)
+125..126 = ?1(A, B, p)
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?1 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+"""
+
+stderr = """
+
+"""

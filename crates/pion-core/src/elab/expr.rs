@@ -66,16 +66,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Let((pat, r#type, init, body)) => {
                 let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
-                let name = pat.name();
-                let type_expr = self.quote_env().quote(&pat_type);
-
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
+                let scrut = Scrut {
+                    expr: init_expr,
+                    r#type: pat_type,
+                };
 
-                let Synth(body_expr, body_type) =
-                    self.with_def(name, pat_type, init_value, |this| this.synth_expr(body));
+                let initial_len = self.local_env.len();
+                let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
+                let Synth(body_expr, body_type) = self.synth_expr(body);
+                self.local_env.truncate(initial_len);
 
-                let expr = Expr::r#let(self.bump, name, type_expr, init_expr, body_expr);
+                let mut matrix = PatMatrix::singleton(scrut, pat);
+                let bodies = &[Body::new(let_vars, body_expr)];
+
+                let expr =
+                    r#match::compile::compile_match(self, &mut matrix, bodies, EnvLen::new());
                 SynthExpr::new(expr, body_type)
             }
             hir::Expr::ArrayLit(elems) => {
@@ -403,17 +410,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
             hir::Expr::Let((pat, r#type, init, body)) => {
                 let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
-                let name = pat.name();
-                let type_expr = self.quote_env().quote(&pat_type);
-
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
+                let scrut = Scrut {
+                    expr: init_expr,
+                    r#type: pat_type,
+                };
 
-                let Check(body_expr) = self.with_def(name, pat_type, init_value, |this| {
-                    this.check_expr(body, &expected)
-                });
+                let initial_len = self.local_env.len();
+                let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
+                let Check(body_expr) = self.check_expr(body, &expected);
+                self.local_env.truncate(initial_len);
 
-                let expr = Expr::r#let(self.bump, name, type_expr, init_expr, body_expr);
+                let mut matrix = PatMatrix::singleton(scrut, pat);
+                let bodies = &[Body::new(let_vars, body_expr)];
+
+                let expr =
+                    r#match::compile::compile_match(self, &mut matrix, bodies, EnvLen::new());
                 CheckExpr::new(expr)
             }
             hir::Expr::ArrayLit(elems) => {

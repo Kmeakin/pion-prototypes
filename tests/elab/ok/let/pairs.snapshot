@@ -1,0 +1,68 @@
+exit status: 0
+
+stdout = """
+def foo: () = let _: () = ();
+let x: Bool = (false, true)._0;
+let y: Bool = (false, true)._1;
+let a: Bool = (false, true)._0;
+let b: Bool = (false, true)._1;
+let _: (Bool, Bool) = (false, true);
+();
+types of expressions:
+14..201 = ()
+23..25 = ()
+31..201 = ()
+39..41 = ()
+48..201 = ()
+61..74 = (Bool, Bool)
+62..67 = Bool
+69..73 = Bool
+80..201 = ()
+93..106 = (Bool, Bool)
+94..99 = Bool
+101..105 = Bool
+112..201 = ()
+125..138 = (Bool, Bool)
+126..131 = Bool
+133..137 = Bool
+144..201 = ()
+157..170 = (Bool, Bool)
+158..163 = Bool
+165..169 = Bool
+176..201 = ()
+184..197 = (Bool, Bool)
+185..190 = Bool
+192..196 = Bool
+199..201 = ()
+types of patterns:
+18..20 = ()
+35..36 = ?0
+52..58 = (?1, ?2)
+53..54 = ?1
+56..57 = ?2
+84..90 = (?3, ?4)
+85..86 = ?3
+88..89 = ?4
+116..122 = (?5, ?6)
+117..118 = ?5
+120..121 = ?6
+148..154 = (?7, ?8)
+149..150 = ?7
+152..153 = ?8
+180..181 = ?9
+metavars:
+?0 = ()
+?1 = Bool
+?2 = Bool
+?3 = Bool
+?4 = Bool
+?5 = Bool
+?6 = Bool
+?7 = Bool
+?8 = Bool
+?9 = (Bool, Bool)
+"""
+
+stderr = """
+
+"""
