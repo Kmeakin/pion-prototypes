@@ -1,0 +1,25 @@
+exit status: 0
+
+stdout = """
+def is-zero: Int -> Bool = fun(x: Int) => match x {
+    0 => true,
+    _ => false,
+};
+types of expressions:
+14..66 = Int -> Bool
+24..66 = Bool
+30..31 = ?0
+43..47 = Bool
+58..63 = Bool
+types of patterns:
+18..19 = ?0
+38..39 = Int
+53..54 = Int
+metavars:
+?0 = Int
+?1 = fun(_: #error) => Bool
+"""
+
+stderr = """
+
+"""

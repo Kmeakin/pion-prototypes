@@ -2,6 +2,7 @@ use pion_hir::syntax as hir;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
+use super::r#match::Scrut;
 use super::*;
 use crate::name::FieldName;
 
@@ -224,6 +225,153 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     error,
                 });
                 Pat::Error(span)
+            }
+        }
+    }
+}
+
+impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    // TODO: check for duplicate definitions in fun literal/fun type telescopes
+    pub fn push_param_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let mut names = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Ident(_, symbol) => {
+                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
+                    self.local_env.push_param(name, scrut.r#type.clone());
+                }
+            }
+            Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                self.local_env.push_param(name, scrut.r#type.clone());
+            }
+            Pat::RecordLit(_, fields) => {
+                let value = self.local_env.next_var();
+                self.local_env.push_param(name, scrut.r#type.clone());
+                self.push_record_pat(fields, scrut, &value, &mut let_vars, &mut names);
+            }
+        }
+        let_vars
+    }
+
+    pub fn push_def_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let mut names = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Ident(_, symbol) => {
+                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
+                    let r#type = scrut.r#type.clone();
+                    let_vars.push((name, scrut.clone()));
+                    self.local_env.push_def(name, r#type, value.clone());
+                }
+            }
+            Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                let r#type = scrut.r#type.clone();
+                let_vars.push((name, scrut.clone()));
+                self.local_env.push_def(name, r#type, value.clone());
+            }
+            Pat::RecordLit(_, fields) => {
+                self.push_record_pat(fields, scrut, value, &mut let_vars, &mut names);
+            }
+        }
+        let_vars
+    }
+
+    pub fn push_match_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let mut names = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Error(..) | Pat::Underscore(..) => {
+                (self.local_env).push_def(pat.name(), scrut.r#type.clone(), value.clone());
+            }
+            Pat::Ident(_, symbol) => {
+                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
+                    let r#type = scrut.r#type.clone();
+                    let_vars.push((name, scrut.clone()));
+                    self.local_env.push_def(name, r#type, value.clone());
+                }
+            }
+            Pat::Lit(..) => {}
+            Pat::RecordLit(_, fields) => {
+                self.push_record_pat(fields, scrut, value, &mut let_vars, &mut names);
+            }
+        }
+        let_vars
+    }
+
+    fn push_record_pat(
+        &mut self,
+        fields: &[(FieldName, Pat<'core>)],
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
+    ) {
+        let Type::RecordType(mut telescope) = self.elim_env().update_metas(&scrut.r#type) else {
+            unreachable!("expected record type, got {:?}", scrut.r#type)
+        };
+
+        for (label, pat) in fields {
+            let (_, r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+
+            telescope = cont(self.local_env.next_var());
+            let expr = Expr::field_proj(self.bump, scrut.expr, *label);
+            let value = self.elim_env().field_proj(value.clone(), *label);
+            let scrut = Scrut::new(expr, r#type);
+
+            match pat {
+                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {}
+                Pat::Ident(_, name) => {
+                    if self.check_duplicate_local(names, *name, pat.span()).is_ok() {
+                        let r#type = scrut.r#type.clone();
+                        let_vars.push((pat.name(), scrut));
+                        self.local_env.push_def(pat.name(), r#type, value);
+                    }
+                }
+                Pat::RecordLit(_, fields) => {
+                    self.push_record_pat(fields, &scrut, &value, let_vars, names);
+                }
+            }
+        }
+    }
+
+    fn check_duplicate_local(
+        &mut self,
+        names: &mut Vec<(ByteSpan, Symbol)>,
+        symbol: Symbol,
+        span: ByteSpan,
+    ) -> Result<(), ()> {
+        match names.iter().find(|(_, n)| *n == symbol) {
+            None => {
+                names.push((span, symbol));
+                Ok(())
+            }
+            Some((first_span, name)) => {
+                self.emit_diagnostic(ElabDiagnostic::DuplicateLocalName {
+                    name: *name,
+                    first_span: *first_span,
+                    duplicate_span: span,
+                });
+                Err(())
             }
         }
     }

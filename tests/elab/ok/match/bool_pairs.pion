@@ -1,0 +1,39 @@
+def and1 = fun(x, y) => match (x, y) {
+    (true, true) => true,
+    _ => false,
+};
+
+def and2 = fun(x, y) => match (x, y) {
+    (true, true) => true,
+    (_, _) => false,
+};
+
+def and3 = fun(x, y) => match (x, y) {
+    (true, true) => true,
+    (false, true) => false,
+    (true, false) => false,
+    (false, false) => false,
+};
+
+def or1 = fun(x, y) => match (x, y) {
+    (false, false) => false,
+    _ => true,
+};
+
+def or2 = fun(x, y) => match (x, y) {
+    (false, false) => false,
+    (_, _) => true,
+};
+
+def or3 = fun(x, y) => match (x, y) {
+    (true, true) => true,
+    (false, true) => true,
+    (true, false) => true,
+    (false, false) => false,
+};
+
+def or4 = fun(x, y) => match (x, y) {
+    (true, _) => true,
+    (_, true) => true,
+    _ => false,
+};

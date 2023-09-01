@@ -1,0 +1,62 @@
+exit status: 0
+
+stdout = """
+def foo: Int -> Int -> Int = fun(x: Int, y: Int) => match (x, y)._0 {
+    0 => let a: Int = (x, y)._1;
+    a,
+    1 => match (x, y)._1 {
+        0 => let b: Int = (x, y)._0;
+        b,
+        1 => let c: Int = (x, y)._1;
+        c,
+        _ => let c: Int = (x, y)._1;
+        c,
+    },
+    _ => match (x, y)._1 {
+        0 => let b: Int = (x, y)._0;
+        b,
+        1 => let d: Int = (x, y)._0;
+        d,
+        _ => let xx: Int = (x, y)._0;
+        let yy: Int = (x, y)._1;
+        xx,
+    },
+};
+types of expressions:
+129..252 = Int -> Int -> Int
+140..143 = Type
+148..252 = Int
+154..160 = (?0, Int)
+155..156 = ?0
+158..159 = Int
+177..178 = Int
+194..195 = Int
+211..212 = Int
+228..229 = Int
+247..249 = Int
+types of patterns:
+134..135 = ?0
+137..138 = Int
+167..173 = (Int, Int)
+168..169 = Int
+171..172 = Int
+184..190 = (Int, Int)
+185..186 = Int
+188..189 = Int
+201..207 = (Int, Int)
+202..203 = Int
+205..206 = Int
+218..224 = (Int, Int)
+219..220 = Int
+222..223 = Int
+235..243 = (Int, Int)
+236..238 = Int
+240..242 = Int
+metavars:
+?0 = Int
+?1 = fun(_: #error, _: #error) => Int
+"""
+
+stderr = """
+
+"""

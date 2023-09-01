@@ -5,7 +5,7 @@ use pion_hir::syntax as hir;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
-use crate::env::{Index, Level, SharedEnv};
+use crate::env::{EnvLen, Index, Level, SharedEnv};
 use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 
@@ -172,6 +172,97 @@ impl<'core> Expr<'core> {
             }
         }
     }
+
+    #[must_use]
+    pub fn shift(&self, arena: &'core bumpalo::Bump, amount: EnvLen) -> Expr<'core> {
+        self.shift_inner(arena, Index::new(), amount)
+    }
+
+    fn shift_inner(
+        &self,
+        bump: &'core bumpalo::Bump,
+        mut min: Index,
+        amount: EnvLen,
+    ) -> Expr<'core> {
+        // Skip traversing and rebuilding the term if it would make no change. Increases
+        // sharing.
+        if amount == EnvLen::new() {
+            return *self;
+        }
+
+        match self {
+            Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
+
+            Expr::Error
+            | Expr::Lit(..)
+            | Expr::Prim(..)
+            | Expr::Local(..)
+            | Expr::Meta(..)
+            | Expr::InsertedMeta(..) => *self,
+
+            Expr::Let(name, (r#type, init, body)) => Expr::r#let(
+                bump,
+                *name,
+                r#type.shift_inner(bump, min, amount),
+                init.shift_inner(bump, min, amount),
+                body.shift_inner(bump, min.next(), amount),
+            ),
+
+            Expr::FunLit(plicity, name, (domain, body)) => Expr::fun_lit(
+                bump,
+                *plicity,
+                *name,
+                domain.shift_inner(bump, min, amount),
+                body.shift_inner(bump, min.next(), amount),
+            ),
+            Expr::FunType(plicity, name, (domain, body)) => Expr::fun_type(
+                bump,
+                *plicity,
+                *name,
+                domain.shift_inner(bump, min, amount),
+                body.shift_inner(bump, min.next(), amount),
+            ),
+            Expr::FunApp(plicity, (fun, arg)) => Expr::fun_app(
+                bump,
+                *plicity,
+                fun.shift_inner(bump, min, amount),
+                arg.shift_inner(bump, min, amount),
+            ),
+
+            Expr::ArrayLit(exprs) => Expr::ArrayLit(bump.alloc_slice_fill_iter(
+                exprs.iter().map(|expr| expr.shift_inner(bump, min, amount)),
+            )),
+            Expr::RecordType(fields) => Expr::RecordType(bump.alloc_slice_fill_iter(
+                fields.iter().map(|(label, r#type)| {
+                    let r#type = r#type.shift_inner(bump, min, amount);
+                    min = min.next();
+                    (*label, r#type)
+                }),
+            )),
+            Expr::RecordLit(fields) => Expr::RecordLit(
+                bump.alloc_slice_fill_iter(
+                    fields
+                        .iter()
+                        .map(|(label, expr)| (*label, expr.shift_inner(bump, min, amount))),
+                ),
+            ),
+            Expr::FieldProj(scrut, label) => {
+                Expr::field_proj(bump, scrut.shift_inner(bump, min, amount), *label)
+            }
+            Expr::Match((scrut, default), branches) => {
+                let scrut = scrut.shift_inner(bump, min, amount);
+                let default =
+                    default.map(|(name, expr)| (name, expr.shift_inner(bump, min.next(), amount)));
+                let branches = branches
+                    .iter()
+                    .map(|(lit, expr)| (*lit, expr.shift_inner(bump, min, amount)));
+                Expr::Match(
+                    bump.alloc((scrut, default)),
+                    bump.alloc_slice_fill_iter(branches),
+                )
+            }
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -199,6 +290,13 @@ impl<'core> Pat<'core> {
             Pat::Ident(_, symbol) => BinderName::User(*symbol),
             _ => BinderName::Underscore,
         }
+    }
+
+    pub fn is_wildcard(&self) -> bool {
+        matches!(
+            self,
+            Self::Error(..) | Self::Underscore(..) | Self::Ident(..)
+        )
     }
 }
 

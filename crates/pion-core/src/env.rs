@@ -1,11 +1,11 @@
 use std::fmt;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Add, Deref, DerefMut};
 
 use ecow::EcoVec;
 
 type Repr = usize;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct EnvLen(Repr);
 
 impl From<EnvLen> for usize {
@@ -42,11 +42,16 @@ impl EnvLen {
     pub fn iter() -> impl Iterator<Item = Self> { (0..).map(Self) }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Index(Repr);
 
 impl From<Index> for usize {
     fn from(index: Index) -> Self { index.0 }
+}
+
+impl Add<EnvLen> for Index {
+    type Output = Self;
+    fn add(self, rhs: EnvLen) -> Self::Output { Self(self.0 + rhs.0) }
 }
 
 impl Index {

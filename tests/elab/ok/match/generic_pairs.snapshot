@@ -1,0 +1,97 @@
+exit status: 0
+
+stdout = """
+def fst1: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+let y: B = p._1;
+x;
+types of expressions:
+11..75 = fun(A: Type, B: Type) -> (A, B) -> A
+18..22 = Type
+27..31 = Type
+36..42 = Type
+37..38 = Type
+40..41 = Type
+47..75 = A
+53..54 = (A, B)
+71..72 = A
+types of patterns:
+15..16 = Type
+24..25 = Type
+33..34 = (A, B)
+61..67 = (A, B)
+62..63 = A
+65..66 = B
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+
+def fst2: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+x;
+types of expressions:
+89..153 = fun(A: Type, B: Type) -> (A, B) -> A
+96..100 = Type
+105..109 = Type
+114..120 = Type
+115..116 = Type
+118..119 = Type
+125..153 = A
+131..132 = (A, B)
+149..150 = A
+types of patterns:
+93..94 = Type
+102..103 = Type
+111..112 = (A, B)
+139..145 = (A, B)
+140..141 = A
+143..144 = B
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+
+def snd1: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+let y: B = p._1;
+y;
+types of expressions:
+167..231 = fun(A: Type, B: Type) -> (A, B) -> B
+174..178 = Type
+183..187 = Type
+192..198 = Type
+193..194 = Type
+196..197 = Type
+203..231 = B
+209..210 = (A, B)
+227..228 = B
+types of patterns:
+171..172 = Type
+180..181 = Type
+189..190 = (A, B)
+217..223 = (A, B)
+218..219 = A
+221..222 = B
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+
+def snd2: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
+y;
+types of expressions:
+245..309 = fun(A: Type, B: Type) -> (A, B) -> B
+252..256 = Type
+261..265 = Type
+270..276 = Type
+271..272 = Type
+274..275 = Type
+281..309 = B
+287..288 = (A, B)
+305..306 = B
+types of patterns:
+249..250 = Type
+258..259 = Type
+267..268 = (A, B)
+295..301 = (A, B)
+296..297 = A
+299..300 = B
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+"""
+
+stderr = """
+
+"""

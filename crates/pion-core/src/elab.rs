@@ -15,6 +15,7 @@ use crate::syntax::*;
 
 mod diagnostics;
 mod expr;
+mod r#match;
 mod pat;
 mod unify;
 
@@ -351,6 +352,7 @@ pub enum MetaSource {
     EmptyArrayElemType { span: ByteSpan },
     ImplicitArg { span: ByteSpan, name: BinderName },
     PatType { span: ByteSpan },
+    MatchType { span: ByteSpan },
 }
 
 #[derive(Debug, Clone, Default)]

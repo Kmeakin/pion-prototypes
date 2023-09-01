@@ -1,0 +1,43 @@
+exit status: 0
+
+stdout = """
+def not: Bool -> Bool = fun(x: Bool) => match x {
+    false => true,
+    true => false,
+};
+types of expressions:
+10..69 = Bool -> Bool
+20..69 = Bool
+26..27 = ?0
+42..47 = Bool
+62..66 = Bool
+types of patterns:
+14..15 = ?0
+34..38 = Bool
+53..58 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+
+def bool-to-int: Bool -> Int = fun(x: Bool) => match x {
+    false => 0,
+    true => 1,
+};
+types of expressions:
+90..142 = Bool -> Int
+100..142 = Int
+106..107 = ?0
+122..123 = Int
+138..139 = Int
+types of patterns:
+94..95 = ?0
+114..118 = Bool
+129..134 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Int
+"""
+
+stderr = """
+
+"""

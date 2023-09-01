@@ -1,0 +1,9 @@
+def not = fun(x) => match x {
+    true => false,
+    false => true,
+};
+
+def bool-to-int = fun(x) => match x {
+    true => 1,
+    false => 0,
+};

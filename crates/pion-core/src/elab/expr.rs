@@ -5,6 +5,7 @@ use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
+use super::r#match::{self, Body, PatMatrix, PatRow, Scrut};
 use super::*;
 use crate::name::{FieldName, LocalName};
 use crate::prim::Prim;
@@ -370,7 +371,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::Match(..) => todo!(),
+            hir::Expr::Match(scrut, cases) => {
+                let span = self.syntax_map[expr].span();
+                let expected = self.push_unsolved_type(MetaSource::MatchType { span });
+                let Check(expr) = self.check_match(scrut, cases, &expected);
+                SynthExpr::new(expr, expected)
+            }
             hir::Expr::If((scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
                 let Synth(then_expr, then_type) = self.synth_expr(then);
@@ -566,7 +572,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 self.check_fun_lit(params, body, &expected)
             }
-            hir::Expr::Match(..) => todo!(),
+            hir::Expr::Match(scrut, cases) => self.check_match(scrut, cases, &expected),
             hir::Expr::If((scrut, then, r#else)) => {
                 let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
                 let Check(then_expr) = self.check_expr(then, &expected);
@@ -745,6 +751,38 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 Check::new(self.convert_expr(span, expr, &r#type, &expected))
             }
         }
+    }
+
+    fn check_match(
+        &mut self,
+        scrut: &'hir hir::Expr<'hir>,
+        cases: &'hir [hir::MatchCase<'hir>],
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        let mut rows = Vec::with_capacity(cases.len());
+        let mut bodies = Vec::with_capacity(cases.len());
+
+        let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
+        let scrut_value = self.eval_env().eval(&scrut_expr);
+        let scrut = Scrut {
+            expr: scrut_expr,
+            r#type: scrut_type,
+        };
+
+        for case in cases {
+            let initial_len = self.local_env.len();
+            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type);
+            let let_vars = self.push_match_pat(&pat, &scrut, &scrut_value);
+            let Check(expr) = self.check_expr(&case.expr, expected);
+            self.local_env.truncate(initial_len);
+
+            rows.push(PatRow::singleton((pat, scrut.clone())));
+            bodies.push(Body::new(let_vars, expr));
+        }
+
+        let mut matrix = PatMatrix::new(rows);
+        let expr = r#match::compile::compile_match(self, &mut matrix, &bodies, EnvLen::new());
+        CheckExpr::new(expr)
     }
 
     /// Wrap an expr in fresh implicit applications that correspond to implicit

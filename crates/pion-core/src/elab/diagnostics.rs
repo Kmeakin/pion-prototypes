@@ -1,4 +1,5 @@
 use codespan_reporting::diagnostic::{Diagnostic as CodeSpanDiagnostic, Label};
+use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
 
@@ -13,6 +14,11 @@ pub enum ElabDiagnostic {
     UnboundName {
         span: ByteSpan,
         name: LocalName,
+    },
+    DuplicateLocalName {
+        name: Symbol,
+        first_span: ByteSpan,
+        duplicate_span: ByteSpan,
     },
     Unification {
         span: ByteSpan,
@@ -75,6 +81,16 @@ impl ElabDiagnostic {
             Self::UnboundName { span, name } => CodeSpanDiagnostic::error()
                 .with_message(format!("unbound name `{name}`"))
                 .with_labels(vec![primary(*span)]),
+            Self::DuplicateLocalName {
+                name,
+                first_span,
+                duplicate_span,
+            } => CodeSpanDiagnostic::error()
+                .with_message(format!("duplicate definition of local name `{name}`"))
+                .with_labels(vec![
+                    secondary(*first_span).with_message("first definition"),
+                    primary(*duplicate_span).with_message("duplicate definition"),
+                ]),
             Self::FunAppPlicity {
                 call_span,
                 fun_type,
@@ -188,6 +204,7 @@ impl ElabDiagnostic {
                         name: BinderName::User(name),
                     } => (span, format!("implicit argument `{name}`")),
                     MetaSource::PatType { span } => (span, "pattern type".into()),
+                    MetaSource::MatchType { span } => (span, "type of match expression".into()),
                 };
                 CodeSpanDiagnostic::error()
                     .with_message(format!("unable to infer {name}"))

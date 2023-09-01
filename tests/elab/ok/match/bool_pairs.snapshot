@@ -1,0 +1,230 @@
+exit status: 0
+
+stdout = """
+def and1: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    true => match (x, y)._1 {
+        true => true,
+        _ => false,
+    },
+    _ => false,
+};
+types of expressions:
+11..82 = Bool -> Bool -> Bool
+24..82 = Bool
+30..36 = (?0, ?1(y))
+31..32 = ?0
+34..35 = ?1(x)
+59..63 = Bool
+74..79 = Bool
+types of patterns:
+15..16 = ?0
+18..19 = ?1(x)
+43..55 = (Bool, Bool)
+44..48 = Bool
+50..54 = Bool
+69..70 = (Bool, Bool)
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def and2: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    true => match (x, y)._1 {
+        true => true,
+        _ => false,
+    },
+    _ => false,
+};
+types of expressions:
+96..172 = Bool -> Bool -> Bool
+109..172 = Bool
+115..121 = (?0, ?1(y))
+116..117 = ?0
+119..120 = ?1(x)
+144..148 = Bool
+164..169 = Bool
+types of patterns:
+100..101 = ?0
+103..104 = ?1(x)
+128..140 = (Bool, Bool)
+129..133 = Bool
+135..139 = Bool
+154..160 = (Bool, Bool)
+155..156 = Bool
+158..159 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def and3: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    false => match (x, y)._1 {
+        false => false,
+        true => false,
+    },
+    true => match (x, y)._1 {
+        false => false,
+        true => true,
+    },
+};
+types of expressions:
+186..326 = Bool -> Bool -> Bool
+199..326 = Bool
+205..211 = (?0, ?1(y))
+206..207 = ?0
+209..210 = ?1(x)
+234..238 = Bool
+261..266 = Bool
+289..294 = Bool
+318..323 = Bool
+types of patterns:
+190..191 = ?0
+193..194 = ?1(x)
+218..230 = (Bool, Bool)
+219..223 = Bool
+225..229 = Bool
+244..257 = (Bool, Bool)
+245..250 = Bool
+252..256 = Bool
+272..285 = (Bool, Bool)
+273..277 = Bool
+279..284 = Bool
+300..314 = (Bool, Bool)
+301..306 = Bool
+308..313 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def or1: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    false => match (x, y)._1 {
+        false => false,
+        _ => true,
+    },
+    _ => true,
+};
+types of expressions:
+339..412 = Bool -> Bool -> Bool
+352..412 = Bool
+358..364 = (?0, ?1(y))
+359..360 = ?0
+362..363 = ?1(x)
+389..394 = Bool
+405..409 = Bool
+types of patterns:
+343..344 = ?0
+346..347 = ?1(x)
+371..385 = (Bool, Bool)
+372..377 = Bool
+379..384 = Bool
+400..401 = (Bool, Bool)
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def or2: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    false => match (x, y)._1 {
+        false => false,
+        _ => true,
+    },
+    _ => true,
+};
+types of expressions:
+425..503 = Bool -> Bool -> Bool
+438..503 = Bool
+444..450 = (?0, ?1(y))
+445..446 = ?0
+448..449 = ?1(x)
+475..480 = Bool
+496..500 = Bool
+types of patterns:
+429..430 = ?0
+432..433 = ?1(x)
+457..471 = (Bool, Bool)
+458..463 = Bool
+465..470 = Bool
+486..492 = (Bool, Bool)
+487..488 = Bool
+490..491 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def or3: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    false => match (x, y)._1 {
+        false => false,
+        true => true,
+    },
+    true => match (x, y)._1 {
+        false => true,
+        true => true,
+    },
+};
+types of expressions:
+516..654 = Bool -> Bool -> Bool
+529..654 = Bool
+535..541 = (?0, ?1(y))
+536..537 = ?0
+539..540 = ?1(x)
+564..568 = Bool
+591..595 = Bool
+618..622 = Bool
+646..651 = Bool
+types of patterns:
+520..521 = ?0
+523..524 = ?1(x)
+548..560 = (Bool, Bool)
+549..553 = Bool
+555..559 = Bool
+574..587 = (Bool, Bool)
+575..580 = Bool
+582..586 = Bool
+601..614 = (Bool, Bool)
+602..606 = Bool
+608..613 = Bool
+628..642 = (Bool, Bool)
+629..634 = Bool
+636..641 = Bool
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+
+def or4: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
+    true => true,
+    _ => match (x, y)._1 {
+        true => true,
+        _ => false,
+    },
+};
+types of expressions:
+667..758 = Bool -> Bool -> Bool
+680..758 = Bool
+686..692 = (?0, ?1(y))
+687..688 = ?0
+690..691 = ?1(x)
+712..716 = Bool
+735..739 = Bool
+750..755 = Bool
+types of patterns:
+671..672 = ?0
+674..675 = ?1(x)
+699..708 = (Bool, ?1(y))
+700..704 = Bool
+706..707 = ?1(y)
+722..731 = (Bool, Bool)
+723..724 = Bool
+726..730 = Bool
+745..746 = (Bool, Bool)
+metavars:
+?0 = Bool
+?1 = fun(_: #error) => Bool
+?2 = fun(_: #error, _: #error) => Bool
+"""
+
+stderr = """
+
+"""
