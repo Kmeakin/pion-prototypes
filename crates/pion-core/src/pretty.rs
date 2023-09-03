@@ -85,7 +85,6 @@ impl<'pretty> PrettyCtx<'pretty> {
         self.local_names
             .borrow()
             .iter()
-            .rev()
             .any(|local_name| *local_name == BinderName::User(name))
     }
 
@@ -173,12 +172,12 @@ impl<'pretty> PrettyCtx<'pretty> {
                 let mut params = Vec::new();
                 let mut body = expr;
 
-                while let Expr::FunLit(plicity, name, (domain, cont)) = body {
-                    let name = self.freshen_name(*name, cont);
+                while let Expr::FunLit(plicity, name, (domain, next_body)) = body {
+                    let name = self.freshen_name(*name, next_body);
                     let param = self.fun_param(*plicity, name, domain);
                     self.push_local(name);
                     params.push(param);
-                    body = cont;
+                    body = next_body;
                 }
                 let body = self.expr(body, Prec::MAX);
                 self.truncate_local(len);
@@ -270,6 +269,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                     });
                     self.truncate_local(len);
                     let elems = self.intersperse(elems, self.text(", "));
+                    self.truncate_local(len);
                     self.text("(").append(elems).append(")")
                 }
             }
@@ -297,10 +297,9 @@ impl<'pretty> PrettyCtx<'pretty> {
                     self.push_local(BinderName::from(*name));
                     field
                 });
+                let type_fields = self.intersperse(type_fields, self.text(", "));
                 self.truncate_local(len);
-                self.text("{")
-                    .append(self.intersperse(type_fields, self.text(", ")))
-                    .append("}")
+                self.text("{").append(type_fields).append("}")
             }
             Expr::RecordLit(expr_fields) => {
                 let expr_fields = expr_fields.iter().map(|(name, expr)| {

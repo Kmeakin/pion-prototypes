@@ -386,7 +386,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         &mut self,
         telescope: Telescope<'core>,
     ) -> &'core [(FieldName, Expr<'core>)] {
-        let initial_local_len = self.local_names.len();
+        let len = self.local_len();
         let mut telescope = telescope;
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
@@ -397,9 +397,12 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             self.push_local(BinderName::from(name));
         }
 
-        self.local_names.truncate(initial_local_len);
+        self.truncate_local(len);
         expr_fields.into()
     }
+
+    fn local_len(&self) -> EnvLen { self.local_names.len() }
+    fn truncate_local(&mut self, len: EnvLen) { self.local_names.truncate(len) }
 
     fn push_local(&mut self, name: BinderName) { self.local_names.push(name); }
     fn pop_local(&mut self) { self.local_names.pop(); }

@@ -1,13 +1,13 @@
 exit status: 0
 
 stdout = """
-def fst: fun(a: (Type, Type)) -> (a._0, a._1) -> _1._0 = fun(a: (Type, Type)) => let A: Type = a._0;
+def fst: fun(a: (Type, Type)) -> (a._0, a._1) -> a._0 = fun(a: (Type, Type)) => let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: B._0 = b._0;
-let y: B._1 = b._1;
+fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+let y: a._1 = b._1;
 x;
 types of expressions:
-10..56 = fun(a: (Type, Type)) -> (a._0, a._1) -> _1._0
+10..56 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
 22..34 = Type
 23..27 = Type
 29..33 = Type
@@ -20,16 +20,16 @@ types of patterns:
 15..16 = Type
 18..19 = Type
 36..42 = (Unbound(2)._0, Unbound(3)._1)
-37..38 = _1._0
-40..41 = _1._1
+37..38 = Unbound(2)._0
+40..41 = Unbound(2)._1
 
-def snd: fun(a: (Type, Type)) -> (a._0, a._1) -> _1._1 = fun(a: (Type, Type)) => let A: Type = a._0;
+def snd: fun(a: (Type, Type)) -> (a._0, a._1) -> a._1 = fun(a: (Type, Type)) => let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: B._0 = b._0;
-let y: B._1 = b._1;
+fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+let y: a._1 = b._1;
 y;
 types of expressions:
-68..114 = fun(a: (Type, Type)) -> (a._0, a._1) -> _1._1
+68..114 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
 80..92 = Type
 81..85 = Type
 87..91 = Type
@@ -42,8 +42,8 @@ types of patterns:
 73..74 = Type
 76..77 = Type
 94..100 = (Unbound(2)._0, Unbound(3)._1)
-95..96 = _1._0
-98..99 = _1._1
+95..96 = Unbound(2)._0
+98..99 = Unbound(2)._1
 """
 
 stderr = """

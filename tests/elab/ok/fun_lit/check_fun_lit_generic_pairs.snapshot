@@ -3,12 +3,12 @@ exit status: 0
 stdout = """
 def fst: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: B._0 = b._0;
-let b: B._1 = b._1;
-_0 = fun(a: (Type, Type)) => let A: Type = a._0;
+fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
+let b: a._1 = b._1;
+A = fun(a: (Type, Type)) => let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: B._0 = b._0;
-let y: B._1 = b._1;
+fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+let y: a._1 = b._1;
 x;
 types of expressions:
 9..55 = Type
@@ -19,7 +19,7 @@ types of expressions:
 44..45 = Type
 47..48 = Type
 54..55 = Type
-65..111 = fun(a: (Type, Type)) -> (a._0, a._1) -> _1._0
+65..111 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
 77..89 = Type
 78..82 = Type
 84..88 = Type
@@ -32,23 +32,23 @@ types of patterns:
 14..15 = Type
 17..18 = Type
 35..41 = (Unbound(2)._0, Unbound(3)._1)
-36..37 = _1._0
-39..40 = _1._1
+36..37 = Unbound(2)._0
+39..40 = Unbound(2)._1
 69..75 = (Type, Type)
 70..71 = Type
 73..74 = Type
-91..97 = (_1._0, _1._1)
-92..93 = _1._0
-95..96 = _1._1
+91..97 = (Unbound(2)._0, Unbound(3)._1)
+92..93 = Unbound(2)._0
+95..96 = Unbound(2)._1
 
 def snd: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: B._0 = b._0;
-let b: B._1 = b._1;
-_1 = fun(a: (Type, Type)) => let A: Type = a._0;
+fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
+let b: a._1 = b._1;
+B = fun(a: (Type, Type)) => let A: Type = a._0;
 let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: B._0 = b._0;
-let y: B._1 = b._1;
+fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+let y: a._1 = b._1;
 y;
 types of expressions:
 123..169 = Type
@@ -59,7 +59,7 @@ types of expressions:
 158..159 = Type
 161..162 = Type
 168..169 = Type
-179..225 = fun(a: (Type, Type)) -> (a._0, a._1) -> _1._1
+179..225 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
 191..203 = Type
 192..196 = Type
 198..202 = Type
@@ -72,14 +72,14 @@ types of patterns:
 128..129 = Type
 131..132 = Type
 149..155 = (Unbound(2)._0, Unbound(3)._1)
-150..151 = _1._0
-153..154 = _1._1
+150..151 = Unbound(2)._0
+153..154 = Unbound(2)._1
 183..189 = (Type, Type)
 184..185 = Type
 187..188 = Type
-205..211 = (_1._0, _1._1)
-206..207 = _1._0
-209..210 = _1._1
+205..211 = (Unbound(2)._0, Unbound(3)._1)
+206..207 = Unbound(2)._0
+209..210 = Unbound(2)._1
 """
 
 stderr = """
