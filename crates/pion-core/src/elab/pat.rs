@@ -204,11 +204,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         param: &'hir hir::FunParam<'hir>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref());
-        let name = match pat.name() {
-            BinderName::User(symbol) => LocalName::User(symbol),
-            BinderName::Underscore => LocalName::User(Symbol::intern("FIXME_FUN_PARAM_NAME")),
-        };
-        let expr = Expr::Local(name, Index::new());
+        let expr = Expr::Local(Index::new());
         (pat, Scrut::new(expr, r#type))
     }
 
@@ -218,11 +214,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expected: &Type<'core>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected);
-        let name = match pat.name() {
-            BinderName::Underscore => LocalName::User(Symbol::intern("FIXME_FUN_PARAM_NAME")),
-            BinderName::User(symbol) => LocalName::User(symbol),
-        };
-        let expr = Expr::Local(name, Index::new());
+        let expr = Expr::Local(Index::new());
         (pat, Scrut::new(expr, expected.clone()))
     }
 
@@ -257,8 +249,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         match pat {
             Pat::Ident(_, symbol) => {
-                if self.check_duplicate_local(names, *symbol, pat.span()) == Ok(()) {
-                    self.local_env.push_param(name, scrut.r#type.clone());
+                let r#type = scrut.r#type.clone();
+                match self.check_duplicate_local(names, *symbol, pat.span()) {
+                    Ok(()) => self.local_env.push_param(name, r#type),
+                    Err(()) => self.local_env.push_param(BinderName::Underscore, r#type),
                 }
             }
             Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
@@ -285,10 +279,17 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         match pat {
             Pat::Ident(_, symbol) => {
-                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
-                    let r#type = scrut.r#type.clone();
-                    let_vars.push((name, scrut.clone()));
-                    self.local_env.push_def(name, r#type, value.clone());
+                let r#type = scrut.r#type.clone();
+                let value = value.clone();
+
+                match self.check_duplicate_local(&mut names, *symbol, pat.span()) {
+                    Ok(()) => {
+                        let_vars.push((name, scrut.clone()));
+                        self.local_env.push_def(name, r#type, value);
+                    }
+                    Err(()) => self
+                        .local_env
+                        .push_def(BinderName::Underscore, r#type, value),
                 }
             }
             Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
@@ -318,10 +319,17 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 (self.local_env).push_def(pat.name(), scrut.r#type.clone(), value.clone());
             }
             Pat::Ident(_, symbol) => {
-                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
-                    let r#type = scrut.r#type.clone();
-                    let_vars.push((name, scrut.clone()));
-                    self.local_env.push_def(name, r#type, value.clone());
+                let r#type = scrut.r#type.clone();
+                let value = value.clone();
+
+                match self.check_duplicate_local(&mut names, *symbol, pat.span()) {
+                    Ok(()) => {
+                        let_vars.push((name, scrut.clone()));
+                        self.local_env.push_def(name, r#type, value);
+                    }
+                    Err(()) => self
+                        .local_env
+                        .push_def(BinderName::Underscore, r#type, value),
                 }
             }
             Pat::Lit(..) => {}

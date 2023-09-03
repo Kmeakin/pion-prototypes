@@ -5,12 +5,12 @@ def bar: fun(x: ?0) -> ?1(x) = fun(x: ?0) => let a: ?1(x) = #error;
 a;
 types of expressions:
 244..274 = fun(x: ?0) -> ?1(x)
-258..274 = ?1(x)
-266..267 = ?1(x)
-273..274 = ?1(x)
+258..274 = ?1(Unbound(0))
+266..267 = ?1(Unbound(0))
+273..274 = ?1(Unbound(1))
 types of patterns:
 248..249 = ?0
-262..263 = ?1(x)
+262..263 = ?1(Unbound(0))
 metavars:
 ?0 = <unsolved>
 ?1 = <unsolved>

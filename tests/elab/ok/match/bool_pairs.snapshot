@@ -11,14 +11,14 @@ def and1: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 11..82 = Bool -> Bool -> Bool
 24..82 = Bool
-30..36 = (?0, ?1(y))
+30..36 = (?0, ?1(Unbound(1)))
 31..32 = ?0
-34..35 = ?1(x)
+34..35 = ?1(_0)
 59..63 = Bool
 74..79 = Bool
 types of patterns:
 15..16 = ?0
-18..19 = ?1(x)
+18..19 = ?1(Unbound(0))
 43..55 = (Bool, Bool)
 44..48 = Bool
 50..54 = Bool
@@ -38,14 +38,14 @@ def and2: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 96..172 = Bool -> Bool -> Bool
 109..172 = Bool
-115..121 = (?0, ?1(y))
+115..121 = (?0, ?1(Unbound(1)))
 116..117 = ?0
-119..120 = ?1(x)
+119..120 = ?1(_0)
 144..148 = Bool
 164..169 = Bool
 types of patterns:
 100..101 = ?0
-103..104 = ?1(x)
+103..104 = ?1(Unbound(0))
 128..140 = (Bool, Bool)
 129..133 = Bool
 135..139 = Bool
@@ -70,16 +70,16 @@ def and3: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 186..326 = Bool -> Bool -> Bool
 199..326 = Bool
-205..211 = (?0, ?1(y))
+205..211 = (?0, ?1(Unbound(1)))
 206..207 = ?0
-209..210 = ?1(x)
+209..210 = ?1(_0)
 234..238 = Bool
 261..266 = Bool
 289..294 = Bool
 318..323 = Bool
 types of patterns:
 190..191 = ?0
-193..194 = ?1(x)
+193..194 = ?1(Unbound(0))
 218..230 = (Bool, Bool)
 219..223 = Bool
 225..229 = Bool
@@ -107,14 +107,14 @@ def or1: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 339..412 = Bool -> Bool -> Bool
 352..412 = Bool
-358..364 = (?0, ?1(y))
+358..364 = (?0, ?1(Unbound(1)))
 359..360 = ?0
-362..363 = ?1(x)
+362..363 = ?1(_0)
 389..394 = Bool
 405..409 = Bool
 types of patterns:
 343..344 = ?0
-346..347 = ?1(x)
+346..347 = ?1(Unbound(0))
 371..385 = (Bool, Bool)
 372..377 = Bool
 379..384 = Bool
@@ -134,14 +134,14 @@ def or2: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 425..503 = Bool -> Bool -> Bool
 438..503 = Bool
-444..450 = (?0, ?1(y))
+444..450 = (?0, ?1(Unbound(1)))
 445..446 = ?0
-448..449 = ?1(x)
+448..449 = ?1(_0)
 475..480 = Bool
 496..500 = Bool
 types of patterns:
 429..430 = ?0
-432..433 = ?1(x)
+432..433 = ?1(Unbound(0))
 457..471 = (Bool, Bool)
 458..463 = Bool
 465..470 = Bool
@@ -166,16 +166,16 @@ def or3: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 516..654 = Bool -> Bool -> Bool
 529..654 = Bool
-535..541 = (?0, ?1(y))
+535..541 = (?0, ?1(Unbound(1)))
 536..537 = ?0
-539..540 = ?1(x)
+539..540 = ?1(_0)
 564..568 = Bool
 591..595 = Bool
 618..622 = Bool
 646..651 = Bool
 types of patterns:
 520..521 = ?0
-523..524 = ?1(x)
+523..524 = ?1(Unbound(0))
 548..560 = (Bool, Bool)
 549..553 = Bool
 555..559 = Bool
@@ -203,18 +203,18 @@ def or4: Bool -> Bool -> Bool = fun(x: Bool, y: Bool) => match (x, y)._0 {
 types of expressions:
 667..758 = Bool -> Bool -> Bool
 680..758 = Bool
-686..692 = (?0, ?1(y))
+686..692 = (?0, ?1(Unbound(1)))
 687..688 = ?0
-690..691 = ?1(x)
+690..691 = ?1(_0)
 712..716 = Bool
 735..739 = Bool
 750..755 = Bool
 types of patterns:
 671..672 = ?0
-674..675 = ?1(x)
-699..708 = (Bool, ?1(y))
+674..675 = ?1(Unbound(0))
+699..708 = (Bool, ?1(Unbound(1)))
 700..704 = Bool
-706..707 = ?1(y)
+706..707 = ?1(_1)
 722..731 = (Bool, Bool)
 723..724 = Bool
 726..730 = Bool

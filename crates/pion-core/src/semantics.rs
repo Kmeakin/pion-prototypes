@@ -1,9 +1,8 @@
 use either::*;
-use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
-use crate::name::{BinderName, FieldName, LocalName};
+use crate::name::{BinderName, FieldName};
 use crate::syntax::{
     BinderInfo, Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value,
 };
@@ -359,18 +358,8 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         match head {
             Head::Error => Expr::Error,
             Head::Prim(prim) => Expr::Prim(prim),
-            Head::Local(var) => match self.local_names.get_level(var) {
-                Some(BinderName::User(symbol)) => {
-                    let var = self.local_names.len().level_to_index(var).unwrap();
-                    Expr::Local(LocalName::User(*symbol), var)
-                }
-                Some(BinderName::Underscore) => {
-                    let var = self.local_names.len().level_to_index(var).unwrap();
-                    Expr::Local(
-                        LocalName::User(Symbol::intern("FIXME_QUOTE_UNNAMED_LOCAL")),
-                        var,
-                    )
-                }
+            Head::Local(var) => match self.local_names.len().level_to_index(var) {
+                Some(var) => Expr::Local(var),
                 None => panic!("Unbound local variable: {var:?}"),
             },
             Head::Meta(var) => match self.get_meta(var) {
@@ -470,7 +459,7 @@ where
             Expr::Error => Expr::Error,
             Expr::Lit(lit) => Expr::Lit(*lit),
             Expr::Prim(prim) => Expr::Prim(*prim),
-            Expr::Local(name, var) => Expr::Local(*name, *var),
+            Expr::Local(var) => Expr::Local(*var),
             Expr::InsertedMeta(var, infos) => match self.get_meta(*var) {
                 Some(value) => {
                     let value = self.eval_env().apply_binder_infos(value.clone(), infos);

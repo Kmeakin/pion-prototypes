@@ -6,7 +6,7 @@ use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
 use crate::env::{EnvLen, Index, Level, SharedEnv};
-use crate::name::{BinderName, FieldName, LocalName};
+use crate::name::{BinderName, FieldName};
 use crate::prim::Prim;
 
 mod iterators;
@@ -33,7 +33,7 @@ pub enum Expr<'core> {
     Error,
     Lit(Lit),
     Prim(Prim),
-    Local(LocalName, Index),
+    Local(Index),
     Meta(Level),
     InsertedMeta(Level, &'core [BinderInfo]),
 
@@ -191,7 +191,7 @@ impl<'core> Expr<'core> {
         }
 
         match self {
-            Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
+            Expr::Local(var) if *var >= min => Expr::Local(*var + amount),
 
             Expr::Error
             | Expr::Lit(..)

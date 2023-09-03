@@ -1,11 +1,11 @@
 exit status: 0
 
 stdout = """
-def FstType: Type = fun(_: (Type, Type)) -> let A: Type = FIXME_FUN_PARAM_NAME._0;
-let B: Type = FIXME_FUN_PARAM_NAME._1;
-fun(_: (FIXME_QUOTE_UNNAMED_LOCAL._0, FIXME_QUOTE_UNNAMED_LOCAL._1)) -> let a: FIXME_QUOTE_UNNAMED_LOCAL._0 = FIXME_FUN_PARAM_NAME._0;
-let b: FIXME_QUOTE_UNNAMED_LOCAL._1 = FIXME_FUN_PARAM_NAME._1;
-A;
+def FstType: Type = fun(a: (Type, Type)) -> let A: Type = a._0;
+let B: Type = a._1;
+fun(b: (a._0, a._1)) -> let a: B._0 = b._0;
+let b: B._1 = b._1;
+_0;
 types of expressions:
 14..60 = Type
 26..38 = Type
@@ -19,15 +19,15 @@ types of patterns:
 18..24 = (Type, Type)
 19..20 = Type
 22..23 = Type
-40..46 = (FIXME_QUOTE_UNNAMED_LOCAL._0, FIXME_QUOTE_UNNAMED_LOCAL._1)
-41..42 = FIXME_QUOTE_UNNAMED_LOCAL._0
-44..45 = FIXME_QUOTE_UNNAMED_LOCAL._1
+40..46 = (Unbound(2)._0, Unbound(3)._1)
+41..42 = _1._0
+44..45 = _1._1
 
-def SndType: Type = fun(_: (Type, Type)) -> let A: Type = FIXME_FUN_PARAM_NAME._0;
-let B: Type = FIXME_FUN_PARAM_NAME._1;
-fun(_: (FIXME_QUOTE_UNNAMED_LOCAL._0, FIXME_QUOTE_UNNAMED_LOCAL._1)) -> let a: FIXME_QUOTE_UNNAMED_LOCAL._0 = FIXME_FUN_PARAM_NAME._0;
-let b: FIXME_QUOTE_UNNAMED_LOCAL._1 = FIXME_FUN_PARAM_NAME._1;
-B;
+def SndType: Type = fun(a: (Type, Type)) -> let A: Type = a._0;
+let B: Type = a._1;
+fun(b: (a._0, a._1)) -> let a: B._0 = b._0;
+let b: B._1 = b._1;
+_1;
 types of expressions:
 76..122 = Type
 88..100 = Type
@@ -41,9 +41,9 @@ types of patterns:
 80..86 = (Type, Type)
 81..82 = Type
 84..85 = Type
-102..108 = (FIXME_QUOTE_UNNAMED_LOCAL._0, FIXME_QUOTE_UNNAMED_LOCAL._1)
-103..104 = FIXME_QUOTE_UNNAMED_LOCAL._0
-106..107 = FIXME_QUOTE_UNNAMED_LOCAL._1
+102..108 = (Unbound(2)._0, Unbound(3)._1)
+103..104 = _1._0
+106..107 = _1._1
 """
 
 stderr = """

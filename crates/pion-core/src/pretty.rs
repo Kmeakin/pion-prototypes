@@ -1,8 +1,10 @@
+use std::cell::RefCell;
+
 use pion_utils::interner::Symbol;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-use crate::env::Index;
-use crate::name::{BinderName, FieldName, LocalName};
+use crate::env::{EnvLen, Index, Level, UniqueEnv};
+use crate::name::{BinderName, FieldName};
 use crate::prim::Prim;
 use crate::syntax::*;
 
@@ -23,10 +25,69 @@ impl Prec {
 
 pub struct PrettyCtx<'pretty> {
     bump: &'pretty bumpalo::Bump,
+    local_names: RefCell<UniqueEnv<BinderName>>,
 }
 
 impl<'pretty> PrettyCtx<'pretty> {
-    pub fn new(bump: &'pretty bumpalo::Bump) -> Self { Self { bump } }
+    pub fn new(bump: &'pretty bumpalo::Bump) -> Self {
+        Self {
+            bump,
+            local_names: RefCell::new(UniqueEnv::new()),
+        }
+    }
+
+    fn local_len(&self) -> EnvLen { self.local_names.borrow().len() }
+    fn truncate_local(&self, len: EnvLen) { self.local_names.borrow_mut().truncate(len) }
+
+    fn push_local(&self, name: BinderName) { self.local_names.borrow_mut().push(name) }
+    fn pop_local(&self) { self.local_names.borrow_mut().pop(); }
+
+    fn get_local(&self, var: Index) -> Option<BinderName> {
+        self.local_names.borrow().get_index(var).copied()
+    }
+
+    /// Replace `name` with a fresh name if it is `_` and occurs in `body`
+    fn freshen_name(&self, name: BinderName, body: &Expr<'_>) -> BinderName {
+        match name {
+            BinderName::User(symbol) => BinderName::User(symbol),
+            BinderName::Underscore => match body.binds_local(Index::new()) {
+                false => BinderName::Underscore,
+                true => BinderName::User(self.gen_fresh_name()),
+            },
+        }
+    }
+
+    /// Generate a fresh name that does not appear in `self.local_names`
+    fn gen_fresh_name(&self) -> Symbol {
+        fn to_str(x: u32) -> String {
+            let base = x / 26;
+            let letter = x % 26;
+            let letter = (letter as u8 + b'a') as char;
+            if base == 0 {
+                format!("{letter}")
+            } else {
+                format!("{letter}{base}")
+            }
+        }
+
+        let mut counter = 0;
+        loop {
+            let name = Symbol::intern(to_str(counter));
+            match self.is_bound(name) {
+                true => {}
+                false => return name,
+            }
+            counter += 1;
+        }
+    }
+
+    fn is_bound(&self, name: Symbol) -> bool {
+        self.local_names
+            .borrow()
+            .iter()
+            .rev()
+            .any(|local_name| *local_name == BinderName::User(name))
+    }
 
     pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty> {
         let r#type = self.expr(&def.r#type, Prec::MAX);
@@ -56,7 +117,13 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
-            Expr::Local(name, ..) => self.local_name(*name),
+            Expr::Local(var) => match self.get_local(*var) {
+                Some(BinderName::User(symbol)) => self.ident(symbol),
+                Some(BinderName::Underscore) => {
+                    self.text(format!("Unnamed({})", usize::from(*var)))
+                }
+                None => self.text(format!("Unbound({})", usize::from(*var))),
+            },
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
@@ -70,25 +137,29 @@ impl<'pretty> PrettyCtx<'pretty> {
                     return fun;
                 }
 
-                let args = spine.iter().filter_map(|info| match info {
-                    BinderInfo::Def => None,
-                    BinderInfo::Param => Some(self.fun_arg(
-                        Plicity::Explicit,
-                        &Expr::Local(
-                            LocalName::User(Symbol::intern("FIXME_PRETTY_INSERTED_META")),
-                            Index::default(),
-                        ),
-                    )),
-                });
+                let args = Level::iter()
+                    .zip(spine.iter())
+                    .filter_map(|(var, info)| match info {
+                        BinderInfo::Def => None,
+                        BinderInfo::Param => {
+                            let var = self.local_len().level_to_index(var).unwrap();
+                            Some(self.fun_arg(Plicity::Explicit, &Expr::Local(var)))
+                        }
+                    });
                 let args = self.intersperse(args, self.text(", "));
                 fun.append("(").append(args).append(")")
             }
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.expr(r#type, Prec::MAX);
                 let init = self.expr(init, Prec::MAX);
+
+                let name = self.freshen_name(*name, body);
+                self.push_local(name);
                 let body = self.expr(body, Prec::MAX);
+                self.pop_local();
+
                 self.text("let ")
-                    .append(self.binder_name(*name))
+                    .append(self.binder_name(name))
                     .append(": ")
                     .append(r#type)
                     .append(" = ")
@@ -98,15 +169,19 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(body)
             }
             Expr::FunLit(..) => {
+                let len = self.local_len();
                 let mut params = Vec::new();
                 let mut body = expr;
 
                 while let Expr::FunLit(plicity, name, (domain, cont)) = body {
-                    let param = self.fun_param(*plicity, *name, domain);
+                    let name = self.freshen_name(*name, cont);
+                    let param = self.fun_param(*plicity, name, domain);
+                    self.push_local(name);
                     params.push(param);
                     body = cont;
                 }
                 let body = self.expr(body, Prec::MAX);
+                self.truncate_local(len);
 
                 let params = self.intersperse(params, self.text(", "));
                 self.text("fun")
@@ -117,6 +192,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(body)
             }
             Expr::FunType(..) => {
+                let len = self.local_len();
                 let mut params = Vec::new();
                 let mut codomain = expr;
 
@@ -126,19 +202,26 @@ impl<'pretty> PrettyCtx<'pretty> {
                         Expr::FunType(plicity, name, (domain, cont))
                             if cont.binds_local(Index::new()) =>
                         {
-                            let param = self.fun_param(*plicity, *name, domain);
+                            let name = self.freshen_name(*name, cont);
+                            let param = self.fun_param(*plicity, name, domain);
+                            self.push_local(name);
                             params.push(param);
                             codomain = cont;
                         }
                         // Use arrow sugar if the parameter is not referenced in the body type.
                         Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
                             let domain = self.expr(domain, Prec::Proj);
+
+                            self.push_local(BinderName::Underscore);
                             let codomain = self.expr(codomain, Prec::MAX);
+                            self.pop_local();
+
                             break domain.append(" -> ").append(codomain);
                         }
                         _ => break self.expr(codomain, Prec::MAX),
                     }
                 };
+                self.truncate_local(len);
 
                 if params.is_empty() {
                     codomain
@@ -179,10 +262,13 @@ impl<'pretty> PrettyCtx<'pretty> {
                     let r#type = self.expr(&type_fields[0].1, Prec::MAX);
                     self.text("(").append(r#type).append(",)")
                 } else {
-                    let elems = type_fields.iter().map(|(_, r#type)| {
+                    let len = self.local_len();
+                    let elems = type_fields.iter().map(|(name, r#type)| {
                         let expr = self.expr(r#type, Prec::MAX);
+                        self.push_local(BinderName::from(*name));
                         expr
                     });
+                    self.truncate_local(len);
                     let elems = self.intersperse(elems, self.text(", "));
                     self.text("(").append(elems).append(")")
                 }
@@ -202,11 +288,16 @@ impl<'pretty> PrettyCtx<'pretty> {
                 }
             }
             Expr::RecordType(type_fields) => {
+                let len = self.local_len();
                 let type_fields = type_fields.iter().map(|(name, r#type)| {
-                    self.field_name(*name)
+                    let field = self
+                        .field_name(*name)
                         .append(": ")
-                        .append(self.expr(r#type, Prec::MAX))
+                        .append(self.expr(r#type, Prec::MAX));
+                    self.push_local(BinderName::from(*name));
+                    field
                 });
+                self.truncate_local(len);
                 self.text("{")
                     .append(self.intersperse(type_fields, self.text(", ")))
                     .append("}")
@@ -233,8 +324,11 @@ impl<'pretty> PrettyCtx<'pretty> {
                         .append(self.expr(expr, Prec::MAX))
                 });
                 let default = default.as_ref().map(|(name, expr)| {
+                    let name = self.freshen_name(*name, expr);
+                    self.push_local(name);
                     let expr = self.expr(expr, Prec::MAX);
-                    self.binder_name(*name).append(" => ").append(expr)
+                    self.pop_local();
+                    self.binder_name(name).append(" => ").append(expr)
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));
@@ -283,12 +377,6 @@ impl<'pretty> PrettyCtx<'pretty> {
         match name {
             BinderName::Underscore => self.text("_"),
             BinderName::User(symbol) => self.ident(symbol),
-        }
-    }
-
-    pub fn local_name(&'pretty self, name: LocalName) -> DocBuilder<'pretty> {
-        match name {
-            LocalName::User(symbol) => self.ident(symbol),
         }
     }
 
