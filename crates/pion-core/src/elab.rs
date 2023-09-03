@@ -46,8 +46,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 
     pub fn finish_with<T>(mut self, value: T) -> ElabResult<'hir, 'core, T> {
-        let mut quote_env =
-            QuoteEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.names);
+        let mut quote_env = QuoteEnv::new(self.bump, &self.meta_env.values, self.local_env.len());
         let metavars = self.bump.alloc_slice_fill_iter(
             self.meta_env
                 .values
@@ -103,7 +102,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 
     pub fn quote_env(&mut self) -> QuoteEnv<'core, '_> {
-        QuoteEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.names)
+        QuoteEnv::new(self.bump, &self.meta_env.values, self.local_env.len())
     }
 
     pub fn zonk_env<'out>(&mut self, out_bump: &'out bumpalo::Bump) -> ZonkEnv<'core, '_, 'out> {

@@ -267,19 +267,19 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
 pub struct QuoteEnv<'core, 'env> {
     bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
-    local_names: &'env mut UniqueEnv<BinderName>,
+    local_len: EnvLen,
 }
 
 impl<'core, 'env> QuoteEnv<'core, 'env> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
-        local_names: &'env mut UniqueEnv<BinderName>,
+        local_len: EnvLen,
     ) -> Self {
         Self {
             bump,
             meta_values,
-            local_names,
+            local_len,
         }
     }
 
@@ -313,7 +313,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                     cases = next_cases;
                                 }
                                 SplitCases::Default(name, expr) => {
-                                    break Some((name, self.quote_closure(name, &expr)))
+                                    break Some((name, self.quote_closure(&expr)))
                                 }
                                 SplitCases::None => break None,
                             }
@@ -327,12 +327,12 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.quote(domain);
-                let codomain = self.quote_closure(name, &codomain);
+                let codomain = self.quote_closure(&codomain);
                 Expr::fun_type(self.bump, plicity, name, domain, codomain)
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.quote(domain);
-                let body = self.quote_closure(name, &body);
+                let body = self.quote_closure(&body);
                 Expr::fun_lit(self.bump, plicity, name, domain, body)
             }
             Value::ArrayLit(values) => Expr::ArrayLit(
@@ -358,7 +358,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         match head {
             Head::Error => Expr::Error,
             Head::Prim(prim) => Expr::Prim(prim),
-            Head::Local(var) => match self.local_names.len().level_to_index(var) {
+            Head::Local(var) => match self.local_len.level_to_index(var) {
                 Some(var) => Expr::Local(var),
                 None => panic!("Unbound local variable: {var:?}"),
             },
@@ -370,11 +370,11 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [closure][Closure] back into an [expr][Expr].
-    fn quote_closure(&mut self, name: BinderName, closure: &Closure<'core>) -> Expr<'core> {
-        let arg = Value::local(self.local_names.len().to_level());
+    fn quote_closure(&mut self, closure: &Closure<'core>) -> Expr<'core> {
+        let arg = Value::local(self.local_len.to_level());
         let value = self.elim_env().apply_closure(closure.clone(), arg);
 
-        self.push_local(name);
+        self.push_local();
         let expr = self.quote(&value);
         self.pop_local();
 
@@ -391,21 +391,21 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
         while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
-            let var = Value::local(self.local_names.len().to_level());
+            let var = Value::local(self.local_len.to_level());
             telescope = cont(var);
             expr_fields.push((name, self.quote(&value)));
-            self.push_local(BinderName::from(name));
+            self.push_local();
         }
 
         self.truncate_local(len);
         expr_fields.into()
     }
 
-    fn local_len(&self) -> EnvLen { self.local_names.len() }
-    fn truncate_local(&mut self, len: EnvLen) { self.local_names.truncate(len) }
+    fn local_len(&self) -> EnvLen { self.local_len }
+    fn truncate_local(&mut self, len: EnvLen) { self.local_len.truncate(len) }
 
-    fn push_local(&mut self, name: BinderName) { self.local_names.push(name); }
-    fn pop_local(&mut self) { self.local_names.pop(); }
+    fn push_local(&mut self) { self.local_len.push(); }
+    fn pop_local(&mut self) { self.local_len.pop(); }
 }
 
 pub struct ZonkEnv<'core, 'env, 'out>
@@ -440,7 +440,7 @@ where
     }
 
     fn quote_env(&mut self) -> QuoteEnv<'out, '_> {
-        QuoteEnv::new(self.out_bump, self.meta_values, self.local_names)
+        QuoteEnv::new(self.out_bump, self.meta_values, self.local_names.len())
     }
 
     fn eval_env(&mut self) -> EvalEnv<'core, '_> {
