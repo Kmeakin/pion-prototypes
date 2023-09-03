@@ -246,19 +246,18 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    // TODO: check for duplicate definitions in fun literal/fun type telescopes
     pub fn push_param_pat(
         &mut self,
         pat: &Pat<'core>,
         scrut: &Scrut<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> Vec<(BinderName, Scrut<'core>)> {
         let mut let_vars = Vec::new();
-        let mut names = Vec::new();
         let name = pat.name();
 
         match pat {
             Pat::Ident(_, symbol) => {
-                if self.check_duplicate_local(&mut names, *symbol, pat.span()) == Ok(()) {
+                if self.check_duplicate_local(names, *symbol, pat.span()) == Ok(()) {
                     self.local_env.push_param(name, scrut.r#type.clone());
                 }
             }
@@ -268,7 +267,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             Pat::RecordLit(_, fields) => {
                 let value = self.local_env.next_var();
                 self.local_env.push_param(name, scrut.r#type.clone());
-                self.push_record_pat(fields, scrut, &value, &mut let_vars, &mut names);
+                self.push_record_pat(fields, scrut, &value, &mut let_vars, names);
             }
         }
         let_vars

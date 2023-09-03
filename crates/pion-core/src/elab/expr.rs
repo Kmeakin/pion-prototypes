@@ -259,7 +259,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     return SynthExpr::new(expr, Type::TYPE);
                 }
 
-                self.synth_fun_type(params, codomain)
+                self.synth_fun_type(params, codomain, &mut Vec::new())
             }
             hir::Expr::FunLit(params, body) => {
                 // empty parameter list is treated as a single unit parameter
@@ -286,7 +286,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     return SynthExpr::new(expr, r#type);
                 }
 
-                self.synth_fun_lit(params, body)
+                self.synth_fun_lit(params, body, &mut Vec::new())
             }
             hir::Expr::FunCall(fun, args) => {
                 let call_span = self.syntax_map[expr].span();
@@ -590,7 +590,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
                 }
 
-                self.check_fun_lit(params, body, &expected)
+                self.check_fun_lit(params, body, &expected, &mut Vec::new())
             }
             hir::Expr::Match(scrut, cases) => self.check_match(scrut, cases, &expected),
             hir::Expr::If((scrut, then, r#else)) => {
@@ -664,11 +664,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    // FIXME: check for duplicate params
     fn synth_fun_type(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         codomain: &'hir hir::Expr<'hir>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
             let Check(codomain_expr) = self.check_expr(codomain, &Type::TYPE);
@@ -680,8 +680,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
         let (let_vars, codomain_expr) = self.with_scope(|this| {
-            let let_vars = this.push_param_pat(&pat, &scrut);
-            let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain);
+            let let_vars = this.push_param_pat(&pat, &scrut, names);
+            let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain, names);
             (let_vars, codomain_expr)
         });
 
@@ -703,11 +703,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         SynthExpr::new(expr, Type::TYPE)
     }
 
-    // FIXME: check for duplicate params
     fn synth_fun_lit(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         body: &'hir hir::Expr<'hir>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
             return self.synth_expr(body);
@@ -719,8 +719,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let name = pat.name();
 
         let (let_defs, body_expr, body_type_expr) = self.with_scope(|this| {
-            let let_defs = this.push_param_pat(&pat, &scrut);
-            let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body);
+            let let_defs = this.push_param_pat(&pat, &scrut, names);
+            let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body, names);
             let body_type = this.quote_env().quote(&body_type_value);
             (let_defs, body_expr, body_type)
         });
@@ -761,12 +761,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         SynthExpr::new(expr, r#type)
     }
 
-    // FIXME: check for duplicate params
     fn check_fun_lit(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         body: &'hir hir::Expr<'hir>,
         expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckExpr<'core> {
         let Some((param, rest_params)) = params.split_first() else {
             return self.check_expr(body, expected);
@@ -786,8 +786,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
                     let expected = this.elim_env().apply_closure(next_expected, arg);
-                    let let_defs = this.push_param_pat(&pat, &scrut);
-                    let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected);
+                    let let_defs = this.push_param_pat(&pat, &scrut, names);
+                    let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected, names);
                     (let_defs, body_expr)
                 });
 
@@ -816,7 +816,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let arg_value = self.local_env.next_var();
                 self.local_env.push_param(name, domain.clone());
                 let expected = self.elim_env().apply_closure(codomain, arg_value);
-                let Check(body_expr) = self.check_fun_lit(params, body, &expected);
+                let Check(body_expr) = self.check_fun_lit(params, body, &expected, names);
                 self.local_env.pop();
 
                 let expr =
@@ -826,7 +826,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             _ if expected.is_error() => CheckExpr::ERROR,
             _ => {
                 let span = self.syntax_map[body].span(); // FIXME: correct span
-                let Synth(expr, r#type) = self.synth_fun_lit(params, body);
+                let Synth(expr, r#type) = self.synth_fun_lit(params, body, names);
                 Check::new(self.convert_expr(span, expr, &r#type, &expected))
             }
         }
