@@ -223,21 +223,18 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 self.elim_env().fun_app(*plicity, fun_value, arg_value)
             }
             Expr::ArrayLit(exprs) => {
-                let bump = self.bump;
-                let exprs = exprs.iter().map(|expr| self.eval(expr));
-                Value::ArrayLit(bump.alloc_slice_fill_iter(exprs))
+                Value::array_lit(self.bump, exprs.iter().map(|expr| self.eval(expr)))
             }
             Expr::RecordType(type_fields) => {
                 let telescope = Telescope::new(self.local_values.clone(), type_fields);
                 Value::RecordType(telescope)
             }
-            Expr::RecordLit(expr_fields) => {
-                let bump = self.bump;
-                let expr_fields = expr_fields
+            Expr::RecordLit(expr_fields) => Value::record_lit(
+                self.bump,
+                expr_fields
                     .iter()
-                    .map(|(name, expr)| (*name, self.eval(expr)));
-                Value::RecordLit(bump.alloc_slice_fill_iter(expr_fields))
-            }
+                    .map(|(name, expr)| (*name, self.eval(expr))),
+            ),
             Expr::FieldProj(head, name) => {
                 let head = self.eval(head);
                 self.elim_env().field_proj(head, *name)
@@ -305,7 +302,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                     Elim::FieldProj(name) => Expr::field_proj(self.bump, head, *name),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
-                        let mut pattern_cases = Vec::new();
+                        let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
                             match self.elim_env().split_cases(cases) {
                                 SplitCases::Case((lit, expr), next_cases) => {
@@ -318,10 +315,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                 SplitCases::None => break None,
                             }
                         };
-                        Expr::Match(
-                            self.bump.alloc((head, default)),
-                            self.bump.alloc_slice_fill_iter(pattern_cases),
-                        )
+                        Expr::r#match(self.bump, head, pattern_cases.into(), default)
                     }
                 })
             }
@@ -335,20 +329,18 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                 let body = self.quote_closure(&body);
                 Expr::fun_lit(self.bump, plicity, name, domain, body)
             }
-            Value::ArrayLit(values) => Expr::ArrayLit(
-                self.bump
-                    .alloc_slice_fill_iter(values.iter().map(|value| self.quote(value))),
-            ),
+            Value::ArrayLit(values) => {
+                Expr::array_lit(self.bump, values.iter().map(|value| self.quote(value)))
+            }
             Value::RecordType(telescope) => {
                 let type_fields = self.quote_telescope(telescope);
                 Expr::RecordType(type_fields)
             }
-            Value::RecordLit(value_fields) => Expr::RecordLit(
-                self.bump.alloc_slice_fill_iter(
-                    value_fields
-                        .iter()
-                        .map(|(name, field_value)| (*name, self.quote(field_value))),
-                ),
+            Value::RecordLit(value_fields) => Expr::record_lit(
+                self.bump,
+                value_fields
+                    .iter()
+                    .map(|(name, field_value)| (*name, self.quote(field_value))),
             ),
         }
     }
@@ -494,9 +486,9 @@ where
                 let codomain = self.zonk_with_binder(*name, codomain);
                 Expr::fun_type(self.out_bump, *plicity, *name, domain, codomain)
             }
-            Expr::ArrayLit(exprs) => Expr::ArrayLit(
-                (self.out_bump).alloc_slice_fill_iter(exprs.iter().map(|expr| self.zonk(expr))),
-            ),
+            Expr::ArrayLit(exprs) => {
+                Expr::array_lit(self.out_bump, exprs.iter().map(|expr| self.zonk(expr)))
+            }
             Expr::RecordType(type_fields) => {
                 let len = self.local_len();
                 let type_fields = self.out_bump.alloc_slice_fill_iter(type_fields.iter().map(
@@ -509,12 +501,11 @@ where
                 self.truncate_local(len);
                 Expr::RecordType(type_fields)
             }
-            Expr::RecordLit(expr_fields) => Expr::RecordLit(
-                self.out_bump.alloc_slice_fill_iter(
-                    expr_fields
-                        .iter()
-                        .map(|(name, expr)| (*name, self.zonk(expr))),
-                ),
+            Expr::RecordLit(expr_fields) => Expr::record_lit(
+                self.out_bump,
+                expr_fields
+                    .iter()
+                    .map(|(name, expr)| (*name, self.zonk(expr))),
             ),
         }
     }

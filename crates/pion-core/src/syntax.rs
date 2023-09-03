@@ -116,8 +116,29 @@ impl<'core> Expr<'core> {
         Self::FunApp(plicity, bump.alloc((fun, arg)))
     }
 
+    pub fn array_lit(
+        bump: &'core bumpalo::Bump,
+        exprs: impl ExactSizeIterator<Item = Self>,
+    ) -> Self {
+        Self::ArrayLit(bump.alloc_slice_fill_iter(exprs))
+    }
+
     pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Expr<'core>, name: FieldName) -> Self {
         Self::FieldProj(bump.alloc(scrut), name)
+    }
+
+    pub fn record_type(
+        bump: &'core bumpalo::Bump,
+        fields: impl ExactSizeIterator<Item = (FieldName, Self)>,
+    ) -> Self {
+        Self::RecordType(bump.alloc_slice_fill_iter(fields))
+    }
+
+    pub fn record_lit(
+        bump: &'core bumpalo::Bump,
+        fields: impl ExactSizeIterator<Item = (FieldName, Self)>,
+    ) -> Self {
+        Self::RecordLit(bump.alloc_slice_fill_iter(fields))
     }
 
     pub fn r#match(
@@ -228,23 +249,23 @@ impl<'core> Expr<'core> {
                 fun.shift_inner(bump, min, amount),
                 arg.shift_inner(bump, min, amount),
             ),
-
-            Expr::ArrayLit(exprs) => Expr::ArrayLit(bump.alloc_slice_fill_iter(
+            Expr::ArrayLit(exprs) => Expr::array_lit(
+                bump,
                 exprs.iter().map(|expr| expr.shift_inner(bump, min, amount)),
-            )),
-            Expr::RecordType(fields) => Expr::RecordType(bump.alloc_slice_fill_iter(
+            ),
+            Expr::RecordType(fields) => Expr::record_type(
+                bump,
                 fields.iter().map(|(label, r#type)| {
                     let r#type = r#type.shift_inner(bump, min, amount);
                     min = min.next();
                     (*label, r#type)
                 }),
-            )),
-            Expr::RecordLit(fields) => Expr::RecordLit(
-                bump.alloc_slice_fill_iter(
-                    fields
-                        .iter()
-                        .map(|(label, expr)| (*label, expr.shift_inner(bump, min, amount))),
-                ),
+            ),
+            Expr::RecordLit(fields) => Expr::record_lit(
+                bump,
+                fields
+                    .iter()
+                    .map(|(label, expr)| (*label, expr.shift_inner(bump, min, amount))),
             ),
             Expr::FieldProj(scrut, label) => {
                 Expr::field_proj(bump, scrut.shift_inner(bump, min, amount), *label)
@@ -381,6 +402,20 @@ impl<'core> Value<'core> {
         Self::FunLit(plicity, name, bump.alloc(domain), body)
     }
 
+    pub fn array_lit(
+        bump: &'core bumpalo::Bump,
+        exprs: impl ExactSizeIterator<Item = Self>,
+    ) -> Self {
+        Self::ArrayLit(bump.alloc_slice_fill_iter(exprs))
+    }
+
+    pub fn record_lit(
+        bump: &'core bumpalo::Bump,
+        fields: impl ExactSizeIterator<Item = (FieldName, Self)>,
+    ) -> Self {
+        Self::RecordLit(bump.alloc_slice_fill_iter(fields))
+    }
+
     pub fn array_type(r#type: Type<'core>, len: u32) -> Self {
         Self::Stuck(
             Head::Prim(Prim::Array),
@@ -480,6 +515,10 @@ impl<'arena, P> Cases<'arena, P> {
             default_case,
         }
     }
+
+    pub fn len(&self) -> usize { self.pattern_cases.len() }
+
+    pub fn is_empty(&self) -> bool { self.pattern_cases.is_empty() }
 }
 
 pub type PatternCase<'arena, P> = (P, Value<'arena>);

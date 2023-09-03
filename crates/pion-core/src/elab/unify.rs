@@ -486,10 +486,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let arg = self.rename(meta_var, arg)?;
                         Ok(Expr::fun_app(self.bump, *plicity, head, arg))
                     }
-                    Elim::FieldProj(name) => Ok(Expr::FieldProj(self.bump.alloc(head), *name)),
+                    Elim::FieldProj(name) => Ok(Expr::field_proj(self.bump, head, *name)),
                     Elim::Match(cases) => {
                         let mut cases = cases.clone();
-                        let mut pattern_cases = Vec::new();
+                        let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
                             match self.elim_env().split_cases(cases) {
                                 SplitCases::Case((lit, expr), next_cases) => {
@@ -502,9 +502,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                                 SplitCases::None => break None,
                             }
                         };
-                        Ok(Expr::Match(
-                            self.bump.alloc((head, default)),
-                            self.bump.alloc_slice_fill_iter(pattern_cases),
+                        Ok(Expr::r#match(
+                            self.bump,
+                            head,
+                            pattern_cases.into(),
+                            default,
                         ))
                     }
                 })
