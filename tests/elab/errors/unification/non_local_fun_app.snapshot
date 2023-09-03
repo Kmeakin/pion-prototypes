@@ -1,7 +1,7 @@
 exit status: 1
 
 stdout = """
-def error: fun(A: Type) -> (A -> ?3(FIXME_PRETTY_INSERTED_META, FIXME_PRETTY_INSERTED_META)) -> A = fun(A: Type, a: fun(_: A) -> ?3(A, FIXME_QUOTE_UNNAMED_LOCAL)) => #error;
+def error: fun(A: Type) -> (A -> ?3(A, Unnamed(0))) -> A = fun(A: Type, a: fun(a: A) -> ?3(A, a)) => #error;
 types of expressions:
 11..38 = Type
 19..20 = Type
@@ -10,21 +10,21 @@ types of expressions:
 26..27 = Type
 31..32 = Type
 37..38 = Type
-43..67 = fun(A: Type) -> (fun(_: A) -> ?3(A, FIXME_QUOTE_UNNAMED_LOCAL)) -> A
-53..67 = (fun(_: A) -> ?3(A, FIXME_QUOTE_UNNAMED_LOCAL)) -> A
-63..64 = fun(_: A) -> ?3(A, FIXME_QUOTE_UNNAMED_LOCAL)
-63..67 = A
-65..66 = A
+43..67 = fun(A: Type) -> (fun(a: A) -> ?3(A, a)) -> A
+53..67 = (fun(a: Unbound(0)) -> ?3(Unbound(1), a)) -> Unbound(1)
+63..64 = fun(a: Unbound(1)) -> ?3(Unbound(2), a)
+63..67 = Unbound(1)
+65..66 = Unbound(1)
 types of patterns:
 15..16 = ?1
 47..48 = Type
-57..58 = fun(_: A) -> ?3(A, FIXME_QUOTE_UNNAMED_LOCAL)
+57..58 = fun(a: Unbound(0)) -> ?3(Unbound(1), a)
 metavars:
 ?0 = Type
 ?1 = Type
 ?2 = fun(_: #error, _: #error) => Type
 ?3 = <unsolved>
-?4 = fun(_: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?4 = fun(a: #error, _: #error) => a
 ?5 = <unsolved>
 """
 

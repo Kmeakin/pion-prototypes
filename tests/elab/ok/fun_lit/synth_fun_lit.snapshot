@@ -19,10 +19,10 @@ types of expressions:
 71..94 = fun(A: Type) -> A -> A
 78..82 = Type
 87..88 = Type
-93..94 = A
+93..94 = Unbound(1)
 types of patterns:
 75..76 = Type
-84..85 = A
+84..85 = Unbound(0)
 """
 
 stderr = """

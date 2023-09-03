@@ -8,14 +8,14 @@ types of expressions:
 21..46 = fun(@A: Type) -> A -> A
 30..34 = Type
 39..40 = Type
-45..46 = A
+45..46 = Unbound(1)
 52..54 = fun(@A: Type) -> A -> A
 52..61 = Bool
 55..60 = Bool
 types of patterns:
 16..18 = ?0
 27..28 = Type
-36..37 = A
+36..37 = Unbound(0)
 metavars:
 ?0 = fun(@A: Type) -> A -> A
 ?1 = Bool
@@ -29,7 +29,7 @@ types of expressions:
 107..111 = Type
 116..117 = Type
 122..123 = Type
-128..129 = A
+128..129 = Unbound(3)
 135..141 = fun(@A: Type, @B: Type) -> A -> B -> A
 135..151 = Int
 142..143 = Int
@@ -38,8 +38,8 @@ types of patterns:
 80..86 = ?0
 94..95 = Type
 104..105 = Type
-113..114 = A
-119..120 = B
+113..114 = Unbound(1)
+119..120 = Unbound(1)
 metavars:
 ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
 ?1 = Int
@@ -55,7 +55,7 @@ types of expressions:
 197..201 = Type
 206..207 = Type
 212..213 = Type
-218..219 = A
+218..219 = Unbound(3)
 225..314 = Bool
 237..285 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
 245..249 = Type
@@ -64,9 +64,9 @@ types of expressions:
 264..270 = Type
 269..270 = Type
 275..276 = Type
-281..282 = A -> B
-281..285 = B
-283..284 = A
+281..282 = Unbound(3) -> Unbound(3)
+281..285 = Unbound(2)
+283..284 = Unbound(3)
 291..296 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
 291..314 = Bool
 297..303 = fun(@A: Type, @B: Type) -> A -> B -> A
@@ -77,13 +77,13 @@ types of patterns:
 170..176 = ?0
 184..185 = Type
 194..195 = Type
-203..204 = A
-209..210 = B
+203..204 = Unbound(1)
+209..210 = Unbound(1)
 229..234 = ?1
 242..243 = Type
 252..253 = Type
-261..262 = A -> B
-272..273 = A
+261..262 = Unbound(1) -> Unbound(1)
+272..273 = Unbound(2)
 metavars:
 ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
 ?1 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B

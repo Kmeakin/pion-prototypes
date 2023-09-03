@@ -47,7 +47,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::Ident(symbol) => {
                 let name = LocalName::User(*symbol);
                 if let Some((index, entry)) = self.local_env.lookup(name) {
-                    return SynthExpr::new(Expr::Local(name, index), entry.r#type.clone());
+                    return SynthExpr::new(Expr::Local(index), entry.r#type.clone());
                 };
 
                 if let Ok(prim) = Prim::from_str(symbol.as_str()) {

@@ -1,7 +1,7 @@
 exit status: 1
 
 stdout = """
-def error: fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type = fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) => f(?3(FIXME_PRETTY_INSERTED_META, FIXME_PRETTY_INSERTED_META), fun(a: ?3(Wrap, f)) => #error);
+def error: fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type = fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) => f(?3(Wrap, f), fun(a: ?3(Wrap, f)) => #error);
 types of expressions:
 11..89 = Type
 21..25 = Type
@@ -19,19 +19,19 @@ types of expressions:
 76..80 = Type
 85..89 = Type
 94..134 = fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
-107..134 = (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
-117..118 = fun(A: Type) -> (A -> Wrap(A)) -> Type
+107..134 = (fun(A: Type) -> (A -> Unbound(2)(A)) -> Type) -> Type
+117..118 = fun(A: Type) -> (A -> Unbound(3)(A)) -> Type
 117..134 = Type
 119..120 = Type
-122..133 = (?3(Wrap, f)) -> Wrap(?3(Wrap, f))
-132..133 = Wrap(?3(Wrap, f))
+122..133 = (?3(Unbound(1), Unbound(0))) -> Unbound(2)(?3(Unbound(2), Unbound(1)))
+132..133 = Unbound(2)(?3(Unbound(2), Unbound(1)))
 types of patterns:
 15..19 = Type -> Type
-42..43 = fun(A: Type) -> (A -> Wrap(A)) -> Type
-49..50 = ?1(Wrap)
+42..43 = fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
+49..50 = ?1(Unbound(0))
 98..102 = Type -> Type
-111..112 = fun(A: Type) -> (A -> Wrap(A)) -> Type
-126..127 = ?3(Wrap, f)
+111..112 = fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
+126..127 = ?3(Unbound(1), Unbound(0))
 metavars:
 ?0 = fun(_: #error) => Type
 ?1 = fun(_: #error) => Type

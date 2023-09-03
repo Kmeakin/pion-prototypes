@@ -9,10 +9,10 @@ types of expressions:
 26..32 = Type
 31..32 = Type
 35..46 = fun(@A: Type) -> A -> A
-45..46 = A
+45..46 = Unbound(1)
 types of patterns:
 13..14 = Type
-39..40 = A
+39..40 = Unbound(0)
 
 def always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
 types of expressions:
@@ -25,12 +25,12 @@ types of expressions:
 95..101 = Type
 100..101 = Type
 104..118 = fun(@A: Type, @B: Type) -> A -> B -> A
-117..118 = A
+117..118 = Unbound(3)
 types of patterns:
 66..67 = Type
 77..78 = Type
-108..109 = A
-111..112 = B
+108..109 = Unbound(1)
+111..112 = Unbound(1)
 
 def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
 types of expressions:
@@ -45,14 +45,14 @@ types of expressions:
 173..179 = Type
 178..179 = Type
 182..199 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-195..196 = A -> B
-195..199 = B
-197..198 = A
+195..196 = Unbound(3) -> Unbound(3)
+195..199 = Unbound(2)
+197..198 = Unbound(3)
 types of patterns:
 137..138 = Type
 148..149 = Type
-186..187 = A -> B
-189..190 = A
+186..187 = Unbound(1) -> Unbound(1)
+189..190 = Unbound(2)
 """
 
 stderr = """

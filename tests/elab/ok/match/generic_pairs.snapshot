@@ -11,18 +11,18 @@ types of expressions:
 36..42 = Type
 37..38 = Type
 40..41 = Type
-47..75 = A
-53..54 = (A, B)
-71..72 = A
+47..75 = Unbound(2)
+53..54 = (Unbound(2), Unbound(2))
+71..72 = Unbound(4)
 types of patterns:
 15..16 = Type
 24..25 = Type
-33..34 = (A, B)
-61..67 = (A, B)
-62..63 = A
-65..66 = B
+33..34 = (Unbound(1), Unbound(1))
+61..67 = (Unbound(2), Unbound(2))
+62..63 = Unbound(2)
+65..66 = Unbound(1)
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?0 = fun(a: #error, _: #error, _: #error) => a
 
 def fst2: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
 x;
@@ -33,18 +33,18 @@ types of expressions:
 114..120 = Type
 115..116 = Type
 118..119 = Type
-125..153 = A
-131..132 = (A, B)
-149..150 = A
+125..153 = Unbound(2)
+131..132 = (Unbound(2), Unbound(2))
+149..150 = Unbound(3)
 types of patterns:
 93..94 = Type
 102..103 = Type
-111..112 = (A, B)
-139..145 = (A, B)
-140..141 = A
-143..144 = B
+111..112 = (Unbound(1), Unbound(1))
+139..145 = (Unbound(2), Unbound(2))
+140..141 = Unbound(2)
+143..144 = Unbound(1)
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?0 = fun(a: #error, _: #error, _: #error) => a
 
 def snd1: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
 let y: B = p._1;
@@ -56,18 +56,18 @@ types of expressions:
 192..198 = Type
 193..194 = Type
 196..197 = Type
-203..231 = B
-209..210 = (A, B)
-227..228 = B
+203..231 = Unbound(1)
+209..210 = (Unbound(2), Unbound(2))
+227..228 = Unbound(3)
 types of patterns:
 171..172 = Type
 180..181 = Type
-189..190 = (A, B)
-217..223 = (A, B)
-218..219 = A
-221..222 = B
+189..190 = (Unbound(1), Unbound(1))
+217..223 = (Unbound(2), Unbound(2))
+218..219 = Unbound(2)
+221..222 = Unbound(1)
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?0 = fun(_: #error, a: #error, _: #error) => a
 
 def snd2: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
 y;
@@ -78,18 +78,18 @@ types of expressions:
 270..276 = Type
 271..272 = Type
 274..275 = Type
-281..309 = B
-287..288 = (A, B)
-305..306 = B
+281..309 = Unbound(1)
+287..288 = (Unbound(2), Unbound(2))
+305..306 = Unbound(2)
 types of patterns:
 249..250 = Type
 258..259 = Type
-267..268 = (A, B)
-295..301 = (A, B)
-296..297 = A
-299..300 = B
+267..268 = (Unbound(1), Unbound(1))
+295..301 = (Unbound(2), Unbound(2))
+296..297 = Unbound(2)
+299..300 = Unbound(1)
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => FIXME_QUOTE_UNNAMED_LOCAL
+?0 = fun(_: #error, a: #error, _: #error) => a
 """
 
 stderr = """
