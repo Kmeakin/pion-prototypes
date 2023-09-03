@@ -2,6 +2,7 @@ use super::*;
 use crate::name::FieldName;
 
 pub mod compile;
+pub mod coverage;
 
 /// The scrutinee of a pattern match
 #[derive(Debug, Clone)]

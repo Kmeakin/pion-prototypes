@@ -71,6 +71,12 @@ pub enum ElabDiagnostic {
     UnsolvedMeta {
         source: MetaSource,
     },
+    InexhaustiveMatch {
+        scrut_span: ByteSpan,
+    },
+    UnreachablePat {
+        pat_span: ByteSpan,
+    },
 }
 impl ElabDiagnostic {
     pub fn to_diagnostic(&self, file_id: FileId) -> CodeSpanDiagnostic<FileId> {
@@ -247,6 +253,13 @@ impl ElabDiagnostic {
                         .with_labels(vec![primary(*span)])
                 }
             },
+
+            Self::InexhaustiveMatch { scrut_span } => CodeSpanDiagnostic::error()
+                .with_message("inexhaustive pattern match")
+                .with_labels(vec![primary(*scrut_span)]),
+            Self::UnreachablePat { pat_span } => CodeSpanDiagnostic::warning()
+                .with_message("unreachable pattern")
+                .with_labels(vec![primary(*pat_span)]),
         }
     }
 }

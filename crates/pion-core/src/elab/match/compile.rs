@@ -1,3 +1,22 @@
+//! # Resources
+//! - The compilation algorithm is taken from [Compiling pattern matching to
+//!   good decision trees].
+//! - You may also find [The Case for Pattern Matching] helpful, it describes
+//!   the above algorithm in less formal language and compares it to an older
+//!   algorithm that produces backtracking trees.
+//! - [How to compile pattern matching] describes an algorithm very similar to
+//!   [Compiling pattern matching to good decision trees]. It provided the
+//!   useful insight that each entry in the pattern matrix must describe not
+//!   just the pattern, but the expression being matched against (which changes
+//!   over the course of the algorithm). This point was not made explicit in
+//!   [Compiling pattern matching to good decision trees]
+//!
+//! [Compiling pattern matching to good decision trees]: https://dl.acm.org/doi/10.1145/1411304.1411311
+//! [The Case for Pattern Matching]: https://alan-j-hu.github.io/writing/pattern-matching.html
+//! [How to compile pattern matching]: https://julesjacobs.com/notes/patternmatching/patternmatching.pdf
+
+// TODO: Use join points to prevent code size explosion. See [Compiling without continuations](https://www.microsoft.com/en-us/research/publication/compiling-without-continuations)
+
 use pion_utils::slice_vec::SliceVec;
 
 use super::*;

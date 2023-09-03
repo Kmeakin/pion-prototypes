@@ -298,6 +298,8 @@ impl<'core> Pat<'core> {
             Self::Error(..) | Self::Underscore(..) | Self::Ident(..)
         )
     }
+
+    pub fn is_error(&self) -> bool { matches!(self, Self::Error(..)) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

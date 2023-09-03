@@ -1,0 +1,24 @@
+exit status: 1
+
+stdout = """
+def foo: Bool -> Bool = fun(x: Bool) => #error;
+types of expressions:
+10..42 = Bool -> Bool
+17..21 = Type
+26..42 = Bool
+38..39 = Bool
+41..42 = Bool
+types of patterns:
+14..15 = Bool
+30..35 = Bool
+"""
+
+stderr = """
+error: inexhaustive pattern match
+  ┌─ tests/elab/errors/pattern_matching/inexhaustive_let.pion:1:39
+  │
+1 │ def foo = fun(x: Bool) => let false = x; x;
+  │                                       ^
+
+aborting due to 1 previous error
+"""

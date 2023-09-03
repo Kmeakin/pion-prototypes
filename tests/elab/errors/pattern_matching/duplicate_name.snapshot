@@ -1,0 +1,35 @@
+exit status: 1
+
+stdout = """
+def f: Int = let x: Int = (1, 2, 3)._0;
+let y: Int = (1, 2, 3)._1;
+x;
+types of expressions:
+8..35 = Int
+23..32 = (Int, Int, Int)
+24..25 = Int
+27..28 = Int
+30..31 = Int
+34..35 = Int
+types of patterns:
+11..20 = (?0, ?1, ?2)
+12..13 = ?0
+15..16 = ?1
+18..19 = ?2
+metavars:
+?0 = Int
+?1 = Int
+?2 = Int
+"""
+
+stderr = """
+error: duplicate definition of local name `x`
+  ┌─ tests/elab/errors/pattern_matching/duplicate_name.pion:1:19
+  │
+1 │ def f = let(x, y, x) = (1, 2, 3); x;
+  │             -     ^ duplicate definition
+  │             │      
+  │             first definition
+
+aborting due to 1 previous error
+"""
