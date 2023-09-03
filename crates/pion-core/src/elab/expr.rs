@@ -691,21 +691,42 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let Synth(pat, domain) = self.synth_fun_param(param);
-        let domain_expr = self.quote_env().quote(&domain);
+        let (pat, scrut) = self.synth_fun_param_scrut(param);
+        let domain = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
 
-        self.local_env.push_param(name, domain.clone());
-        let Synth(body_expr, body_type) = self.synth_fun_lit(params, body);
-        let body_type = self.quote_env().quote(&body_type);
-        self.local_env.pop();
+        let (let_defs, body_expr, body_type_expr) = self.with_scope(|this| {
+            let let_defs = this.push_param_pat(&pat, &scrut);
+            let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body);
+            let body_type = this.quote_env().quote(&body_type_value);
+            (let_defs, body_expr, body_type)
+        });
 
-        let expr = Expr::fun_lit(self.bump, plicity, name, domain_expr, body_expr);
+        let mut matrix = PatMatrix::singleton(scrut.clone(), pat);
+        let (body_expr, body_type) = self.with_param(name, scrut.r#type.clone(), |this| {
+            let body_expr = r#match::compile::compile_match(
+                this,
+                &mut (matrix.clone()),
+                &[Body::new(let_defs.clone(), body_expr)],
+                EnvLen::new(),
+            );
+
+            let body_type = r#match::compile::compile_match(
+                this,
+                &mut matrix,
+                &[Body::new(let_defs.clone(), body_type_expr)],
+                EnvLen::new(),
+            );
+
+            (body_expr, body_type)
+        });
+
+        let expr = Expr::fun_lit(self.bump, plicity, name, domain, body_expr);
         let r#type = Type::fun_type(
             self.bump,
             plicity,
             name,
-            domain,
+            scrut.r#type,
             Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
         );
         SynthExpr::new(expr, r#type)
@@ -730,14 +751,22 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 if param_plicity == expected_plicity =>
             {
                 let domain_expr = self.quote_env().quote(expected_domain);
-                let Check(pat) = self.check_fun_param(param, expected_domain);
-                let name = pat.name().or(expected_name);
+                let (pat, scrut) = self.check_fun_param_scrut(param, expected_domain);
+                let name = pat.name();
 
-                let arg_value = self.local_env.next_var();
-                self.local_env.push_param(name, expected_domain.clone());
-                let expected = self.elim_env().apply_closure(next_expected, arg_value);
-                let Check(body_expr) = self.check_fun_lit(rest_params, body, &expected);
-                self.local_env.pop();
+                let (let_vars, body_expr) = self.with_scope(|this| {
+                    let arg = this.local_env.next_var();
+                    let expected = this.elim_env().apply_closure(next_expected, arg);
+                    let let_defs = this.push_param_pat(&pat, &scrut);
+                    let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected);
+                    (let_defs, body_expr)
+                });
+
+                let body_expr = self.with_param(name, scrut.r#type.clone(), |this| {
+                    let mut matrix = PatMatrix::singleton(scrut, pat);
+                    let bodies = &[Body::new(let_vars, body_expr)];
+                    r#match::compile::compile_match(this, &mut matrix, bodies, EnvLen::new())
+                });
 
                 let expr = Expr::fun_lit(self.bump, param_plicity, name, domain_expr, body_expr);
                 CheckExpr::new(expr)
