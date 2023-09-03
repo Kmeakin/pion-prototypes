@@ -776,7 +776,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let param_plicity = Plicity::from(param.plicity);
 
         match expected {
-            Value::FunType(expected_plicity, expected_name, expected_domain, next_expected)
+            Value::FunType(expected_plicity, _, expected_domain, next_expected)
                 if param_plicity == expected_plicity =>
             {
                 let domain_expr = self.quote_env().quote(expected_domain);

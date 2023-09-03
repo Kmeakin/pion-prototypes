@@ -146,19 +146,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         result
     }
 
-    fn with_def<T>(
-        &mut self,
-        name: BinderName,
-        r#type: Type<'core>,
-        value: Value<'core>,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        self.local_env.push_def(name, r#type, value);
-        let result = f(self);
-        self.local_env.pop();
-        result
-    }
-
     fn pretty_value(&mut self, value: &Value<'_>) -> Box<str> {
         let expr = self.quote_env().quote(value);
         let pretty_ctx = pretty::PrettyCtx::new(self.bump);
