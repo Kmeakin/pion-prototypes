@@ -1,0 +1,5 @@
+def fst: fun((A, B): (Type, Type), (a, b): (A, B)) -> A
+       = fun((A, B): (Type, Type), (x, y): (A, B)) => x;
+
+def snd: fun((A, B): (Type, Type), (a, b): (A, B)) -> B
+       = fun((A, B): (Type, Type), (x, y): (A, B)) => y;

@@ -669,11 +669,23 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let Synth(pat, param_type) = self.synth_fun_param(param);
-        let domain_expr = self.quote_env().quote(&param_type);
+        let (pat, scrut) = self.synth_fun_param_scrut(param);
+        let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
-        let Synth(codomain_expr, _) = self.with_param(name, param_type, |this| {
-            this.synth_fun_type(params, codomain)
+        let (let_vars, codomain_expr) = self.with_scope(|this| {
+            let let_vars = this.push_param_pat(&pat, &scrut);
+            let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain);
+            (let_vars, codomain_expr)
+        });
+
+        let codomain_expr = self.with_param(name, scrut.r#type.clone(), |this| {
+            let mut matrix = PatMatrix::singleton(scrut, pat);
+            r#match::compile::compile_match(
+                this,
+                &mut matrix,
+                &[Body::new(let_vars, codomain_expr)],
+                EnvLen::new(),
+            )
         });
 
         let expr = Expr::fun_type(self.bump, plicity, name, domain_expr, codomain_expr);
