@@ -240,10 +240,7 @@ impl<'core> Pat<'core> {
 
                     telescope = cont(ctx.local_env.next_var());
                     let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
-                    let scrut = Scrut {
-                        expr: scrut_expr,
-                        r#type,
-                    };
+                    let scrut = Scrut::new(scrut_expr, r#type);
                     columns.push((*pattern, scrut));
                 }
                 Some(PatRow::new(columns))

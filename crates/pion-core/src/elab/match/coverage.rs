@@ -15,10 +15,7 @@ pub fn check_coverage<'core>(
     matrix: &PatMatrix<'core>,
     scrut_span: ByteSpan,
 ) -> Result<(), ()> {
-    let dummy_scrut = Scrut {
-        expr: Expr::Error,
-        r#type: Value::ERROR,
-    };
+    let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
     let row = PatRow::singleton((Pat::Underscore(scrut_span), dummy_scrut));
 
     // A matrix row is reachable iff it is useful relative to the rows in the matrix

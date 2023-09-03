@@ -69,10 +69,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
-                let scrut = Scrut {
-                    expr: init_expr,
-                    r#type: pat_type,
-                };
+                let scrut = Scrut::new(init_expr, pat_type);
 
                 let initial_len = self.local_env.len();
                 let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
@@ -80,12 +77,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 self.local_env.truncate(initial_len);
 
                 let mut matrix = PatMatrix::singleton(scrut, pat);
-                let bodies = &[Body::new(let_vars, body_expr)];
-
                 let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
-                    Ok(()) => {
-                        r#match::compile::compile_match(self, &mut matrix, bodies, EnvLen::new())
-                    }
+                    Ok(()) => r#match::compile::compile_match(
+                        self,
+                        &mut matrix,
+                        &[Body::new(let_vars, body_expr)],
+                        EnvLen::new(),
+                    ),
                     Err(()) => Expr::Error,
                 };
                 SynthExpr::new(expr, body_type)
@@ -419,10 +417,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
-                let scrut = Scrut {
-                    expr: init_expr,
-                    r#type: pat_type,
-                };
+                let scrut = Scrut::new(init_expr, pat_type);
 
                 let initial_len = self.local_env.len();
                 let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
@@ -430,12 +425,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 self.local_env.truncate(initial_len);
 
                 let mut matrix = PatMatrix::singleton(scrut, pat);
-                let bodies = &[Body::new(let_vars, body_expr)];
-
                 let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
-                    Ok(()) => {
-                        r#match::compile::compile_match(self, &mut matrix, bodies, EnvLen::new())
-                    }
+                    Ok(()) => r#match::compile::compile_match(
+                        self,
+                        &mut matrix,
+                        &[Body::new(let_vars, body_expr)],
+                        EnvLen::new(),
+                    ),
                     Err(()) => Expr::Error,
                 };
                 CheckExpr::new(expr)
@@ -680,7 +676,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let (pat, scrut) = self.synth_fun_param_scrut(param);
+        let (pat, scrut) = self.synth_fun_param(param);
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
         let (let_vars, codomain_expr) = self.with_scope(|this| {
@@ -718,7 +714,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let (pat, scrut) = self.synth_fun_param_scrut(param);
+        let (pat, scrut) = self.synth_fun_param(param);
         let domain = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
 
@@ -784,7 +780,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 if param_plicity == expected_plicity =>
             {
                 let domain_expr = self.quote_env().quote(expected_domain);
-                let (pat, scrut) = self.check_fun_param_scrut(param, expected_domain);
+                let (pat, scrut) = self.check_fun_param(param, expected_domain);
                 let name = pat.name();
 
                 let (let_vars, body_expr) = self.with_scope(|this| {
@@ -847,11 +843,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let mut bodies = Vec::with_capacity(cases.len());
 
         let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
-        let scrut_value = self.eval_env().eval(&scrut_expr);
-        let scrut = Scrut {
-            expr: scrut_expr,
-            r#type: scrut_type,
-        };
+        let scrut = Scrut::new(scrut_expr, scrut_type);
+        let scrut_value = self.eval_env().eval(&scrut.expr);
 
         for case in cases {
             let initial_len = self.local_env.len();

@@ -199,11 +199,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         }
     }
 
-    pub fn synth_fun_param(&mut self, param: &'hir hir::FunParam<'hir>) -> SynthPat<'core> {
-        self.synth_ann_pat(&param.pat, param.r#type.as_ref())
-    }
-
-    pub fn synth_fun_param_scrut(
+    pub fn synth_fun_param(
         &mut self,
         param: &'hir hir::FunParam<'hir>,
     ) -> (Pat<'core>, Scrut<'core>) {
@@ -213,18 +209,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             BinderName::Underscore => LocalName::User(Symbol::intern("FIXME_FUN_PARAM_NAME")),
         };
         let expr = Expr::Local(name, Index::new());
-        (pat, Scrut { expr, r#type })
+        (pat, Scrut::new(expr, r#type))
     }
 
     pub fn check_fun_param(
-        &mut self,
-        param: &'hir hir::FunParam<'hir>,
-        expected: &Type<'core>,
-    ) -> CheckPat<'core> {
-        self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected)
-    }
-
-    pub fn check_fun_param_scrut(
         &mut self,
         param: &'hir hir::FunParam<'hir>,
         expected: &Type<'core>,
@@ -235,13 +223,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             BinderName::User(symbol) => LocalName::User(symbol),
         };
         let expr = Expr::Local(name, Index::new());
-        (
-            pat,
-            Scrut {
-                expr,
-                r#type: expected.clone(),
-            },
-        )
+        (pat, Scrut::new(expr, expected.clone()))
     }
 
     fn convert_pat(&mut self, pat: Pat<'core>, from: &Type<'core>, to: &Type<'core>) -> Pat<'core> {
