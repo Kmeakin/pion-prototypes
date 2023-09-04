@@ -89,6 +89,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let type_expr = self.quote_env().quote(&r#type);
+        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
         self.type_map.insert_pat(pat, type_expr);
         Synth(core_pat, r#type)
     }
@@ -153,6 +154,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let type_expr = self.quote_env().quote(expected);
+        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
         self.type_map.insert_pat(pat, type_expr);
         Check(core_pat)
     }
@@ -204,7 +206,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         param: &'hir hir::FunParam<'hir>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref());
-        let expr = Expr::Local(Index::new());
+        let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, r#type))
     }
 
@@ -214,7 +216,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expected: &Type<'core>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected);
-        let expr = Expr::Local(Index::new());
+        let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, expected.clone()))
     }
 

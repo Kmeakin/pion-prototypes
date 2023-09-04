@@ -47,7 +47,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::Ident(symbol) => {
                 let name = LocalName::User(*symbol);
                 if let Some((index, entry)) = self.local_env.lookup(name) {
-                    return SynthExpr::new(Expr::Local(index), entry.r#type.clone());
+                    return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
                 };
 
                 if let Ok(prim) = Prim::from_str(symbol.as_str()) {
@@ -397,6 +397,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         })();
 
         let type_expr = self.quote_env().quote(&r#type);
+        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
         self.type_map.insert_expr(expr, type_expr);
         Synth(core_expr, r#type)
     }
@@ -615,6 +616,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         })();
 
         let type_expr = self.quote_env().quote(&expected);
+        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
         self.type_map.insert_expr(expr, type_expr);
         Check(core_expr)
     }

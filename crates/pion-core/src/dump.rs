@@ -3,7 +3,7 @@ use pion_utils::identity::Identity;
 
 use crate::elab::{ElabResult, TypeMap};
 use crate::pretty::{Prec, PrettyCtx};
-use crate::syntax::{Def, Expr};
+use crate::syntax::{Def, ZonkedExpr};
 
 pub fn dump_def(
     writer: &mut dyn std::io::Write,
@@ -24,8 +24,8 @@ pub fn dump_def(
 
 pub fn dump_annotated_expr(
     writer: &mut dyn std::io::Write,
-    expr: &Expr,
-    r#type: &Expr,
+    expr: &ZonkedExpr,
+    r#type: &ZonkedExpr,
 ) -> std::io::Result<()> {
     let bump = bumpalo::Bump::new();
     let pretty_ctx = PrettyCtx::new(&bump);
@@ -125,7 +125,7 @@ pub fn dump_pat_types(
 
 pub fn dump_metavars(
     writer: &mut dyn std::io::Write,
-    metavars: &[Option<Expr>],
+    metavars: &[Option<ZonkedExpr>],
 ) -> std::io::Result<()> {
     if metavars.is_empty() {
         return Ok(());

@@ -27,12 +27,12 @@ span   | source                                   | type
 71..94 | fun(A: Type, a: A) => a                  | fun(A: Type) -> A -> A
 78..82 | Type                                     | Type
 87..88 | A                                        | Type
-93..94 | a                                        | Unbound(1)
+93..94 | a                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 75..76 | A                                        | Type
-84..85 | a                                        | Unbound(0)
+84..85 | a                                        | A
 """
 
 stderr = """

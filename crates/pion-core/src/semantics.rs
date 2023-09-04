@@ -1,10 +1,12 @@
 use either::*;
+use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
 
-use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
-use crate::name::{BinderName, FieldName};
+use crate::env::{EnvLen, Index, Level, SharedEnv, SliceEnv, UniqueEnv};
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::syntax::{
     BinderInfo, Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value,
+    ZonkedExpr,
 };
 
 #[derive(Copy, Clone)]
@@ -251,7 +253,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
         for (info, value) in infos.iter().zip(self.local_values.iter()) {
             head = match info {
                 BinderInfo::Def => head,
-                BinderInfo::Param => {
+                BinderInfo::Param(..) => {
                     self.elim_env()
                         .fun_app(Plicity::Explicit, head, value.clone())
                 }
@@ -351,7 +353,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             Head::Error => Expr::Error,
             Head::Prim(prim) => Expr::Prim(prim),
             Head::Local(var) => match self.local_len.level_to_index(var) {
-                Some(var) => Expr::Local(var),
+                Some(var) => Expr::Local((), var),
                 None => panic!("Unbound local variable: {var:?}"),
             },
             Head::Meta(var) => match self.get_meta(var) {
@@ -400,10 +402,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     fn pop_local(&mut self) { self.local_len.pop(); }
 }
 
-pub struct ZonkEnv<'core, 'env, 'out>
-where
-    'core: 'out,
-{
+pub struct ZonkEnv<'core, 'env, 'out> {
     out_bump: &'out bumpalo::Bump,
     inner_bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
@@ -411,10 +410,7 @@ where
     local_names: &'env mut UniqueEnv<BinderName>,
 }
 
-impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out>
-where
-    'core: 'out,
-{
+impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
     pub fn new(
         out_bump: &'out bumpalo::Bump,
         inner_bump: &'core bumpalo::Bump,
@@ -431,8 +427,8 @@ where
         }
     }
 
-    fn quote_env(&mut self) -> QuoteEnv<'out, '_> {
-        QuoteEnv::new(self.out_bump, self.meta_values, self.local_names.len())
+    fn quote_env(&mut self) -> QuoteEnv<'core, '_> {
+        QuoteEnv::new(self.inner_bump, self.meta_values, self.local_names.len())
     }
 
     fn eval_env(&mut self) -> EvalEnv<'core, '_> {
@@ -449,16 +445,24 @@ where
         }
     }
 
-    pub fn zonk(&mut self, expr: &Expr<'core>) -> Expr<'out> {
+    pub fn zonk(&mut self, expr: &Expr<'core>) -> ZonkedExpr<'out> {
         match expr {
             Expr::Error => Expr::Error,
             Expr::Lit(lit) => Expr::Lit(*lit),
             Expr::Prim(prim) => Expr::Prim(*prim),
-            Expr::Local(var) => Expr::Local(*var),
+            Expr::Local((), var) => match self.local_names.get_index(*var) {
+                Some(BinderName::User(symbol)) => Expr::Local(LocalName::User(*symbol), *var),
+                Some(BinderName::Underscore) => Expr::Local(
+                    LocalName::User(Symbol::intern(format!("Unnamed({})", usize::from(*var)))),
+                    *var,
+                ),
+                None => panic!("Unbound local variable: {var:?}"),
+            },
             Expr::InsertedMeta(var, infos) => match self.get_meta(*var) {
                 Some(value) => {
                     let value = self.eval_env().apply_binder_infos(value.clone(), infos);
-                    self.quote_env().quote(&value)
+                    let expr = self.quote_env().quote(&value);
+                    self.zonk(&expr)
                 }
                 None => Expr::InsertedMeta(*var, self.out_bump.alloc_slice_copy(infos)),
             },
@@ -467,24 +471,30 @@ where
             Expr::Meta(..) | Expr::FunApp(..) | Expr::FieldProj(..) | Expr::Match(..) => {
                 match self.zonk_meta_var_spines(expr) {
                     Left(expr) => expr,
-                    Right(value) => self.quote_env().quote(&value),
+                    Right(value) => {
+                        let expr = self.quote_env().quote(&value);
+                        self.zonk(&expr)
+                    }
                 }
             }
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.zonk(r#type);
                 let init = self.zonk(init);
-                let body = self.zonk_with_binder(*name, body);
-                Expr::r#let(self.out_bump, *name, r#type, init, body)
+                let name = self.freshen_name(*name, body);
+                let body = self.zonk_with_binder(name, body);
+                Expr::r#let(self.out_bump, name, r#type, init, body)
             }
             Expr::FunLit(plicity, name, (domain, body)) => {
                 let domain = self.zonk(domain);
-                let body = self.zonk_with_binder(*name, body);
-                Expr::fun_lit(self.out_bump, *plicity, *name, domain, body)
+                let name = self.freshen_name(*name, body);
+                let body = self.zonk_with_binder(name, body);
+                Expr::fun_lit(self.out_bump, *plicity, name, domain, body)
             }
             Expr::FunType(plicity, name, (domain, codomain)) => {
                 let domain = self.zonk(domain);
-                let codomain = self.zonk_with_binder(*name, codomain);
-                Expr::fun_type(self.out_bump, *plicity, *name, domain, codomain)
+                let name = self.freshen_name(*name, codomain);
+                let codomain = self.zonk_with_binder(name, codomain);
+                Expr::fun_type(self.out_bump, *plicity, name, domain, codomain)
             }
             Expr::ArrayLit(exprs) => {
                 Expr::array_lit(self.out_bump, exprs.iter().map(|expr| self.zonk(expr)))
@@ -510,7 +520,7 @@ where
         }
     }
 
-    fn zonk_with_binder(&mut self, name: BinderName, expr: &Expr<'core>) -> Expr<'out> {
+    fn zonk_with_binder(&mut self, name: BinderName, expr: &Expr<'core>) -> ZonkedExpr<'out> {
         self.push_local(name);
         let ret = self.zonk(expr);
         self.pop_local();
@@ -518,7 +528,10 @@ where
     }
 
     /// Unfold elimination spines with solved metavariables at their head.
-    pub fn zonk_meta_var_spines(&mut self, expr: &Expr<'core>) -> Either<Expr<'out>, Value<'core>> {
+    pub fn zonk_meta_var_spines(
+        &mut self,
+        expr: &Expr<'core>,
+    ) -> Either<Expr<'out, LocalName>, Value<'core>> {
         match expr {
             Expr::Meta(var) => match self.get_meta(*var) {
                 None => Left(Expr::Meta(*var)),
@@ -550,8 +563,10 @@ where
                     let cases = self.out_bump.alloc_slice_fill_iter(
                         cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
                     );
-                    let default_expr =
-                        default.map(|(name, expr)| (name, self.zonk_with_binder(name, &expr)));
+                    let default_expr = default.map(|(name, body)| {
+                        let name = self.freshen_name(name, &body);
+                        (name, self.zonk_with_binder(name, &body))
+                    });
                     Left(Expr::r#match(
                         self.out_bump,
                         scrut_expr,
@@ -593,5 +608,46 @@ where
 
         self.local_names.truncate(len);
         self.local_values.truncate(len);
+    }
+
+    /// Replace `name` with a fresh name if it is `_` and occurs in `body`
+    fn freshen_name(&self, name: BinderName, body: &Expr<'_>) -> BinderName {
+        match name {
+            BinderName::User(symbol) => BinderName::User(symbol),
+            BinderName::Underscore => match body.binds_local(Index::new()) {
+                false => BinderName::Underscore,
+                true => BinderName::User(self.gen_fresh_name()),
+            },
+        }
+    }
+
+    /// Generate a fresh name that does not appear in `self.local_names`
+    fn gen_fresh_name(&self) -> Symbol {
+        fn to_str(x: u32) -> String {
+            let base = x / 26;
+            let letter = x % 26;
+            let letter = (letter as u8 + b'a') as char;
+            if base == 0 {
+                format!("{letter}")
+            } else {
+                format!("{letter}{base}")
+            }
+        }
+
+        let mut counter = 0;
+        loop {
+            let name = Symbol::intern(to_str(counter));
+            match self.is_bound(name) {
+                true => {}
+                false => return name,
+            }
+            counter += 1;
+        }
+    }
+
+    fn is_bound(&self, name: Symbol) -> bool {
+        self.local_names
+            .iter()
+            .any(|local_name| *local_name == BinderName::User(name))
     }
 }

@@ -28,22 +28,22 @@ span   | source                                   | type
 99..105 | (A, B)                                   | Type
 100..101 | A                                        | Type
 103..104 | B                                        | Type
-110..111 | x                                        | Unbound(5)._0
+110..111 | x                                        | Unnamed(5)._0
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 13..19 | (A, B)                                   | (Type, Type)
 14..15 | A                                        | Type
 17..18 | B                                        | Type
-35..41 | (a, b)                                   | (Unbound(2)._0, Unbound(3)._1)
-36..37 | a                                        | Unbound(2)._0
-39..40 | b                                        | Unbound(2)._1
+35..41 | (a, b)                                   | (Unnamed(2)._0, Unnamed(3)._1)
+36..37 | a                                        | Unnamed(2)._0
+39..40 | b                                        | Unnamed(2)._1
 69..75 | (A, B)                                   | (Type, Type)
 70..71 | A                                        | Type
 73..74 | B                                        | Type
-91..97 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
-92..93 | x                                        | Unbound(2)._0
-95..96 | y                                        | Unbound(2)._1
+91..97 | (x, y)                                   | (Unnamed(2)._0, Unnamed(3)._1)
+92..93 | x                                        | Unnamed(2)._0
+95..96 | y                                        | Unnamed(2)._1
 
 def snd: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
@@ -72,22 +72,22 @@ span   | source                                   | type
 213..219 | (A, B)                                   | Type
 214..215 | A                                        | Type
 217..218 | B                                        | Type
-224..225 | y                                        | Unbound(5)._1
+224..225 | y                                        | Unnamed(5)._1
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 127..133 | (A, B)                                   | (Type, Type)
 128..129 | A                                        | Type
 131..132 | B                                        | Type
-149..155 | (a, b)                                   | (Unbound(2)._0, Unbound(3)._1)
-150..151 | a                                        | Unbound(2)._0
-153..154 | b                                        | Unbound(2)._1
+149..155 | (a, b)                                   | (Unnamed(2)._0, Unnamed(3)._1)
+150..151 | a                                        | Unnamed(2)._0
+153..154 | b                                        | Unnamed(2)._1
 183..189 | (A, B)                                   | (Type, Type)
 184..185 | A                                        | Type
 187..188 | B                                        | Type
-205..211 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
-206..207 | x                                        | Unbound(2)._0
-209..210 | y                                        | Unbound(2)._1
+205..211 | (x, y)                                   | (Unnamed(2)._0, Unnamed(3)._1)
+206..207 | x                                        | Unnamed(2)._0
+209..210 | y                                        | Unnamed(2)._1
 """
 
 stderr = """

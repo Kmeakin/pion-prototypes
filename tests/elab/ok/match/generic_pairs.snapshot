@@ -13,18 +13,18 @@ span   | source                                   | type
 36..42 | (A, B)                                   | Type
 37..38 | A                                        | Type
 40..41 | B                                        | Type
-47..75 | match p {\n    (x, y) => x,\n}           | Unbound(2)
-53..54 | p                                        | (Unbound(2), Unbound(2))
-71..72 | x                                        | Unbound(4)
+47..75 | match p {\n    (x, y) => x,\n}           | A
+53..54 | p                                        | (A, B)
+71..72 | x                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 15..16 | A                                        | Type
 24..25 | B                                        | Type
-33..34 | p                                        | (Unbound(1), Unbound(1))
-61..67 | (x, y)                                   | (Unbound(2), Unbound(2))
-62..63 | x                                        | Unbound(2)
-65..66 | y                                        | Unbound(1)
+33..34 | p                                        | (A, B)
+61..67 | (x, y)                                   | (A, B)
+62..63 | x                                        | A
+65..66 | y                                        | B
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 
@@ -39,18 +39,18 @@ span   | source                                   | type
 114..120 | (A, B)                                   | Type
 115..116 | A                                        | Type
 118..119 | B                                        | Type
-125..153 | match p {\n    (x, _) => x,\n}           | Unbound(2)
-131..132 | p                                        | (Unbound(2), Unbound(2))
-149..150 | x                                        | Unbound(3)
+125..153 | match p {\n    (x, _) => x,\n}           | A
+131..132 | p                                        | (A, B)
+149..150 | x                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 93..94 | A                                        | Type
 102..103 | B                                        | Type
-111..112 | p                                        | (Unbound(1), Unbound(1))
-139..145 | (x, _)                                   | (Unbound(2), Unbound(2))
-140..141 | x                                        | Unbound(2)
-143..144 | _                                        | Unbound(1)
+111..112 | p                                        | (A, B)
+139..145 | (x, _)                                   | (A, B)
+140..141 | x                                        | A
+143..144 | _                                        | B
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 
@@ -66,18 +66,18 @@ span   | source                                   | type
 192..198 | (A, B)                                   | Type
 193..194 | A                                        | Type
 196..197 | B                                        | Type
-203..231 | match p {\n    (x, y) => y,\n}           | Unbound(1)
-209..210 | p                                        | (Unbound(2), Unbound(2))
-227..228 | y                                        | Unbound(3)
+203..231 | match p {\n    (x, y) => y,\n}           | B
+209..210 | p                                        | (A, B)
+227..228 | y                                        | B
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 171..172 | A                                        | Type
 180..181 | B                                        | Type
-189..190 | p                                        | (Unbound(1), Unbound(1))
-217..223 | (x, y)                                   | (Unbound(2), Unbound(2))
-218..219 | x                                        | Unbound(2)
-221..222 | y                                        | Unbound(1)
+189..190 | p                                        | (A, B)
+217..223 | (x, y)                                   | (A, B)
+218..219 | x                                        | A
+221..222 | y                                        | B
 metavars:
 ?0 = fun(_: #error, a: #error, _: #error) => a
 
@@ -92,18 +92,18 @@ span   | source                                   | type
 270..276 | (A, B)                                   | Type
 271..272 | A                                        | Type
 274..275 | B                                        | Type
-281..309 | match p {\n    (_, y) => y,\n}           | Unbound(1)
-287..288 | p                                        | (Unbound(2), Unbound(2))
-305..306 | y                                        | Unbound(2)
+281..309 | match p {\n    (_, y) => y,\n}           | B
+287..288 | p                                        | (A, B)
+305..306 | y                                        | B
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 249..250 | A                                        | Type
 258..259 | B                                        | Type
-267..268 | p                                        | (Unbound(1), Unbound(1))
-295..301 | (_, y)                                   | (Unbound(2), Unbound(2))
-296..297 | _                                        | Unbound(2)
-299..300 | y                                        | Unbound(1)
+267..268 | p                                        | (A, B)
+295..301 | (_, y)                                   | (A, B)
+296..297 | _                                        | A
+299..300 | y                                        | B
 metavars:
 ?0 = fun(_: #error, a: #error, _: #error) => a
 """

@@ -47,12 +47,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
     pub fn finish_with<T>(mut self, value: T) -> ElabResult<'hir, 'core, T> {
         let mut quote_env = QuoteEnv::new(self.bump, &self.meta_env.values, self.local_env.len());
-        let metavars = self.bump.alloc_slice_fill_iter(
-            self.meta_env
-                .values
-                .iter()
-                .map(|value| value.as_ref().map(|value| quote_env.quote(value))),
+        let mut zonk_env = ZonkEnv::new(
+            self.bump,
+            self.bump,
+            &self.meta_env.values,
+            &mut self.local_env.values,
+            &mut self.local_env.names,
         );
+        let metavars = self
+            .bump
+            .alloc_slice_fill_iter(self.meta_env.values.iter().map(|value| {
+                value
+                    .as_ref()
+                    .map(|value| zonk_env.zonk(&quote_env.quote(value)))
+            }));
 
         let meta_env = std::mem::take(&mut self.meta_env);
         for entry in meta_env.iter() {
@@ -145,8 +153,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         result
     }
 
-    fn pretty_value(&mut self, value: &Value<'_>) -> Box<str> {
+    fn pretty_value(&mut self, value: &Value<'core>) -> Box<str> {
         let expr = self.quote_env().quote(value);
+        let expr = self.zonk_env(self.bump).zonk(&expr);
         let pretty_ctx = pretty::PrettyCtx::new(self.bump);
         let doc = pretty_ctx.expr(&expr, pretty::Prec::MAX);
         doc.pretty(80).to_string().into()
@@ -202,7 +211,7 @@ impl<'core> LocalEnv<'core> {
 
     fn push_param(&mut self, name: BinderName, r#type: Type<'core>) {
         let value = self.next_var();
-        self.push(name, BinderInfo::Param, r#type, value);
+        self.push(name, BinderInfo::Param(name), r#type, value);
     }
 
     fn next_var(&self) -> Value<'core> { Value::local(self.values.len().to_level()) }
@@ -343,8 +352,8 @@ pub enum MetaSource {
 
 #[derive(Debug, Clone, Default)]
 pub struct TypeMap<'hir, 'core> {
-    pub exprs: IntMap<Identity<&'hir pion_hir::syntax::Expr<'hir>>, Expr<'core>>,
-    pub pats: IntMap<Identity<&'hir pion_hir::syntax::Pat<'hir>>, Expr<'core>>,
+    pub exprs: IntMap<Identity<&'hir pion_hir::syntax::Expr<'hir>>, ZonkedExpr<'core>>,
+    pub pats: IntMap<Identity<&'hir pion_hir::syntax::Pat<'hir>>, ZonkedExpr<'core>>,
 }
 
 impl<'hir, 'core> TypeMap<'hir, 'core> {
@@ -362,17 +371,21 @@ impl<'hir, 'core> TypeMap<'hir, 'core> {
         self.pats.shrink_to_fit();
     }
 
-    pub fn insert_expr(&mut self, expr: &'hir pion_hir::syntax::Expr<'hir>, core: Expr<'core>) {
+    pub fn insert_expr(
+        &mut self,
+        expr: &'hir pion_hir::syntax::Expr<'hir>,
+        core: ZonkedExpr<'core>,
+    ) {
         self.exprs.insert(Identity(expr), core);
     }
 
-    pub fn insert_pat(&mut self, pat: &'hir pion_hir::syntax::Pat<'hir>, core: Expr<'core>) {
+    pub fn insert_pat(&mut self, pat: &'hir pion_hir::syntax::Pat<'hir>, core: ZonkedExpr<'core>) {
         self.pats.insert(Identity(pat), core);
     }
 }
 
 impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Expr<'hir>> for TypeMap<'hir, 'core> {
-    type Output = Expr<'core>;
+    type Output = ZonkedExpr<'core>;
 
     fn index(&self, expr: &'hir pion_hir::syntax::Expr<'hir>) -> &Self::Output {
         &self.exprs[&Identity(expr)]
@@ -380,7 +393,7 @@ impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Expr<'hir>> for TypeMa
 }
 
 impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Pat<'hir>> for TypeMap<'hir, 'core> {
-    type Output = Expr<'core>;
+    type Output = ZonkedExpr<'core>;
 
     fn index(&self, pat: &'hir pion_hir::syntax::Pat<'hir>) -> &Self::Output {
         &self.pats[&Identity(pat)]
@@ -390,7 +403,7 @@ impl<'hir, 'core> std::ops::Index<&'hir pion_hir::syntax::Pat<'hir>> for TypeMap
 #[derive(Debug, Clone)]
 pub struct ElabResult<'hir, 'core, T> {
     pub value: T,
-    pub metavars: &'core [Option<Expr<'core>>],
+    pub metavars: &'core [Option<ZonkedExpr<'core>>],
     pub type_map: TypeMap<'hir, 'core>,
     pub diagnostics: Vec<diagnostics::ElabDiagnostic>,
 }
@@ -465,7 +478,7 @@ pub fn elab_expr<'surface, 'hir, 'core>(
     bump: &'core bumpalo::Bump,
     syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     expr: &'hir pion_hir::syntax::Expr<'hir>,
-) -> ElabResult<'hir, 'core, (Expr<'core>, Expr<'core>)> {
+) -> ElabResult<'hir, 'core, (ZonkedExpr<'core>, ZonkedExpr<'core>)> {
     let mut ctx = ElabCtx::new(bump, syntax_map);
 
     let Synth(expr, r#type) = ctx.synth_expr(expr);

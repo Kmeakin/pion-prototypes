@@ -11,12 +11,12 @@ span   | source                                   | type
 26..32 | A -> A                                   | Type
 31..32 | A                                        | Type
 35..46 | fun(a) => a                              | fun(@A: Type) -> A -> A
-45..46 | a                                        | Unbound(1)
+45..46 | a                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 13..14 | A                                        | Type
-39..40 | a                                        | Unbound(0)
+39..40 | a                                        | A
 
 def always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
 types of expressions:
@@ -31,14 +31,14 @@ span   | source                                   | type
 95..101 | B -> A                                   | Type
 100..101 | A                                        | Type
 104..118 | fun(a, b) => a                           | fun(@A: Type, @B: Type) -> A -> B -> A
-117..118 | a                                        | Unbound(3)
+117..118 | a                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 66..67 | A                                        | Type
 77..78 | B                                        | Type
-108..109 | a                                        | Unbound(1)
-111..112 | b                                        | Unbound(1)
+108..109 | a                                        | A
+111..112 | b                                        | B
 
 def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
 types of expressions:
@@ -55,16 +55,16 @@ span   | source                                   | type
 173..179 | A -> B                                   | Type
 178..179 | B                                        | Type
 182..199 | fun(f, x) => f(x)                        | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-195..196 | f                                        | Unbound(3) -> Unbound(3)
-195..199 | f(x)                                     | Unbound(2)
-197..198 | x                                        | Unbound(3)
+195..196 | f                                        | A -> B
+195..199 | f(x)                                     | B
+197..198 | x                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 137..138 | A                                        | Type
 148..149 | B                                        | Type
-186..187 | f                                        | Unbound(1) -> Unbound(1)
-189..190 | x                                        | Unbound(2)
+186..187 | f                                        | A -> B
+189..190 | x                                        | A
 """
 
 stderr = """

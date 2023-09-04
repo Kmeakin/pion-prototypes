@@ -21,21 +21,21 @@ span   | source                                   | type
 76..80 | Type                                     | Type
 85..89 | Type                                     | Type
 94..134 | fun(Wrap) => fun(f) => f(_, fun(a) => a) | fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
-107..134 | fun(f) => f(_, fun(a) => a)              | (fun(A: Type) -> (A -> Unbound(2)(A)) -> Type) -> Type
-117..118 | f                                        | fun(A: Type) -> (A -> Unbound(3)(A)) -> Type
+107..134 | fun(f) => f(_, fun(a) => a)              | (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
+117..118 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
 117..134 | f(_, fun(a) => a)                        | Type
 119..120 | _                                        | Type
-122..133 | fun(a) => a                              | (?3(Unbound(1), Unbound(0))) -> Unbound(2)(?3(Unbound(2), Unbound(1)))
-132..133 | a                                        | Unbound(2)(?3(Unbound(2), Unbound(1)))
+122..133 | fun(a) => a                              | (?3(Wrap, f)) -> Wrap(?3(Wrap, f))
+132..133 | a                                        | Wrap(?3(Wrap, f))
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 15..19 | Wrap                                     | Type -> Type
-42..43 | f                                        | fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
-49..50 | A                                        | ?1(Unbound(0))
+42..43 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
+49..50 | A                                        | ?1(Wrap)
 98..102 | Wrap                                     | Type -> Type
-111..112 | f                                        | fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
-126..127 | a                                        | ?3(Unbound(1), Unbound(0))
+111..112 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
+126..127 | a                                        | ?3(Wrap, f)
 metavars:
 ?0 = fun(_: #error) => Type
 ?1 = fun(_: #error) => Type

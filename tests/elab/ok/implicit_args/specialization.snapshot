@@ -10,7 +10,7 @@ span   | source                                   | type
 21..45 | fun(@A: Type, a: A) => a                 | fun(@A: Type) -> A -> A
 29..33 | Type                                     | Type
 38..39 | A                                        | Type
-44..45 | a                                        | Unbound(1)
+44..45 | a                                        | A
 51..70 | (id : Bool -> Bool)                      | Bool -> Bool
 52..54 | id                                       | Bool -> Bool
 57..61 | Bool                                     | Type
@@ -21,7 +21,7 @@ span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 16..18 | id                                       | ?0
 26..27 | A                                        | Type
-35..36 | a                                        | Unbound(0)
+35..36 | a                                        | A
 metavars:
 ?0 = fun(@A: Type) -> A -> A
 ?1 = Bool
@@ -41,7 +41,7 @@ span   | source                                   | type
 131..137 | B -> A                                   | Type
 136..137 | A                                        | Type
 140..154 | fun(a, b) => a                           | fun(@A: Type, @B: Type) -> A -> B -> A
-153..154 | a                                        | Unbound(3)
+153..154 | a                                        | A
 160..190 | (always : Bool -> Int -> Bool)           | Bool -> Int -> Bool
 161..167 | always                                   | Bool -> Int -> Bool
 170..174 | Bool                                     | Type
@@ -55,8 +55,8 @@ span   | source                                   | type
 89..95 | always                                   | fun(@A: Type, @B: Type) -> A -> B -> A
 102..103 | A                                        | Type
 113..114 | B                                        | Type
-144..145 | a                                        | Unbound(1)
-147..148 | b                                        | Unbound(1)
+144..145 | a                                        | A
+147..148 | b                                        | B
 metavars:
 ?0 = Bool
 ?1 = Int
@@ -74,9 +74,9 @@ span   | source                                   | type
 244..250 | A -> B                                   | Type
 249..250 | B                                        | Type
 255..256 | A                                        | Type
-261..262 | f                                        | Unbound(3) -> Unbound(3)
-261..265 | f(a)                                     | Unbound(2)
-263..264 | a                                        | Unbound(3)
+261..262 | f                                        | A -> B
+261..265 | f(a)                                     | B
+263..264 | a                                        | A
 271..311 | (apply : ((Bool -> Int) -> Bool -> Int)) | (Bool -> Int) -> Bool -> Int
 272..277 | apply                                    | (Bool -> Int) -> Bool -> Int
 280..310 | ((Bool -> Int) -> Bool -> Int)           | Type
@@ -92,8 +92,8 @@ span   | source                                   | type
 209..214 | apply                                    | ?0
 222..223 | A                                        | Type
 232..233 | B                                        | Type
-241..242 | f                                        | Unbound(1) -> Unbound(1)
-252..253 | a                                        | Unbound(2)
+241..242 | f                                        | A -> B
+252..253 | a                                        | A
 metavars:
 ?0 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
 ?1 = Bool

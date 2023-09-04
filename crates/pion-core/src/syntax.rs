@@ -6,7 +6,7 @@ use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
 use crate::env::{EnvLen, Index, Level, SharedEnv};
-use crate::name::{BinderName, FieldName};
+use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 
 mod iterators;
@@ -24,16 +24,17 @@ pub enum Item<'core> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Def<'core> {
     pub name: Symbol,
-    pub r#type: Expr<'core>,
-    pub expr: Expr<'core>,
+    pub r#type: ZonkedExpr<'core>,
+    pub expr: ZonkedExpr<'core>,
 }
 
+pub type ZonkedExpr<'core> = Expr<'core, LocalName>;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Expr<'core> {
+pub enum Expr<'core, Name = ()> {
     Error,
     Lit(Lit),
     Prim(Prim),
-    Local(Index),
+    Local(Name, Index),
     Meta(Level),
     InsertedMeta(Level, &'core [BinderInfo]),
 
@@ -54,7 +55,7 @@ pub enum Expr<'core> {
     ),
 }
 
-impl<'core> Expr<'core> {
+impl<'core, Name> Expr<'core, Name> {
     pub const UNIT_LIT: Self = Self::RecordLit(&[]);
     pub const UNIT_TYPE: Self = Self::RecordType(&[]);
 
@@ -66,9 +67,9 @@ impl<'core> Expr<'core> {
     pub fn r#let(
         bump: &'core bumpalo::Bump,
         name: BinderName,
-        r#type: Expr<'core>,
-        init: Expr<'core>,
-        body: Expr<'core>,
+        r#type: Self,
+        init: Self,
+        body: Self,
     ) -> Self {
         Self::Let(name, bump.alloc((r#type, init, body)))
     }
@@ -77,8 +78,8 @@ impl<'core> Expr<'core> {
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
         name: BinderName,
-        domain: Expr<'core>,
-        body: Expr<'core>,
+        domain: Self,
+        body: Self,
     ) -> Self {
         Self::FunLit(plicity, name, bump.alloc((domain, body)))
     }
@@ -87,17 +88,13 @@ impl<'core> Expr<'core> {
         bump: &'core bumpalo::Bump,
         plicity: Plicity,
         name: BinderName,
-        domain: Expr<'core>,
-        codomain: Expr<'core>,
+        domain: Self,
+        codomain: Self,
     ) -> Self {
         Self::FunType(plicity, name, bump.alloc((domain, codomain)))
     }
 
-    pub fn fun_arrow(
-        bump: &'core bumpalo::Bump,
-        domain: Expr<'core>,
-        codomain: Expr<'core>,
-    ) -> Self {
+    pub fn fun_arrow(bump: &'core bumpalo::Bump, domain: Self, codomain: Self) -> Self {
         Self::fun_type(
             bump,
             Plicity::Explicit,
@@ -107,12 +104,7 @@ impl<'core> Expr<'core> {
         )
     }
 
-    pub fn fun_app(
-        bump: &'core bumpalo::Bump,
-        plicity: Plicity,
-        fun: Expr<'core>,
-        arg: Expr<'core>,
-    ) -> Self {
+    pub fn fun_app(bump: &'core bumpalo::Bump, plicity: Plicity, fun: Self, arg: Self) -> Self {
         Self::FunApp(plicity, bump.alloc((fun, arg)))
     }
 
@@ -123,7 +115,7 @@ impl<'core> Expr<'core> {
         Self::ArrayLit(bump.alloc_slice_fill_iter(exprs))
     }
 
-    pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Expr<'core>, name: FieldName) -> Self {
+    pub fn field_proj(bump: &'core bumpalo::Bump, scrut: Self, name: FieldName) -> Self {
         Self::FieldProj(bump.alloc(scrut), name)
     }
 
@@ -143,19 +135,17 @@ impl<'core> Expr<'core> {
 
     pub fn r#match(
         bump: &'core bumpalo::Bump,
-        scrut: Expr<'core>,
-        cases: &'core [(Lit, Expr<'core>)],
-        default: Option<(BinderName, Expr<'core>)>,
+        scrut: Self,
+        cases: &'core [(Lit, Self)],
+        default: Option<(BinderName, Self)>,
     ) -> Self {
         Self::Match(bump.alloc((scrut, default)), cases)
     }
 
-    pub fn r#if(
-        bump: &'core bumpalo::Bump,
-        scrut: Expr<'core>,
-        then: Expr<'core>,
-        r#else: Expr<'core>,
-    ) -> Self {
+    pub fn r#if(bump: &'core bumpalo::Bump, scrut: Self, then: Self, r#else: Self) -> Self
+    where
+        Name: Copy,
+    {
         Self::r#match(
             bump,
             scrut,
@@ -189,22 +179,25 @@ impl<'core> Expr<'core> {
             Expr::Match((scrut, default), cases) => {
                 scrut.binds_local(var)
                     || cases.iter().any(|(_, expr)| expr.binds_local(var))
-                    || default.map_or(false, |(_, expr)| expr.binds_local(var.next()))
+                    || default
+                        .as_ref()
+                        .map_or(false, |(_, expr)| expr.binds_local(var.next()))
             }
         }
     }
 
     #[must_use]
-    pub fn shift(&self, arena: &'core bumpalo::Bump, amount: EnvLen) -> Expr<'core> {
+    pub fn shift(&self, arena: &'core bumpalo::Bump, amount: EnvLen) -> Self
+    where
+        Name: Copy,
+    {
         self.shift_inner(arena, Index::new(), amount)
     }
 
-    fn shift_inner(
-        &self,
-        bump: &'core bumpalo::Bump,
-        mut min: Index,
-        amount: EnvLen,
-    ) -> Expr<'core> {
+    fn shift_inner(&self, bump: &'core bumpalo::Bump, mut min: Index, amount: EnvLen) -> Self
+    where
+        Name: Copy,
+    {
         // Skip traversing and rebuilding the term if it would make no change. Increases
         // sharing.
         if amount == EnvLen::new() {
@@ -212,7 +205,7 @@ impl<'core> Expr<'core> {
         }
 
         match self {
-            Expr::Local(var) if *var >= min => Expr::Local(*var + amount),
+            Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
 
             Expr::Error
             | Expr::Lit(..)
@@ -326,7 +319,7 @@ impl<'core> Pat<'core> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinderInfo {
     Def,
-    Param,
+    Param(BinderName),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
