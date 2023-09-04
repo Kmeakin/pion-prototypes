@@ -64,24 +64,6 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
-            Expr::InsertedMeta(var, spine) => {
-                let fun = self.expr(&Expr::Meta(*var), Prec::MAX);
-                let num_params = spine
-                    .iter()
-                    .filter(|info| matches!(info, BinderInfo::Param(..)))
-                    .count();
-                if num_params == 0 {
-                    return fun;
-                }
-
-                let args = spine.iter().filter_map(|info| match info {
-                    BinderInfo::Def => None,
-                    BinderInfo::Param(BinderName::User(symbol)) => Some(self.ident(*symbol)),
-                    BinderInfo::Param(BinderName::Underscore) => Some(self.text("FIXME")),
-                });
-                let args = self.intersperse(args, self.text(", "));
-                fun.append("(").append(args).append(")")
-            }
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.expr(r#type, Prec::MAX);
                 let init = self.expr(init, Prec::MAX);
@@ -331,7 +313,6 @@ fn expr_prec(expr: &ZonkedExpr<'_>) -> Prec {
         Expr::Prim(_) => Prec::Atom,
         Expr::Local(..) => Prec::Atom,
         Expr::Meta(_) => Prec::Atom,
-        Expr::InsertedMeta(..) => Prec::App,
         Expr::Let(..) => Prec::Let,
         Expr::FunLit(..) => Prec::Fun,
         Expr::FunType(..) => Prec::Fun,

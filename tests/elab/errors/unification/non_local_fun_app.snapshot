@@ -1,7 +1,7 @@
 exit status: 1
 
 stdout = """
-def error: fun(A: Type) -> (A -> ?3(A, FIXME)) -> A = fun(A: Type, a: fun(a: A) -> ?3(A, a)) => #error;
+def error: fun(A: Type) -> (fun(a: A) -> ?3(A, a)) -> A = fun(A: Type, a: fun(a: A) -> ?3(A, a)) => #error;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

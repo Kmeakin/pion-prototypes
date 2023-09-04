@@ -7,7 +7,7 @@ use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;
-use crate::env::{EnvLen, Index, SharedEnv, UniqueEnv};
+use crate::env::{EnvLen, Index, Level, SharedEnv, UniqueEnv};
 use crate::name::{BinderName, LocalName};
 use crate::pretty;
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv, ZonkEnv};
@@ -88,10 +88,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
         let level = self.meta_env.len().to_level();
         self.meta_env.push(source, r#type);
-        Expr::InsertedMeta(
-            level,
-            self.bump.alloc_slice_copy(self.local_env.infos.as_slice()),
-        )
+
+        let mut expr = Expr::Meta(level);
+        for (level, info) in Level::iter().zip(self.local_env.infos.iter()) {
+            match info {
+                BinderInfo::Def => {}
+                BinderInfo::Param => {
+                    let index = self.local_env.len().level_to_index(level).unwrap();
+                    expr =
+                        Expr::fun_app(self.bump, Plicity::Explicit, expr, Expr::Local((), index));
+                }
+            }
+        }
+        expr
     }
 
     fn push_unsolved_type(&mut self, source: MetaSource) -> Value<'core> {
@@ -211,7 +220,7 @@ impl<'core> LocalEnv<'core> {
 
     fn push_param(&mut self, name: BinderName, r#type: Type<'core>) {
         let value = self.next_var();
-        self.push(name, BinderInfo::Param(name), r#type, value);
+        self.push(name, BinderInfo::Param, r#type, value);
     }
 
     fn next_var(&self) -> Value<'core> { Value::local(self.values.len().to_level()) }

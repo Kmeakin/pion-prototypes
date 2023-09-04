@@ -36,7 +36,6 @@ pub enum Expr<'core, Name = ()> {
     Prim(Prim),
     Local(Name, Index),
     Meta(Level),
-    InsertedMeta(Level, &'core [BinderInfo]),
 
     Let(BinderName, &'core (Self, Self, Self)),
 
@@ -157,11 +156,7 @@ impl<'core, Name> Expr<'core, Name> {
     pub fn binds_local(&self, var: Index) -> bool {
         match self {
             Expr::Local(.., v) => *v == var,
-            Expr::Error
-            | Expr::Lit(..)
-            | Expr::Prim(..)
-            | Expr::Meta(..)
-            | Expr::InsertedMeta(..) => false,
+            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Meta(..) => false,
             Expr::Let(_, (r#type, init, body)) => {
                 r#type.binds_local(var) || init.binds_local(var) || body.binds_local(var.next())
             }
@@ -207,12 +202,9 @@ impl<'core, Name> Expr<'core, Name> {
         match self {
             Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
 
-            Expr::Error
-            | Expr::Lit(..)
-            | Expr::Prim(..)
-            | Expr::Local(..)
-            | Expr::Meta(..)
-            | Expr::InsertedMeta(..) => *self,
+            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Local(..) | Expr::Meta(..) => {
+                *self
+            }
 
             Expr::Let(name, (r#type, init, body)) => Expr::r#let(
                 bump,
@@ -319,7 +311,7 @@ impl<'core> Pat<'core> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BinderInfo {
     Def,
-    Param(BinderName),
+    Param,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

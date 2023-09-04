@@ -5,8 +5,7 @@ use pion_utils::slice_vec::SliceVec;
 use crate::env::{EnvLen, Index, Level, SharedEnv, SliceEnv, UniqueEnv};
 use crate::name::{BinderName, FieldName, LocalName};
 use crate::syntax::{
-    BinderInfo, Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value,
-    ZonkedExpr,
+    Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value, ZonkedExpr,
 };
 
 #[derive(Copy, Clone)]
@@ -198,10 +197,6 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 Some(value) => value.clone(),
                 None => Value::meta(*var),
             },
-            Expr::InsertedMeta(var, infos) => {
-                let head = self.eval(&Expr::Meta(*var));
-                self.apply_binder_infos(head, infos)
-            }
             Expr::Let(_, (_, init, body)) => {
                 let init_value = self.eval(init);
                 self.local_values.push(init_value);
@@ -247,19 +242,6 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 self.elim_env().match_scrut(scrut, cases)
             }
         }
-    }
-
-    fn apply_binder_infos(&mut self, mut head: Value<'core>, infos: &[BinderInfo]) -> Value<'core> {
-        for (info, value) in infos.iter().zip(self.local_values.iter()) {
-            head = match info {
-                BinderInfo::Def => head,
-                BinderInfo::Param(..) => {
-                    self.elim_env()
-                        .fun_app(Plicity::Explicit, head, value.clone())
-                }
-            };
-        }
-        head
     }
 }
 
@@ -453,18 +435,13 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
             Expr::Local((), var) => match self.local_names.get_index(*var) {
                 Some(BinderName::User(symbol)) => Expr::Local(LocalName::User(*symbol), *var),
                 Some(BinderName::Underscore) => Expr::Local(
-                    LocalName::User(Symbol::intern(format!("Unnamed({})", usize::from(*var)))),
+                    LocalName::User(
+                        // FIXME
+                        Symbol::intern(format!("Unnamed({})", usize::from(*var))),
+                    ),
                     *var,
                 ),
                 None => panic!("Unbound local variable: {var:?}"),
-            },
-            Expr::InsertedMeta(var, infos) => match self.get_meta(*var) {
-                Some(value) => {
-                    let value = self.eval_env().apply_binder_infos(value.clone(), infos);
-                    let expr = self.quote_env().quote(&value);
-                    self.zonk(&expr)
-                }
-                None => Expr::InsertedMeta(*var, self.out_bump.alloc_slice_copy(infos)),
             },
             // These exprs might be elimination spines with metavariables at
             // their head that need to be unfolded.
@@ -536,13 +513,6 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
             Expr::Meta(var) => match self.get_meta(*var) {
                 None => Left(Expr::Meta(*var)),
                 Some(value) => Right(value.clone()),
-            },
-            Expr::InsertedMeta(var, infos) => match self.get_meta(*var) {
-                None => Left(Expr::InsertedMeta(
-                    *var,
-                    self.out_bump.alloc_slice_copy(infos),
-                )),
-                Some(value) => Right(self.eval_env().apply_binder_infos(value.clone(), infos)),
             },
             Expr::FunApp(plicity, (fun, arg)) => match self.zonk_meta_var_spines(fun) {
                 Left(fun_expr) => {
