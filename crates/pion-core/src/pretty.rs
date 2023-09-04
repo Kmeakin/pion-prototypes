@@ -76,11 +76,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(": ")
                     .append(r#type)
                     .append(" =")
-                    .append(self.softline())
-                    .append(init)
-                    .append(";")
-                    .append(self.hardline())
-                    .append(body)
+                    .append(self.line().append(init).append(";").group().nest(INDENT))
+                    .append(self.hardline().append(body).group())
             }
             Expr::FunLit(..) => {
                 let mut params = Vec::new();
@@ -98,8 +95,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append("(")
                     .append(params)
                     .append(")")
-                    .append(" => ")
-                    .append(body)
+                    .append(" =>")
+                    .append(self.line().append(body).group().nest(INDENT))
             }
             Expr::FunType(..) => {
                 let mut params = Vec::new();
@@ -216,13 +213,16 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Match((scrut, default), cases) => {
                 let scrut = self.expr(scrut, Prec::MAX);
                 let cases = cases.iter().map(|(lit, expr)| {
+                    let expr = self.expr(expr, Prec::MAX);
                     self.lit(*lit)
-                        .append(" => ")
-                        .append(self.expr(expr, Prec::MAX))
+                        .append(" =>")
+                        .append(self.line().append(expr).group().nest(INDENT))
                 });
                 let default = default.as_ref().map(|(name, expr)| {
                     let expr = self.expr(expr, Prec::MAX);
-                    self.binder_name(*name).append(" => ").append(expr)
+                    self.binder_name(*name)
+                        .append(" =>")
+                        .append(self.line().append(expr).group().nest(INDENT))
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));

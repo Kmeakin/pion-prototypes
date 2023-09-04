@@ -2,11 +2,13 @@ exit status: 0
 
 stdout = """
 def fst: fun(a: (Type, Type)) -> (a._0, a._1) -> a._0 =
-    fun(a: (Type, Type)) => let A: Type = a._0;
-    let B: Type = a._1;
-    fun(b: (a._0, a._1)) => let x: a._0 = b._0;
-    let y: a._1 = b._1;
-    x;
+    fun(a: (Type, Type)) =>
+        let A: Type = a._0;
+        let B: Type = a._1;
+        fun(b: (a._0, a._1)) =>
+            let x: a._0 = b._0;
+            let y: a._1 = b._1;
+            x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -29,11 +31,13 @@ span   | source                                   | type
 40..41 | y                                        | Unnamed(2)._1
 
 def snd: fun(a: (Type, Type)) -> (a._0, a._1) -> a._1 =
-    fun(a: (Type, Type)) => let A: Type = a._0;
-    let B: Type = a._1;
-    fun(b: (a._0, a._1)) => let x: a._0 = b._0;
-    let y: a._1 = b._1;
-    y;
+    fun(a: (Type, Type)) =>
+        let A: Type = a._0;
+        let B: Type = a._1;
+        fun(b: (a._0, a._1)) =>
+            let x: a._0 = b._0;
+            let y: a._1 = b._1;
+            y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

@@ -2,7 +2,8 @@ exit status: 1
 
 stdout = """
 def error: fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type =
-    fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) => f(?3(Wrap, f), fun(a: ?3(Wrap, f)) => #error);
+    fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) =>
+        f(?3(Wrap, f), fun(a: ?3(Wrap, f)) => #error);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

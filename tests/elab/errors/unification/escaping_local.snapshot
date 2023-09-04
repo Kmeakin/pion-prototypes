@@ -2,8 +2,9 @@ exit status: 1
 
 stdout = """
 def bar: fun(x: ?0) -> ?1(x) =
-    fun(x: ?0) => let a: ?1(x) = #error;
-    a;
+    fun(x: ?0) =>
+        let a: ?1(x) = #error;
+        a;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
