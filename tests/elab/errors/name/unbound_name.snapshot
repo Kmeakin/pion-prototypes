@@ -3,7 +3,9 @@ exit status: 1
 stdout = """
 def error: #error = #error;
 types of expressions:
-12..13 = #error
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..13 | b                                        | #error
 """
 
 stderr = """

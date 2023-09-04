@@ -4,22 +4,26 @@ stdout = """
 def fst: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
 x;
 types of expressions:
-10..66 = fun(A: Type, B: Type) -> (A, B) -> A
-18..22 = Type
-28..32 = Type
-38..44 = Type
-39..40 = Type
-42..43 = Type
-49..66 = Unbound(2)
-62..63 = (Unbound(2), Unbound(2))
-65..66 = Unbound(3)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..66 | fun(A : Type, B : ...> let (x, _) = p; x | fun(A: Type, B: Type) -> (A, B) -> A
+18..22 | Type                                     | Type
+28..32 | Type                                     | Type
+38..44 | (A, B)                                   | Type
+39..40 | A                                        | Type
+42..43 | B                                        | Type
+49..66 | let (x, _) = p; x                        | Unbound(2)
+62..63 | p                                        | (Unbound(2), Unbound(2))
+65..66 | x                                        | Unbound(3)
 types of patterns:
-14..15 = Type
-24..25 = Type
-34..35 = (Unbound(1), Unbound(1))
-53..59 = (?0(Unbound(2), Unbound(1), Unbound(0)), ?1(Unbound(2), Unbound(1), _0))
-54..55 = ?0(Unbound(2), Unbound(1), Unbound(0))
-57..58 = ?1(Unbound(2), Unbound(1), Unbound(0))
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | A                                        | Type
+24..25 | B                                        | Type
+34..35 | p                                        | (Unbound(1), Unbound(1))
+53..59 | (x, _)                                   | (?0(Unbound(2), Unbound(1), Unbound(0)), ?1(Unbound(2), Unbound(1), _0))
+54..55 | x                                        | ?0(Unbound(2), Unbound(1), Unbound(0))
+57..58 | _                                        | ?1(Unbound(2), Unbound(1), Unbound(0))
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 ?1 = fun(a: #error, _: #error, _: #error) => a
@@ -27,22 +31,26 @@ metavars:
 def snd: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
 y;
 types of expressions:
-78..134 = fun(A: Type, B: Type) -> (A, B) -> B
-86..90 = Type
-96..100 = Type
-106..112 = Type
-107..108 = Type
-110..111 = Type
-117..134 = Unbound(1)
-130..131 = (Unbound(2), Unbound(2))
-133..134 = Unbound(2)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+78..134 | fun(A : Type, B : ...> let (_, y) = p; y | fun(A: Type, B: Type) -> (A, B) -> B
+86..90 | Type                                     | Type
+96..100 | Type                                     | Type
+106..112 | (A, B)                                   | Type
+107..108 | A                                        | Type
+110..111 | B                                        | Type
+117..134 | let (_, y) = p; y                        | Unbound(1)
+130..131 | p                                        | (Unbound(2), Unbound(2))
+133..134 | y                                        | Unbound(2)
 types of patterns:
-82..83 = Type
-92..93 = Type
-102..103 = (Unbound(1), Unbound(1))
-121..127 = (?0(Unbound(2), Unbound(1), Unbound(0)), ?1(Unbound(2), Unbound(1), _0))
-122..123 = ?0(Unbound(2), Unbound(1), Unbound(0))
-125..126 = ?1(Unbound(2), Unbound(1), Unbound(0))
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+82..83 | A                                        | Type
+92..93 | B                                        | Type
+102..103 | p                                        | (Unbound(1), Unbound(1))
+121..127 | (_, y)                                   | (?0(Unbound(2), Unbound(1), Unbound(0)), ?1(Unbound(2), Unbound(1), _0))
+122..123 | _                                        | ?0(Unbound(2), Unbound(1), Unbound(0))
+125..126 | y                                        | ?1(Unbound(2), Unbound(1), Unbound(0))
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 ?1 = fun(a: #error, _: #error, _: #error) => a

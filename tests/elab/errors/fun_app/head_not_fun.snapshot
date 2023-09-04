@@ -3,9 +3,11 @@ exit status: 1
 stdout = """
 def error: #error = #error;
 types of expressions:
-12..15 = Type
-12..22 = #error
-16..21 = <missing>
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..15 | Int                                      | Type
+12..22 | Int(false)                               | #error
+16..21 | false                                    | <missing>
 """
 
 stderr = """

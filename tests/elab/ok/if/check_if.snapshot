@@ -6,11 +6,13 @@ def a: Int = match true {
     true => 1,
 };
 types of expressions:
-7..10 = Type
-13..34 = Int
-16..20 = Bool
-26..27 = Int
-33..34 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+7..10 | Int                                      | Type
+13..34 | if true then 1 else 0                    | Int
+16..20 | true                                     | Bool
+26..27 | 1                                        | Int
+33..34 | 0                                        | Int
 """
 
 stderr = """

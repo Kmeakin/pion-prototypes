@@ -3,22 +3,26 @@ exit status: 1
 stdout = """
 def error: fun(A: Type) -> (A -> ?3(A, Unnamed(0))) -> A = fun(A: Type, a: fun(a: A) -> ?3(A, a)) => #error;
 types of expressions:
-11..38 = Type
-19..20 = Type
-25..33 = Type
-25..38 = Type
-26..27 = Type
-31..32 = Type
-37..38 = Type
-43..67 = fun(A: Type) -> (fun(a: A) -> ?3(A, a)) -> A
-53..67 = (fun(a: Unbound(0)) -> ?3(Unbound(1), a)) -> Unbound(1)
-63..64 = fun(a: Unbound(1)) -> ?3(Unbound(2), a)
-63..67 = Unbound(1)
-65..66 = Unbound(1)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..38 | fun(A : _) -> (A -> _) -> A              | Type
+19..20 | _                                        | Type
+25..33 | (A -> _)                                 | Type
+25..38 | (A -> _) -> A                            | Type
+26..27 | A                                        | Type
+31..32 | _                                        | Type
+37..38 | A                                        | Type
+43..67 | fun(A) => fun(a) => a(_)                 | fun(A: Type) -> (fun(a: A) -> ?3(A, a)) -> A
+53..67 | fun(a) => a(_)                           | (fun(a: Unbound(0)) -> ?3(Unbound(1), a)) -> Unbound(1)
+63..64 | a                                        | fun(a: Unbound(1)) -> ?3(Unbound(2), a)
+63..67 | a(_)                                     | Unbound(1)
+65..66 | _                                        | Unbound(1)
 types of patterns:
-15..16 = ?1
-47..48 = Type
-57..58 = fun(a: Unbound(0)) -> ?3(Unbound(1), a)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..16 | A                                        | ?1
+47..48 | A                                        | Type
+57..58 | a                                        | fun(a: Unbound(0)) -> ?3(Unbound(1), a)
 metavars:
 ?0 = Type
 ?1 = Type

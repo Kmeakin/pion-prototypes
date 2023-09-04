@@ -3,56 +3,68 @@ exit status: 0
 stdout = """
 def id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
 types of expressions:
-8..32 = Type
-17..21 = Type
-26..27 = Type
-26..32 = Type
-31..32 = Type
-35..46 = fun(@A: Type) -> A -> A
-45..46 = Unbound(1)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+8..32 | fun(@A : Type) -> A -> A                 | Type
+17..21 | Type                                     | Type
+26..27 | A                                        | Type
+26..32 | A -> A                                   | Type
+31..32 | A                                        | Type
+35..46 | fun(a) => a                              | fun(@A: Type) -> A -> A
+45..46 | a                                        | Unbound(1)
 types of patterns:
-13..14 = Type
-39..40 = Unbound(0)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+13..14 | A                                        | Type
+39..40 | a                                        | Unbound(0)
 
 def always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
 types of expressions:
-61..101 = Type
-70..74 = Type
-81..85 = Type
-90..91 = Type
-90..101 = Type
-95..96 = Type
-95..101 = Type
-100..101 = Type
-104..118 = fun(@A: Type, @B: Type) -> A -> B -> A
-117..118 = Unbound(3)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+61..101 | fun(@A : Type, @B : Type) -> A -> B -> A | Type
+70..74 | Type                                     | Type
+81..85 | Type                                     | Type
+90..91 | A                                        | Type
+90..101 | A -> B -> A                              | Type
+95..96 | B                                        | Type
+95..101 | B -> A                                   | Type
+100..101 | A                                        | Type
+104..118 | fun(a, b) => a                           | fun(@A: Type, @B: Type) -> A -> B -> A
+117..118 | a                                        | Unbound(3)
 types of patterns:
-66..67 = Type
-77..78 = Type
-108..109 = Unbound(1)
-111..112 = Unbound(1)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+66..67 | A                                        | Type
+77..78 | B                                        | Type
+108..109 | a                                        | Unbound(1)
+111..112 | b                                        | Unbound(1)
 
 def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
 types of expressions:
-132..179 = Type
-141..145 = Type
-152..156 = Type
-161..169 = Type
-161..179 = Type
-162..163 = Type
-167..168 = Type
-173..174 = Type
-173..179 = Type
-178..179 = Type
-182..199 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-195..196 = Unbound(3) -> Unbound(3)
-195..199 = Unbound(2)
-197..198 = Unbound(3)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+132..179 | fun(@A : Type, @B ... (A -> B) -> A -> B | Type
+141..145 | Type                                     | Type
+152..156 | Type                                     | Type
+161..169 | (A -> B)                                 | Type
+161..179 | (A -> B) -> A -> B                       | Type
+162..163 | A                                        | Type
+167..168 | B                                        | Type
+173..174 | A                                        | Type
+173..179 | A -> B                                   | Type
+178..179 | B                                        | Type
+182..199 | fun(f, x) => f(x)                        | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+195..196 | f                                        | Unbound(3) -> Unbound(3)
+195..199 | f(x)                                     | Unbound(2)
+197..198 | x                                        | Unbound(3)
 types of patterns:
-137..138 = Type
-148..149 = Type
-186..187 = Unbound(1) -> Unbound(1)
-189..190 = Unbound(2)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+137..138 | A                                        | Type
+148..149 | B                                        | Type
+186..187 | f                                        | Unbound(1) -> Unbound(1)
+189..190 | x                                        | Unbound(2)
 """
 
 stderr = """

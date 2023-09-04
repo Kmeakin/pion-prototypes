@@ -3,21 +3,27 @@ exit status: 0
 stdout = """
 def fun0: () -> Int = fun(_: ()) => 0;
 types of expressions:
-10..12 = Type
-10..19 = Type
-16..19 = Type
-22..32 = () -> Int
-31..32 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..12 | ()                                       | Type
+10..19 | () -> Int                                | Type
+16..19 | Int                                      | Type
+22..32 | fun() => 0                               | () -> Int
+31..32 | 0                                        | Int
 
 def fun1: Int -> Bool = fun(x: Int) => false;
 types of expressions:
-45..48 = Type
-45..56 = Type
-52..56 = Type
-59..74 = Int -> Bool
-69..74 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+45..48 | Int                                      | Type
+45..56 | Int -> Bool                              | Type
+52..56 | Bool                                     | Type
+59..74 | fun(x) => false                          | Int -> Bool
+69..74 | false                                    | Bool
 types of patterns:
-63..64 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+63..64 | x                                        | Int
 """
 
 stderr = """

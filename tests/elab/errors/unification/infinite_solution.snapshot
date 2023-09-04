@@ -3,35 +3,39 @@ exit status: 1
 stdout = """
 def error: fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type = fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) => f(?3(Wrap, f), fun(a: ?3(Wrap, f)) => #error);
 types of expressions:
-11..89 = Type
-21..25 = Type
-21..33 = Type
-29..33 = Type
-38..89 = Type
-45..80 = Type
-52..53 = Type
-58..72 = Type
-58..80 = Type
-59..60 = Type
-64..68 = Type -> Type
-64..71 = Type
-69..70 = Type
-76..80 = Type
-85..89 = Type
-94..134 = fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
-107..134 = (fun(A: Type) -> (A -> Unbound(2)(A)) -> Type) -> Type
-117..118 = fun(A: Type) -> (A -> Unbound(3)(A)) -> Type
-117..134 = Type
-119..120 = Type
-122..133 = (?3(Unbound(1), Unbound(0))) -> Unbound(2)(?3(Unbound(2), Unbound(1)))
-132..133 = Unbound(2)(?3(Unbound(2), Unbound(1)))
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..89 | fun(Wrap: Type -> ...)) -> Type) -> Type | Type
+21..25 | Type                                     | Type
+21..33 | Type -> Type                             | Type
+29..33 | Type                                     | Type
+38..89 | fun(f: fun(A: _) -...)) -> Type) -> Type | Type
+45..80 | fun(A: _) -> (A -> Wrap(A)) -> Type      | Type
+52..53 | _                                        | Type
+58..72 | (A -> Wrap(A))                           | Type
+58..80 | (A -> Wrap(A)) -> Type                   | Type
+59..60 | A                                        | Type
+64..68 | Wrap                                     | Type -> Type
+64..71 | Wrap(A)                                  | Type
+69..70 | A                                        | Type
+76..80 | Type                                     | Type
+85..89 | Type                                     | Type
+94..134 | fun(Wrap) => fun(f) => f(_, fun(a) => a) | fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
+107..134 | fun(f) => f(_, fun(a) => a)              | (fun(A: Type) -> (A -> Unbound(2)(A)) -> Type) -> Type
+117..118 | f                                        | fun(A: Type) -> (A -> Unbound(3)(A)) -> Type
+117..134 | f(_, fun(a) => a)                        | Type
+119..120 | _                                        | Type
+122..133 | fun(a) => a                              | (?3(Unbound(1), Unbound(0))) -> Unbound(2)(?3(Unbound(2), Unbound(1)))
+132..133 | a                                        | Unbound(2)(?3(Unbound(2), Unbound(1)))
 types of patterns:
-15..19 = Type -> Type
-42..43 = fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
-49..50 = ?1(Unbound(0))
-98..102 = Type -> Type
-111..112 = fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
-126..127 = ?3(Unbound(1), Unbound(0))
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..19 | Wrap                                     | Type -> Type
+42..43 | f                                        | fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
+49..50 | A                                        | ?1(Unbound(0))
+98..102 | Wrap                                     | Type -> Type
+111..112 | f                                        | fun(A: Type) -> (A -> Unbound(2)(A)) -> Type
+126..127 | a                                        | ?3(Unbound(1), Unbound(0))
 metavars:
 ?0 = fun(_: #error) => Type
 ?1 = fun(_: #error) => Type

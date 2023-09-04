@@ -70,7 +70,7 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
                 let result = pion_core::elab::elab_def(&bump, &syntax_map, &def);
 
                 if dump_flags.core {
-                    pion_core::dump::dump_def(&mut stdout, &syntax_map, &result)?;
+                    pion_core::dump::dump_def(&mut stdout, src32.as_str(), &syntax_map, &result)?;
                     writeln!(&mut stdout)?;
                 }
 

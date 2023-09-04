@@ -7,21 +7,25 @@ fun(b: (a._0, a._1)) => let x: a._0 = b._0;
 let y: a._1 = b._1;
 x;
 types of expressions:
-10..56 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
-22..34 = Type
-23..27 = Type
-29..33 = Type
-44..50 = Type
-45..46 = Type
-48..49 = Type
-55..56 = Unbound(5)._0
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..56 | fun((A, B): (Type,...x, y): (A, B)) => x | fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
+22..34 | (Type, Type)                             | Type
+23..27 | Type                                     | Type
+29..33 | Type                                     | Type
+44..50 | (A, B)                                   | Type
+45..46 | A                                        | Type
+48..49 | B                                        | Type
+55..56 | x                                        | Unbound(5)._0
 types of patterns:
-14..20 = (Type, Type)
-15..16 = Type
-18..19 = Type
-36..42 = (Unbound(2)._0, Unbound(3)._1)
-37..38 = Unbound(2)._0
-40..41 = Unbound(2)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..20 | (A, B)                                   | (Type, Type)
+15..16 | A                                        | Type
+18..19 | B                                        | Type
+36..42 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
+37..38 | x                                        | Unbound(2)._0
+40..41 | y                                        | Unbound(2)._1
 
 def snd: fun(a: (Type, Type)) -> (a._0, a._1) -> a._1 = fun(a: (Type, Type)) => let A: Type = a._0;
 let B: Type = a._1;
@@ -29,21 +33,25 @@ fun(b: (a._0, a._1)) => let x: a._0 = b._0;
 let y: a._1 = b._1;
 y;
 types of expressions:
-68..114 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
-80..92 = Type
-81..85 = Type
-87..91 = Type
-102..108 = Type
-103..104 = Type
-106..107 = Type
-113..114 = Unbound(5)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+68..114 | fun((A, B): (Type,...x, y): (A, B)) => y | fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
+80..92 | (Type, Type)                             | Type
+81..85 | Type                                     | Type
+87..91 | Type                                     | Type
+102..108 | (A, B)                                   | Type
+103..104 | A                                        | Type
+106..107 | B                                        | Type
+113..114 | y                                        | Unbound(5)._1
 types of patterns:
-72..78 = (Type, Type)
-73..74 = Type
-76..77 = Type
-94..100 = (Unbound(2)._0, Unbound(3)._1)
-95..96 = Unbound(2)._0
-98..99 = Unbound(2)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+72..78 | (A, B)                                   | (Type, Type)
+73..74 | A                                        | Type
+76..77 | B                                        | Type
+94..100 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
+95..96 | x                                        | Unbound(2)._0
+98..99 | y                                        | Unbound(2)._1
 """
 
 stderr = """

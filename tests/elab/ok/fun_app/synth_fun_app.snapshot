@@ -4,37 +4,47 @@ stdout = """
 def app0: Bool = let f: () -> Bool = fun(_: ()) => false;
 f(());
 types of expressions:
-15..46 = Bool
-23..37 = () -> Bool
-32..37 = Bool
-43..44 = () -> Bool
-43..46 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..46 | let f = fun() => false;\n    f()         | Bool
+23..37 | fun() => false                           | () -> Bool
+32..37 | false                                    | Bool
+43..44 | f                                        | () -> Bool
+43..46 | f()                                      | Bool
 types of patterns:
-19..20 = ?0
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+19..20 | f                                        | ?0
 metavars:
 ?0 = () -> Bool
 
 def app1: Int = let f: Int -> Int = fun(x: Int) => x;
 f(1);
 types of expressions:
-64..98 = Int
-72..88 = Int -> Int
-79..82 = Type
-87..88 = Int
-94..95 = Int -> Int
-94..98 = Int
-96..97 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+64..98 | let f = fun(x: Int) => x;\n    f(1)      | Int
+72..88 | fun(x: Int) => x                         | Int -> Int
+79..82 | Int                                      | Type
+87..88 | x                                        | Int
+94..95 | f                                        | Int -> Int
+94..98 | f(1)                                     | Int
+96..97 | 1                                        | Int
 types of patterns:
-68..69 = ?0
-76..77 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+68..69 | f                                        | ?0
+76..77 | x                                        | Int
 metavars:
 ?0 = Int -> Int
 
 def curried: Int -> Type = Array(Int);
 types of expressions:
-115..120 = Type -> Int -> Type
-115..125 = Int -> Type
-121..124 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+115..120 | Array                                    | Type -> Int -> Type
+115..125 | Array(Int)                               | Int -> Type
+121..124 | Int                                      | Type
 """
 
 stderr = """

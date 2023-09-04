@@ -3,19 +3,27 @@ exit status: 0
 stdout = """
 def x1: Type = Type;
 types of expressions:
-9..13 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+9..13 | Type                                     | Type
 
 def x2: Type = Int;
 types of expressions:
-24..27 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+24..27 | Int                                      | Type
 
 def x3: Type = Bool;
 types of expressions:
-38..42 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+38..42 | Bool                                     | Type
 
 def x4: Type -> Int -> Type = Array;
 types of expressions:
-53..58 = Type -> Int -> Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+53..58 | Array                                    | Type -> Int -> Type
 """
 
 stderr = """

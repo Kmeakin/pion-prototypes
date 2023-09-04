@@ -6,15 +6,19 @@ def is-zero: Int -> Bool = fun(x: Int) => match x {
     _ => false,
 };
 types of expressions:
-14..66 = Int -> Bool
-24..66 = Bool
-30..31 = ?0
-43..47 = Bool
-58..63 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..66 | fun(x) => match x ...n    _ => false,\n} | Int -> Bool
+24..66 | match x {\n    0 =...n    _ => false,\n} | Bool
+30..31 | x                                        | ?0
+43..47 | true                                     | Bool
+58..63 | false                                    | Bool
 types of patterns:
-18..19 = ?0
-38..39 = Int
-53..54 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+18..19 | x                                        | ?0
+38..39 | 0                                        | Int
+53..54 | _                                        | Int
 metavars:
 ?0 = Int
 ?1 = fun(_: #error) => Bool

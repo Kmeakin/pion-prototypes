@@ -3,26 +3,36 @@ exit status: 0
 stdout = """
 def const5: () -> Int = fun(_: ()) => 5;
 types of expressions:
-13..23 = () -> Int
-22..23 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+13..23 | fun() => 5                               | () -> Int
+22..23 | 5                                        | Int
 
 def id_int: Int -> Int = fun(x: Int) => x;
 types of expressions:
-38..55 = Int -> Int
-46..49 = Type
-54..55 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+38..55 | fun(x : Int) => x                        | Int -> Int
+46..49 | Int                                      | Type
+54..55 | x                                        | Int
 types of patterns:
-42..43 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+42..43 | x                                        | Int
 
 def id_poly: fun(A: Type) -> A -> A = fun(A: Type, a: A) => a;
 types of expressions:
-71..94 = fun(A: Type) -> A -> A
-78..82 = Type
-87..88 = Type
-93..94 = Unbound(1)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+71..94 | fun(A: Type, a: A) => a                  | fun(A: Type) -> A -> A
+78..82 | Type                                     | Type
+87..88 | A                                        | Type
+93..94 | a                                        | Unbound(1)
 types of patterns:
-75..76 = Type
-84..85 = Unbound(0)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+75..76 | A                                        | Type
+84..85 | a                                        | Unbound(0)
 """
 
 stderr = """

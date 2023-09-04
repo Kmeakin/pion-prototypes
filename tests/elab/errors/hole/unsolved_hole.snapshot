@@ -3,7 +3,9 @@ exit status: 1
 stdout = """
 def error: ?0 = ?1;
 types of expressions:
-12..13 = ?0
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..13 | _                                        | ?0
 metavars:
 ?0 = <unsolved>
 ?1 = <unsolved>

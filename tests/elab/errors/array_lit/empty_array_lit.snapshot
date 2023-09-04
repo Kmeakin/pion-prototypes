@@ -3,7 +3,9 @@ exit status: 1
 stdout = """
 def error: Array(?0, 0) = [];
 types of expressions:
-12..14 = Array(?0, 0)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..14 | []                                       | Array(?0, 0)
 metavars:
 ?0 = <unsolved>
 """

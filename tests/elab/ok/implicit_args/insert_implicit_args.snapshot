@@ -4,18 +4,22 @@ stdout = """
 def a: Bool = let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
 id(@Bool, false);
 types of expressions:
-12..61 = Bool
-21..46 = fun(@A: Type) -> A -> A
-30..34 = Type
-39..40 = Type
-45..46 = Unbound(1)
-52..54 = fun(@A: Type) -> A -> A
-52..61 = Bool
-55..60 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..61 | let id = fun (@A: ...> a;\n    id(false) | Bool
+21..46 | fun (@A: Type, a: A) => a                | fun(@A: Type) -> A -> A
+30..34 | Type                                     | Type
+39..40 | A                                        | Type
+45..46 | a                                        | Unbound(1)
+52..54 | id                                       | fun(@A: Type) -> A -> A
+52..61 | id(false)                                | Bool
+55..60 | false                                    | Bool
 types of patterns:
-16..18 = ?0
-27..28 = Type
-36..37 = Unbound(0)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+16..18 | id                                       | ?0
+27..28 | A                                        | Type
+36..37 | a                                        | Unbound(0)
 metavars:
 ?0 = fun(@A: Type) -> A -> A
 ?1 = Bool
@@ -23,23 +27,27 @@ metavars:
 def b: Int = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
 always(@Int, @Bool, 0, false);
 types of expressions:
-76..151 = Int
-89..129 = fun(@A: Type, @B: Type) -> A -> B -> A
-97..101 = Type
-107..111 = Type
-116..117 = Type
-122..123 = Type
-128..129 = Unbound(3)
-135..141 = fun(@A: Type, @B: Type) -> A -> B -> A
-135..151 = Int
-142..143 = Int
-145..150 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+76..151 | let always = fun(@...   always(0, false) | Int
+89..129 | fun(@A: Type, @B: Type, a: A, b: B) => a | fun(@A: Type, @B: Type) -> A -> B -> A
+97..101 | Type                                     | Type
+107..111 | Type                                     | Type
+116..117 | A                                        | Type
+122..123 | B                                        | Type
+128..129 | a                                        | Unbound(3)
+135..141 | always                                   | fun(@A: Type, @B: Type) -> A -> B -> A
+135..151 | always(0, false)                         | Int
+142..143 | 0                                        | Int
+145..150 | false                                    | Bool
 types of patterns:
-80..86 = ?0
-94..95 = Type
-104..105 = Type
-113..114 = Unbound(1)
-119..120 = Unbound(1)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+80..86 | always                                   | ?0
+94..95 | A                                        | Type
+104..105 | B                                        | Type
+113..114 | a                                        | Unbound(1)
+119..120 | b                                        | Unbound(1)
 metavars:
 ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
 ?1 = Int
@@ -49,41 +57,45 @@ def c: Bool = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type,
 let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
 apply(@Int, @Bool, always(@Bool, @Int, false), 0);
 types of expressions:
-166..314 = Bool
-179..219 = fun(@A: Type, @B: Type) -> A -> B -> A
-187..191 = Type
-197..201 = Type
-206..207 = Type
-212..213 = Type
-218..219 = Unbound(3)
-225..314 = Bool
-237..285 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-245..249 = Type
-255..259 = Type
-264..265 = Type
-264..270 = Type
-269..270 = Type
-275..276 = Type
-281..282 = Unbound(3) -> Unbound(3)
-281..285 = Unbound(2)
-283..284 = Unbound(3)
-291..296 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
-291..314 = Bool
-297..303 = fun(@A: Type, @B: Type) -> A -> B -> A
-297..310 = ?2 -> Bool
-304..309 = Bool
-312..313 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+166..314 | let always = fun(@...y(always(false), 0) | Bool
+179..219 | fun(@A: Type, @B: Type, a: A, b: B) => a | fun(@A: Type, @B: Type) -> A -> B -> A
+187..191 | Type                                     | Type
+197..201 | Type                                     | Type
+206..207 | A                                        | Type
+212..213 | B                                        | Type
+218..219 | a                                        | Unbound(3)
+225..314 | let apply = fun(@A...y(always(false), 0) | Bool
+237..285 | fun(@A: Type, @B: ...-> B, a: A) => f(a) | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+245..249 | Type                                     | Type
+255..259 | Type                                     | Type
+264..265 | A                                        | Type
+264..270 | A -> B                                   | Type
+269..270 | B                                        | Type
+275..276 | A                                        | Type
+281..282 | f                                        | Unbound(3) -> Unbound(3)
+281..285 | f(a)                                     | Unbound(2)
+283..284 | a                                        | Unbound(3)
+291..296 | apply                                    | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+291..314 | apply(always(false), 0)                  | Bool
+297..303 | always                                   | fun(@A: Type, @B: Type) -> A -> B -> A
+297..310 | always(false)                            | ?2 -> Bool
+304..309 | false                                    | Bool
+312..313 | 0                                        | Int
 types of patterns:
-170..176 = ?0
-184..185 = Type
-194..195 = Type
-203..204 = Unbound(1)
-209..210 = Unbound(1)
-229..234 = ?1
-242..243 = Type
-252..253 = Type
-261..262 = Unbound(1) -> Unbound(1)
-272..273 = Unbound(2)
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+170..176 | always                                   | ?0
+184..185 | A                                        | Type
+194..195 | B                                        | Type
+203..204 | a                                        | Unbound(1)
+209..210 | b                                        | Unbound(1)
+229..234 | apply                                    | ?1
+242..243 | A                                        | Type
+252..253 | B                                        | Type
+261..262 | f                                        | Unbound(1) -> Unbound(1)
+272..273 | a                                        | Unbound(2)
 metavars:
 ?0 = fun(@A: Type, @B: Type) -> A -> B -> A
 ?1 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B

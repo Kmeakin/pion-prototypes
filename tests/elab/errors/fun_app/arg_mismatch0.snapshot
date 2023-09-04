@@ -4,15 +4,19 @@ stdout = """
 def error: Int -> Int = let f: Int -> Int = fun(x: Int) => x;
 f;
 types of expressions:
-16..49 = Int -> Int
-24..40 = Int -> Int
-31..34 = Type
-39..40 = Int
-46..47 = Int -> Int
-46..49 = Int -> Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+16..49 | let f = fun(x: Int) => x;\n    f()       | Int -> Int
+24..40 | fun(x: Int) => x                         | Int -> Int
+31..34 | Int                                      | Type
+39..40 | x                                        | Int
+46..47 | f                                        | Int -> Int
+46..49 | f()                                      | Int -> Int
 types of patterns:
-20..21 = ?0
-28..29 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+20..21 | f                                        | ?0
+28..29 | x                                        | Int
 metavars:
 ?0 = Int -> Int
 """

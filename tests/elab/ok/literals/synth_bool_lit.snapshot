@@ -3,11 +3,15 @@ exit status: 0
 stdout = """
 def foo: Bool = true;
 types of expressions:
-10..14 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..14 | true                                     | Bool
 
 def bar: Bool = false;
 types of expressions:
-26..31 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+26..31 | false                                    | Bool
 """
 
 stderr = """

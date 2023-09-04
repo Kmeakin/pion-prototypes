@@ -3,14 +3,18 @@ exit status: 1
 stdout = """
 def foo: Bool -> Int = fun(x: Bool) => #error;
 types of expressions:
-10..53 = Bool -> Int
-17..21 = Type
-26..53 = Int
-32..33 = Bool
-49..50 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..53 | fun(x: Bool) => ma...n    false => 1,\n} | Bool -> Int
+17..21 | Bool                                     | Type
+26..53 | match x {\n    false => 1,\n}            | Int
+32..33 | x                                        | Bool
+49..50 | 1                                        | Int
 types of patterns:
-14..15 = Bool
-40..45 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | x                                        | Bool
+40..45 | false                                    | Bool
 metavars:
 ?0 = fun(_: #error) => Int
 """

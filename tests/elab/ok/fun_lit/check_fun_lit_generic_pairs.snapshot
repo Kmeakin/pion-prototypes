@@ -11,35 +11,39 @@ fun(b: (a._0, a._1)) => let x: a._0 = b._0;
 let y: a._1 = b._1;
 x;
 types of expressions:
-9..55 = Type
-21..33 = Type
-22..26 = Type
-28..32 = Type
-43..49 = Type
-44..45 = Type
-47..48 = Type
-54..55 = Type
-65..111 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
-77..89 = Type
-78..82 = Type
-84..88 = Type
-99..105 = Type
-100..101 = Type
-103..104 = Type
-110..111 = Unbound(5)._0
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+9..55 | fun((A, B): (Type,...a, b): (A, B)) -> A | Type
+21..33 | (Type, Type)                             | Type
+22..26 | Type                                     | Type
+28..32 | Type                                     | Type
+43..49 | (A, B)                                   | Type
+44..45 | A                                        | Type
+47..48 | B                                        | Type
+54..55 | A                                        | Type
+65..111 | fun((A, B): (Type,...x, y): (A, B)) => x | fun(a: (Type, Type)) -> (a._0, a._1) -> a._0
+77..89 | (Type, Type)                             | Type
+78..82 | Type                                     | Type
+84..88 | Type                                     | Type
+99..105 | (A, B)                                   | Type
+100..101 | A                                        | Type
+103..104 | B                                        | Type
+110..111 | x                                        | Unbound(5)._0
 types of patterns:
-13..19 = (Type, Type)
-14..15 = Type
-17..18 = Type
-35..41 = (Unbound(2)._0, Unbound(3)._1)
-36..37 = Unbound(2)._0
-39..40 = Unbound(2)._1
-69..75 = (Type, Type)
-70..71 = Type
-73..74 = Type
-91..97 = (Unbound(2)._0, Unbound(3)._1)
-92..93 = Unbound(2)._0
-95..96 = Unbound(2)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+13..19 | (A, B)                                   | (Type, Type)
+14..15 | A                                        | Type
+17..18 | B                                        | Type
+35..41 | (a, b)                                   | (Unbound(2)._0, Unbound(3)._1)
+36..37 | a                                        | Unbound(2)._0
+39..40 | b                                        | Unbound(2)._1
+69..75 | (A, B)                                   | (Type, Type)
+70..71 | A                                        | Type
+73..74 | B                                        | Type
+91..97 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
+92..93 | x                                        | Unbound(2)._0
+95..96 | y                                        | Unbound(2)._1
 
 def snd: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
@@ -51,35 +55,39 @@ fun(b: (a._0, a._1)) => let x: a._0 = b._0;
 let y: a._1 = b._1;
 y;
 types of expressions:
-123..169 = Type
-135..147 = Type
-136..140 = Type
-142..146 = Type
-157..163 = Type
-158..159 = Type
-161..162 = Type
-168..169 = Type
-179..225 = fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
-191..203 = Type
-192..196 = Type
-198..202 = Type
-213..219 = Type
-214..215 = Type
-217..218 = Type
-224..225 = Unbound(5)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+123..169 | fun((A, B): (Type,...a, b): (A, B)) -> B | Type
+135..147 | (Type, Type)                             | Type
+136..140 | Type                                     | Type
+142..146 | Type                                     | Type
+157..163 | (A, B)                                   | Type
+158..159 | A                                        | Type
+161..162 | B                                        | Type
+168..169 | B                                        | Type
+179..225 | fun((A, B): (Type,...x, y): (A, B)) => y | fun(a: (Type, Type)) -> (a._0, a._1) -> a._1
+191..203 | (Type, Type)                             | Type
+192..196 | Type                                     | Type
+198..202 | Type                                     | Type
+213..219 | (A, B)                                   | Type
+214..215 | A                                        | Type
+217..218 | B                                        | Type
+224..225 | y                                        | Unbound(5)._1
 types of patterns:
-127..133 = (Type, Type)
-128..129 = Type
-131..132 = Type
-149..155 = (Unbound(2)._0, Unbound(3)._1)
-150..151 = Unbound(2)._0
-153..154 = Unbound(2)._1
-183..189 = (Type, Type)
-184..185 = Type
-187..188 = Type
-205..211 = (Unbound(2)._0, Unbound(3)._1)
-206..207 = Unbound(2)._0
-209..210 = Unbound(2)._1
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+127..133 | (A, B)                                   | (Type, Type)
+128..129 | A                                        | Type
+131..132 | B                                        | Type
+149..155 | (a, b)                                   | (Unbound(2)._0, Unbound(3)._1)
+150..151 | a                                        | Unbound(2)._0
+153..154 | b                                        | Unbound(2)._1
+183..189 | (A, B)                                   | (Type, Type)
+184..185 | A                                        | Type
+187..188 | B                                        | Type
+205..211 | (x, y)                                   | (Unbound(2)._0, Unbound(3)._1)
+206..207 | x                                        | Unbound(2)._0
+209..210 | y                                        | Unbound(2)._1
 """
 
 stderr = """

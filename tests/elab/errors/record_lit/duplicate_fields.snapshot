@@ -3,10 +3,12 @@ exit status: 1
 stdout = """
 def error: {x: Int, y: Bool} = {x = 1, y = false};
 types of expressions:
-12..32 = {x: Int, y: Bool}
-15..16 = Int
-19..24 = Bool
-27..31 = <missing>
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..32 | {x=1,y=false,x=true}                     | {x: Int, y: Bool}
+15..16 | 1                                        | Int
+19..24 | false                                    | Bool
+27..31 | true                                     | <missing>
 """
 
 stderr = """

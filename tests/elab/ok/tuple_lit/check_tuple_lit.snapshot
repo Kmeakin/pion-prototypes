@@ -3,26 +3,34 @@ exit status: 0
 stdout = """
 def Unit: Type = ();
 types of expressions:
-10..14 = Type
-17..19 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..14 | Type                                     | Type
+17..19 | ()                                       | Type
 
 def Tuple1: Type = (Int,);
 types of expressions:
-33..37 = Type
-40..46 = Type
-41..44 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+33..37 | Type                                     | Type
+40..46 | (Int,)                                   | Type
+41..44 | Int                                      | Type
 
 def Tuple2: Type = (Int, Bool);
 types of expressions:
-60..64 = Type
-67..77 = Type
-68..71 = Type
-72..76 = Type
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+60..64 | Type                                     | Type
+67..77 | (Int,Bool)                               | Type
+68..71 | Int                                      | Type
+72..76 | Bool                                     | Type
 
 def unit: () = ();
 types of expressions:
-89..91 = Type
-94..96 = ()
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+89..91 | ()                                       | Type
+94..96 | ()                                       | ()
 """
 
 stderr = """

@@ -3,7 +3,9 @@ exit status: 0
 stdout = """
 def foo: Int = 0;
 types of expressions:
-10..11 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..11 | 0                                        | Int
 """
 
 stderr = """

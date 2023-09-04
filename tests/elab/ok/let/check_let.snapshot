@@ -4,12 +4,16 @@ stdout = """
 def a: Int = let x: Int = 5;
 x;
 types of expressions:
-7..10 = Type
-17..33 = Int
-25..26 = Int
-32..33 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+7..10 | Int                                      | Type
+17..33 | let x = 5;\n    x                        | Int
+25..26 | 5                                        | Int
+32..33 | x                                        | Int
 types of patterns:
-21..22 = ?0
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+21..22 | x                                        | ?0
 metavars:
 ?0 = Int
 """

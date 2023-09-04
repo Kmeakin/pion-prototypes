@@ -3,11 +3,13 @@ exit status: 1
 stdout = """
 def error: #error = #error;
 types of expressions:
-12..17 = Type -> Int -> Type
-12..28 = #error
-18..21 = Type
-23..24 = Int
-26..27 = <missing>
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..17 | Array                                    | Type -> Int -> Type
+12..28 | Array(Int, 0, 0)                         | #error
+18..21 | Int                                      | Type
+23..24 | 0                                        | Int
+26..27 | 0                                        | <missing>
 """
 
 stderr = """

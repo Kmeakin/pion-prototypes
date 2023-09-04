@@ -6,18 +6,22 @@ def foo: Bool -> Int = fun(x: Bool) => match x {
     true => 1,
 };
 types of expressions:
-10..83 = Bool -> Int
-17..21 = Type
-26..83 = Int
-32..33 = Bool
-48..49 = Int
-64..65 = Int
-79..80 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..83 | fun(x: Bool) => ma...\n    true => 3,\n} | Bool -> Int
+17..21 | Bool                                     | Type
+26..83 | match x {\n    tru...\n    true => 3,\n} | Int
+32..33 | x                                        | Bool
+48..49 | 1                                        | Int
+64..65 | 2                                        | Int
+79..80 | 3                                        | Int
 types of patterns:
-14..15 = Bool
-40..44 = Bool
-55..60 = Bool
-71..75 = Bool
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | x                                        | Bool
+40..44 | true                                     | Bool
+55..60 | false                                    | Bool
+71..75 | true                                     | Bool
 metavars:
 ?0 = fun(_: #error) => Int
 """

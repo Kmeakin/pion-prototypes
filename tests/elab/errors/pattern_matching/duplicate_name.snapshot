@@ -5,17 +5,21 @@ def f: Int = let x: Int = (1, 2, 3)._0;
 let y: Int = (1, 2, 3)._1;
 x;
 types of expressions:
-8..35 = Int
-23..32 = (Int, Int, Int)
-24..25 = Int
-27..28 = Int
-30..31 = Int
-34..35 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+8..35 | let(x, y, x) = (1, 2, 3); x              | Int
+23..32 | (1, 2, 3)                                | (Int, Int, Int)
+24..25 | 1                                        | Int
+27..28 | 2                                        | Int
+30..31 | 3                                        | Int
+34..35 | x                                        | Int
 types of patterns:
-11..20 = (?0, ?1, ?2)
-12..13 = ?0
-15..16 = ?1
-18..19 = ?2
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..20 | (x, y, x)                                | (?0, ?1, ?2)
+12..13 | x                                        | ?0
+15..16 | y                                        | ?1
+18..19 | x                                        | ?2
 metavars:
 ?0 = Int
 ?1 = Int
@@ -23,15 +27,19 @@ metavars:
 
 def g: Int -> Int -> Int -> Int = fun(x: Int, y: Int, x: Int) => y;
 types of expressions:
-46..78 = Int -> Int -> Int -> Int
-53..56 = Type
-61..64 = Type
-69..72 = Type
-77..78 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+46..78 | fun(x: Int, y: Int, x: Int) => y         | Int -> Int -> Int -> Int
+53..56 | Int                                      | Type
+61..64 | Int                                      | Type
+69..72 | Int                                      | Type
+77..78 | y                                        | Int
 types of patterns:
-50..51 = Int
-58..59 = Int
-66..67 = Int
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+50..51 | x                                        | Int
+58..59 | y                                        | Int
+66..67 | x                                        | Int
 """
 
 stderr = """
