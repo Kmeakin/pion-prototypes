@@ -1,9 +1,10 @@
 exit status: 1
 
 stdout = """
-def f: Int = let x: Int = (1, 2, 3)._0;
-let y: Int = (1, 2, 3)._1;
-x;
+def f: Int =
+    let x: Int = (1, 2, 3)._0;
+    let y: Int = (1, 2, 3)._1;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

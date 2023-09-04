@@ -8,6 +8,8 @@ use crate::syntax::*;
 
 type DocBuilder<'pretty> = pretty::DocBuilder<'pretty, PrettyCtx<'pretty>>;
 
+const INDENT: isize = 4;
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
     Let,
@@ -36,9 +38,8 @@ impl<'pretty> PrettyCtx<'pretty> {
             .append(self.ident(def.name))
             .append(": ")
             .append(r#type)
-            .append(" = ")
-            .append(expr)
-            .append(";")
+            .append(" =")
+            .append(self.line().append(expr).append(";").group().nest(INDENT))
     }
 
     pub fn ann_expr(
@@ -74,7 +75,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(self.binder_name(*name))
                     .append(": ")
                     .append(r#type)
-                    .append(" = ")
+                    .append(" =")
+                    .append(self.softline())
                     .append(init)
                     .append(";")
                     .append(self.hardline())

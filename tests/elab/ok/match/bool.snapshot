@@ -1,10 +1,11 @@
 exit status: 0
 
 stdout = """
-def not: Bool -> Bool = fun(x: Bool) => match x {
-    false => true,
-    true => false,
-};
+def not: Bool -> Bool =
+    fun(x: Bool) => match x {
+        false => true,
+        true => false,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -23,10 +24,11 @@ metavars:
 ?0 = Bool
 ?1 = fun(_: #error) => Bool
 
-def bool-to-int: Bool -> Int = fun(x: Bool) => match x {
-    false => 0,
-    true => 1,
-};
+def bool-to-int: Bool -> Int =
+    fun(x: Bool) => match x {
+        false => 0,
+        true => 1,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

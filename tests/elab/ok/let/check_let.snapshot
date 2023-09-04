@@ -1,8 +1,9 @@
 exit status: 0
 
 stdout = """
-def a: Int = let x: Int = 5;
-x;
+def a: Int =
+    let x: Int = 5;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

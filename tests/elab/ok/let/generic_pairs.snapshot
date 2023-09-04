@@ -1,8 +1,9 @@
 exit status: 0
 
 stdout = """
-def fst: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
-x;
+def fst: fun(A: Type, B: Type) -> (A, B) -> A =
+    fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -28,8 +29,9 @@ metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 ?1 = fun(a: #error, _: #error, _: #error) => a
 
-def snd: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
-y;
+def snd: fun(A: Type, B: Type) -> (A, B) -> B =
+    fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
+    y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

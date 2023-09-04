@@ -1,11 +1,12 @@
 exit status: 0
 
 stdout = """
-def FstType: Type = fun(a: (Type, Type)) -> let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
-let b: a._1 = b._1;
-A;
+def FstType: Type =
+    fun(a: (Type, Type)) -> let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
+    let b: a._1 = b._1;
+    A;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -27,11 +28,12 @@ span   | source                                   | type
 41..42 | a                                        | Unnamed(2)._0
 44..45 | b                                        | Unnamed(2)._1
 
-def SndType: Type = fun(a: (Type, Type)) -> let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
-let b: a._1 = b._1;
-B;
+def SndType: Type =
+    fun(a: (Type, Type)) -> let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
+    let b: a._1 = b._1;
+    B;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

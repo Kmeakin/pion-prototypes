@@ -18,7 +18,8 @@ span   | source                                   | type
 13..14 | A                                        | Type
 39..40 | a                                        | A
 
-def always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
+def always: fun(@A: Type, @B: Type) -> A -> B -> A =
+    fun(@A: Type, @B: Type, a: A, b: B) => a;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -40,7 +41,8 @@ span   | source                                   | type
 108..109 | a                                        | A
 111..112 | b                                        | B
 
-def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
+def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
+    fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

@@ -1,10 +1,11 @@
 exit status: 0
 
 stdout = """
-def is-zero: Int -> Bool = fun(x: Int) => match x {
-    0 => true,
-    _ => false,
-};
+def is-zero: Int -> Bool =
+    fun(x: Int) => match x {
+        0 => true,
+        _ => false,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

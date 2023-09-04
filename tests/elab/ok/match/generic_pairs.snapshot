@@ -1,9 +1,10 @@
 exit status: 0
 
 stdout = """
-def fst1: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
-let y: B = p._1;
-x;
+def fst1: fun(A: Type, B: Type) -> (A, B) -> A =
+    fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+    let y: B = p._1;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -28,8 +29,9 @@ span   | source                                   | type
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 
-def fst2: fun(A: Type, B: Type) -> (A, B) -> A = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
-x;
+def fst2: fun(A: Type, B: Type) -> (A, B) -> A =
+    fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -54,9 +56,10 @@ span   | source                                   | type
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
 
-def snd1: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
-let y: B = p._1;
-y;
+def snd1: fun(A: Type, B: Type) -> (A, B) -> B =
+    fun(A: Type, B: Type, p: (A, B)) => let x: A = p._0;
+    let y: B = p._1;
+    y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -81,8 +84,9 @@ span   | source                                   | type
 metavars:
 ?0 = fun(_: #error, a: #error, _: #error) => a
 
-def snd2: fun(A: Type, B: Type) -> (A, B) -> B = fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
-y;
+def snd2: fun(A: Type, B: Type) -> (A, B) -> B =
+    fun(A: Type, B: Type, p: (A, B)) => let y: B = p._1;
+    y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

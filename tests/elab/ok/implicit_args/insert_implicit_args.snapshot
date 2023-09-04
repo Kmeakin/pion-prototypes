@@ -1,8 +1,9 @@
 exit status: 0
 
 stdout = """
-def a: Bool = let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
-id(@Bool, false);
+def a: Bool =
+    let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+    id(@Bool, false);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -24,8 +25,10 @@ metavars:
 ?0 = fun(@A: Type) -> A -> A
 ?1 = Bool
 
-def b: Int = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-always(@Int, @Bool, 0, false);
+def b: Int =
+    let always: fun(@A: Type, @B: Type) -> A -> B -> A =
+    fun(@A: Type, @B: Type, a: A, b: B) => a;
+    always(@Int, @Bool, 0, false);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -53,9 +56,12 @@ metavars:
 ?1 = Int
 ?2 = Bool
 
-def c: Bool = let always: fun(@A: Type, @B: Type) -> A -> B -> A = fun(@A: Type, @B: Type, a: A, b: B) => a;
-let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
-apply(@Int, @Bool, always(@Bool, @Int, false), 0);
+def c: Bool =
+    let always: fun(@A: Type, @B: Type) -> A -> B -> A =
+    fun(@A: Type, @B: Type, a: A, b: B) => a;
+    let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
+    fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+    apply(@Int, @Bool, always(@Bool, @Int, false), 0);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

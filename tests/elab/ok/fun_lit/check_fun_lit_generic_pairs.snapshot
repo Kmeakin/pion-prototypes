@@ -5,11 +5,12 @@ def fst: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
 fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
 let b: a._1 = b._1;
-A = fun(a: (Type, Type)) => let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: a._0 = b._0;
-let y: a._1 = b._1;
-x;
+A =
+    fun(a: (Type, Type)) => let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+    let y: a._1 = b._1;
+    x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -49,11 +50,12 @@ def snd: fun(a: (Type, Type)) -> let A: Type = a._0;
 let B: Type = a._1;
 fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
 let b: a._1 = b._1;
-B = fun(a: (Type, Type)) => let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) => let x: a._0 = b._0;
-let y: a._1 = b._1;
-y;
+B =
+    fun(a: (Type, Type)) => let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) => let x: a._0 = b._0;
+    let y: a._1 = b._1;
+    y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

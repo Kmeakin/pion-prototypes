@@ -1,8 +1,9 @@
 exit status: 0
 
 stdout = """
-def app0: Bool = let f: () -> Bool = fun(_: ()) => false;
-f(());
+def app0: Bool =
+    let f: () -> Bool = fun(_: ()) => false;
+    f(());
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -18,8 +19,9 @@ span   | source                                   | type
 metavars:
 ?0 = () -> Bool
 
-def app1: Int = let f: Int -> Int = fun(x: Int) => x;
-f(1);
+def app1: Int =
+    let f: Int -> Int = fun(x: Int) => x;
+    f(1);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
