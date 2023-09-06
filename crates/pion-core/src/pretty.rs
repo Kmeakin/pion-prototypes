@@ -118,7 +118,12 @@ impl<'pretty> PrettyCtx<'pretty> {
 
                             let codomain = self.expr(codomain, Prec::MAX);
 
-                            break domain.append(" -> ").append(codomain);
+                            break (domain
+                                .append(" ->")
+                                .append(self.line())
+                                .append(codomain)
+                                .group()
+                                .nest(INDENT));
                         }
                         _ => break self.expr(codomain, Prec::MAX),
                     }
@@ -132,8 +137,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                         .append("(")
                         .append(params)
                         .append(")")
-                        .append(" -> ")
-                        .append(codomain)
+                        .append(" ->")
+                        .append(self.line().append(codomain).group().nest(INDENT))
                 }
             }
             Expr::FunApp(..) => {

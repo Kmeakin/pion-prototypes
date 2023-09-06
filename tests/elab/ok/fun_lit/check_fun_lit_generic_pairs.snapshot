@@ -1,11 +1,13 @@
 exit status: 0
 
 stdout = """
-def fst: fun(a: (Type, Type)) -> let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
-let b: a._1 = b._1;
-A =
+def fst: fun(a: (Type, Type)) ->
+    let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) ->
+        let a: a._0 = b._0;
+        let b: a._1 = b._1;
+        A =
     fun(a: (Type, Type)) =>
         let A: Type = a._0;
         let B: Type = a._1;
@@ -48,11 +50,13 @@ span   | source                                   | type
 92..93 | x                                        | Unnamed(2)._0
 95..96 | y                                        | Unnamed(2)._1
 
-def snd: fun(a: (Type, Type)) -> let A: Type = a._0;
-let B: Type = a._1;
-fun(b: (a._0, a._1)) -> let a: a._0 = b._0;
-let b: a._1 = b._1;
-B =
+def snd: fun(a: (Type, Type)) ->
+    let A: Type = a._0;
+    let B: Type = a._1;
+    fun(b: (a._0, a._1)) ->
+        let a: a._0 = b._0;
+        let b: a._1 = b._1;
+        B =
     fun(a: (Type, Type)) =>
         let A: Type = a._0;
         let B: Type = a._1;
