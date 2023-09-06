@@ -2,15 +2,13 @@ exit status: 0
 
 stdout = """
 def and1: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            true =>
-                match (x, y)._1 {
-                    true => true,
-                    _ => false,
-                },
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        true => match (x, y)._1 {
+            true => true,
             _ => false,
-        };
+        },
+        _ => false,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -36,15 +34,13 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def and2: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            true =>
-                match (x, y)._1 {
-                    true => true,
-                    _ => false,
-                },
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        true => match (x, y)._1 {
+            true => true,
             _ => false,
-        };
+        },
+        _ => false,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -72,19 +68,16 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def and3: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            false =>
-                match (x, y)._1 {
-                    false => false,
-                    true => false,
-                },
-            true =>
-                match (x, y)._1 {
-                    false => false,
-                    true => true,
-                },
-        };
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        false => match (x, y)._1 {
+            false => false,
+            true => false,
+        },
+        true => match (x, y)._1 {
+            false => false,
+            true => true,
+        },
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -120,15 +113,13 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def or1: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            false =>
-                match (x, y)._1 {
-                    false => false,
-                    _ => true,
-                },
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        false => match (x, y)._1 {
+            false => false,
             _ => true,
-        };
+        },
+        _ => true,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -154,15 +145,13 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def or2: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            false =>
-                match (x, y)._1 {
-                    false => false,
-                    _ => true,
-                },
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        false => match (x, y)._1 {
+            false => false,
             _ => true,
-        };
+        },
+        _ => true,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -190,19 +179,16 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def or3: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
-            false =>
-                match (x, y)._1 {
-                    false => false,
-                    true => true,
-                },
-            true =>
-                match (x, y)._1 {
-                    false => true,
-                    true => true,
-                },
-        };
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        false => match (x, y)._1 {
+            false => false,
+            true => true,
+        },
+        true => match (x, y)._1 {
+            false => true,
+            true => true,
+        },
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -238,15 +224,13 @@ metavars:
 ?2 = fun(_: #error, _: #error) => Bool
 
 def or4: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) =>
-        match (x, y)._0 {
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        true => true,
+        _ => match (x, y)._1 {
             true => true,
-            _ =>
-                match (x, y)._1 {
-                    true => true,
-                    _ => false,
-                },
-        };
+            _ => false,
+        },
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

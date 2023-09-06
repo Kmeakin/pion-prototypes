@@ -67,8 +67,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                 .append(self.text(usize::from(*var).to_string())),
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.expr(r#type, Prec::MAX);
-                let init = self.expr(init, Prec::MAX);
-
+                let init = self.blocklike_expr(init, Prec::MAX);
                 let body = self.expr(body, Prec::MAX);
 
                 self.text("let ")
@@ -76,7 +75,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(": ")
                     .append(r#type)
                     .append(" =")
-                    .append(self.line().append(init).append(";").group().nest(INDENT))
+                    .append(init)
+                    .append(";")
                     .append(self.hardline().append(body).group())
             }
             Expr::FunLit(..) => {
@@ -88,7 +88,8 @@ impl<'pretty> PrettyCtx<'pretty> {
                     params.push(param);
                     body = next_body;
                 }
-                let body = self.expr(body, Prec::MAX);
+
+                let body = self.blocklike_expr(body, Prec::MAX);
 
                 let params = self.intersperse(params, self.text(", "));
                 self.text("fun")
@@ -96,7 +97,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                     .append(params)
                     .append(")")
                     .append(" =>")
-                    .append(self.line().append(body).group().nest(INDENT))
+                    .append(body)
             }
             Expr::FunType(..) => {
                 let mut params = Vec::new();
@@ -113,19 +114,20 @@ impl<'pretty> PrettyCtx<'pretty> {
                             codomain = cont;
                         }
                         // Use arrow sugar if the parameter is not referenced in the body type.
-                        Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
+                        Expr::FunType(Plicity::Explicit, _, (domain, codomain))
+                            if params.is_empty() =>
+                        {
                             let domain = self.expr(domain, Prec::Proj);
-
-                            let codomain = self.expr(codomain, Prec::MAX);
-
-                            break (domain
-                                .append(" ->")
-                                .append(self.line())
-                                .append(codomain)
-                                .group()
-                                .nest(INDENT));
+                            let codomain = self.blocklike_expr(codomain, Prec::MAX);
+                            break domain.append(" ->").append(codomain);
                         }
-                        _ => break self.expr(codomain, Prec::MAX),
+                        Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
+                            let domain = self.blocklike_expr(domain, Prec::Proj);
+                            let codomain = self.blocklike_expr(codomain, Prec::MAX);
+                            break domain.append(" ->").append(codomain);
+                        }
+                        _ if params.is_empty() => break self.expr(codomain, Prec::MAX),
+                        _ => break self.blocklike_expr(codomain, Prec::MAX),
                     }
                 };
 
@@ -138,7 +140,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                         .append(params)
                         .append(")")
                         .append(" ->")
-                        .append(self.line().append(codomain).group().nest(INDENT))
+                        .append(codomain)
                 }
             }
             Expr::FunApp(..) => {
@@ -218,16 +220,12 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Match((scrut, default), cases) => {
                 let scrut = self.expr(scrut, Prec::MAX);
                 let cases = cases.iter().map(|(lit, expr)| {
-                    let expr = self.expr(expr, Prec::MAX);
-                    self.lit(*lit)
-                        .append(" =>")
-                        .append(self.line().append(expr).group().nest(INDENT))
+                    let expr = self.blocklike_expr(expr, Prec::MAX);
+                    self.lit(*lit).append(" =>").append(expr)
                 });
                 let default = default.as_ref().map(|(name, expr)| {
-                    let expr = self.expr(expr, Prec::MAX);
-                    self.binder_name(*name)
-                        .append(" =>")
-                        .append(self.line().append(expr).group().nest(INDENT))
+                    let expr = self.blocklike_expr(expr, Prec::MAX);
+                    self.binder_name(*name).append(" =>").append(expr)
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));
@@ -242,6 +240,14 @@ impl<'pretty> PrettyCtx<'pretty> {
             }
         };
         self.paren(pretty_expr, prec > expr_prec(expr))
+    }
+
+    fn blocklike_expr(&'pretty self, expr: &ZonkedExpr<'_>, prec: Prec) -> DocBuilder<'pretty> {
+        let pretty_expr = self.expr(expr, prec);
+        match expr {
+            Expr::Match(..) => self.space().append(pretty_expr),
+            _ => self.line().append(pretty_expr).group().nest(INDENT),
+        }
     }
 
     fn fun_param(
