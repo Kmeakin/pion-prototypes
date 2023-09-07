@@ -117,11 +117,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut expr_fields = SliceVec::new(self.bump, elems.len());
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
 
+                let mut offset = EnvLen::new();
                 for (index, elem) in elems.iter().enumerate() {
                     let name = FieldName::tuple(index);
                     let Synth(elem_expr, elem_type) = self.synth_expr(elem);
                     expr_fields.push((name, elem_expr));
-                    type_fields.push((name, self.quote_env().quote(&elem_type)));
+                    type_fields.push((name, self.quote_env().quote_offset(&elem_type, offset)));
+                    offset.push();
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());
@@ -166,6 +168,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
                 let mut name_spans = SliceVec::new(self.bump, fields.len());
 
+                let mut offset = EnvLen::new();
                 for field in *fields {
                     let name = FieldName::User(field.symbol);
                     if let Some(idx) = expr_fields
@@ -183,8 +186,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                     let Synth(field_expr, field_type) = self.synth_expr(&field.expr);
                     expr_fields.push((name, field_expr));
-                    type_fields.push((name, self.quote_env().quote(&field_type)));
+                    type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
                     name_spans.push(field.symbol_span);
+                    offset.push();
                 }
 
                 let expr = Expr::RecordLit(expr_fields.into());

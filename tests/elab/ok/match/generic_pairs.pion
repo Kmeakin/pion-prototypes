@@ -13,3 +13,7 @@ def snd1 = fun(A: Type, B: Type, p: (A, B)) => match p {
 def snd2 = fun(A: Type, B: Type, p: (A, B)) => match p {
     (_, y) => y,
 };
+
+def swap = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (x, y) => (y, x),
+};

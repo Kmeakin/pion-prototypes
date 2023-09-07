@@ -273,6 +273,14 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         }
     }
 
+    pub fn quote_offset(&mut self, value: &Value<'core>, offset: EnvLen) -> Expr<'core> {
+        let len = self.local_len();
+        self.local_len.append(offset);
+        let expr = self.quote(value);
+        self.truncate_local(len);
+        expr
+    }
+
     /// Quote a [value][Value] back into a [expr][Expr].
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
         let value = self.elim_env().update_metas(value);

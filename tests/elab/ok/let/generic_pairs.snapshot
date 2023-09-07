@@ -23,12 +23,12 @@ span   | source                                   | type
 14..15 | A                                        | Type
 24..25 | B                                        | Type
 34..35 | p                                        | (A, B)
-53..59 | (x, _)                                   | (?0(A, B, p), ?1(B, p, _0))
+53..59 | (x, _)                                   | (?0(A, B, p), ?1(A, B, p))
 54..55 | x                                        | ?0(A, B, p)
 57..58 | _                                        | ?1(A, B, p)
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
-?1 = fun(a: #error, _: #error, _: #error) => a
+?1 = fun(_: #error, a: #error, _: #error) => a
 
 def snd: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -52,12 +52,12 @@ span   | source                                   | type
 82..83 | A                                        | Type
 92..93 | B                                        | Type
 102..103 | p                                        | (A, B)
-121..127 | (_, y)                                   | (?0(A, B, p), ?1(B, p, _0))
+121..127 | (_, y)                                   | (?0(A, B, p), ?1(A, B, p))
 122..123 | _                                        | ?0(A, B, p)
 125..126 | y                                        | ?1(A, B, p)
 metavars:
 ?0 = fun(a: #error, _: #error, _: #error) => a
-?1 = fun(a: #error, _: #error, _: #error) => a
+?1 = fun(_: #error, a: #error, _: #error) => a
 """
 
 stderr = """

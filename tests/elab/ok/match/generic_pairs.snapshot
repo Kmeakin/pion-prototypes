@@ -114,6 +114,37 @@ span   | source                                   | type
 299..300 | y                                        | B
 metavars:
 ?0 = fun(_: #error, a: #error, _: #error) => a
+
+def swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
+    fun(A: Type, B: Type, p: (A, B)) =>
+        let x: A = p._0;
+        let y: B = p._1;
+        (y, x);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+323..392 | fun(A: Type, B: Ty...x, y) => (y, x),\n} | fun(A: Type, B: Type) -> (A, B) -> (B, A)
+330..334 | Type                                     | Type
+339..343 | Type                                     | Type
+348..354 | (A, B)                                   | Type
+349..350 | A                                        | Type
+352..353 | B                                        | Type
+359..392 | match p {\n    (x, y) => (y, x),\n}      | (B, A)
+365..366 | p                                        | (A, B)
+383..389 | (y, x)                                   | (B, A)
+384..385 | y                                        | B
+387..388 | x                                        | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+327..328 | A                                        | Type
+336..337 | B                                        | Type
+345..346 | p                                        | (A, B)
+373..379 | (x, y)                                   | (A, B)
+374..375 | x                                        | A
+377..378 | y                                        | B
+metavars:
+?0 = fun(a: #error, b: #error, _: #error) => (b, a)
 """
 
 stderr = """

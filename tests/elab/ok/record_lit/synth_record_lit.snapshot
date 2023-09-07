@@ -21,6 +21,73 @@ span   | source                                   | type
 53..66 | {x=1,y=false}                            | {x: Int, y: Bool}
 56..57 | 1                                        | Int
 60..65 | false                                    | Bool
+
+def pair_make: fun(A: Type, B: Type) -> A -> B -> {x: A, y: B} =
+    fun(A: Type, B: Type, x: A, y: B) => {x = x, y = y};
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+85..136 | fun(A: Type, B: Ty...) => {x = x, y = y} | fun(A: Type, B: Type) -> A -> B -> {x: A, y: B}
+92..96 | Type                                     | Type
+101..105 | Type                                     | Type
+110..111 | A                                        | Type
+116..117 | B                                        | Type
+122..136 | {x = x, y = y}                           | {x: A, y: B}
+127..128 | x                                        | A
+134..135 | y                                        | B
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+89..90 | A                                        | Type
+98..99 | B                                        | Type
+107..108 | x                                        | A
+113..114 | y                                        | B
+
+def pair_id: fun(A: Type, B: Type) -> {x: A, y: B} -> {x: A, y: B} =
+    fun(A: Type, B: Type, p: {x: A, y: B}) => {x = p.x, y = p.y};
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+154..214 | fun(A: Type, B: Ty... {x = p.x, y = p.y} | fun(A: Type, B: Type) -> {x: A, y: B} -> {x: A, y: B}
+161..165 | Type                                     | Type
+170..174 | Type                                     | Type
+179..191 | {x: A, y: B}                             | Type
+183..184 | A                                        | Type
+189..190 | B                                        | Type
+196..214 | {x = p.x, y = p.y}                       | {x: A, y: B}
+201..202 | p                                        | {x: A, y: B}
+201..204 | p.x                                      | A
+210..211 | p                                        | {x: A, y: B}
+210..213 | p.y                                      | B
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+158..159 | A                                        | Type
+167..168 | B                                        | Type
+176..177 | p                                        | {x: A, y: B}
+
+def pair_swap: fun(A: Type, B: Type) -> {x: A, y: B} -> {x: B, y: A} =
+    fun(A: Type, B: Type, p: {x: A, y: B}) => {x = p.y, y = p.x};
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+232..292 | fun(A: Type, B: Ty... {x = p.y, y = p.x} | fun(A: Type, B: Type) -> {x: A, y: B} -> {x: B, y: A}
+239..243 | Type                                     | Type
+248..252 | Type                                     | Type
+257..269 | {x: A, y: B}                             | Type
+261..262 | A                                        | Type
+267..268 | B                                        | Type
+274..292 | {x = p.y, y = p.x}                       | {x: B, y: A}
+279..280 | p                                        | {x: A, y: B}
+279..282 | p.y                                      | B
+288..289 | p                                        | {x: A, y: B}
+288..291 | p.x                                      | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+236..237 | A                                        | Type
+245..246 | B                                        | Type
+254..255 | p                                        | {x: A, y: B}
 """
 
 stderr = """

@@ -30,6 +30,73 @@ span   | source                                   | type
 70..71 | 1                                        | Int
 72..73 | 2                                        | Int
 74..75 | 3                                        | Int
+
+def pair_make: fun(A: Type, B: Type) -> A -> B -> (A, B) =
+    fun(A: Type, B: Type, x: A, y: B) => (x, y);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+95..138 | fun(A: Type, B: Ty... A, y: B) => (x, y) | fun(A: Type, B: Type) -> A -> B -> (A, B)
+102..106 | Type                                     | Type
+111..115 | Type                                     | Type
+120..121 | A                                        | Type
+126..127 | B                                        | Type
+132..138 | (x, y)                                   | (A, B)
+133..134 | x                                        | A
+136..137 | y                                        | B
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+99..100 | A                                        | Type
+108..109 | B                                        | Type
+117..118 | x                                        | A
+123..124 | y                                        | B
+
+def pair_id: fun(A: Type, B: Type) -> (A, B) -> (A, B) =
+    fun(A: Type, B: Type, p: (A, B)) => (p._0, p._1);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+156..204 | fun(A: Type, B: Ty...B)) => (p._0, p._1) | fun(A: Type, B: Type) -> (A, B) -> (A, B)
+163..167 | Type                                     | Type
+172..176 | Type                                     | Type
+181..187 | (A, B)                                   | Type
+182..183 | A                                        | Type
+185..186 | B                                        | Type
+192..204 | (p._0, p._1)                             | (A, B)
+193..194 | p                                        | (A, B)
+193..197 | p._0                                     | A
+199..200 | p                                        | (A, B)
+199..203 | p._1                                     | B
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+160..161 | A                                        | Type
+169..170 | B                                        | Type
+178..179 | p                                        | (A, B)
+
+def pair_swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
+    fun(A: Type, B: Type, p: (A, B)) => (p._1, p._0);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+222..270 | fun(A: Type, B: Ty...B)) => (p._1, p._0) | fun(A: Type, B: Type) -> (A, B) -> (B, A)
+229..233 | Type                                     | Type
+238..242 | Type                                     | Type
+247..253 | (A, B)                                   | Type
+248..249 | A                                        | Type
+251..252 | B                                        | Type
+258..270 | (p._1, p._0)                             | (B, A)
+259..260 | p                                        | (A, B)
+259..263 | p._1                                     | B
+265..266 | p                                        | (A, B)
+265..269 | p._0                                     | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+226..227 | A                                        | Type
+235..236 | B                                        | Type
+244..245 | p                                        | (A, B)
 """
 
 stderr = """

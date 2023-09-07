@@ -1,3 +1,7 @@
 def record0 = {};
 def record1 = {x=1};
 def record2 = {x=1,y=false};
+
+def pair_make = fun(A: Type, B: Type, x: A, y: B) => {x = x, y = y};
+def pair_id   = fun(A: Type, B: Type, p: {x: A, y: B}) => {x = p.x, y = p.y};
+def pair_swap = fun(A: Type, B: Type, p: {x: A, y: B}) => {x = p.y, y = p.x};
