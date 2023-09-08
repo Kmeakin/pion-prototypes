@@ -1,3 +1,4 @@
+use ecow::EcoVec;
 use either::*;
 use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
@@ -41,20 +42,20 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     /// might now be present at the head of in the given value.
     pub fn update_metas(&self, value: &Value<'core>) -> Value<'core> {
         let mut forced_value = value.clone();
-        while let Value::Stuck(Head::Meta(var), spine) = &forced_value {
-            match self.get_meta(*var) {
-                Some(value) => forced_value = self.apply_spine(value.clone(), spine),
-                None => break,
+        while let Value::Stuck(Head::Meta(var), spine) = forced_value {
+            match self.get_meta(var) {
+                Some(head) => forced_value = self.apply_spine(head.clone(), spine),
+                None => return Value::Stuck(Head::Meta(var), spine),
             }
         }
         forced_value
     }
 
     /// Apply an expression to an elimination spine.
-    fn apply_spine(&self, head: Value<'core>, spine: &[Elim<'core>]) -> Value<'core> {
-        (spine.iter()).fold(head, |head, elim| match elim {
-            Elim::FunApp(plicity, arg) => self.fun_app(*plicity, head, arg.clone()),
-            Elim::FieldProj(name) => self.field_proj(head, *name),
+    fn apply_spine(&self, head: Value<'core>, spine: EcoVec<Elim<'core>>) -> Value<'core> {
+        (spine.into_iter()).fold(head, |head, elim| match elim {
+            Elim::FunApp(plicity, arg) => self.fun_app(plicity, head, arg),
+            Elim::FieldProj(name) => self.field_proj(head, name),
             Elim::Match(cases) => self.match_scrut(head, cases.clone()),
         })
     }
