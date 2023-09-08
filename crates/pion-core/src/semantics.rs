@@ -303,7 +303,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                     cases = next_cases;
                                 }
                                 SplitCases::Default(name, expr) => {
-                                    break Some((name, self.quote_closure(&expr)))
+                                    break Some((name, self.quote_closure(expr)))
                                 }
                                 SplitCases::None => break None,
                             }
@@ -314,12 +314,12 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
             }
             Value::FunType(plicity, name, domain, codomain) => {
                 let domain = self.quote(domain);
-                let codomain = self.quote_closure(&codomain);
+                let codomain = self.quote_closure(codomain);
                 Expr::fun_type(self.bump, plicity, name, domain, codomain)
             }
             Value::FunLit(plicity, name, domain, body) => {
                 let domain = self.quote(domain);
-                let body = self.quote_closure(&body);
+                let body = self.quote_closure(body);
                 Expr::fun_lit(self.bump, plicity, name, domain, body)
             }
             Value::ArrayLit(values) => {
@@ -355,9 +355,9 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     }
 
     /// Quote a [closure][Closure] back into an [expr][Expr].
-    fn quote_closure(&mut self, closure: &Closure<'core>) -> Expr<'core> {
-        let arg = Value::local(self.local_len.to_level());
-        let value = self.elim_env().apply_closure(closure.clone(), arg);
+    fn quote_closure(&mut self, closure: Closure<'core>) -> Expr<'core> {
+        let var = Value::local(self.local_len.to_level());
+        let value = self.elim_env().apply_closure(closure, var);
 
         self.push_local();
         let expr = self.quote(&value);
