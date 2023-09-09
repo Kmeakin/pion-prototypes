@@ -11,6 +11,9 @@ use crate::DumpFlags;
 pub struct CheckArgs {
     #[arg(required = true)]
     files: Vec<Utf8PathBuf>,
+
+    #[arg(short, long)]
+    quiet: bool,
 }
 
 fn stop_if_errors(error_count: u32) -> anyhow::Result<()> {
@@ -84,8 +87,10 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         }
     }
 
-    for diagnostic in diagnostics {
-        emit(&diagnostic)?;
+    if !args.quiet {
+        for diagnostic in diagnostics {
+            emit(&diagnostic)?;
+        }
     }
 
     stop_if_errors(error_count)?;
