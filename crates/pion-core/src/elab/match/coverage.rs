@@ -16,7 +16,7 @@ pub fn check_coverage<'core>(
     scrut_span: ByteSpan,
 ) -> Result<(), ()> {
     let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
-    let row = PatRow::singleton((Pat::Underscore(scrut_span), dummy_scrut));
+    let row = vec![(Pat::Underscore(scrut_span), dummy_scrut)];
 
     // A matrix row is reachable iff it is useful relative to the rows in the matrix
     // above it
@@ -26,7 +26,7 @@ pub fn check_coverage<'core>(
         rows.push(row.clone());
 
         // Don't check reachability for patterns with errors
-        if row.pats().any(Pat::is_error) {
+        if row.iter().any(|(pat, _)| pat.is_error()) {
             continue;
         }
 
@@ -51,7 +51,7 @@ pub fn check_coverage<'core>(
 fn is_useful<'core>(
     ctx: &mut ElabCtx<'_, '_, 'core>,
     matrix: &PatMatrix<'core>,
-    row: &PatRow<'core>,
+    row: &[RowEntry<'core>],
 ) -> bool {
     if let Some(n) = matrix.num_columns() {
         debug_assert_eq!(
@@ -97,8 +97,8 @@ fn is_useful<'core>(
                 // Inductive case 2b:
                 // If the constructors are not exhaustive, recurse on the defaulted matrix
                 false => {
-                    let matrix = matrix.default();
-                    is_useful(ctx, &matrix, &row.tail())
+                    let matrix = ctx.default_matrix(matrix);
+                    is_useful(ctx, &matrix, &row[1..])
                 }
             }
         }
@@ -108,11 +108,11 @@ fn is_useful<'core>(
 fn is_useful_ctor<'core>(
     ctx: &mut ElabCtx<'_, '_, 'core>,
     matrix: &PatMatrix<'core>,
-    row: &PatRow<'core>,
+    row: &[RowEntry<'core>],
     ctor: &Constructor<'core>,
 ) -> bool {
-    let matrix = matrix.specialize(ctx, ctor);
-    let row = row.specialize(ctx, ctor);
+    let matrix = ctx.specialize_matrix(matrix, ctor);
+    let row = ctx.specialize_row(row, ctor);
     match row {
         None => false,
         Some(row) => is_useful(ctx, &matrix, &row),

@@ -38,7 +38,7 @@ pub fn compile_match<'core>(
 
     // Base case 2:
     // If the first row is all wildcards, matching always suceeds.
-    if matrix.row(0).all_wildcards() {
+    if matrix.row(0).iter().all(|(pat, _)| pat.is_wildcard()) {
         let bump = ctx.bump;
         let index = matrix.row_index(0);
         let Body {
@@ -80,7 +80,7 @@ pub fn compile_match<'core>(
                 let mut cases = SliceVec::new(ctx.bump, ctors.len());
                 for ctor in &ctors {
                     let lit = ctor.as_lit().unwrap();
-                    let mut matrix = matrix.specialize(ctx, ctor);
+                    let mut matrix = ctx.specialize_matrix(matrix, ctor);
                     let expr = compile_match(ctx, &mut matrix, bodies, shift_amount);
                     cases.push((*lit, expr));
                 }
@@ -89,7 +89,7 @@ pub fn compile_match<'core>(
                     true => None,
                     false => {
                         let name = BinderName::Underscore;
-                        let mut matrix = matrix.default();
+                        let mut matrix = ctx.default_matrix(matrix);
 
                         let value = ctx.eval_env().eval(&scrut_expr);
                         ctx.local_env.push_def(name, scrut.r#type.clone(), value);
@@ -107,7 +107,7 @@ pub fn compile_match<'core>(
             // There is only one constructor for each record type,
             // so we only need to generate a single subtree (ie no branching needed)
             Pat::RecordLit(_, fields) => {
-                let mut matrix = matrix.specialize(ctx, &Constructor::Record(fields));
+                let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
                 return compile_match(ctx, &mut matrix, bodies, shift_amount);
             }
 
@@ -149,7 +149,7 @@ impl<'arena> PatMatrix<'arena> {
         );
 
         for row in &mut self.rows {
-            row.entries.swap(column1, column2);
+            row.swap(column1, column2);
         }
     }
 }

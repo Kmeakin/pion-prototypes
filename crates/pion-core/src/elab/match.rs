@@ -103,11 +103,7 @@ impl<'arena> PatMatrix<'arena> {
     pub fn new(rows: Vec<PatRow<'arena>>) -> Self {
         if let Some((first, rows)) = rows.split_first() {
             for row in rows {
-                debug_assert_eq!(
-                    first.entries.len(),
-                    row.entries.len(),
-                    "All rows must be same length"
-                );
+                debug_assert_eq!(first.len(), row.len(), "All rows must be same length");
             }
         }
         let indices = (0..rows.len()).collect();
@@ -115,7 +111,7 @@ impl<'arena> PatMatrix<'arena> {
     }
 
     pub fn singleton(scrut: Scrut<'arena>, pat: Pat<'arena>) -> Self {
-        Self::new(vec![PatRow::singleton((pat, scrut))])
+        Self::new(vec![vec![(pat, scrut)]])
     }
 
     pub fn num_rows(&self) -> usize { self.rows.len() }
@@ -131,7 +127,7 @@ impl<'arena> PatMatrix<'arena> {
 
     /// Iterate over all the pairs in the `index`th column
     pub fn column(&self, index: usize) -> impl ExactSizeIterator<Item = &RowEntry<'arena>> + '_ {
-        self.rows.iter().map(move |row| &row.entries[index])
+        self.rows.iter().map(move |row| &row[index])
     }
 
     pub fn row(&self, index: usize) -> &PatRow<'arena> { &self.rows[index] }
@@ -158,11 +154,9 @@ impl<'arena> PatMatrix<'arena> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct PatRow<'arena> {
-    entries: Vec<RowEntry<'arena>>,
-}
+pub type PatRow<'arena> = Vec<RowEntry<'arena>>;
 
+#[cfg(FALSE)]
 impl<'arena> PatRow<'arena> {
     pub fn new(entries: Vec<RowEntry<'arena>>) -> Self { Self { entries } }
 
@@ -212,93 +206,88 @@ impl<'arena> Body<'arena> {
     }
 }
 
-impl<'core> Pat<'core> {
-    /// Specialise `self` with respect to the constructor `ctor`.
-    pub fn specialize<'surface, 'hir>(
+impl<'core> ElabCtx<'_, '_, 'core> {
+    /// Specialise `pat` with respect to the constructor `ctor`.
+    pub fn specialize_pat(
         &self,
-        ctx: &ElabCtx<'surface, 'hir, 'core>,
+        pat: &Pat<'core>,
         ctor: &Constructor,
         scrut: &Scrut<'core>,
     ) -> Option<PatRow<'core>> {
-        match self {
+        match pat {
             Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => {
-                let columns = vec![(Pat::Underscore(self.span()), scrut.clone()); ctor.arity()];
-                Some(PatRow::new(columns))
+                let columns = vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
+                Some(columns)
             }
-            Pat::Lit(_, lit) if *ctor == Constructor::Lit(*lit) => Some(PatRow::new(vec![])),
+            Pat::Lit(_, lit) if *ctor == Constructor::Lit(*lit) => Some(vec![]),
             Pat::RecordLit(_, fields) if *ctor == Constructor::Record(fields) => {
                 let mut columns = Vec::with_capacity(fields.len());
 
                 #[rustfmt::skip]
-                let Type::RecordType(mut telescope) = ctx.elim_env().update_metas(&scrut.r#type) else {
+                let Type::RecordType(mut telescope) = self.elim_env().update_metas(&scrut.r#type) else {
                     unreachable!("expected record type, got {:?}", scrut.r#type)
                 };
 
                 for (label, pattern) in *fields {
-                    let (_, r#type, cont) =
-                        ctx.elim_env().split_telescope(telescope.clone()).unwrap();
-
-                    telescope = cont(ctx.local_env.next_var());
-                    let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
+                    let (_, r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+                    telescope = cont(self.local_env.next_var());
+                    let scrut_expr = Expr::field_proj(self.bump, scrut.expr, *label);
                     let scrut = Scrut::new(scrut_expr, r#type);
                     columns.push((*pattern, scrut));
                 }
-                Some(PatRow::new(columns))
+                Some(columns)
             }
             Pat::Lit(..) | Pat::RecordLit(..) => None,
         }
     }
-}
 
-impl<'core> PatRow<'core> {
     /// Specialise `self` with respect to the constructor `ctor`.
-    pub fn specialize<'surface, 'hir>(
+    pub fn specialize_row(
         &self,
-        ctx: &ElabCtx<'surface, 'hir, 'core>,
+        row: &[RowEntry<'core>],
         ctor: &Constructor,
     ) -> Option<PatRow<'core>> {
-        assert!(!self.entries.is_empty(), "Cannot specialize empty `PatRow`");
-        let ((pat, scrut), rest) = self.split_first().unwrap();
-        let mut row = pat.specialize(ctx, ctor, scrut)?;
-        row.append(rest);
+        assert!(!row.is_empty(), "Cannot specialize empty `PatRow`");
+        let ((pat, scrut), rest) = row.split_first().unwrap();
+        let mut row = self.specialize_pat(pat, ctor, scrut)?;
+        row.extend_from_slice(rest);
         Some(row)
     }
-}
 
-impl<'core> PatMatrix<'core> {
-    /// Specialise `self` with respect to the constructor `ctor`.
-    /// This is the `S` function in *Compiling pattern matching to good decision
-    /// trees*
-    pub fn specialize<'surface, 'hir>(
+    /// Specialise `matrix` with respect to the constructor `ctor`.  This is the
+    /// `S` function in *Compiling pattern matching to good decision trees*.
+    pub fn specialize_matrix(
         &self,
-        ctx: &ElabCtx<'surface, 'hir, 'core>,
+        matrix: &PatMatrix<'core>,
         ctor: &Constructor,
-    ) -> Self {
-        let (rows, indices) = self
+    ) -> PatMatrix<'core> {
+        let (rows, indices) = matrix
             .iter()
             .filter_map(|(row, body)| {
-                let row = row.specialize(ctx, ctor)?;
+                let row = self.specialize_row(row, ctor)?;
                 Some((row, body))
             })
             .unzip();
-        Self { rows, indices }
+        PatMatrix { rows, indices }
     }
 
     /// Discard the first column, and all rows starting with a constructed
-    /// pattern. This is the `D` function in *Compiling pattern matching to
-    /// good decision trees*
-    pub fn default(&self) -> Self {
+    /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
+    /// matching to good decision trees*.
+    pub fn default_matrix(&self, matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
         assert!(
-            !self.is_unit(),
+            !matrix.is_unit(),
             "Cannot default `PatMatrix` with no columns"
         );
-        let (rows, indices) = self
+        let (rows, indices) = matrix
             .iter()
             .filter_map(|(row, body)| match row.first().unwrap().0 {
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => Some((row.tail(), body)),
+                Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => {
+                    Some((row[1..].to_vec(), body))
+                }
                 Pat::Lit(..) | Pat::RecordLit(..) => None,
             })
             .unzip();
-        Self { rows, indices }
+        PatMatrix { rows, indices }
     }
 }
