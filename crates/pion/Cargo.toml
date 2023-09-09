@@ -23,6 +23,7 @@ bumpalo            = { workspace = true }
 camino             = { workspace = true }
 clap               = { version = "4.3.12", features = ["derive"] }
 codespan-reporting = { workspace = true }
+tikv-jemallocator  = { version = "0.5.4" }
 
 [dev-dependencies]
 snapbox = { version = "0.4.11", features = ["harness"] }
