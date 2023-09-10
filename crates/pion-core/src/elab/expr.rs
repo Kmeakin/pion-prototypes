@@ -5,7 +5,7 @@ use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
-use super::r#match::{self, Body, PatMatrix, Scrut};
+use super::r#match::{self, Body, PatMatrix, PatRow, Scrut};
 use super::*;
 use crate::name::{FieldName, LocalName};
 use crate::prim::Prim;
@@ -884,10 +884,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             let initial_len = self.local_env.len();
             let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
             let let_vars = self.push_match_pat(&pat, &scrut, &scrut_value);
+            let guard = case
+                .guard
+                .as_ref()
+                .map(|guard| self.check_expr_is_bool(guard).0);
             let Check(expr) = self.check_expr(&case.expr, expected);
             self.local_env.truncate(initial_len);
 
-            rows.push(vec![(pat, scrut.clone())]);
+            rows.push(PatRow::new(vec![(pat, scrut.clone())], guard));
             bodies.push(Body::new(let_vars, expr));
         }
 

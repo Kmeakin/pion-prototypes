@@ -38,7 +38,13 @@ pub fn compile_match<'core>(
 
     // Base case 2:
     // If the first row is all wildcards, matching always suceeds.
-    if matrix.row(0).iter().all(|(pat, _)| pat.is_wildcard()) {
+    // Bind all the variables in scope with `let`, and either
+    // a) if there is no guard, continue to the RHS
+    // b) if there is a guard, branch on the guard:
+    //    - if the guard is true, continue to the RHS
+    //    - if the guard is false, recurse on the remaining rows
+    let row = matrix.row(0);
+    if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
         let bump = ctx.bump;
         let index = matrix.row_index(0);
         let Body {
@@ -56,9 +62,21 @@ pub fn compile_match<'core>(
             (*name, (r#type, init, Expr::Error))
         });
         let let_vars = bump.alloc_slice_fill_iter(let_vars);
+
+        let body = match row.guard {
+            None => *body,
+            Some(guard) => {
+                matrix.rows.remove(0);
+                matrix.indices.remove(0);
+                let r#else = compile_match(ctx, matrix, bodies, EnvLen::new());
+                let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
+                Expr::r#if(ctx.bump, guard, *body, r#else)
+            }
+        };
+
         ctx.local_env.truncate(initial_len);
 
-        return (let_vars.iter_mut().rev()).fold(*body, |body, (name, tuple)| {
+        return let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
             tuple.2 = body;
             Expr::Let(*name, tuple)
         });
@@ -141,7 +159,7 @@ impl<'arena> PatMatrix<'arena> {
         );
 
         for row in &mut self.rows {
-            row.swap(column1, column2);
+            row.elems.swap(column1, column2);
         }
     }
 }

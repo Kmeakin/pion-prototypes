@@ -12,32 +12,28 @@ use crate::elab::diagnostics::ElabDiagnostic;
 
 pub fn check_coverage<'core>(
     ctx: &mut ElabCtx<'_, '_, 'core>,
-    matrix: &PatMatrix<'core>,
+    input_matrix: &PatMatrix<'core>,
     scrut_span: ByteSpan,
 ) -> Result<(), ()> {
-    let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
-    let row = [(Pat::Underscore(scrut_span), dummy_scrut)];
+    let mut temp_matrix = PatMatrix::new(vec![]);
 
     // A matrix row is reachable iff it is useful relative to the rows in the matrix
     // above it
-    let mut rows = Vec::with_capacity(matrix.num_rows());
-    for (row, _) in matrix.iter() {
-        let matrix = PatMatrix::new(rows.clone());
-        rows.push(row.clone());
-
-        // Don't check reachability for patterns with errors
-        if row.iter().any(|(pat, _)| pat.is_error()) {
-            continue;
+    for (row, _) in input_matrix.iter() {
+        if !is_useful(ctx, &temp_matrix, row.as_ref()) {
+            let pat_span = row.elems.first().unwrap().0.span();
+            ctx.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
         }
 
-        if !is_useful(ctx, &matrix, row) {
-            let pat_span = row.first().unwrap().0.span();
-            ctx.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
+        if row.guard.is_none() {
+            temp_matrix.push_row(row.clone());
         }
     }
 
     // A matrix is exhaustive iff the the wildcard pattern `_` is not useful
-    if is_useful(ctx, matrix, &row) {
+    let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
+    let elems = [(Pat::Underscore(scrut_span), dummy_scrut)];
+    if is_useful(ctx, &temp_matrix, PatRow::new(&elems, None)) {
         ctx.emit_diagnostic(ElabDiagnostic::InexhaustiveMatch { scrut_span });
         Err(())
     } else {
@@ -51,12 +47,12 @@ pub fn check_coverage<'core>(
 fn is_useful<'core>(
     ctx: &mut ElabCtx<'_, '_, 'core>,
     matrix: &PatMatrix<'core>,
-    row: &[RowEntry<'core>],
+    row: BorrowedPatRow<'core, '_>,
 ) -> bool {
     if let Some(n) = matrix.num_columns() {
         debug_assert_eq!(
             n,
-            row.len(),
+            row.elems.len(),
             "`row` must have a pattern for each column of `matrix`"
         );
     }
@@ -74,7 +70,7 @@ fn is_useful<'core>(
         return true;
     }
 
-    let (pat, _) = row.first().unwrap();
+    let (pat, _) = row.elems.first().unwrap();
     match pat {
         // Inductive case 1:
         // If the first pattern is a constructed pattern, specialise the matrix and test row and
@@ -98,7 +94,7 @@ fn is_useful<'core>(
                 // If the constructors are not exhaustive, recurse on the defaulted matrix
                 false => {
                     let matrix = ctx.default_matrix(matrix);
-                    is_useful(ctx, &matrix, &row[1..])
+                    is_useful(ctx, &matrix, PatRow::new(&row.elems[1..], row.guard))
                 }
             }
         }
@@ -108,13 +104,13 @@ fn is_useful<'core>(
 fn is_useful_ctor<'core>(
     ctx: &mut ElabCtx<'_, '_, 'core>,
     matrix: &PatMatrix<'core>,
-    row: &[RowEntry<'core>],
+    row: BorrowedPatRow<'core, '_>,
     ctor: &Constructor<'core>,
 ) -> bool {
     let matrix = ctx.specialize_matrix(matrix, ctor);
     let row = ctx.specialize_row(row, ctor);
     match row {
         None => false,
-        Some(row) => is_useful(ctx, &matrix, &row),
+        Some(row) => is_useful(ctx, &matrix, row.as_ref()),
     }
 }

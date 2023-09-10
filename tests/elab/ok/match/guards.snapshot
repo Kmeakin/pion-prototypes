@@ -1,0 +1,186 @@
+exit status: 0
+
+stdout = """
+def foo: Int -> Bool -> Bool -> Int =
+    fun(x: Int, y: Bool, z: Bool) => match x {
+        1 => match y {
+            false => 6,
+            true => 1,
+        },
+        2 => match z {
+            false => 6,
+            true => 2,
+        },
+        3 => match y {
+            false => 6,
+            true => 3,
+        },
+        4 => match z {
+            false => 6,
+            true => 4,
+        },
+        5 => 5,
+        _ => 6,
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..146 | fun(x: Int, y: Boo... 5,\n    _ => 6,\n} | Int -> Bool -> Bool -> Int
+17..20 | Int                                      | Type
+25..29 | Bool                                     | Type
+34..38 | Bool                                     | Type
+43..146 | match x {\n    1 i... 5,\n    _ => 6,\n} | Int
+49..50 | x                                        | Int
+62..63 | y                                        | Bool
+67..68 | 1                                        | Int
+79..80 | z                                        | Bool
+84..85 | 2                                        | Int
+96..97 | y                                        | Bool
+101..102 | 3                                        | Int
+113..114 | z                                        | Bool
+118..119 | 4                                        | Int
+130..131 | 5                                        | Int
+142..143 | 6                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | x                                        | Int
+22..23 | y                                        | Bool
+31..32 | z                                        | Bool
+57..58 | 1                                        | Int
+74..75 | 2                                        | Int
+91..92 | 3                                        | Int
+108..109 | 4                                        | Int
+125..126 | 5                                        | Int
+137..138 | _                                        | Int
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => Int
+
+def bar: Bool -> (Bool -> Bool) -> Int -> Int =
+    fun(x: Bool, f: Bool -> Bool, y: Int) => match x {
+        true => 0,
+        _ =>
+            let z: Bool = x;
+            match f(z) {
+                false => 3,
+                true => y,
+            },
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+159..257 | fun(x: Bool, f: Bo... y,\n    _ => 3,\n} | Bool -> (Bool -> Bool) -> Int -> Int
+166..170 | Bool                                     | Type
+175..179 | Bool                                     | Type
+175..187 | Bool -> Bool                             | Type
+183..187 | Bool                                     | Type
+191..194 | Int                                      | Type
+199..257 | match x {\n    tru... y,\n    _ => 3,\n} | Int
+205..206 | x                                        | Bool
+221..222 | 0                                        | Int
+233..234 | f                                        | Bool -> Bool
+233..237 | f(z)                                     | Bool
+235..236 | z                                        | Bool
+241..242 | y                                        | Int
+253..254 | 3                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+163..164 | x                                        | Bool
+172..173 | f                                        | Bool -> Bool
+189..190 | y                                        | Int
+213..217 | true                                     | Bool
+228..229 | z                                        | Bool
+248..249 | _                                        | Bool
+metavars:
+?0 = fun(_: #error, _: #error, _: #error) => Int
+
+def baz: Int -> Int -> (Int -> Bool) -> Int =
+    fun(x: Int, y: Int, f: Int -> Bool) => match (x, y)._0 {
+        0 =>
+            let a: Int = (x, y)._1;
+            match f(a) {
+                false =>
+                    let b: Int = (x, y)._1;
+                    match f(b) {
+                        false =>
+                            let c: Int = (x, y)._1;
+                            match f(c) {
+                                false =>
+                                    let d: Int = (x, y)._1;
+                                    match f(d) {
+                                        false =>
+                                            let aa: Int = (x, y)._0;
+                                            let bb: Int = (x, y)._1;
+                                            bb,
+                                        true => d,
+                                    },
+                                true => c,
+                            },
+                        true => b,
+                    },
+                true => a,
+            },
+        _ =>
+            let aa: Int = (x, y)._0;
+            let bb: Int = (x, y)._1;
+            bb,
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+270..441 | fun (x, y: Int, f:... (aa, bb) => bb,\n} | Int -> Int -> (Int -> Bool) -> Int
+281..284 | Int                                      | Type
+289..292 | Int                                      | Type
+289..300 | Int -> Bool                              | Type
+296..300 | Bool                                     | Type
+305..441 | match (x, y) {\n  ... (aa, bb) => bb,\n} | Int
+311..317 | (x, y)                                   | (?0, Int)
+312..313 | x                                        | ?0
+315..316 | y                                        | Int
+334..335 | f                                        | Int -> Bool
+334..338 | f(a)                                     | Bool
+336..337 | a                                        | Int
+342..343 | a                                        | Int
+359..360 | f                                        | Int -> Bool
+359..363 | f(b)                                     | Bool
+361..362 | b                                        | Int
+367..368 | b                                        | Int
+384..385 | f                                        | Int -> Bool
+384..388 | f(c)                                     | Bool
+386..387 | c                                        | Int
+392..393 | c                                        | Int
+409..410 | f                                        | Int -> Bool
+409..413 | f(d)                                     | Bool
+411..412 | d                                        | Int
+417..418 | d                                        | Int
+436..438 | bb                                       | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+275..276 | x                                        | ?0
+278..279 | y                                        | Int
+286..287 | f                                        | Int -> Bool
+324..330 | (0, a)                                   | (Int, Int)
+325..326 | 0                                        | Int
+328..329 | a                                        | Int
+349..355 | (0, b)                                   | (Int, Int)
+350..351 | 0                                        | Int
+353..354 | b                                        | Int
+374..380 | (0, c)                                   | (Int, Int)
+375..376 | 0                                        | Int
+378..379 | c                                        | Int
+399..405 | (0, d)                                   | (Int, Int)
+400..401 | 0                                        | Int
+403..404 | d                                        | Int
+424..432 | (aa, bb)                                 | (Int, Int)
+425..427 | aa                                       | Int
+429..431 | bb                                       | Int
+metavars:
+?0 = Int
+?1 = fun(_: #error, _: #error, _: #error) => Int
+"""
+
+stderr = """
+
+"""

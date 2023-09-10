@@ -17,6 +17,46 @@ span   | source                                   | type
 40..45 | false                                    | Bool
 metavars:
 ?0 = fun(_: #error) => Int
+
+def bar: Bool -> Int = fun(x: Bool) => #error;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+66..179 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
+73..77 | Bool                                     | Type
+82..179 | match x {\n    fal...f it has a guard\n} | Int
+88..89 | x                                        | Bool
+105..106 | 1                                        | Int
+117..121 | true                                     | Bool
+125..126 | 2                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+70..71 | x                                        | Bool
+96..101 | false                                    | Bool
+112..113 | _                                        | Bool
+metavars:
+?0 = fun(_: #error) => Int
+
+def baz: Bool -> Int = fun(x: Bool) => #error;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+192..307 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
+199..203 | Bool                                     | Type
+208..307 | match x {\n    fal...f it has a guard\n} | Int
+214..215 | x                                        | Bool
+231..232 | 1                                        | Int
+246..250 | true                                     | Bool
+254..255 | 2                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+196..197 | x                                        | Bool
+222..227 | false                                    | Bool
+238..242 | true                                     | Bool
+metavars:
+?0 = fun(_: #error) => Int
 """
 
 stderr = """
@@ -26,5 +66,17 @@ error: inexhaustive pattern match
 1 │ def foo = fun(x: Bool) => match x {
   │                                 ^
 
-aborting due to 1 previous error
+error: inexhaustive pattern match
+  ┌─ tests/elab/errors/pattern_matching/inexhaustive_match.pion:5:33
+  │
+5 │ def bar = fun(x: Bool) => match x {
+  │                                 ^
+
+error: inexhaustive pattern match
+   ┌─ tests/elab/errors/pattern_matching/inexhaustive_match.pion:10:33
+   │
+10 │ def baz = fun(x: Bool) => match x {
+   │                                 ^
+
+aborting due to 3 previous errors
 """
