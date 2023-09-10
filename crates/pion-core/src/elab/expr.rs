@@ -621,7 +621,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                                     self.bump.alloc(body_type),
                                 ),
                             );
-                            return Check::new(self.convert_expr(span, expr, &r#type, expected));
+                            return Check::new(self.convert_expr(span, expr, r#type, expected));
                         }
                     }
                 }
@@ -658,24 +658,24 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     ) -> CheckExpr<'core> {
         let span = self.syntax_map[expr].span();
         let Synth(expr, r#type) = self.synth_expr(expr);
-        CheckExpr::new(self.convert_expr(span, expr, &r#type, expected))
+        CheckExpr::new(self.convert_expr(span, expr, r#type, expected))
     }
 
     fn convert_expr(
         &mut self,
         span: ByteSpan,
         expr: Expr<'core>,
-        from: &Type<'core>,
+        from: Type<'core>,
         to: &Type<'core>,
     ) -> Expr<'core> {
         // Attempt to specialize exprs with freshly inserted implicit
         // arguments if an explicit function was expected.
         let (expr, from) = match (expr, to) {
-            (Expr::FunLit(..), _) => (expr, from.clone()),
+            (Expr::FunLit(..), _) => (expr, from),
             (_, Type::FunType(Plicity::Explicit, ..)) => {
-                self.insert_implicit_apps(span, expr, from.clone())
+                self.insert_implicit_apps(span, expr, from)
             }
-            _ => (expr, from.clone()),
+            _ => (expr, from),
         };
 
         match self.unifiy_ctx().unify(&from, to) {
@@ -859,7 +859,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             _ => {
                 let span = self.syntax_map[body].span(); // FIXME: correct span
                 let Synth(expr, r#type) = self.synth_fun_lit(params, body, names);
-                Check::new(self.convert_expr(span, expr, &r#type, &expected))
+                Check::new(self.convert_expr(span, expr, r#type, &expected))
             }
         }
     }
