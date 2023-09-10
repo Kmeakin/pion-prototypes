@@ -169,6 +169,7 @@ pub struct PatField<'surface> {
 pub struct MatchCase<'surface> {
     pub pat: Pat<'surface>,
     pub expr: Expr<'surface>,
+    pub guard: Option<Expr<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

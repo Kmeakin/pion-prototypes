@@ -69,6 +69,7 @@ pub struct FunArg<'hir> {
 pub struct MatchCase<'hir> {
     pub pat: Pat<'hir>,
     pub expr: Expr<'hir>,
+    pub guard: Option<Expr<'hir>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

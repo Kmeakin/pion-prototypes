@@ -278,7 +278,8 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
     ) -> MatchCase<'hir> {
         let pat = self.pat_to_hir(&case.pat);
         let expr = self.expr_to_hir(&case.expr);
-        MatchCase { pat, expr }
+        let guard = case.guard.as_ref().map(|guard| self.expr_to_hir(guard));
+        MatchCase { pat, expr, guard }
     }
 
     fn lower_match_cases(
@@ -291,6 +292,9 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         for (case, hir) in cases.iter().zip(hir.iter()) {
             self.syntax_map.pats.insert(&case.pat, &hir.pat);
             self.syntax_map.exprs.insert(&case.expr, &hir.expr);
+            if let (Some(guard), Some(hir)) = (&case.guard, &hir.guard) {
+                self.syntax_map.exprs.insert(guard, hir);
+            }
         }
         hir
     }

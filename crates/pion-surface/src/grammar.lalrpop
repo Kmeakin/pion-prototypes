@@ -126,7 +126,7 @@ Plicity: Plicity = {
 }
 
 MatchCase: MatchCase<'surface> = {
-    <pat: Pat> "=>" <expr: Expr> => MatchCase {pat, expr},
+    <pat: Pat> <guard: ("if" <Expr>)?> "=>" <expr: Expr> => MatchCase {pat, expr, guard},
 }
 
 ExprField: ExprField<'surface> = {
