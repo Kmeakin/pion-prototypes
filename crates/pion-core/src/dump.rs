@@ -61,7 +61,7 @@ pub fn dump_expr_types(
     )?;
     for (surface, hir) in exprs {
         let span = surface.0.span();
-        let source = ellipsize(source[span].to_owned(), 40);
+        let source = ellipsize(&source[span], 40);
         let r#type = type_map.exprs.get(&Identity(hir));
         match r#type {
             None => writeln!(writer, "{span:10} | {source:40} | <missing>")?,
@@ -105,7 +105,7 @@ pub fn dump_pat_types(
     )?;
     for (surface, hir) in pats {
         let span = surface.0.span();
-        let source = ellipsize(source[span].to_owned(), 40);
+        let source = ellipsize(&source[span], 40);
         let r#type = type_map.pats.get(&Identity(hir));
         match r#type {
             None => writeln!(writer, "{span:10} | {source:40} | <missing>",)?,
@@ -147,7 +147,7 @@ pub fn dump_metavars(
     Ok(())
 }
 
-fn ellipsize(text: String, max_len: usize) -> String {
+fn ellipsize(text: &str, max_len: usize) -> String {
     const ELLIPSIS: &str = "...";
     const ELLIPSIS_LEN: usize = ELLIPSIS.len();
 

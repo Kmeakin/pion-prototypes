@@ -34,7 +34,7 @@ impl EnvLen {
     pub fn pop(&mut self) { self.0 -= 1; }
 
     /// Push many elements onto the environment.
-    pub fn append(&mut self, other: EnvLen) { self.0 += other.0; }
+    pub fn append(&mut self, other: Self) { self.0 += other.0; }
 
     /// Truncate the environment to `len`.
     pub fn truncate(&mut self, len: Self) { *self = len; }
