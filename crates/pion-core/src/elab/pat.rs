@@ -116,7 +116,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                     for elem in *elems {
                         let (name, r#type, cont) =
-                            self.elim_env().split_telescope(telescope.clone()).unwrap();
+                            self.elim_env().split_telescope(telescope).unwrap();
 
                         let Check(elem_pat) = self.check_pat(elem, &r#type);
                         let elem_value = self.local_env.next_var();
