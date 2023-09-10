@@ -75,17 +75,16 @@ pub fn compile_match<'core>(
         match pat {
             Pat::Lit(..) => {
                 let scrut_expr = scrut.expr.shift(ctx.bump, shift_amount);
-                let ctors = matrix.column_constructors(0);
+                let lits = matrix.column_literals(0);
 
-                let mut cases = SliceVec::new(ctx.bump, ctors.len());
-                for ctor in &ctors {
-                    let lit = ctor.as_lit().unwrap();
-                    let mut matrix = ctx.specialize_matrix(matrix, ctor);
+                let mut cases = SliceVec::new(ctx.bump, lits.len());
+                for lit in &lits {
+                    let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(*lit));
                     let expr = compile_match(ctx, &mut matrix, bodies, shift_amount);
                     cases.push((*lit, expr));
                 }
 
-                let default = match Constructor::is_exhaustive(&ctors) {
+                let default = match Lit::is_exhaustive(&lits) {
                     true => None,
                     false => {
                         let name = BinderName::Underscore;

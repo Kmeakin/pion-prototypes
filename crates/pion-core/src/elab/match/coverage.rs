@@ -16,7 +16,7 @@ pub fn check_coverage<'core>(
     scrut_span: ByteSpan,
 ) -> Result<(), ()> {
     let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
-    let row = vec![(Pat::Underscore(scrut_span), dummy_scrut)];
+    let row = [(Pat::Underscore(scrut_span), dummy_scrut)];
 
     // A matrix row is reachable iff it is useful relative to the rows in the matrix
     // above it

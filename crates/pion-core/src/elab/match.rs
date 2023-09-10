@@ -77,18 +77,24 @@ impl<'core> Constructor<'core> {
     /// `None` represents infinity
     pub fn num_inhabitants(&self) -> u128 {
         match self {
-            Constructor::Lit(lit) => match lit {
-                Lit::Bool(_) => 1 << 1,
-                Lit::Int(_) => 1 << 32,
-            },
+            Constructor::Lit(lit) => lit.num_inhabitants(),
             Constructor::Record(_) => 1,
         }
     }
+}
 
-    pub fn as_lit(&self) -> Option<&Lit> {
+impl Lit {
+    pub fn num_inhabitants(&self) -> u128 {
         match self {
-            Constructor::Lit(lit) => Some(lit),
-            Constructor::Record(_) => None,
+            Self::Bool(_) => 1 << 1,
+            Self::Int(_) => 1 << 32,
+        }
+    }
+
+    pub fn is_exhaustive(lits: &[Self]) -> bool {
+        match lits.first() {
+            None => false,
+            Some(lit) => lits.len() as u128 >= lit.num_inhabitants(),
         }
     }
 }
@@ -136,17 +142,31 @@ impl<'arena> PatMatrix<'arena> {
 
     /// Collect all the `Constructor`s in the `index`th column
     pub fn column_constructors(&self, index: usize) -> Vec<Constructor<'arena>> {
-        let mut ctors = Vec::with_capacity(self.num_rows());
-        for (pat, _) in self.column(index) {
-            match pat {
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => continue,
-                Pat::Lit(_, lit) => ctors.push(Constructor::Lit(*lit)),
-                Pat::RecordLit(_, labels) => ctors.push(Constructor::Record(labels)),
-            }
-        }
+        let mut ctors: Vec<_> = self
+            .column(index)
+            .filter_map(|(pat, _)| match pat {
+                Pat::Lit(_, lit) => Some(Constructor::Lit(*lit)),
+                Pat::RecordLit(_, fields) => Some(Constructor::Record(fields)),
+                _ => None,
+            })
+            .collect();
         ctors.sort_unstable();
         ctors.dedup();
         ctors
+    }
+
+    /// Collect all the `Lit`s in the `index`th column
+    pub fn column_literals(&self, index: usize) -> Vec<Lit> {
+        let mut lits: Vec<_> = self
+            .column(index)
+            .filter_map(|(pat, _)| match pat {
+                Pat::Lit(_, lit) => Some(*lit),
+                _ => None,
+            })
+            .collect();
+        lits.sort_unstable();
+        lits.dedup();
+        lits
     }
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&PatRow<'arena>, usize)> {
@@ -155,37 +175,6 @@ impl<'arena> PatMatrix<'arena> {
 }
 
 pub type PatRow<'arena> = Vec<RowEntry<'arena>>;
-
-#[cfg(FALSE)]
-impl<'arena> PatRow<'arena> {
-    pub fn new(entries: Vec<RowEntry<'arena>>) -> Self { Self { entries } }
-
-    pub fn singleton(entry: RowEntry<'arena>) -> Self { Self::new(vec![entry]) }
-
-    pub fn tail(&self) -> Self {
-        assert!(!self.is_empty(), "Cannot take tail of empty `PatRow`");
-        Self::new(self.entries[1..].to_vec())
-    }
-
-    pub fn len(&self) -> usize { self.entries.len() }
-
-    pub fn is_empty(&self) -> bool { self.entries.is_empty() }
-
-    pub fn first(&self) -> Option<&RowEntry<'arena>> { self.entries.first() }
-
-    pub fn all_wildcards(&self) -> bool { self.entries.iter().all(|(pat, _)| pat.is_wildcard()) }
-
-    pub fn split_first(&self) -> Option<(&RowEntry<'arena>, Self)> {
-        let (first, rest) = self.entries.split_first()?;
-        Some((first, Self::new(rest.to_vec())))
-    }
-
-    pub fn append(&mut self, mut other: Self) { self.entries.append(&mut other.entries); }
-
-    pub fn pats(&self) -> impl ExactSizeIterator<Item = &Pat<'arena>> {
-        self.entries.iter().map(|(pat, _)| pat)
-    }
-}
 
 /// An element in a `PatRow`: `<scrut.expr> is <pat>`.
 /// This notation is taken from [How to compile pattern matching]
@@ -261,13 +250,15 @@ impl<'core> ElabCtx<'_, '_, 'core> {
         matrix: &PatMatrix<'core>,
         ctor: &Constructor,
     ) -> PatMatrix<'core> {
-        let (rows, indices) = matrix
-            .iter()
-            .filter_map(|(row, body)| {
-                let row = self.specialize_row(row, ctor)?;
-                Some((row, body))
-            })
-            .unzip();
+        let len = matrix.num_rows();
+        let mut rows = Vec::with_capacity(len);
+        let mut indices = Vec::with_capacity(len);
+        for (row, body) in matrix.iter() {
+            if let Some(row) = self.specialize_row(row, ctor) {
+                rows.push(row);
+                indices.push(body);
+            }
+        }
         PatMatrix { rows, indices }
     }
 
@@ -279,15 +270,18 @@ impl<'core> ElabCtx<'_, '_, 'core> {
             !matrix.is_unit(),
             "Cannot default `PatMatrix` with no columns"
         );
-        let (rows, indices) = matrix
-            .iter()
-            .filter_map(|(row, body)| match row.first().unwrap().0 {
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => {
-                    Some((row[1..].to_vec(), body))
-                }
-                Pat::Lit(..) | Pat::RecordLit(..) => None,
-            })
-            .unzip();
+
+        let len = matrix.num_rows();
+        let mut rows = Vec::with_capacity(len);
+        let mut indices = Vec::with_capacity(len);
+        for (row, body) in matrix.iter() {
+            let (pat, _) = row.first().unwrap();
+            if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
+                rows.push(row[1..].to_vec());
+                indices.push(body);
+            }
+        }
+
         PatMatrix { rows, indices }
     }
 }
