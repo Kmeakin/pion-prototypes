@@ -182,7 +182,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         match r#type {
             None => self.synth_pat(pat),
             Some(r#type) => {
-                let Check(r#type) = self.check_expr(r#type, &Value::TYPE);
+                let Check(r#type) = self.check_expr_is_type(r#type);
                 let r#type = self.eval_env().eval(&r#type);
                 let Check(pat) = self.check_pat(pat, &r#type);
                 SynthPat::new(pat, r#type)

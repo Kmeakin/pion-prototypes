@@ -68,7 +68,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::ERROR
             }
             hir::Expr::Ann((expr, r#type)) => {
-                let Check(type_expr) = self.check_expr(r#type, &Type::TYPE);
+                let Check(type_expr) = self.check_expr_is_type(r#type);
                 let type_value = self.eval_env().eval(&type_expr);
                 let Check(expr) = self.check_expr(expr, &type_value);
                 SynthExpr::new(expr, type_value)
@@ -160,7 +160,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                             continue;
                         }
 
-                        let Check(r#type) = this.check_expr(&field.r#type, &Type::TYPE);
+                        let Check(r#type) = this.check_expr_is_type(&field.r#type);
                         let type_value = this.eval_env().eval(&r#type);
                         type_fields.push((FieldName::User(field.symbol), r#type));
                         name_spans.push(field.symbol_span);
@@ -253,11 +253,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
             }
             hir::Expr::FunArrow((domain, codomain)) => {
-                let Check(domain_expr) = self.check_expr(domain, &Type::TYPE);
+                let Check(domain_expr) = self.check_expr_is_type(domain);
                 let domain_value = self.eval_env().eval(&domain_expr);
                 let Check(codomain_expr) =
                     self.with_param(BinderName::Underscore, domain_value, |this| {
-                        this.check_expr(codomain, &Type::TYPE)
+                        this.check_expr_is_type(codomain)
                     });
                 let expr = Expr::fun_arrow(self.bump, domain_expr, codomain_expr);
                 SynthExpr::new(expr, Type::TYPE)
@@ -267,7 +267,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 if params.is_empty() {
                     let Check(codomain_expr) =
                         self.with_param(BinderName::Underscore, Type::UNIT_TYPE, |this| {
-                            this.check_expr(codomain, &Type::TYPE)
+                            this.check_expr_is_type(codomain)
                         });
                     let expr = Expr::fun_arrow(self.bump, Expr::UNIT_TYPE, codomain_expr);
                     return SynthExpr::new(expr, Type::TYPE);
@@ -402,7 +402,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 SynthExpr::new(expr, expected)
             }
             hir::Expr::If((scrut, then, r#else)) => {
-                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
+                let Check(scrut_expr) = self.check_expr_is_bool(scrut);
                 let Synth(then_expr, then_type) = self.synth_expr(then);
                 let Check(else_expr) = self.check_expr(r#else, &then_type);
                 let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
@@ -422,6 +422,20 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         let type_expr = self.quote_env().quote(&expected);
         let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
         self.type_map.insert_expr(expr, type_expr);
+        Check(core_expr)
+    }
+
+    /// specialization of `check_expr` for `Type::TYPE`
+    pub fn check_expr_is_type(&mut self, expr: &'hir hir::Expr<'hir>) -> CheckExpr<'core> {
+        let Check(core_expr) = self.check_expr_inner(expr, &Type::TYPE);
+        self.type_map.insert_expr(expr, Expr::TYPE);
+        Check(core_expr)
+    }
+
+    /// specialization of `check_expr` for `Type::BOOL`
+    pub fn check_expr_is_bool(&mut self, expr: &'hir hir::Expr<'hir>) -> CheckExpr<'core> {
+        let Check(core_expr) = self.check_expr_inner(expr, &Type::BOOL);
+        self.type_map.insert_expr(expr, Expr::BOOL);
         Check(core_expr)
     }
 
@@ -516,7 +530,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     self.with_scope(|this| {
                         for (index, elem) in elems.iter().enumerate() {
                             let name = FieldName::tuple(index);
-                            let Check(r#type) = this.check_expr(elem, &Type::TYPE);
+                            let Check(r#type) = this.check_expr_is_type(elem);
                             let type_value = this.eval_env().eval(&r#type);
                             type_fields.push((name, r#type));
                             this.local_env
@@ -616,7 +630,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Match(scrut, cases) => self.check_match(scrut, cases, expected),
             hir::Expr::If((scrut, then, r#else)) => {
-                let Check(scrut_expr) = self.check_expr(scrut, &Type::BOOL);
+                let Check(scrut_expr) = self.check_expr_is_bool(scrut);
                 let Check(then_expr) = self.check_expr(then, expected);
                 let Check(else_expr) = self.check_expr(r#else, expected);
                 let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
@@ -689,7 +703,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
-            let Check(codomain_expr) = self.check_expr(codomain, &Type::TYPE);
+            let Check(codomain_expr) = self.check_expr_is_type(codomain);
             return SynthExpr::new(codomain_expr, Type::TYPE);
         };
 

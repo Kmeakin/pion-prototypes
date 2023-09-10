@@ -59,6 +59,7 @@ impl<'core, Name> Expr<'core, Name> {
     pub const UNIT_TYPE: Self = Self::RecordType(&[]);
 
     pub const TYPE: Self = Self::Prim(Prim::Type);
+    pub const BOOL: Self = Self::Prim(Prim::Bool);
     pub const INT: Self = Self::Prim(Prim::Int);
 
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
