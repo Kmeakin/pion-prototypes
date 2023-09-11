@@ -100,10 +100,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                     }
                 }
                 match cases.default_case {
-                    Some((_, expr)) => {
-                        cases.local_values.push(scrut);
-                        self.eval_env(&mut cases.local_values).eval(expr)
-                    }
+                    Some(expr) => self.eval_env(&mut cases.local_values).eval(expr),
                     None => panic!("Bad scrut match: inexhaustive cases"),
                 }
             }
@@ -147,8 +144,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 )
             }
             None => match cases.default_case {
-                Some((name, expr)) => {
-                    SplitCases::Default(*name, Closure::new(cases.local_values, expr))
+                Some(expr) => {
+                    SplitCases::Default(self.eval_env(&mut cases.local_values).eval(expr))
                 }
                 None => SplitCases::None,
             },
@@ -302,9 +299,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                     pattern_cases.push((lit, self.quote(&expr)));
                                     cases = next_cases;
                                 }
-                                SplitCases::Default(name, expr) => {
-                                    break Some((name, self.quote_closure(expr)))
-                                }
+                                SplitCases::Default(value) => break Some(self.quote(&value)),
                                 SplitCases::None => break None,
                             }
                         };
@@ -542,16 +537,8 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
                     let cases = self.out_bump.alloc_slice_fill_iter(
                         cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
                     );
-                    let default_expr = default.map(|(name, body)| {
-                        let name = self.freshen_name(name, &body);
-                        (name, self.zonk_with_binder(name, &body))
-                    });
-                    Left(Expr::r#match(
-                        self.out_bump,
-                        scrut_expr,
-                        cases,
-                        default_expr,
-                    ))
+                    let default = default.map(|expr| self.zonk(&expr));
+                    Left(Expr::r#match(self.out_bump, scrut_expr, cases, default))
                 }
                 Right(scrut_value) => {
                     let cases = Cases::new(self.local_values.clone(), cases, default);

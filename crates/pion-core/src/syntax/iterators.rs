@@ -54,7 +54,7 @@ impl<'core> Subexprs<'core> {
             Expr::Match(.., (scrut, default), cases) => {
                 f(scrut)?;
                 cases.iter().try_for_each(|(_, expr)| f(expr))?;
-                if let Some((_, expr)) = default {
+                if let Some(expr) = default {
                     f(expr)?;
                 }
             }

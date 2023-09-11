@@ -46,6 +46,37 @@ span   | source                                   | type
 metavars:
 ?0 = Bool
 ?1 = fun(_: #error) => Int
+
+def apply: Bool -> (Bool -> Int) -> Int =
+    fun(x: Bool, f: Bool -> Int) => match x {
+        true => 1,
+        _ =>
+            let z: Bool = x;
+            f(z),
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+376..449 | fun(x: Bool, f: Bo...\n    z => f(z),\n} | Bool -> (Bool -> Int) -> Int
+383..387 | Bool                                     | Type
+392..396 | Bool                                     | Type
+392..403 | Bool -> Int                              | Type
+400..403 | Int                                      | Type
+408..449 | match x {\n    tru...\n    z => f(z),\n} | Int
+414..415 | x                                        | Bool
+430..431 | 1                                        | Int
+442..443 | f                                        | Bool -> Int
+442..446 | f(z)                                     | Int
+444..445 | z                                        | Bool
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+380..381 | x                                        | Bool
+389..390 | f                                        | Bool -> Int
+422..426 | true                                     | Bool
+437..438 | z                                        | Bool
+metavars:
+?0 = fun(_: #error, _: #error) => Int
 """
 
 stderr = """

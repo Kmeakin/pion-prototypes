@@ -7,3 +7,11 @@ def bool-to-int = fun(x) => match x {
     true => 1,
     false => 0,
 };
+
+// regression test: dont bind `z` twice (once as the default branch of the
+// match, then again as a `let` in RHS). This required removing the ability of
+// core `match` exprs to bind variables in their default branch.
+def apply = fun(x: Bool, f: Bool -> Int) => match x {
+    true => 1,
+    z => f(z),
+};

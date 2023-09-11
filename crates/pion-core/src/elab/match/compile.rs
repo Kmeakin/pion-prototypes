@@ -87,16 +87,9 @@ pub fn compile_match<'core>(
                 let default = match Lit::is_exhaustive(&lits) {
                     true => None,
                     false => {
-                        let name = BinderName::Underscore;
                         let mut matrix = ctx.default_matrix(matrix);
-
-                        let value = ctx.eval_env().eval(&scrut_expr);
-                        ctx.local_env.push_def(name, scrut.r#type.clone(), value);
-                        shift_amount.push();
                         let body = compile_match(ctx, &mut matrix, bodies, shift_amount);
-                        ctx.local_env.pop();
-
-                        Some((name, body))
+                        Some(body)
                     }
                 };
 

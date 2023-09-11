@@ -48,10 +48,7 @@ pub enum Expr<'core, Name = ()> {
     RecordLit(&'core [(FieldName, Self)]),
     FieldProj(&'core Self, FieldName),
 
-    Match(
-        &'core (Self, Option<(BinderName, Self)>),
-        &'core [(Lit, Self)],
-    ),
+    Match(&'core (Self, Option<Self>), &'core [(Lit, Self)]),
 }
 
 impl<'core, Name> Expr<'core, Name> {
@@ -137,7 +134,7 @@ impl<'core, Name> Expr<'core, Name> {
         bump: &'core bumpalo::Bump,
         scrut: Self,
         cases: &'core [(Lit, Self)],
-        default: Option<(BinderName, Self)>,
+        default: Option<Self>,
     ) -> Self {
         Self::Match(bump.alloc((scrut, default)), cases)
     }
@@ -175,9 +172,7 @@ impl<'core, Name> Expr<'core, Name> {
             Expr::Match((scrut, default), cases) => {
                 scrut.binds_local(var)
                     || cases.iter().any(|(_, expr)| expr.binds_local(var))
-                    || default
-                        .as_ref()
-                        .map_or(false, |(_, expr)| expr.binds_local(var.next()))
+                    || default.as_ref().map_or(false, |expr| expr.binds_local(var))
             }
         }
     }
@@ -258,15 +253,11 @@ impl<'core, Name> Expr<'core, Name> {
             }
             Expr::Match((scrut, default), branches) => {
                 let scrut = scrut.shift_inner(bump, min, amount);
-                let default =
-                    default.map(|(name, expr)| (name, expr.shift_inner(bump, min.next(), amount)));
-                let branches = branches
+                let cases = branches
                     .iter()
                     .map(|(lit, expr)| (*lit, expr.shift_inner(bump, min, amount)));
-                Expr::Match(
-                    bump.alloc((scrut, default)),
-                    bump.alloc_slice_fill_iter(branches),
-                )
+                let default = default.map(|expr| (expr.shift_inner(bump, min, amount)));
+                Expr::r#match(bump, scrut, bump.alloc_slice_fill_iter(cases), default)
             }
         }
     }
@@ -486,14 +477,14 @@ impl<'arena> Telescope<'arena> {
 pub struct Cases<'arena, P> {
     pub local_values: SharedEnv<Value<'arena>>,
     pub pattern_cases: &'arena [(P, Expr<'arena>)],
-    pub default_case: &'arena Option<(BinderName, Expr<'arena>)>,
+    pub default_case: &'arena Option<Expr<'arena>>,
 }
 
 impl<'arena, P> Cases<'arena, P> {
     pub fn new(
         local_values: SharedEnv<Value<'arena>>,
         pattern_cases: &'arena [(P, Expr<'arena>)],
-        default_case: &'arena Option<(BinderName, Expr<'arena>)>,
+        default_case: &'arena Option<Expr<'arena>>,
     ) -> Self {
         Self {
             local_values,
@@ -512,7 +503,7 @@ pub type PatternCase<'arena, P> = (P, Value<'arena>);
 #[derive(Debug, Clone)]
 pub enum SplitCases<'arena, P> {
     Case(PatternCase<'arena, P>, Cases<'arena, P>),
-    Default(BinderName, Closure<'arena>),
+    Default(Value<'arena>),
     None,
 }
 

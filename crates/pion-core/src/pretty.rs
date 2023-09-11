@@ -223,9 +223,9 @@ impl<'pretty> PrettyCtx<'pretty> {
                     let expr = self.blocklike_expr(expr, Prec::MAX);
                     self.lit(*lit).append(" =>").append(expr)
                 });
-                let default = default.as_ref().map(|(name, expr)| {
+                let default = default.as_ref().map(|expr| {
                     let expr = self.blocklike_expr(expr, Prec::MAX);
-                    self.binder_name(*name).append(" =>").append(expr)
+                    self.text("_").append(" =>").append(expr)
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));

@@ -327,8 +327,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     left_cases = left_cont;
                     right_cases = right_cont;
                 }
-                (SplitCases::Default(_, left_value), SplitCases::Default(_, right_value)) => {
-                    return self.unify_closures(left_value, right_value);
+                (SplitCases::Default(left_value), SplitCases::Default(right_value)) => {
+                    return self.unify(&left_value, &right_value)
                 }
                 (SplitCases::None, SplitCases::None) => return Ok(()),
                 _ => return Err(UnifyError::Mismatch),
@@ -492,8 +492,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                                     pattern_cases.push((lit, self.rename(meta_var, &expr)?));
                                     cases = next_cases;
                                 }
-                                SplitCases::Default(name, expr) => {
-                                    break Some((name, self.rename_closure(meta_var, &expr)?))
+                                SplitCases::Default(value) => {
+                                    break Some(self.rename(meta_var, &value)?)
                                 }
                                 SplitCases::None => break None,
                             }
