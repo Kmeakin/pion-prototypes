@@ -46,6 +46,7 @@ extern {
         "=" => TokenKind::Eq,
         "->" => TokenKind::ThinArrow,
         "=>" => TokenKind::FatArrow,
+        "|" => TokenKind::Pipe,
     }
 }
 
@@ -140,6 +141,11 @@ TypeField: TypeField<'surface> = {
 // ==== Patterns ====
 
 pub Pat: Pat<'surface> = {
+    OrPat => <>,
+}
+
+OrPat: Pat<'surface> = {
+    <start: @L> <pats: Seq2<AtomPat, "|">> <end: @R> => Pat::Or(TokenSpan::new(start, end), pats),
     AtomPat => <>,
 }
 

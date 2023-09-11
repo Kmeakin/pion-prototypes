@@ -25,6 +25,7 @@ pub enum TokenKind {
     Eq,
     ThinArrow,
     FatArrow,
+    Pipe,
 
     // keywords
     KwDef,
@@ -85,6 +86,7 @@ impl TokenKind {
             Self::Eq => "`=`",
             Self::ThinArrow => "`->`",
             Self::FatArrow => "`=>`",
+            Self::Pipe => "`|`",
             Self::Ident => "identifier",
             Self::RawIdent => "raw identifier",
             Self::DecInt => "decimal integer",

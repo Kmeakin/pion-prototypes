@@ -116,6 +116,7 @@ impl<'hir> Subpats<'hir> {
                     }
                 }
             }
+            Pat::Or(.., pats) => pats.iter().try_for_each(f)?,
         }
 
         ControlFlow::Continue(())

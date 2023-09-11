@@ -194,6 +194,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             ':' => self.emit_token(start, 1, TokenKind::Colon),
             '.' => self.emit_token(start, 1, TokenKind::Dot),
             '@' => self.emit_token(start, 1, TokenKind::At),
+            '|' => self.emit_token(start, 1, TokenKind::Pipe),
             '=' => match self.next_char() {
                 Some((_, '>')) => self.emit_token(start, 2, TokenKind::FatArrow),
                 Some((pos, c)) => {

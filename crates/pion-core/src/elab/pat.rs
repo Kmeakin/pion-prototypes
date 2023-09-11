@@ -101,6 +101,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
+            hir::Pat::Or(..) => todo!(),
         };
 
         let type_expr = self.quote_env().quote(&r#type);
@@ -175,6 +176,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 _ => self.synth_and_convert_pat(pat, expected, idents),
             },
             hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, idents),
+            hir::Pat::Or(..) => todo!(),
         };
 
         let type_expr = self.quote_env().quote(expected);

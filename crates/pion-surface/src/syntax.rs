@@ -142,6 +142,7 @@ pub enum Pat<'surface> {
     Paren(TokenSpan, &'surface Self),
     TupleLit(TokenSpan, &'surface [Self]),
     RecordLit(TokenSpan, &'surface [PatField<'surface>]),
+    Or(TokenSpan, &'surface [Self]),
 }
 
 impl<'surface> Pat<'surface> {
@@ -153,7 +154,8 @@ impl<'surface> Pat<'surface> {
             Pat::Error(span, ..)
             | Pat::Paren(span, ..)
             | Pat::TupleLit(span, ..)
-            | Pat::RecordLit(span, ..) => *span,
+            | Pat::RecordLit(span, ..)
+            | Pat::Or(span, ..) => *span,
         }
     }
 }

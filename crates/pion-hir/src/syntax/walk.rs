@@ -92,6 +92,7 @@ pub fn walk_pat<'hir, R>(
             .iter()
             .filter_map(|field| field.pat.as_ref())
             .try_for_each(|pat| walk_pat(pat, on_pat))?,
+        Pat::Or(_, pats) => pats.iter().try_for_each(|pat| walk_pat(pat, on_pat))?,
     }
 
     ControlFlow::Continue(())

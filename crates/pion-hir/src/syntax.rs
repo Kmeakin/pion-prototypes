@@ -138,6 +138,7 @@ pub enum Pat<'hir> {
     Ident(ByteSpan, Ident),
     TupleLit(ByteSpan, &'hir [Self]),
     RecordLit(ByteSpan, &'hir [PatField<'hir>]),
+    Or(ByteSpan, &'hir [Self]),
 }
 
 impl<'hir> Pat<'hir> {
@@ -148,7 +149,8 @@ impl<'hir> Pat<'hir> {
             | Pat::Underscore(span, ..)
             | Pat::Ident(span, ..)
             | Pat::TupleLit(span, ..)
-            | Pat::RecordLit(span, ..) => *span,
+            | Pat::RecordLit(span, ..)
+            | Pat::Or(span, ..) => *span,
         }
     }
 }

@@ -275,6 +275,7 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
             surface::Pat::RecordLit(.., fields) => {
                 Pat::RecordLit(span, self.lower_pat_fields(fields))
             }
+            surface::Pat::Or(.., pats) => Pat::Or(span, self.lower_pats(pats)),
         }
     }
 
