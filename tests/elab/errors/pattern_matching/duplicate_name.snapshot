@@ -9,24 +9,23 @@ types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 8..35 | let(x, y, x) = (1, 2, 3); x              | Int
-23..32 | (1, 2, 3)                                | (Int, Int, Int)
+23..32 | (1, 2, 3)                                | (Int, Int, #error)
 24..25 | 1                                        | Int
 27..28 | 2                                        | Int
-30..31 | 3                                        | Int
+30..31 | 3                                        | #error
 34..35 | x                                        | Int
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-11..20 | (x, y, x)                                | (?0, ?1, ?2)
+11..20 | (x, y, x)                                | (?0, ?1, #error)
 12..13 | x                                        | ?0
 15..16 | y                                        | ?1
-18..19 | x                                        | ?2
+18..19 | x                                        | #error
 metavars:
 ?0 = Int
 ?1 = Int
-?2 = Int
 
-def g: Int -> Int -> Int -> Int = fun(x: Int, y: Int, x: Int) => y;
+def g: Int -> Int -> Int -> Int = fun(x: Int, y: Int, _: Int) => y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------

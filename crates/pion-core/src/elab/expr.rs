@@ -75,7 +75,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::Let((pat, r#type, init, body)) => {
                 let scrut_span = self.syntax_map[init].span();
-                let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
+                let Synth(pat, pat_type) =
+                    self.synth_ann_pat(pat, r#type.as_ref(), &mut Vec::new());
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
                 let scrut = Scrut::new(init_expr, pat_type);
@@ -450,7 +451,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             hir::Expr::Let((pat, r#type, init, body)) => {
                 let scrut_span = self.syntax_map[init].span();
 
-                let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type.as_ref());
+                let Synth(pat, pat_type) =
+                    self.synth_ann_pat(pat, r#type.as_ref(), &mut Vec::new());
                 let Check(init_expr) = self.check_expr(init, &pat_type);
                 let init_value = self.eval_env().eval(&init_expr);
                 let scrut = Scrut::new(init_expr, pat_type);
@@ -708,11 +710,11 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let (pat, scrut) = self.synth_fun_param(param);
+        let (pat, scrut) = self.synth_fun_param(param, names);
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
         let (let_vars, codomain_expr) = self.with_scope(|this| {
-            let let_vars = this.push_param_pat(&pat, &scrut, names);
+            let let_vars = this.push_param_pat(&pat, &scrut);
             let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain, names);
             (let_vars, codomain_expr)
         });
@@ -746,12 +748,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         };
 
         let plicity = param.plicity.into();
-        let (pat, scrut) = self.synth_fun_param(param);
+        let (pat, scrut) = self.synth_fun_param(param, names);
         let domain = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
 
         let (let_defs, body_expr, body_type_expr) = self.with_scope(|this| {
-            let let_defs = this.push_param_pat(&pat, &scrut, names);
+            let let_defs = this.push_param_pat(&pat, &scrut);
             let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body, names);
             let body_type = this.quote_env().quote(&body_type_value);
             (let_defs, body_expr, body_type)
@@ -812,13 +814,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 if param_plicity == expected_plicity =>
             {
                 let domain_expr = self.quote_env().quote(expected_domain);
-                let (pat, scrut) = self.check_fun_param(param, expected_domain);
+                let (pat, scrut) = self.check_fun_param(param, expected_domain, names);
                 let name = pat.name();
 
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
                     let expected = this.elim_env().apply_closure(next_expected, arg);
-                    let let_defs = this.push_param_pat(&pat, &scrut, names);
+                    let let_defs = this.push_param_pat(&pat, &scrut);
                     let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected, names);
                     (let_defs, body_expr)
                 });
@@ -880,7 +882,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         for case in cases {
             let initial_len = self.local_env.len();
-            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type);
+            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
             let let_vars = self.push_match_pat(&pat, &scrut, &scrut_value);
             let Check(expr) = self.check_expr(&case.expr, expected);
             self.local_env.truncate(initial_len);

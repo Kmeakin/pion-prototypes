@@ -18,7 +18,11 @@ impl<'core> CheckPat<'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    pub fn synth_pat(&mut self, pat: &'hir hir::Pat<'hir>) -> SynthPat<'core> {
+    pub fn synth_pat(
+        &mut self,
+        pat: &'hir hir::Pat<'hir>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
+    ) -> SynthPat<'core> {
         let span = self.syntax_map[pat].span();
 
         let Synth(core_pat, r#type) = match pat {
@@ -36,11 +40,13 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                 SynthPat::new(Pat::Underscore(span), r#type)
             }
-            hir::Pat::Ident(name) => {
-                let span = self.syntax_map[pat].span();
-                let r#type = self.push_unsolved_type(MetaSource::PatType { span });
-                SynthPat::new(Pat::Ident(span, *name), r#type)
-            }
+            hir::Pat::Ident(symbol) => match self.check_duplicate_local(names, *symbol, span) {
+                Err(()) => SynthPat::error(span),
+                Ok(()) => {
+                    let r#type = self.push_unsolved_type(MetaSource::PatType { span });
+                    SynthPat::new(Pat::Ident(span, *symbol), r#type)
+                }
+            },
             hir::Pat::TupleLit(elems) => {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
                 let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -48,7 +54,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let mut offset = EnvLen::new();
                 for (index, elem) in elems.iter().enumerate() {
                     let name = FieldName::tuple(index);
-                    let Synth(elem_pat, elem_type) = self.synth_pat(elem);
+                    let Synth(elem_pat, elem_type) = self.synth_pat(elem, names);
                     pat_fields.push((name, elem_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&elem_type, offset)));
                     offset.push();
@@ -79,7 +85,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         continue;
                     }
 
-                    let Synth(field_pat, field_type) = self.synth_pat(&field.pat);
+                    let Synth(field_pat, field_type) = self.synth_pat(&field.pat, names);
                     pat_fields.push((name, field_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
                     name_spans.push(field.symbol_span);
@@ -102,13 +108,17 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckPat<'core> {
         let span = self.syntax_map[pat].span();
 
         let Check(core_pat) = match pat {
             hir::Pat::Error => CheckPat::error(span),
             hir::Pat::Underscore => CheckPat::new(Pat::Underscore(span)),
-            hir::Pat::Ident(name) => CheckPat::new(Pat::Ident(span, *name)),
+            hir::Pat::Ident(symbol) => match self.check_duplicate_local(names, *symbol, span) {
+                Err(()) => CheckPat::error(span),
+                Ok(()) => CheckPat::new(Pat::Ident(span, *symbol)),
+            },
             hir::Pat::TupleLit(elems) => match expected {
                 Value::RecordType(telescope) if elems.len() == telescope.len() => {
                     let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -118,7 +128,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
 
-                        let Check(elem_pat) = self.check_pat(elem, &r#type);
+                        let Check(elem_pat) = self.check_pat(elem, &r#type, names);
                         let elem_value = self.local_env.next_var();
                         telescope = cont(elem_value);
                         pat_fields.push((name, elem_pat));
@@ -127,7 +137,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let pat = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(pat)
                 }
-                _ => self.synth_and_convert_pat(pat, expected),
+                _ => self.synth_and_convert_pat(pat, expected, names),
             },
             hir::Pat::RecordLit(fields) => match expected {
                 Type::RecordType(telescope)
@@ -143,7 +153,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     for field in *fields {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
-                        let Check(field_pat) = self.check_pat(&field.pat, &r#type);
+                        let Check(field_pat) = self.check_pat(&field.pat, &r#type, names);
                         let field_value = self.local_env.next_var();
                         telescope = cont(field_value);
                         pat_fields.push((name, field_pat));
@@ -152,9 +162,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     let expt = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(expt)
                 }
-                _ => self.synth_and_convert_pat(pat, expected),
+                _ => self.synth_and_convert_pat(pat, expected, names),
             },
-            hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected),
+            hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, names),
         };
 
         let type_expr = self.quote_env().quote(expected);
@@ -167,8 +177,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckPat<'core> {
-        let Synth(pat, r#type) = self.synth_pat(pat);
+        let Synth(pat, r#type) = self.synth_pat(pat, names);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
     }
 }
@@ -178,13 +189,14 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthPat<'core> {
         match r#type {
-            None => self.synth_pat(pat),
+            None => self.synth_pat(pat, names),
             Some(r#type) => {
                 let Check(r#type) = self.check_expr_is_type(r#type);
                 let r#type = self.eval_env().eval(&r#type);
-                let Check(pat) = self.check_pat(pat, &r#type);
+                let Check(pat) = self.check_pat(pat, &r#type, names);
                 SynthPat::new(pat, r#type)
             }
         }
@@ -195,11 +207,12 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
         expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckPat<'core> {
         match r#type {
-            None => self.check_pat(pat, expected),
+            None => self.check_pat(pat, expected, names),
             Some(r#type) => {
-                let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type));
+                let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type), names);
                 CheckPat::new(self.convert_pat(pat, &r#type, expected))
             }
         }
@@ -208,8 +221,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     pub fn synth_fun_param(
         &mut self,
         param: &'hir hir::FunParam<'hir>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> (Pat<'core>, Scrut<'core>) {
-        let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref());
+        let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref(), names);
         let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, r#type))
     }
@@ -218,8 +232,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         &mut self,
         param: &'hir hir::FunParam<'hir>,
         expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> (Pat<'core>, Scrut<'core>) {
-        let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected);
+        let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected, names);
         let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, expected.clone()))
     }
@@ -238,146 +253,6 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     error,
                 });
                 Pat::Error(span)
-            }
-        }
-    }
-}
-
-impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    pub fn push_param_pat(
-        &mut self,
-        pat: &Pat<'core>,
-        scrut: &Scrut<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
-        let name = pat.name();
-
-        match pat {
-            Pat::Ident(_, symbol) => {
-                let r#type = scrut.r#type.clone();
-                match self.check_duplicate_local(names, *symbol, pat.span()) {
-                    Ok(()) => self.local_env.push_param(name, r#type),
-                    Err(()) => self.local_env.push_param(BinderName::Underscore, r#type),
-                }
-            }
-            Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
-                self.local_env.push_param(name, scrut.r#type.clone());
-            }
-            Pat::RecordLit(_, fields) => {
-                let value = self.local_env.next_var();
-                self.local_env.push_param(name, scrut.r#type.clone());
-                self.push_record_pat(fields, scrut, &value, &mut let_vars, names);
-            }
-        }
-        let_vars
-    }
-
-    pub fn push_def_pat(
-        &mut self,
-        pat: &Pat<'core>,
-        scrut: &Scrut<'core>,
-        value: &Value<'core>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
-        let mut names = Vec::new();
-        let name = pat.name();
-
-        match pat {
-            Pat::Ident(_, symbol) => {
-                let r#type = scrut.r#type.clone();
-                let value = value.clone();
-
-                match self.check_duplicate_local(&mut names, *symbol, pat.span()) {
-                    Ok(()) => {
-                        let_vars.push((name, scrut.clone()));
-                        self.local_env.push_def(name, r#type, value);
-                    }
-                    Err(()) => self
-                        .local_env
-                        .push_def(BinderName::Underscore, r#type, value),
-                }
-            }
-            Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
-                let r#type = scrut.r#type.clone();
-                let_vars.push((name, scrut.clone()));
-                self.local_env.push_def(name, r#type, value.clone());
-            }
-            Pat::RecordLit(_, fields) => {
-                self.push_record_pat(fields, scrut, value, &mut let_vars, &mut names);
-            }
-        }
-        let_vars
-    }
-
-    pub fn push_match_pat(
-        &mut self,
-        pat: &Pat<'core>,
-        scrut: &Scrut<'core>,
-        value: &Value<'core>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
-        let mut names = Vec::new();
-        let name = pat.name();
-
-        match pat {
-            Pat::Error(..) | Pat::Underscore(..) => {
-                (self.local_env).push_def(pat.name(), scrut.r#type.clone(), value.clone());
-            }
-            Pat::Ident(_, symbol) => {
-                let r#type = scrut.r#type.clone();
-                let value = value.clone();
-
-                match self.check_duplicate_local(&mut names, *symbol, pat.span()) {
-                    Ok(()) => {
-                        let_vars.push((name, scrut.clone()));
-                        self.local_env.push_def(name, r#type, value);
-                    }
-                    Err(()) => self
-                        .local_env
-                        .push_def(BinderName::Underscore, r#type, value),
-                }
-            }
-            Pat::Lit(..) => {}
-            Pat::RecordLit(_, fields) => {
-                self.push_record_pat(fields, scrut, value, &mut let_vars, &mut names);
-            }
-        }
-        let_vars
-    }
-
-    fn push_record_pat(
-        &mut self,
-        fields: &[(FieldName, Pat<'core>)],
-        scrut: &Scrut<'core>,
-        value: &Value<'core>,
-        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
-    ) {
-        let Type::RecordType(mut telescope) = self.elim_env().update_metas(&scrut.r#type) else {
-            unreachable!("expected record type, got {:?}", scrut.r#type)
-        };
-
-        for (label, pat) in fields {
-            let (_, r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
-
-            telescope = cont(self.local_env.next_var());
-            let expr = Expr::field_proj(self.bump, scrut.expr, *label);
-            let value = self.elim_env().field_proj(value.clone(), *label);
-            let scrut = Scrut::new(expr, r#type);
-
-            match pat {
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {}
-                Pat::Ident(_, name) => {
-                    if self.check_duplicate_local(names, *name, pat.span()).is_ok() {
-                        let r#type = scrut.r#type.clone();
-                        let_vars.push((pat.name(), scrut));
-                        self.local_env.push_def(pat.name(), r#type, value);
-                    }
-                }
-                Pat::RecordLit(_, fields) => {
-                    self.push_record_pat(fields, &scrut, &value, let_vars, names);
-                }
             }
         }
     }
@@ -400,6 +275,117 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     duplicate_span: span,
                 });
                 Err(())
+            }
+        }
+    }
+}
+
+impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    pub fn push_param_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Ident(..) | Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                self.local_env.push_param(name, scrut.r#type.clone());
+            }
+            Pat::RecordLit(_, fields) => {
+                let value = self.local_env.next_var();
+                self.local_env.push_param(name, scrut.r#type.clone());
+                self.push_record_pat(fields, scrut, &value, &mut let_vars);
+            }
+        }
+        let_vars
+    }
+
+    pub fn push_def_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Ident(..) => {
+                let r#type = scrut.r#type.clone();
+                let value = value.clone();
+                let_vars.push((name, scrut.clone()));
+                self.local_env.push_def(name, r#type, value);
+            }
+            Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                let r#type = scrut.r#type.clone();
+                let_vars.push((name, scrut.clone()));
+                self.local_env.push_def(name, r#type, value.clone());
+            }
+            Pat::RecordLit(_, fields) => {
+                self.push_record_pat(fields, scrut, value, &mut let_vars);
+            }
+        }
+        let_vars
+    }
+
+    pub fn push_match_pat(
+        &mut self,
+        pat: &Pat<'core>,
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+    ) -> Vec<(BinderName, Scrut<'core>)> {
+        let mut let_vars = Vec::new();
+        let name = pat.name();
+
+        match pat {
+            Pat::Error(..) | Pat::Underscore(..) => {
+                (self.local_env).push_def(pat.name(), scrut.r#type.clone(), value.clone());
+            }
+            Pat::Ident(..) => {
+                let r#type = scrut.r#type.clone();
+                let value = value.clone();
+                let_vars.push((name, scrut.clone()));
+                self.local_env.push_def(name, r#type, value);
+            }
+            Pat::Lit(..) => {}
+            Pat::RecordLit(_, fields) => {
+                self.push_record_pat(fields, scrut, value, &mut let_vars);
+            }
+        }
+        let_vars
+    }
+
+    fn push_record_pat(
+        &mut self,
+        fields: &[(FieldName, Pat<'core>)],
+        scrut: &Scrut<'core>,
+        value: &Value<'core>,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+    ) {
+        let Type::RecordType(mut telescope) = self.elim_env().update_metas(&scrut.r#type) else {
+            unreachable!("expected record type, got {:?}", scrut.r#type)
+        };
+
+        for (label, pat) in fields {
+            let (_, r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+
+            telescope = cont(self.local_env.next_var());
+            let expr = Expr::field_proj(self.bump, scrut.expr, *label);
+            let value = self.elim_env().field_proj(value.clone(), *label);
+            let scrut = Scrut::new(expr, r#type);
+
+            match pat {
+                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {}
+                Pat::Ident(..) => {
+                    let r#type = scrut.r#type.clone();
+                    let_vars.push((pat.name(), scrut));
+                    self.local_env.push_def(pat.name(), r#type, value);
+                }
+                Pat::RecordLit(_, fields) => {
+                    self.push_record_pat(fields, &scrut, &value, let_vars);
+                }
             }
         }
     }
