@@ -101,7 +101,33 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
-            hir::Pat::Or(..) => todo!(),
+            hir::Pat::Or(_, pats) => {
+                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                let initial_names_len = names.len();
+
+                let (first_pat, rest_pats) = pats.split_first().unwrap();
+                let Synth(first_pat, first_type) = self.synth_pat(first_pat, names);
+                core_pats.push(first_pat);
+                let mut first_pat_names = names.split_off(initial_names_len);
+                first_pat_names.sort_unstable_by_key(|ident| ident.symbol);
+
+                for pat in rest_pats {
+                    let Check(pat) = self.check_pat(pat, &first_type, names);
+                    core_pats.push(pat);
+                    let mut pat_names = names.split_off(initial_names_len);
+                    pat_names.sort_unstable_by_key(|ident| ident.symbol);
+
+                    // FIXME: check all alternatives also bind each name to the same type
+                    if !pion_utils::slice_eq_by_key(&pat_names, &first_pat_names, |ident| {
+                        ident.symbol
+                    }) {
+                        todo!("or-pattern alternatives must define the same set of names")
+                    }
+                }
+
+                let pat = Pat::Or(span, core_pats.into());
+                SynthPat::new(pat, first_type)
+            }
         };
 
         let type_expr = self.quote_env().quote(&r#type);
@@ -176,7 +202,33 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 _ => self.synth_and_convert_pat(pat, expected, idents),
             },
             hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, idents),
-            hir::Pat::Or(..) => todo!(),
+            hir::Pat::Or(_, pats) => {
+                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                let initial_idents_len = idents.len();
+
+                let (first_pat, rest_pats) = pats.split_first().unwrap();
+                let Check(first_pat) = self.check_pat(first_pat, expected, idents);
+                core_pats.push(first_pat);
+                let mut first_pat_idents = idents.split_off(initial_idents_len);
+                first_pat_idents.sort_unstable_by_key(|ident| ident.symbol);
+
+                for pat in rest_pats {
+                    let Check(pat) = self.check_pat(pat, expected, idents);
+                    core_pats.push(pat);
+                    let mut pat_idents = idents.split_off(initial_idents_len);
+                    pat_idents.sort_unstable_by_key(|ident| ident.symbol);
+
+                    // FIXME: check all alternatives also bind each name to the same type
+                    if !pion_utils::slice_eq_by_key(&pat_idents, &first_pat_idents, |ident| {
+                        ident.symbol
+                    }) {
+                        todo!("or-pattern alternatives must define the same set of names")
+                    }
+                }
+
+                let pat = Pat::Or(span, core_pats.into());
+                CheckPat::new(pat)
+            }
         };
 
         let type_expr = self.quote_env().quote(expected);
@@ -325,6 +377,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 self.local_env.push_param(name, scrut.r#type.clone());
                 self.push_record_pat(fields, scrut, &value, &mut let_vars);
             }
+            Pat::Or(..) => todo!(),
         }
         let_vars
     }
@@ -353,6 +406,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             Pat::RecordLit(_, fields) => {
                 self.push_record_pat(fields, scrut, value, &mut let_vars);
             }
+            Pat::Or(..) => todo!(),
         }
         let_vars
     }
@@ -380,6 +434,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             Pat::RecordLit(_, fields) => {
                 self.push_record_pat(fields, scrut, value, &mut let_vars);
             }
+            Pat::Or(..) => todo!(),
         }
         let_vars
     }
@@ -413,6 +468,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 Pat::RecordLit(_, fields) => {
                     self.push_record_pat(fields, &scrut, &value, let_vars);
                 }
+                Pat::Or(..) => todo!(),
             }
         }
     }

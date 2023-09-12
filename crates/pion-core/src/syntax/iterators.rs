@@ -90,6 +90,7 @@ impl<'core> Subpats<'core> {
         match pat {
             Pat::Error(..) | Pat::Lit(..) | Pat::Underscore(..) | Pat::Ident(..) => {}
             Pat::RecordLit(.., pat_fields) => pat_fields.iter().try_for_each(|(_, pat)| f(pat))?,
+            Pat::Or(.., pats) => pats.iter().try_for_each(f)?,
         }
 
         ControlFlow::Continue(())

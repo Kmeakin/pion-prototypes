@@ -254,6 +254,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 Some(OwnedPatRow::new(columns, None))
             }
             Pat::Lit(..) | Pat::RecordLit(..) => None,
+            Pat::Or(..) => todo!(),
         }
     }
 

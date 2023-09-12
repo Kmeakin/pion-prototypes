@@ -98,6 +98,7 @@ fn is_useful<'core>(
                 }
             }
         }
+        Pat::Or(..) => todo!(),
     }
 }
 

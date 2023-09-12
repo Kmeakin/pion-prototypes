@@ -270,6 +270,8 @@ pub enum Pat<'core> {
     Ident(ByteSpan, Symbol),
     Lit(ByteSpan, Lit),
     RecordLit(ByteSpan, &'core [(FieldName, Self)]),
+    // INVARIANT: slice.len() >= 2
+    Or(ByteSpan, &'core [Self]),
 }
 
 impl<'core> Pat<'core> {
@@ -279,7 +281,8 @@ impl<'core> Pat<'core> {
             | Pat::Underscore(span, ..)
             | Pat::Ident(span, ..)
             | Pat::Lit(span, ..)
-            | Pat::RecordLit(span, ..) => *span,
+            | Pat::RecordLit(span, ..)
+            | Pat::Or(span, ..) => *span,
         }
     }
 

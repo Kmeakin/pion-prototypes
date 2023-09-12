@@ -122,6 +122,7 @@ pub fn compile_match<'core>(
 
             // Skip over non-constructor patterns
             Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => continue,
+            Pat::Or(..) => todo!(),
         }
     }
 
@@ -141,6 +142,7 @@ impl<'arena> PatMatrix<'arena> {
             self.column(column).any(|(pat, _)| match pat {
                 Pat::Lit(..) | Pat::RecordLit(..) => true,
                 Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => false,
+                Pat::Or(..) => todo!(),
             })
         })
     }
