@@ -463,10 +463,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     ) -> Result<Expr<'core>, RenameError> {
         let value = self.elim_env().update_metas(value);
         match value {
+            Value::Error => Ok(Expr::Error),
             Value::Lit(lit) => Ok(Expr::Lit(lit)),
             Value::Stuck(head, spine) => {
                 let head = match head {
-                    Head::Error => Expr::Error,
                     Head::Prim(prim) => Expr::Prim(prim),
                     Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
                         None => return Err(RenameError::EscapingLocalVar(source_var)),

@@ -14,7 +14,7 @@ pub type SynthExpr<'core> = Synth<'core, Expr<'core>>;
 pub type CheckExpr<'core> = Check<Expr<'core>>;
 
 impl<'core> SynthExpr<'core> {
-    pub const ERROR: Self = Self::new(Expr::Error, Type::ERROR);
+    pub const ERROR: Self = Self::new(Expr::Error, Type::Error);
 }
 
 impl<'core> CheckExpr<'core> {

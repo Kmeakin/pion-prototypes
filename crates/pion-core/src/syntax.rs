@@ -334,6 +334,7 @@ pub type Type<'core> = Value<'core>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'core> {
+    Error,
     Lit(Lit),
     Stuck(Head, EcoVec<Elim<'core>>),
     FunType(Plicity, BinderName, &'core Self, Closure<'core>),
@@ -344,8 +345,6 @@ pub enum Value<'core> {
 }
 
 impl<'core> Value<'core> {
-    pub const ERROR: Self = Self::Stuck(Head::Error, EcoVec::new());
-
     pub const TYPE: Self = Self::prim(Prim::Type);
     pub const BOOL: Self = Self::prim(Prim::Bool);
     pub const INT: Self = Self::prim(Prim::Int);
@@ -405,7 +404,7 @@ impl<'core> Value<'core> {
 }
 
 impl<'core> Value<'core> {
-    pub const fn is_error(&self) -> bool { matches!(self, Self::Stuck(Head::Error, _)) }
+    pub const fn is_error(&self) -> bool { matches!(self, Self::Error) }
 
     pub fn is_type(&self) -> bool {
         matches!(self, Value::Stuck(Head::Prim(Prim::Type), elims) if elims.is_empty())
@@ -418,7 +417,6 @@ impl<'core> Value<'core> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Head {
-    Error,
     Prim(Prim),
     Local(Level),
     Meta(Level),

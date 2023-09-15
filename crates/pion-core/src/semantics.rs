@@ -62,6 +62,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     pub fn fun_app(&self, plicity: Plicity, fun: Value<'core>, arg: Value<'core>) -> Value<'core> {
         match fun {
+            Value::Error => Value::Error,
             Value::Stuck(head, mut spine) => {
                 spine.push(Elim::FunApp(plicity, arg));
                 Value::Stuck(head, spine)
@@ -75,6 +76,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     // REASON: makes `field_proj` consistent with the other beta-reduction functions
     pub fn field_proj(&self, head: Value<'core>, name: FieldName) -> Value<'core> {
         match head {
+            Value::Error => Value::Error,
             Value::Stuck(head, mut spine) => {
                 spine.push(Elim::FieldProj(name));
                 Value::Stuck(head, spine)
@@ -93,6 +95,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     pub fn match_scrut(&self, scrut: Value<'core>, mut cases: Cases<'core, Lit>) -> Value<'core> {
         match scrut {
+            Value::Error => Value::Error,
             Value::Lit(lit) => {
                 for (pat_lit, expr) in cases.pattern_cases {
                     if lit == *pat_lit {
@@ -184,7 +187,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
 
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
         match expr {
-            Expr::Error => Value::ERROR,
+            Expr::Error => Value::Error,
             Expr::Lit(lit) => Value::Lit(*lit),
             Expr::Prim(prim) => Value::prim(*prim),
             Expr::Local(.., var) => match self.local_values.get_index(*var) {
@@ -283,6 +286,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
         let value = self.elim_env().update_metas(value);
         match value {
+            Value::Error => Expr::Error,
             Value::Lit(lit) => Expr::Lit(lit),
             Value::Stuck(head, spine) => {
                 (spine.iter()).fold(self.quote_head(head), |head, elim| match elim {
@@ -336,7 +340,6 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     /// Quote an [elimination head][Head] back into a [expr][Expr].
     fn quote_head(&mut self, head: Head) -> Expr<'core> {
         match head {
-            Head::Error => Expr::Error,
             Head::Prim(prim) => Expr::Prim(prim),
             Head::Local(var) => match self.local_len.level_to_index(var) {
                 Some(var) => Expr::Local((), var),

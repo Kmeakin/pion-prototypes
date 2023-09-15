@@ -10,7 +10,7 @@ pub type SynthPat<'core> = Synth<'core, Pat<'core>>;
 pub type CheckPat<'core> = Check<Pat<'core>>;
 
 impl<'core> SynthPat<'core> {
-    pub fn error(span: ByteSpan) -> Self { Self::new(Pat::Error(span), Type::ERROR) }
+    pub fn error(span: ByteSpan) -> Self { Self::new(Pat::Error(span), Type::Error) }
 }
 
 impl<'core> CheckPat<'core> {

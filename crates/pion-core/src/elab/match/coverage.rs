@@ -31,7 +31,7 @@ pub fn check_coverage<'core>(
     }
 
     // A matrix is exhaustive iff the the wildcard pattern `_` is not useful
-    let dummy_scrut = Scrut::new(Expr::Error, Type::ERROR);
+    let dummy_scrut = Scrut::new(Expr::Error, Type::Error);
     let elems = [(Pat::Underscore(scrut_span), dummy_scrut)];
     if is_useful(ctx, &temp_matrix, PatRow::new(&elems, None)) {
         ctx.emit_diagnostic(ElabDiagnostic::InexhaustiveMatch { scrut_span });
