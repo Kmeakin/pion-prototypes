@@ -53,20 +53,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::Ident(symbol) => {
-                let name = LocalName::User(*symbol);
-                if let Some((index, entry)) = self.local_env.lookup(name) {
-                    return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
-                };
-
-                if let Ok(prim) = Prim::from_str(symbol.as_str()) {
-                    return SynthExpr::new(Expr::Prim(prim), prim.r#type());
-                }
-
-                let span = self.syntax_map[expr].span();
-                self.emit_diagnostic(ElabDiagnostic::UnboundName { name, span });
-                SynthExpr::ERROR
-            }
+            hir::Expr::Ident(symbol) => self.synth_ident(*symbol, self.syntax_map[expr].span()),
             hir::Expr::Ann((expr, r#type)) => {
                 let Check(type_expr) = self.check_expr_is_type(r#type);
                 let type_value = self.eval_env().eval(&type_expr);
@@ -343,60 +330,33 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     }
                 }
 
-                for (arity, arg) in args.iter().enumerate() {
-                    r#type = self.elim_env().update_metas(&r#type);
-
-                    let arg_plicity = Plicity::from(arg.plicity);
-                    if arg_plicity == Plicity::Explicit {
-                        (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
-                    }
-
-                    match r#type {
-                        Value::FunType(fun_plicity, _, domain, codomain)
-                            if arg_plicity == fun_plicity =>
-                        {
-                            let Check(arg_expr) = self.check_expr(&arg.expr, domain);
-                            let arg_value = self.eval_env().eval(&arg_expr);
-
-                            expr = Expr::fun_app(self.bump, fun_plicity, expr, arg_expr);
-                            r#type = self.elim_env().apply_closure(codomain, arg_value);
-                        }
-                        Value::FunType(fun_plicity, ..) => {
-                            let fun_type = self.pretty_value(&r#type);
-                            self.emit_diagnostic(ElabDiagnostic::FunAppPlicity {
-                                call_span,
-                                fun_type,
-                                fun_plicity,
-                                arg_span: self.syntax_map[&arg.expr].span(),
-                                arg_plicity,
-                            });
-                            return SynthExpr::ERROR;
-                        }
-                        _ if expr.is_error() || r#type.is_error() => return SynthExpr::ERROR,
-                        _ if arity == 0 => {
-                            let fun_type = self.pretty_value(&r#type);
-                            self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
-                                call_span,
-                                fun_type,
-                            });
-                            return SynthExpr::ERROR;
-                        }
-                        _ => {
-                            let fun_type = self.pretty_value(&fun_type);
-                            self.emit_diagnostic(ElabDiagnostic::FunAppTooManyArgs {
-                                call_span,
-                                fun_type,
-                                expected_arity: arity,
-                                actual_arity: args.len(),
-                            });
-                            return SynthExpr::ERROR;
-                        }
-                    }
+                self.synth_fun_call(
+                    fun_expr,
+                    &fun_type,
+                    call_span,
+                    fun_span,
+                    args.iter().map(|arg| (arg.plicity.into(), &arg.expr)),
+                    args.len(),
+                )
+            }
+            hir::Expr::MethodCall(method, head, args) => {
+                let span = self.syntax_map[expr].span();
+                let Synth(method_expr, method_type) = self.synth_ident(*method, span);
+                if method_expr.is_error() {
+                    return SynthExpr::ERROR;
                 }
 
-                SynthExpr::new(expr, r#type)
+                let fun_args = std::iter::once((Plicity::Explicit, *head))
+                    .chain(args.iter().map(|arg| (arg.plicity.into(), &arg.expr)));
+                self.synth_fun_call(
+                    method_expr,
+                    &method_type,
+                    span,
+                    span,
+                    fun_args,
+                    args.len() + 1,
+                )
             }
-            hir::Expr::MethodCall(..) => todo!(),
             hir::Expr::Match(scrut, cases) => {
                 let span = self.syntax_map[expr].span();
                 let expected = self.push_unsolved_type(MetaSource::MatchType { span });
@@ -700,6 +660,83 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    fn synth_ident(&mut self, symbol: Symbol, span: ByteSpan) -> SynthExpr<'core> {
+        let name = LocalName::User(symbol);
+        if let Some((index, entry)) = self.local_env.lookup(name) {
+            return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
+        };
+
+        if let Ok(prim) = Prim::from_str(symbol.as_str()) {
+            return SynthExpr::new(Expr::Prim(prim), prim.r#type());
+        }
+
+        self.emit_diagnostic(ElabDiagnostic::UnboundName { name, span });
+        SynthExpr::ERROR
+    }
+
+    fn synth_fun_call(
+        &mut self,
+        fun_expr: Expr<'core>,
+        fun_type: &Type<'core>,
+        call_span: ByteSpan,
+        fun_span: ByteSpan,
+        args: impl Iterator<Item = (Plicity, &'hir hir::Expr<'hir>)>,
+        num_args: usize,
+    ) -> SynthExpr<'core> {
+        let mut expr = fun_expr;
+        let mut r#type = fun_type.clone();
+
+        for (arity, (arg_plicity, arg_expr)) in args.enumerate() {
+            r#type = self.elim_env().update_metas(&r#type);
+
+            if arg_plicity == Plicity::Explicit {
+                (expr, r#type) = self.insert_implicit_apps(fun_span, expr, r#type);
+            }
+
+            match r#type {
+                Value::FunType(fun_plicity, _, domain, codomain) if arg_plicity == fun_plicity => {
+                    let Check(arg_expr) = self.check_expr(arg_expr, domain);
+                    let arg_value = self.eval_env().eval(&arg_expr);
+
+                    expr = Expr::fun_app(self.bump, fun_plicity, expr, arg_expr);
+                    r#type = self.elim_env().apply_closure(codomain, arg_value);
+                }
+                Value::FunType(fun_plicity, ..) => {
+                    let fun_type = self.pretty_value(&r#type);
+                    self.emit_diagnostic(ElabDiagnostic::FunAppPlicity {
+                        call_span,
+                        fun_type,
+                        fun_plicity,
+                        arg_span: self.syntax_map[arg_expr].span(),
+                        arg_plicity,
+                    });
+                    return SynthExpr::ERROR;
+                }
+                _ if expr.is_error() || r#type.is_error() => return SynthExpr::ERROR,
+                _ if arity == 0 => {
+                    let fun_type = self.pretty_value(&r#type);
+                    self.emit_diagnostic(ElabDiagnostic::FunAppNotFun {
+                        call_span,
+                        fun_type,
+                    });
+                    return SynthExpr::ERROR;
+                }
+                _ => {
+                    let fun_type = self.pretty_value(fun_type);
+                    self.emit_diagnostic(ElabDiagnostic::FunAppTooManyArgs {
+                        call_span,
+                        fun_type,
+                        expected_arity: arity,
+                        actual_arity: num_args,
+                    });
+                    return SynthExpr::ERROR;
+                }
+            }
+        }
+
+        SynthExpr::new(expr, r#type)
+    }
+
     fn synth_fun_type(
         &mut self,
         params: &'hir [hir::FunParam<'hir>],

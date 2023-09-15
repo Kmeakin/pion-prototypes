@@ -1,0 +1,50 @@
+exit status: 0
+
+stdout = """
+def app1: Int =
+    let f: Int -> Int = fun(x: Int) => x;
+    f(1);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..50 | let f = fun(x: Int) => x;\n    1.f()     | Int
+23..39 | fun(x: Int) => x                         | Int -> Int
+30..33 | Int                                      | Type
+38..39 | x                                        | Int
+45..46 | 1                                        | Int
+45..50 | 1.f()                                    | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+19..20 | f                                        | ?0
+27..28 | x                                        | Int
+metavars:
+?0 = Int -> Int
+
+def app2: Bool =
+    let id: fun(@A: Type) -> A -> A = fun(@A: Type, x: A) => x;
+    id(@Bool, false);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+68..117 | let id = fun(@A: T... x;\n    false.id() | Bool
+77..101 | fun(@A: Type, x: A) => x                 | fun(@A: Type) -> A -> A
+85..89 | Type                                     | Type
+94..95 | A                                        | Type
+100..101 | x                                        | A
+107..112 | false                                    | Bool
+107..117 | false.id()                               | Bool
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+72..74 | id                                       | ?0
+82..83 | A                                        | Type
+91..92 | x                                        | A
+metavars:
+?0 = fun(@A: Type) -> A -> A
+?1 = Bool
+"""
+
+stderr = """
+
+"""
