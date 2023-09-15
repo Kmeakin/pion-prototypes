@@ -93,7 +93,8 @@ ProjExpr: Expr<'surface> = {
 }
 
 CallExpr: Expr<'surface> = {
-    <start: @L> <fun: ProjExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
+    <start: @L> <fun: CallExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
+    <start: @L> <head: ProjExpr> "." <method: SpannedIdent> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::MethodCall(ByteSpan::new(start, end), method, bump.alloc(head), args),
     AtomExpr => <>,
 }
 

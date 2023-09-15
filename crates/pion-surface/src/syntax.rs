@@ -93,6 +93,12 @@ pub enum Expr<'surface> {
     FunType(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
     FunLit(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
     FunCall(ByteSpan, &'surface Self, &'surface [FunArg<'surface>]),
+    MethodCall(
+        ByteSpan,
+        (ByteSpan, Symbol),
+        &'surface Self,
+        &'surface [FunArg<'surface>],
+    ),
 
     Match(ByteSpan, &'surface Self, &'surface [MatchCase<'surface>]),
     If(ByteSpan, &'surface (Self, Self, Self)),
@@ -117,6 +123,7 @@ impl<'surface> Expr<'surface> {
             | Expr::FunType(span, ..)
             | Expr::FunLit(span, ..)
             | Expr::FunCall(span, ..)
+            | Expr::MethodCall(span, ..)
             | Expr::Match(span, ..)
             | Expr::If(span, ..) => *span,
         }
@@ -217,7 +224,7 @@ mod size_tests {
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr>(), 40);
+        assert_eq!(std::mem::size_of::<Expr>(), 48);
     }
 
     #[test]

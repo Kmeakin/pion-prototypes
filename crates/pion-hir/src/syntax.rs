@@ -47,6 +47,7 @@ pub enum Expr<'hir> {
     FunType(&'hir [FunParam<'hir>], &'hir Self),
     FunLit(&'hir [FunParam<'hir>], &'hir Self),
     FunCall(&'hir Self, &'hir [FunArg<'hir>]),
+    MethodCall(Symbol, &'hir Self, &'hir [FunArg<'hir>]),
 
     Match(&'hir Self, &'hir [MatchCase<'hir>]),
     If(&'hir (Self, Self, Self)),

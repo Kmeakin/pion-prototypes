@@ -155,6 +155,11 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
                 let args = self.lower_fun_args(args);
                 Expr::FunCall(fun, args)
             }
+            surface::Expr::MethodCall(_, (_, method), head, args) => {
+                let head = self.lower_expr(head);
+                let args = self.lower_fun_args(args);
+                Expr::MethodCall(*method, head, args)
+            }
 
             surface::Expr::Match(_, scrut, cases) => {
                 let scrut = self.lower_expr(scrut);

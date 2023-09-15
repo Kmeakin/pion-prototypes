@@ -57,6 +57,10 @@ impl<'surface> Subexprs<'surface> {
                 f(fun)?;
                 args.iter().try_for_each(|arg| f(&arg.expr))?;
             }
+            Expr::MethodCall(.., head, args) => {
+                f(head)?;
+                args.iter().try_for_each(|arg| f(&arg.expr))?;
+            }
             Expr::Match(.., scrut, cases) => {
                 f(scrut)?;
                 cases.iter().try_for_each(|case| f(&case.expr))?;

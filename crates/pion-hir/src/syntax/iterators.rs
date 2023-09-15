@@ -56,6 +56,10 @@ impl<'hir> Subexprs<'hir> {
                 f(fun)?;
                 args.iter().try_for_each(|arg| f(&arg.expr))?;
             }
+            Expr::MethodCall(_, head, args) => {
+                f(head)?;
+                args.iter().try_for_each(|arg| f(&arg.expr))?;
+            }
             Expr::Match(scrut, cases) => {
                 f(scrut)?;
                 cases.iter().try_for_each(|case| f(&case.expr))?;

@@ -396,6 +396,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
+            hir::Expr::MethodCall(..) => todo!(),
             hir::Expr::Match(scrut, cases) => {
                 let span = self.syntax_map[expr].span();
                 let expected = self.push_unsolved_type(MetaSource::MatchType { span });
@@ -649,7 +650,8 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             | hir::Expr::FieldProj(..)
             | hir::Expr::FunArrow(..)
             | hir::Expr::FunType(..)
-            | hir::Expr::FunCall(..) => self.synth_and_convert_expr(expr, expected),
+            | hir::Expr::FunCall(..)
+            | hir::Expr::MethodCall(..) => self.synth_and_convert_expr(expr, expected),
         }
     }
 
