@@ -1,0 +1,22 @@
+exit status: 0
+
+stdout = """
+def mk_pair: Int -> Int -> {x: Int, y: Int} =
+    fun(x: Int, y: Int) => {x = x, y = y};
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..43 | fun(x: Int, y: Int) => {x, y}            | Int -> Int -> {x: Int, y: Int}
+21..24 | Int                                      | Type
+29..32 | Int                                      | Type
+37..43 | {x, y}                                   | {x: Int, y: Int}
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+18..19 | x                                        | Int
+26..27 | y                                        | Int
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,36 @@
+exit status: 0
+
+stdout = """
+def fst1: fun(A: Type, B: Type) -> {x: A, y: B} -> A =
+    fun(A: Type, B: Type, p: {x: A, y: B}) =>
+        let x: A = p.x;
+        let y: B = p.y;
+        x;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..81 | fun(A: Type, B: Ty...    {x, y} => x,\n} | fun(A: Type, B: Type) -> {x: A, y: B} -> A
+18..22 | Type                                     | Type
+27..31 | Type                                     | Type
+36..48 | {x: A, y: B}                             | Type
+40..41 | A                                        | Type
+46..47 | B                                        | Type
+53..81 | match p {\n    {x, y} => x,\n}           | A
+59..60 | p                                        | {x: A, y: B}
+77..78 | x                                        | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..16 | A                                        | Type
+24..25 | B                                        | Type
+33..34 | p                                        | {x: A, y: B}
+67..73 | {x, y}                                   | {x: A, y: B}
+metavars:
+?0 = fun(a: #error, _: #error, _: #error) => a
+?1 = fun(a: #error, b: #error, _: #error) => {x: a, y: b}
+?2 = fun(a: #error, b: #error, _: #error) => {x: a, y: b}
+"""
+
+stderr = """
+
+"""
