@@ -14,7 +14,6 @@ pion-utils   = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
-cov-mark           = { version = "1.1.0", features = ["thread-local"] }
 ecow               = { version = "0.1.2" }
 either             = { version = "1.9.0" }
 internal-iterator  = { workspace = true }
