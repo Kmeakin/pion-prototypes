@@ -85,7 +85,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         continue;
                     }
 
-                    let Synth(field_pat, field_type) = self.synth_pat(&field.pat, names);
+                    let Synth(field_pat, field_type) = match field.pat.as_ref() {
+                        Some(pat) => self.synth_pat(pat, names),
+                        None => self.synth_ident_pat(field.symbol, field.symbol_span, names),
+                    };
                     pat_fields.push((name, field_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
                     name_spans.push(field.symbol_span);
@@ -153,7 +156,15 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     for field in *fields {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
-                        let Check(field_pat) = self.check_pat(&field.pat, &r#type, names);
+                        let Check(field_pat) = match field.pat.as_ref() {
+                            Some(pat) => self.check_pat(pat, &r#type, names),
+                            None => self.check_ident_pat(
+                                field.symbol,
+                                field.symbol_span,
+                                expected,
+                                names,
+                            ),
+                        };
                         let field_value = self.local_env.next_var();
                         telescope = cont(field_value);
                         pat_fields.push((name, field_pat));
@@ -185,6 +196,32 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+    fn synth_ident_pat(
+        &mut self,
+        symbol: Symbol,
+        span: ByteSpan,
+        names: &mut Vec<(ByteSpan, Symbol)>,
+    ) -> SynthPat<'core> {
+        match self.check_duplicate_local(names, symbol, span) {
+            Err(()) => SynthPat::error(span),
+            Ok(()) => {
+                let r#type = self.push_unsolved_type(MetaSource::PatType { span });
+                SynthPat::new(Pat::Ident(span, symbol), r#type)
+            }
+        }
+    }
+
+    fn check_ident_pat(
+        &mut self,
+        symbol: Symbol,
+        span: ByteSpan,
+        expected: &Type<'core>,
+        names: &mut Vec<(ByteSpan, Symbol)>,
+    ) -> CheckPat<'core> {
+        let Synth(pat, r#type) = self.synth_ident_pat(symbol, span, names);
+        CheckPat::new(self.convert_pat(pat, &r#type, expected))
+    }
+
     pub fn synth_ann_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,

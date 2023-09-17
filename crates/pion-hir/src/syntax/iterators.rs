@@ -42,7 +42,9 @@ impl<'hir> Subexprs<'hir> {
             }
             Expr::ArrayLit(exprs) | Expr::TupleLit(exprs) => exprs.iter().try_for_each(f)?,
             Expr::RecordType(fields) => fields.iter().try_for_each(|field| f(&field.r#type))?,
-            Expr::RecordLit(fields) => fields.iter().try_for_each(|field| f(&field.expr))?,
+            Expr::RecordLit(fields) => fields
+                .iter()
+                .try_for_each(|field| field.expr.as_ref().iter().try_for_each(|expr| f(expr)))?,
             Expr::FieldProj(scrut, _) => f(scrut)?,
             Expr::FunArrow((domain, codomain)) => {
                 f(domain)?;
@@ -101,7 +103,9 @@ impl<'hir> Subpats<'hir> {
         match pat {
             Pat::Error | Pat::Lit(_) | Pat::Underscore | Pat::Ident(_) => {}
             Pat::TupleLit(pats) => pats.iter().try_for_each(f)?,
-            Pat::RecordLit(fields) => fields.iter().try_for_each(|field| f(&field.pat))?,
+            Pat::RecordLit(fields) => fields
+                .iter()
+                .try_for_each(|field| field.pat.as_ref().iter().try_for_each(|pat| f(pat)))?,
         }
 
         ControlFlow::Continue(())

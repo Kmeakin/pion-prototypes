@@ -131,7 +131,7 @@ MatchCase: MatchCase<'surface> = {
 }
 
 ExprField: ExprField<'surface> = {
-    <name: SpannedIdent> "=" <expr: Expr> => ExprField {symbol_span: name.0, symbol: name.1, expr},
+    <name: SpannedIdent> <expr: ("=" <Expr>)?> => ExprField {symbol_span: name.0, symbol: name.1, expr},
 }
 
 TypeField: TypeField<'surface> = {
@@ -155,7 +155,7 @@ AtomPat: Pat<'surface> = {
 }
 
 PatField: PatField<'surface> = {
-    <name: SpannedIdent> "=" <pat: Pat> => PatField {symbol_span: name.0, symbol: name.1, pat},
+    <name: SpannedIdent> <pat: ("=" <Pat>)?> => PatField {symbol_span: name.0, symbol: name.1, pat},
 }
 
 // ==== Literals ====

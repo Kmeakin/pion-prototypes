@@ -229,7 +229,7 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         ExprField {
             symbol_span: field.symbol_span,
             symbol: field.symbol,
-            r#expr: self.expr_to_hir(&field.expr),
+            r#expr: field.expr.as_ref().map(|expr| self.expr_to_hir(expr)),
         }
     }
 
@@ -241,7 +241,9 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
             .bump
             .alloc_slice_fill_iter(fields.iter().map(|field| self.expr_field_to_hir(field)));
         for (field, hir) in fields.iter().zip(hir.iter()) {
-            self.syntax_map.exprs.insert(&field.r#expr, &hir.r#expr);
+            if let (Some(surface_expr), Some(hir_expr)) = (field.expr.as_ref(), hir.expr.as_ref()) {
+                self.syntax_map.exprs.insert(surface_expr, hir_expr);
+            }
         }
         hir
     }
@@ -353,7 +355,7 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
         PatField {
             symbol_span: field.symbol_span,
             symbol: field.symbol,
-            pat: self.pat_to_hir(&field.pat),
+            pat: field.pat.as_ref().map(|pat| self.pat_to_hir(pat)),
         }
     }
 
@@ -365,7 +367,9 @@ impl<'surface, 'hir> Ctx<'surface, 'hir> {
             .bump
             .alloc_slice_fill_iter(fields.iter().map(|field| self.pat_field_to_hir(field)));
         for (field, hir) in fields.iter().zip(hir.iter()) {
-            self.syntax_map.pats.insert(&field.pat, &hir.pat);
+            if let (Some(surface_pat), Some(hir_pat)) = (field.pat.as_ref(), hir.pat.as_ref()) {
+                self.syntax_map.pats.insert(surface_pat, hir_pat);
+            }
         }
         hir
     }

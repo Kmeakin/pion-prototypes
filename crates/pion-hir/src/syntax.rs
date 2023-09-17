@@ -112,14 +112,14 @@ pub struct TypeField<'hir> {
 pub struct ExprField<'hir> {
     pub symbol_span: ByteSpan,
     pub symbol: Symbol,
-    pub expr: Expr<'hir>,
+    pub expr: Option<Expr<'hir>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'hir> {
     pub symbol_span: ByteSpan,
     pub symbol: Symbol,
-    pub pat: Pat<'hir>,
+    pub pat: Option<Pat<'hir>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

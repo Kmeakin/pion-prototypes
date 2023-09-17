@@ -43,7 +43,13 @@ impl<'surface> Subexprs<'surface> {
             }
             Expr::ArrayLit(.., exprs) | Expr::TupleLit(_, exprs) => exprs.iter().try_for_each(f)?,
             Expr::RecordType(.., fields) => fields.iter().try_for_each(|field| f(&field.r#type))?,
-            Expr::RecordLit(.., fields) => fields.iter().try_for_each(|field| f(&field.expr))?,
+            Expr::RecordLit(.., fields) => {
+                for field in *fields {
+                    if let Some(expr) = field.expr.as_ref() {
+                        f(expr)?;
+                    }
+                }
+            }
             Expr::FieldProj(.., scrut, _) => f(scrut)?,
             Expr::FunArrow(.., (domain, codomain)) => {
                 f(domain)?;
@@ -103,7 +109,13 @@ impl<'hir> Subpats<'hir> {
             Pat::Error(..) | Pat::Lit(..) | Pat::Underscore(..) | Pat::Ident(..) => {}
             Pat::Paren(.., pat) => f(pat)?,
             Pat::TupleLit(.., pats) => pats.iter().try_for_each(f)?,
-            Pat::RecordLit(.., fields) => fields.iter().try_for_each(|field| f(&field.pat))?,
+            Pat::RecordLit(.., fields) => {
+                for field in *fields {
+                    if let Some(pat) = field.pat.as_ref() {
+                        f(pat)?;
+                    }
+                }
+            }
         }
 
         ControlFlow::Continue(())

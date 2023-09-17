@@ -53,7 +53,9 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::Ident(symbol) => self.synth_ident(*symbol, self.syntax_map[expr].span()),
+            hir::Expr::Ident(symbol) => {
+                self.synth_ident_expr(*symbol, self.syntax_map[expr].span())
+            }
             hir::Expr::Ann((expr, r#type)) => {
                 let Check(type_expr) = self.check_expr_is_type(r#type);
                 let type_value = self.eval_env().eval(&type_expr);
@@ -181,7 +183,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                         continue;
                     }
 
-                    let Synth(field_expr, field_type) = self.synth_expr(&field.expr);
+                    let Synth(field_expr, field_type) = match field.expr.as_ref() {
+                        Some(expr) => self.synth_expr(expr),
+                        None => self.synth_ident_expr(field.symbol, field.symbol_span),
+                    };
                     expr_fields.push((name, field_expr));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
                     name_spans.push(field.symbol_span);
@@ -341,7 +346,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             }
             hir::Expr::MethodCall(method, head, args) => {
                 let span = self.syntax_map[expr].span();
-                let Synth(method_expr, method_type) = self.synth_ident(*method, span);
+                let Synth(method_expr, method_type) = self.synth_ident_expr(*method, span);
                 if method_expr.is_error() {
                     return SynthExpr::ERROR;
                 }
@@ -520,7 +525,10 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                     for field in *fields {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
-                        let Check(field_expr) = self.check_expr(&field.expr, &r#type);
+                        let Check(field_expr) = match field.expr.as_ref() {
+                            Some(expr) => self.check_expr(expr, &r#type),
+                            None => self.check_ident_expr(field.symbol, field.symbol_span, &r#type),
+                        };
                         let field_value = self.eval_env().eval(&field_expr);
                         telescope = cont(field_value);
                         expr_fields.push((name, field_expr));
@@ -660,7 +668,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 }
 
 impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    fn synth_ident(&mut self, symbol: Symbol, span: ByteSpan) -> SynthExpr<'core> {
+    fn synth_ident_expr(&mut self, symbol: Symbol, span: ByteSpan) -> SynthExpr<'core> {
         let name = LocalName::User(symbol);
         if let Some((index, entry)) = self.local_env.lookup(name) {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
@@ -672,6 +680,16 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
 
         self.emit_diagnostic(ElabDiagnostic::UnboundName { name, span });
         SynthExpr::ERROR
+    }
+
+    fn check_ident_expr(
+        &mut self,
+        symbol: Symbol,
+        span: ByteSpan,
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        let Synth(expr, r#type) = self.synth_ident_expr(symbol, span);
+        CheckExpr::new(self.convert_expr(span, expr, r#type, expected))
     }
 
     fn synth_fun_call(
