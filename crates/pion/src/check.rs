@@ -1,19 +1,23 @@
 use std::io::Write;
 
 use anyhow::bail;
+use bpaf::Parser;
 use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::{Diagnostic, Severity};
 use pion_utils::source::{SourceFile, SourceMap};
 
 use crate::DumpFlags;
 
-#[derive(Debug, clap::Args)]
+#[derive(Debug, Clone)]
 pub struct CheckArgs {
-    #[arg(required = true)]
     files: Vec<Utf8PathBuf>,
-
-    #[arg(short, long)]
     quiet: bool,
+}
+
+pub fn parse_check_args() -> impl Parser<CheckArgs> {
+    let quiet = bpaf::long("quiet").short('q').switch();
+    let files = bpaf::positional("FILES").some("expected input files");
+    bpaf::construct!(CheckArgs { quiet, files })
 }
 
 fn stop_if_errors(error_count: u32) -> anyhow::Result<()> {

@@ -30,7 +30,7 @@ fn elab() {
     fn test(input_path: &Path) -> Result<String, Box<dyn std::error::Error>> {
         let path = input_path.to_str().unwrap();
         let mut command = std::process::Command::new(PION_EXE);
-        command.args(["--dump=core", "check", path]);
+        command.args(["--dump-core", "check", path]);
         let output = command.output()?;
         let exit_status = output.status;
         Ok(format!(

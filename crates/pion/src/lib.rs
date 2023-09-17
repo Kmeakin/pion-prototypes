@@ -1,27 +1,41 @@
-use clap::{Parser, Subcommand};
+use bpaf::{construct, Parser as BParser};
 
 pub mod check;
 
-#[derive(Parser)]
-#[command(author, about)]
+#[derive(Debug)]
 pub struct Cli {
-    #[clap(subcommand)]
     pub command: Command,
-
-    #[arg(long)]
-    #[arg(global = true)]
-    pub dump: Vec<DumpKind>,
+    pub dump_flags: DumpFlags,
 }
 
-#[derive(Subcommand)]
+pub fn parse_cli() -> impl BParser<Cli> {
+    let command = parse_subcommand();
+    let dump_flags = parse_dumpflags();
+
+    construct!(Cli {
+        dump_flags,
+        command,
+    })
+}
+
+#[derive(Debug)]
 pub enum Command {
     Check(check::CheckArgs),
     LanguageServer,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, clap::ValueEnum)]
-pub enum DumpKind {
-    Core,
+fn parse_subcommand() -> impl BParser<Command> {
+    let check = check::parse_check_args()
+        .to_options()
+        .command("check")
+        .map(Command::Check);
+
+    let language_server = bpaf::pure(())
+        .to_options()
+        .command("language-server")
+        .map(|()| Command::LanguageServer);
+
+    construct!([check, language_server])
 }
 
 #[derive(Debug, Copy, Clone, Default)]
@@ -29,14 +43,7 @@ pub struct DumpFlags {
     pub core: bool,
 }
 
-impl DumpFlags {
-    pub fn new(kinds: &[DumpKind]) -> Self {
-        let mut this = Self::default();
-        for kind in kinds {
-            match kind {
-                DumpKind::Core => this.core = true,
-            }
-        }
-        this
-    }
+fn parse_dumpflags() -> impl BParser<DumpFlags> {
+    let core = bpaf::long("dump-core").switch();
+    construct!(DumpFlags { core })
 }

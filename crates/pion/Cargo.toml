@@ -19,9 +19,9 @@ pion-surface         = { path = "../pion-surface" }
 pion-utils           = { path = "../pion-utils" }
 
 anyhow             = { workspace = true }
+bpaf               = { version = "0.9.5" }
 bumpalo            = { workspace = true }
 camino             = { workspace = true }
-clap               = { version = "4.3.12", features = ["derive"] }
 codespan-reporting = { workspace = true }
 tikv-jemallocator  = { version = "0.5.4" }
 
