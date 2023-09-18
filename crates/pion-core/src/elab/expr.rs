@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use pion_hir::syntax as hir;
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
@@ -674,7 +672,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
         };
 
-        if let Ok(prim) = Prim::from_str(symbol.as_str()) {
+        if let Some(prim) = Prim::from_symbol(symbol) {
             return SynthExpr::new(Expr::Prim(prim), prim.r#type());
         }
 

@@ -1,3 +1,5 @@
+use pion_utils::symbol::Symbol;
+
 use crate::env::SharedEnv;
 use crate::name::BinderName;
 use crate::syntax::*;
@@ -14,27 +16,27 @@ macro_rules! define_prims {
         }
 
         impl Prim {
-            pub fn name(&self)-> &'static str {
+            pub const ALL: &'static [Self] = &[$(Self::$name,)*];
+
+            pub fn name(self) -> &'static str {
                 match self {
                     $(Self::$name => $str),*
                 }
             }
-        }
 
-        impl Prim {
-            pub const ALL: &'static [Self] = &[$(Self::$name,)*];
-        }
-
-        impl std::str::FromStr for Prim {
-                type Err = ();
-
-                fn from_str(s: &str)-> Result<Self, ()> {
-                    match s {
-                        $($str => Ok(Self::$name),)*
-                        _ => Err(()),
-                    }
+            pub fn symbol(self) -> Symbol {
+                match self {
+                    $(Self::$name => Symbol::$name,)*
                 }
             }
+
+            pub fn from_symbol(sym: Symbol) -> Option<Self> {
+                match sym {
+                    $(Symbol::$name => Some(Self::$name),)*
+                    _ => None,
+                }
+            }
+        }
     };
 }
 
@@ -53,13 +55,13 @@ impl Prim {
             Self::Type | Self::Bool | Self::Int => Type::TYPE,
             Self::Array => Type::FunType(
                 Plicity::Explicit,
-                BinderName::Underscore,
+                BinderName::User(Symbol::A),
                 TYPE,
                 Closure::new(
                     SharedEnv::new(),
                     &Expr::FunType(
                         Plicity::Explicit,
-                        BinderName::Underscore,
+                        BinderName::User(Symbol::N),
                         &(Expr::INT, Expr::TYPE),
                     ),
                 ),
