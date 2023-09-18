@@ -17,4 +17,3 @@ lasso              = { workspace = true }
 nohash             = { workspace = true }
 once_cell          = { version = "1.18.0", features = ["parking_lot"] }
 string32           = { workspace = true }
-triomphe           = { workspace = true }

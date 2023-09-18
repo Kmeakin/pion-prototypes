@@ -1,12 +1,10 @@
 use std::io::Read;
 
 use anyhow::{anyhow, bail};
-use camino;
-use camino::Utf8Path;
+use camino::{self, Utf8Path, Utf8PathBuf};
 use codespan_reporting::files as codespan_files;
 use fxhash::FxHashMap;
 use string32::{Str32 as str32, String32};
-use triomphe::Arc;
 
 use crate::location::BytePos;
 
@@ -24,13 +22,13 @@ impl From<FileId> for usize {
 #[derive(Default)]
 pub struct SourceMap {
     next_file_id: u32,
-    path_to_file_id: FxHashMap<Arc<Utf8Path>, FileId>,
+    path_to_file_id: FxHashMap<Utf8PathBuf, FileId>,
     file_id_to_files: Vec<SourceFile>,
 }
 
 pub struct SourceFile {
     /// path (absolute)
-    pub path: Arc<Utf8Path>,
+    pub path: Utf8PathBuf,
     /// contents
     pub contents: String32,
     pub line_index: LineIndex,
@@ -52,7 +50,7 @@ impl LineIndex {
 }
 
 impl SourceFile {
-    pub fn new(path: Arc<Utf8Path>, contents: String32) -> Self {
+    pub fn new(path: Utf8PathBuf, contents: String32) -> Self {
         let line_index = LineIndex::of_text(&contents);
         Self {
             path,
@@ -61,11 +59,9 @@ impl SourceFile {
         }
     }
 
-    pub fn read(path: impl AsRef<Utf8Path>) -> anyhow::Result<Self> {
-        let path = path.as_ref();
-
-        let mut file =
-            std::fs::File::open(path).map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
+    pub fn read(path: Utf8PathBuf) -> anyhow::Result<Self> {
+        let mut file = std::fs::File::open(&path)
+            .map_err(|err| anyhow!("cannot open file {path:?}: {err}"))?;
 
         let metadata = file
             .metadata()
@@ -86,10 +82,6 @@ impl SourceFile {
 
         let contents = String32::try_from(contents)
             .map_err(|_| anyhow!("pion source files must be 4GB or less"))?;
-
-        let path: Arc<str> = Arc::from(path.to_string());
-        // SAFETY: `Utf8Path` has the same representation as `str`
-        let path: Arc<Utf8Path> = unsafe { std::mem::transmute(path) };
 
         Ok(Self::new(path, contents))
     }

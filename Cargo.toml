@@ -35,7 +35,6 @@ internal-iterator  = { version = "0.2.1" }
 lasso              = { version = "0.7.2", features = ["ahasher", "multi-threaded"] }
 nohash             = { version = "0.2.0" }
 string32           = { version = "0.2.0" }
-triomphe           = { version = "0.1.8" }
 
 [profile.release]
 lto = "fat"
