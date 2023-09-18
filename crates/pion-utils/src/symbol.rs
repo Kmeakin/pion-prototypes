@@ -110,6 +110,16 @@ impl Symbol {
                 | Self::r#true
         )
     }
+
+    pub fn tuple_index(index: usize) -> Self {
+        if index <= 32 {
+            #[allow(clippy::cast_possible_truncation)]
+            let index = index as u32;
+            Self::from_u32(Self::_0.as_u32() + index)
+        } else {
+            Self::intern(format!("_{index}"))
+        }
+    }
 }
 
 fn prefill_interner() -> Interner {

@@ -67,7 +67,7 @@ pub enum FieldName {
     User(Symbol),
 }
 impl FieldName {
-    pub fn tuple(index: usize) -> Self { Self::User(Symbol::intern(format!("_{index}"))) }
+    pub fn tuple(index: usize) -> Self { Self::User(Symbol::tuple_index(index)) }
 }
 
 impl fmt::Display for FieldName {
@@ -83,6 +83,6 @@ impl FieldName {
         field_names
             .into_iter()
             .enumerate()
-            .all(|(idx, Self::User(symbol))| symbol.as_str() == format!("_{idx}"))
+            .all(|(idx, name)| name == Self::tuple(idx))
     }
 }
