@@ -1,12 +1,16 @@
+pub mod event;
 pub mod reporting;
 pub mod syntax;
 
+#[cfg(test)]
+mod tests;
+
+use event::Event;
 use lalrpop_util::lalrpop_mod;
 use pion_lexer::token::TokenKind;
-use pion_lexer::LexedSource;
-use pion_utils::location::TokenPos;
-use reporting::SyntaxError;
-use syntax::{Expr, Module};
+use pion_utils::location::BytePos;
+use reporting::{LalrpopParseError, SyntaxError};
+use syntax::{AstNode, Root};
 
 lalrpop_mod!(
     #[allow(
@@ -14,59 +18,63 @@ lalrpop_mod!(
         clippy::nursery,
         clippy::pedantic,
         dead_code,
-        unused_imports,
         unused_qualifications
     )]
     grammar
 );
 
-fn tokens<'tokens>(
-    source: LexedSource<'_, 'tokens>,
-) -> impl Iterator<Item = (TokenPos, TokenKind, TokenPos)> + 'tokens {
-    source
-        .all_tokens()
-        .iter()
-        .enumerate()
-        .filter_map(move |(index, token)| match token.kind() {
-            kind if kind.is_trivia() => None,
-            kind => Some((
-                TokenPos::truncate_usize(index),
-                kind,
-                TokenPos::truncate_usize(index + 1),
-            )),
-        })
+pub fn parse_expr(src: &str) -> (Root, Vec<SyntaxError>) {
+    parse(src, |events, errors, tokens| {
+        crate::grammar::ExprParser::new().parse(events, errors, tokens)
+    })
 }
 
-pub fn parse_module<'surface>(
-    source: LexedSource,
-    bump: &'surface bumpalo::Bump,
-) -> (Module<'surface>, Vec<SyntaxError>) {
-    let tokens = tokens(source);
-    let mut errors = Vec::new();
-
-    match crate::grammar::ModuleParser::new().parse(bump, &mut errors, tokens) {
-        Ok(module) => (module, errors),
-        Err(error) => {
-            errors.push(SyntaxError::from_lalrpop(error));
-            (Module { items: &[] }, errors)
-        }
-    }
+pub fn parse_pat(src: &str) -> (Root, Vec<SyntaxError>) {
+    parse(src, |events, errors, tokens| {
+        crate::grammar::PatParser::new().parse(events, errors, tokens)
+    })
 }
 
-pub fn parse_expr<'surface>(
-    source: LexedSource,
-    bump: &'surface bumpalo::Bump,
-) -> (Expr<'surface>, Vec<SyntaxError>) {
-    let tokens = tokens(source);
-    let mut errors = Vec::new();
+pub fn parse_module(src: &str) -> (Root, Vec<SyntaxError>) {
+    parse(src, |events, errors, tokens| {
+        crate::grammar::ModuleParser::new().parse(events, errors, tokens)
+    })
+}
 
-    match crate::grammar::ExprParser::new().parse(bump, &mut errors, tokens) {
-        Ok(expr) => (expr, errors),
-        Err(error) => {
-            let error = SyntaxError::from_lalrpop(error);
-            let span = error.span();
-            errors.push(error);
-            (Expr::Error(span), errors)
-        }
+pub fn parse<'src>(
+    src: &'src str,
+    parser: impl Fn(
+        &mut Vec<Event>,
+        &mut Vec<SyntaxError>,
+        &mut dyn Iterator<Item = (BytePos, TokenKind, BytePos)>,
+    ) -> Result<(), LalrpopParseError<'src>>,
+) -> (Root, Vec<SyntaxError>) {
+    let mut tokens = Vec::new();
+    let mut token_errors = Vec::new();
+    let mut syntax_errors = Vec::new();
+    let mut events = Vec::new();
+
+    pion_lexer::lex(src, &mut tokens, &mut token_errors);
+
+    let result = parser(
+        &mut events,
+        &mut syntax_errors,
+        &mut tokens
+            .iter()
+            .filter(|token| !token.kind().is_trivia())
+            .map(|token| (token.span().start, token.kind(), token.span().end)),
+    );
+    if let Err(error) = result {
+        syntax_errors.push(SyntaxError::from_lalrpop(error));
     }
+
+    let node = crate::event::process_events(
+        &events,
+        tokens
+            .into_iter()
+            .map(|token| (token.kind(), (&src[token.span()])))
+            .peekable(),
+    );
+
+    (AstNode::cast(node).unwrap(), syntax_errors)
 }

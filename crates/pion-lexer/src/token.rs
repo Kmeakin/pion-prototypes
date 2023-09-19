@@ -1,6 +1,6 @@
 use pion_utils::location::ByteSpan;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(i8)]
 pub enum TokenKind {
     // trivia
@@ -46,6 +46,41 @@ pub enum TokenKind {
     DecInt,
     BinInt,
     HexInt,
+}
+
+#[macro_export]
+macro_rules! T {
+    [def] => {$crate::token::TokenKind::KwDef};
+    [else] => {$crate::token::TokenKind::KwElse};
+    [false] => {$crate::token::TokenKind::KwFalse};
+    [fun] => {$crate::token::TokenKind::KwFun};
+    [if] => {$crate::token::TokenKind::KwIf};
+    [let] => {$crate::token::TokenKind::KwLet};
+    [match] => {$crate::token::TokenKind::KwMatch};
+    [then] => {$crate::token::TokenKind::KwThen};
+    [true] => {$crate::token::TokenKind::KwTrue};
+
+    ['('] => {$crate::token::TokenKind::LParen};
+    [')'] => {$crate::token::TokenKind::LParen};
+    ['['] => {$crate::token::TokenKind::LSquare};
+    [']'] => {$crate::token::TokenKind::RSquare};
+    ['{'] => {$crate::token::TokenKind::LCurly};
+    ['}'] => {$crate::token::TokenKind::RCurly};
+
+    [_] => {$crate::token::TokenKind::Underscore};
+    [,] => {$crate::token::TokenKind::Comma};
+    [;] => {$crate::token::TokenKind::Semicolon};
+    [:] => {$crate::token::TokenKind::Colon};
+    [.] => {$crate::token::TokenKind::Dot};
+    [@] => {$crate::token::TokenKind::At};
+    [=] => {$crate::token::TokenKind::Eq};
+    [->] => {$crate::token::TokenKind::ThinArrow};
+    [=>] => {$crate::token::TokenKind::FatArrow};
+
+    [ident] => {$crate::token::TokenKind::Ident};
+    [dec_int] => {$crate::token::TokenKind::DecInt};
+    [bin_int] => {$crate::token::TokenKind::BinInt};
+    [hex_int] => {$crate::token::TokenKind::HexInt};
 }
 
 impl TokenKind {

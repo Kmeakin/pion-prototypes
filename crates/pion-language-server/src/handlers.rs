@@ -3,7 +3,6 @@ use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notifi
 use lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
 };
-use pion_lexer::LexedSource;
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};
@@ -20,27 +19,27 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
             let path = convert::url_to_path(&url)?;
             let file = SourceFile::read(path)?;
 
-            let bump = bumpalo::Bump::new();
-            let mut tokens = Vec::new();
-            let mut errors = Vec::new();
-            let source = LexedSource::new(&file.contents, &mut tokens, &mut errors);
-
             let mut symbols = Vec::new();
-            let (module, _) = pion_surface::parse_module(source, &bump);
-            for item in module.items {
+            let (root, _) = pion_surface::parse_module(&file.contents);
+            let module = root.module().unwrap();
+
+            for item in module.items() {
                 let symbol = match item {
-                    pion_surface::syntax::Item::Error(_) => continue,
-                    pion_surface::syntax::Item::Def(def) => {
-                        let name = source.text(def.name.span()).to_owned();
-                        let range = convert::bytespan_to_lsp(source.bytespan(def.span), &file)?;
-                        let selection_range =
-                            convert::bytespan_to_lsp(source.bytespan(def.name.span()), &file)?;
+                    pion_surface::syntax::Item::DefItem(def) => {
+                        let Some(ident_token) = def.ident_token() else {
+                            continue;
+                        };
+
+                        let name = ident_token.text();
+                        let range =
+                            convert::bytespan_to_lsp(ident_token.text_range().into(), &file)?;
+                        let selection_range = range;
 
                         #[allow(deprecated)]
                         // REASON: `deprecated` field is deprecated, but there is no other way to
                         // construct a `DocumentSymbol`
                         DocumentSymbol {
-                            name,
+                            name: name.to_owned(),
                             detail: None,
                             kind: SymbolKind::CONSTANT,
                             tags: None,

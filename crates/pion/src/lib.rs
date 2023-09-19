@@ -40,10 +40,14 @@ fn parse_subcommand() -> impl BParser<Command> {
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct DumpFlags {
+    pub surface: bool,
+    pub hir: bool,
     pub core: bool,
 }
 
 fn parse_dumpflags() -> impl BParser<DumpFlags> {
+    let surface = bpaf::long("dump-surface").switch();
+    let hir = bpaf::long("dump-hir").switch();
     let core = bpaf::long("dump-core").switch();
-    construct!(DumpFlags { core })
+    construct!(DumpFlags { surface, hir, core })
 }

@@ -1,4 +1,3 @@
-use pion_surface::syntax as surface;
 use pion_utils::location::ByteSpan;
 use pion_utils::symbol::Symbol;
 
@@ -108,15 +107,6 @@ pub enum Plicity {
 impl Plicity {
     pub fn is_implicit(&self) -> bool { matches!(self, Self::Implicit) }
     pub fn is_explicit(&self) -> bool { matches!(self, Self::Explicit) }
-}
-
-impl From<surface::Plicity> for Plicity {
-    fn from(other: surface::Plicity) -> Self {
-        match other {
-            surface::Plicity::Implicit(..) => Self::Implicit,
-            surface::Plicity::Explicit => Self::Explicit,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
