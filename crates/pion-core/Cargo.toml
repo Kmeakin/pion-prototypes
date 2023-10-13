@@ -14,11 +14,11 @@ pion-utils   = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
-ecow               = { version = "0.1.2" }
+ecow               = { version = "0.2.0" }
 either             = { version = "1.9.0" }
 internal-iterator  = { workspace = true }
 nohash             = { workspace = true }
-pretty             = { version = "0.12.1" }
+pretty             = { version = "0.12.3" }
 string32           = { workspace = true }
 
 [dev-dependencies]
