@@ -223,6 +223,13 @@ impl<T> SliceEnv<T> {
     }
 }
 
+impl<'a, T> IntoIterator for &'a SliceEnv<T> {
+    type Item = &'a T;
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter { self.elems.iter() }
+}
+
 impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:

@@ -49,7 +49,7 @@ pub fn dump_expr_types(
     let pretty_ctx = PrettyCtx::new(&bump);
 
     // TODO: use map with deterministic iteration order
-    let mut exprs: Vec<_> = syntax_map.exprs.iter().collect();
+    let mut exprs: Vec<_> = syntax_map.exprs.surface_to_hir.iter().collect();
     exprs.sort_by_key(|(surface, _)| surface.0.span());
 
     writeln!(writer, "types of expressions:")?;
@@ -93,7 +93,7 @@ pub fn dump_pat_types(
     let pretty_ctx = PrettyCtx::new(&bump);
 
     // TODO: use map with deterministic iteration order
-    let mut pats: Vec<_> = syntax_map.pats.iter().collect();
+    let mut pats: Vec<_> = syntax_map.pats.surface_to_hir.iter().collect();
     pats.sort_by_key(|(surface, _)| surface.0.span());
 
     writeln!(writer, "types of patterns:")?;
