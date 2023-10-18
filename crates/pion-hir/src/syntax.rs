@@ -2,7 +2,7 @@ use pion_surface::syntax as surface;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
-mod iterators;
+mod walk;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Module<'hir> {
