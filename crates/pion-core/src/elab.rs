@@ -19,9 +19,8 @@ mod r#match;
 mod pat;
 mod unify;
 
-pub struct ElabCtx<'surface, 'hir, 'core> {
+pub struct ElabCtx<'hir, 'core> {
     bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
     renaming: unify::PartialRenaming,
@@ -29,15 +28,11 @@ pub struct ElabCtx<'surface, 'hir, 'core> {
     diagnostics: Vec<diagnostics::ElabDiagnostic>,
 }
 
-impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
-    pub fn new(
-        bump: &'core bumpalo::Bump,
-        syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
-    ) -> Self {
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
+    pub fn new(bump: &'core bumpalo::Bump) -> Self {
         Self {
             bump,
-            type_map: TypeMap::with_capacity(syntax_map.exprs.len(), syntax_map.pats.len()),
-            syntax_map,
+            type_map: TypeMap::with_capacity(0, 0),
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
             renaming: unify::PartialRenaming::new(),
@@ -447,12 +442,11 @@ pub type ItemData<'hir, 'core> = ElabResult<'hir, 'core, ()>;
 
 // REASON: keep all lifetimes explicit for clarity
 #[allow(clippy::needless_lifetimes)]
-pub fn elab_def<'surface, 'hir, 'core>(
+pub fn elab_def<'hir, 'core>(
     bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     def: &'hir pion_hir::syntax::Def<'hir>,
 ) -> ElabResult<'hir, 'core, Def<'core>> {
-    let mut ctx = ElabCtx::new(bump, syntax_map);
+    let mut ctx = ElabCtx::new(bump);
 
     let (expr, r#type) = match &def.r#type {
         None => {
@@ -481,14 +475,11 @@ pub fn elab_def<'surface, 'hir, 'core>(
     ctx.finish_with(def)
 }
 
-// REASON: keep all lifetimes explicit for clarity
-#[allow(clippy::needless_lifetimes)]
-pub fn elab_expr<'surface, 'hir, 'core>(
+pub fn elab_expr<'hir, 'core>(
     bump: &'core bumpalo::Bump,
-    syntax_map: &'hir pion_hir::syntax::LocalSyntaxMap<'surface, 'hir>,
     expr: &'hir pion_hir::syntax::Expr<'hir>,
 ) -> ElabResult<'hir, 'core, (ZonkedExpr<'core>, ZonkedExpr<'core>)> {
-    let mut ctx = ElabCtx::new(bump, syntax_map);
+    let mut ctx = ElabCtx::new(bump);
 
     let Synth(expr, r#type) = ctx.synth_expr(expr);
     let r#type = ctx.quote_env().quote(&r#type);

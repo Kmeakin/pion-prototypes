@@ -70,14 +70,14 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         diagnostics.extend(errors.iter().map(|error| error.to_diagnostic(file_id)));
 
         for surface_item in surface_module.items {
-            let (hir_item, syntax_map, errors) = pion_hir::lower::lower_item(&bump, surface_item);
+            let (hir_item, errors) = pion_hir::lower::lower_item(&bump, surface_item);
             diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
 
             if let pion_hir::syntax::Item::Def(def) = hir_item {
-                let result = pion_core::elab::elab_def(&bump, &syntax_map, &def);
+                let result = pion_core::elab::elab_def(&bump, &def);
 
                 if dump_flags.core {
-                    pion_core::dump::dump_def(&mut stdout, src32.as_str(), &syntax_map, &result)?;
+                    pion_core::dump::dump_def(&mut stdout, src32.as_str(), &result)?;
                     writeln!(&mut stdout)?;
                 }
 

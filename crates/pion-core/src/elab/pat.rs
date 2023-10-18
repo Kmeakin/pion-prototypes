@@ -17,17 +17,17 @@ impl<'core> CheckPat<'core> {
     pub fn error(span: ByteSpan) -> Self { Self::new(Pat::Error(span)) }
 }
 
-impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthPat<'core> {
-        let span = self.syntax_map[pat].span();
+        let span = pat.span();
 
         let Synth(core_pat, r#type) = match pat {
-            hir::Pat::Error => SynthPat::error(span),
-            hir::Pat::Lit(lit) => {
+            hir::Pat::Error(..) => SynthPat::error(span),
+            hir::Pat::Lit(_, lit) => {
                 let Synth(result, r#type) = expr::synth_lit(*lit);
                 let pat = match result {
                     Ok(lit) => Pat::Lit(span, lit),
@@ -35,19 +35,19 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 };
                 SynthPat::new(pat, r#type)
             }
-            hir::Pat::Underscore => {
-                let span = self.syntax_map[pat].span();
+            hir::Pat::Underscore(..) => {
+                let span = pat.span();
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                 SynthPat::new(Pat::Underscore(span), r#type)
             }
-            hir::Pat::Ident(symbol) => match self.check_duplicate_local(names, *symbol, span) {
+            hir::Pat::Ident(_, symbol) => match self.check_duplicate_local(names, *symbol, span) {
                 Err(()) => SynthPat::error(span),
                 Ok(()) => {
                     let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                     SynthPat::new(Pat::Ident(span, *symbol), r#type)
                 }
             },
-            hir::Pat::TupleLit(elems) => {
+            hir::Pat::TupleLit(_, elems) => {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
                 let mut pat_fields = SliceVec::new(self.bump, elems.len());
 
@@ -64,7 +64,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
-            hir::Pat::RecordLit(fields) => {
+            hir::Pat::RecordLit(_, fields) => {
                 let mut pat_fields = SliceVec::new(self.bump, fields.len());
                 let mut type_fields = SliceVec::new(self.bump, fields.len());
                 let mut name_spans = SliceVec::new(self.bump, fields.len());
@@ -113,16 +113,16 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
         expected: &Type<'core>,
         names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckPat<'core> {
-        let span = self.syntax_map[pat].span();
+        let span = pat.span();
 
         let Check(core_pat) = match pat {
-            hir::Pat::Error => CheckPat::error(span),
-            hir::Pat::Underscore => CheckPat::new(Pat::Underscore(span)),
-            hir::Pat::Ident(symbol) => match self.check_duplicate_local(names, *symbol, span) {
+            hir::Pat::Error(..) => CheckPat::error(span),
+            hir::Pat::Underscore(..) => CheckPat::new(Pat::Underscore(span)),
+            hir::Pat::Ident(_, symbol) => match self.check_duplicate_local(names, *symbol, span) {
                 Err(()) => CheckPat::error(span),
                 Ok(()) => CheckPat::new(Pat::Ident(span, *symbol)),
             },
-            hir::Pat::TupleLit(elems) => match expected {
+            hir::Pat::TupleLit(_, elems) => match expected {
                 Value::RecordType(telescope) if elems.len() == telescope.len() => {
                     let mut pat_fields = SliceVec::new(self.bump, elems.len());
                     let mut telescope = telescope.clone();
@@ -142,7 +142,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
                 }
                 _ => self.synth_and_convert_pat(pat, expected, names),
             },
-            hir::Pat::RecordLit(fields) => match expected {
+            hir::Pat::RecordLit(_, fields) => match expected {
                 Type::RecordType(telescope)
                     if fields.len() == telescope.len()
                         && Iterator::eq(
@@ -195,7 +195,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 }
 
-impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
     fn synth_ident_pat(
         &mut self,
         symbol: Symbol,
@@ -317,7 +317,7 @@ impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
     }
 }
 
-impl<'surface, 'hir, 'core> ElabCtx<'surface, 'hir, 'core> {
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn push_param_pat(
         &mut self,
         pat: &Pat<'core>,

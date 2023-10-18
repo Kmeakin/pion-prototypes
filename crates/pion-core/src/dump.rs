@@ -1,22 +1,20 @@
-use pion_hir::syntax::LocalSyntaxMap;
-use pion_utils::identity::Identity;
-
 use crate::elab::{ElabResult, TypeMap};
 use crate::pretty::{Prec, PrettyCtx};
 use crate::syntax::{Def, ZonkedExpr};
 
+// FIXME: print hir nodes that were not assigned types during elaboration
+
 pub fn dump_def(
     writer: &mut dyn std::io::Write,
     source: &str,
-    syntax_map: &LocalSyntaxMap,
     result: &ElabResult<Def>,
 ) -> std::io::Result<()> {
     let bump = bumpalo::Bump::new();
     let pretty_ctx = PrettyCtx::new(&bump);
 
     writeln!(writer, "{}", pretty_ctx.def(&result.value).pretty(80))?;
-    dump_expr_types(writer, source, syntax_map, &result.type_map)?;
-    dump_pat_types(writer, source, syntax_map, &result.type_map)?;
+    dump_expr_types(writer, source, &result.type_map)?;
+    dump_pat_types(writer, source, &result.type_map)?;
     dump_metavars(writer, result.metavars)?;
 
     Ok(())
@@ -38,10 +36,9 @@ pub fn dump_annotated_expr(
 pub fn dump_expr_types(
     writer: &mut dyn std::io::Write,
     source: &str,
-    syntax_map: &LocalSyntaxMap,
     type_map: &TypeMap,
 ) -> std::io::Result<()> {
-    if syntax_map.exprs.is_empty() {
+    if type_map.exprs.is_empty() {
         return Ok(());
     }
 
@@ -49,8 +46,8 @@ pub fn dump_expr_types(
     let pretty_ctx = PrettyCtx::new(&bump);
 
     // TODO: use map with deterministic iteration order
-    let mut exprs: Vec<_> = syntax_map.exprs.surface_to_hir.iter().collect();
-    exprs.sort_by_key(|(surface, _)| surface.0.span());
+    let mut exprs: Vec<_> = type_map.exprs.iter().collect();
+    exprs.sort_by_key(|(expr, _)| expr.0.span());
 
     writeln!(writer, "types of expressions:")?;
     writeln!(writer, "span   | {:40} | type", "source")?;
@@ -59,21 +56,15 @@ pub fn dump_expr_types(
         "-------|-{:-<40}-|-----------------------------",
         ""
     )?;
-    for (surface, hir) in exprs {
-        let span = surface.0.span();
+    for (expr, r#type) in exprs {
+        let span = expr.0.span();
         let source = ellipsize(&source[span], 40);
-        let r#type = type_map.exprs.get(&Identity(hir));
-        match r#type {
-            None => writeln!(writer, "{span:10} | {source:40} | <missing>")?,
-            Some(r#type) => {
-                let r#type = pretty_ctx.expr(r#type, Prec::MAX);
-                writeln!(
-                    writer,
-                    "{span:10} | {source:40} | {}",
-                    r#type.pretty(usize::MAX)
-                )?;
-            }
-        }
+        let r#type = pretty_ctx.expr(r#type, Prec::MAX);
+        writeln!(
+            writer,
+            "{span:10} | {source:40} | {}",
+            r#type.pretty(usize::MAX)
+        )?;
     }
 
     Ok(())
@@ -82,10 +73,9 @@ pub fn dump_expr_types(
 pub fn dump_pat_types(
     writer: &mut dyn std::io::Write,
     source: &str,
-    syntax_map: &LocalSyntaxMap,
     type_map: &TypeMap,
 ) -> std::io::Result<()> {
-    if syntax_map.pats.is_empty() {
+    if type_map.pats.is_empty() {
         return Ok(());
     }
 
@@ -93,8 +83,8 @@ pub fn dump_pat_types(
     let pretty_ctx = PrettyCtx::new(&bump);
 
     // TODO: use map with deterministic iteration order
-    let mut pats: Vec<_> = syntax_map.pats.surface_to_hir.iter().collect();
-    pats.sort_by_key(|(surface, _)| surface.0.span());
+    let mut pats: Vec<_> = type_map.pats.iter().collect();
+    pats.sort_by_key(|(pat, _)| pat.0.span());
 
     writeln!(writer, "types of patterns:")?;
     writeln!(writer, "span   | {:40} | type", "source")?;
@@ -103,21 +93,15 @@ pub fn dump_pat_types(
         "-------|-{:-<40}-|-----------------------------",
         ""
     )?;
-    for (surface, hir) in pats {
-        let span = surface.0.span();
+    for (pat, r#type) in pats {
+        let span = pat.0.span();
         let source = ellipsize(&source[span], 40);
-        let r#type = type_map.pats.get(&Identity(hir));
-        match r#type {
-            None => writeln!(writer, "{span:10} | {source:40} | <missing>",)?,
-            Some(r#type) => {
-                let r#type = pretty_ctx.expr(r#type, Prec::MAX);
-                writeln!(
-                    writer,
-                    "{span:10} | {source:40} | {}",
-                    r#type.pretty(usize::MAX)
-                )?;
-            }
-        }
+        let r#type = pretty_ctx.expr(r#type, Prec::MAX);
+        writeln!(
+            writer,
+            "{span:10} | {source:40} | {}",
+            r#type.pretty(usize::MAX)
+        )?;
     }
 
     Ok(())

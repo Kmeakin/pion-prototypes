@@ -15,9 +15,9 @@ span   | source                                   | type
 38..89 | fun(f: fun(A: _) -...)) -> Type) -> Type | Type
 45..80 | fun(A: _) -> (A -> Wrap(A)) -> Type      | Type
 52..53 | _                                        | Type
-58..72 | (A -> Wrap(A))                           | Type
 58..80 | (A -> Wrap(A)) -> Type                   | Type
 59..60 | A                                        | Type
+59..71 | A -> Wrap(A)                             | Type
 64..68 | Wrap                                     | Type -> Type
 64..71 | Wrap(A)                                  | Type
 69..70 | A                                        | Type

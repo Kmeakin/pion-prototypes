@@ -7,7 +7,6 @@ span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 12..17 | Array                                    | Type -> Int -> Type
 12..23 | Array(@Int)                              | #error
-19..22 | Int                                      | <missing>
 """
 
 stderr = """

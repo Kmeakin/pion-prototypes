@@ -84,9 +84,9 @@ span   | source                                   | type
 263..264 | a                                        | A
 271..311 | (apply : ((Bool -> Int) -> Bool -> Int)) | (Bool -> Int) -> Bool -> Int
 272..277 | apply                                    | (Bool -> Int) -> Bool -> Int
-280..310 | ((Bool -> Int) -> Bool -> Int)           | Type
-281..294 | (Bool -> Int)                            | Type
+281..309 | (Bool -> Int) -> Bool -> Int             | Type
 282..286 | Bool                                     | Type
+282..293 | Bool -> Int                              | Type
 290..293 | Int                                      | Type
 298..302 | Bool                                     | Type
 298..309 | Bool -> Int                              | Type

@@ -11,7 +11,7 @@ use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 
 pub fn check_coverage<'core>(
-    ctx: &mut ElabCtx<'_, '_, 'core>,
+    ctx: &mut ElabCtx<'_, 'core>,
     input_matrix: &PatMatrix<'core>,
     scrut_span: ByteSpan,
 ) -> Result<(), ()> {
@@ -45,7 +45,7 @@ pub fn check_coverage<'core>(
 /// value matched by `q` and not matched by *m*. This is the `U` function in
 /// *Warnings for pattern matching*
 fn is_useful<'core>(
-    ctx: &mut ElabCtx<'_, '_, 'core>,
+    ctx: &mut ElabCtx<'_, 'core>,
     matrix: &PatMatrix<'core>,
     row: BorrowedPatRow<'core, '_>,
 ) -> bool {
@@ -102,7 +102,7 @@ fn is_useful<'core>(
 }
 
 fn is_useful_ctor<'core>(
-    ctx: &mut ElabCtx<'_, '_, 'core>,
+    ctx: &mut ElabCtx<'_, 'core>,
     matrix: &PatMatrix<'core>,
     row: BorrowedPatRow<'core, '_>,
     ctor: &Constructor<'core>,

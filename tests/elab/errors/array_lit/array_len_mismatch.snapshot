@@ -10,7 +10,6 @@ span   | source                                   | type
 17..18 | _                                        | Type
 20..21 | 2                                        | Int
 25..28 | [1]                                      | Array(?1, 2)
-26..27 | 1                                        | <missing>
 metavars:
 ?0 = Type
 ?1 = <unsolved>

@@ -1,11 +1,6 @@
-use std::ops::Index;
-
 use pion_surface::syntax as surface;
-use pion_utils::identity::Identity;
 use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
-
-use crate::syntax_map::SyntaxMap;
 
 mod iterators;
 
@@ -29,28 +24,53 @@ pub struct Def<'hir> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'hir> {
-    Error,
-    Lit(Lit),
-    Underscore,
-    Ident(Symbol),
-    Ann(&'hir (Self, Self)),
+    Error(ByteSpan),
+    Lit(ByteSpan, Lit),
+    Underscore(ByteSpan),
+    Ident(ByteSpan, Symbol),
+    Ann(ByteSpan, &'hir (Self, Self)),
 
-    Let(&'hir (Pat<'hir>, Option<Self>, Self, Self)),
+    Let(ByteSpan, &'hir (Pat<'hir>, Option<Self>, Self, Self)),
 
-    ArrayLit(&'hir [Self]),
-    TupleLit(&'hir [Self]),
-    RecordType(&'hir [TypeField<'hir>]),
-    RecordLit(&'hir [ExprField<'hir>]),
-    FieldProj(&'hir Self, Symbol),
+    ArrayLit(ByteSpan, &'hir [Self]),
+    TupleLit(ByteSpan, &'hir [Self]),
+    RecordType(ByteSpan, &'hir [TypeField<'hir>]),
+    RecordLit(ByteSpan, &'hir [ExprField<'hir>]),
+    FieldProj(ByteSpan, &'hir Self, Symbol),
 
-    FunArrow(&'hir (Self, Self)),
-    FunType(&'hir [FunParam<'hir>], &'hir Self),
-    FunLit(&'hir [FunParam<'hir>], &'hir Self),
-    FunCall(&'hir Self, &'hir [FunArg<'hir>]),
-    MethodCall(Symbol, &'hir Self, &'hir [FunArg<'hir>]),
+    FunArrow(ByteSpan, &'hir (Self, Self)),
+    FunType(ByteSpan, &'hir [FunParam<'hir>], &'hir Self),
+    FunLit(ByteSpan, &'hir [FunParam<'hir>], &'hir Self),
+    FunCall(ByteSpan, &'hir Self, &'hir [FunArg<'hir>]),
+    MethodCall(ByteSpan, Symbol, &'hir Self, &'hir [FunArg<'hir>]),
 
-    Match(&'hir Self, &'hir [MatchCase<'hir>]),
-    If(&'hir (Self, Self, Self)),
+    Match(ByteSpan, &'hir Self, &'hir [MatchCase<'hir>]),
+    If(ByteSpan, &'hir (Self, Self, Self)),
+}
+
+impl<'hir> Expr<'hir> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Expr::Error(span, ..)
+            | Expr::Lit(span, ..)
+            | Expr::Underscore(span, ..)
+            | Expr::Ident(span, ..)
+            | Expr::Ann(span, ..)
+            | Expr::Let(span, ..)
+            | Expr::ArrayLit(span, ..)
+            | Expr::TupleLit(span, ..)
+            | Expr::RecordType(span, ..)
+            | Expr::RecordLit(span, ..)
+            | Expr::FieldProj(span, ..)
+            | Expr::FunArrow(span, ..)
+            | Expr::FunType(span, ..)
+            | Expr::FunLit(span, ..)
+            | Expr::FunCall(span, ..)
+            | Expr::MethodCall(span, ..)
+            | Expr::Match(span, ..)
+            | Expr::If(span, ..) => *span,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -124,12 +144,25 @@ pub struct PatField<'hir> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Pat<'hir> {
-    Error,
-    Lit(Lit),
-    Underscore,
-    Ident(Symbol),
-    TupleLit(&'hir [Self]),
-    RecordLit(&'hir [PatField<'hir>]),
+    Error(ByteSpan),
+    Lit(ByteSpan, Lit),
+    Underscore(ByteSpan),
+    Ident(ByteSpan, Symbol),
+    TupleLit(ByteSpan, &'hir [Self]),
+    RecordLit(ByteSpan, &'hir [PatField<'hir>]),
+}
+
+impl<'hir> Pat<'hir> {
+    pub fn span(&self) -> ByteSpan {
+        match self {
+            Pat::Error(span, ..)
+            | Pat::Lit(span, ..)
+            | Pat::Underscore(span, ..)
+            | Pat::Ident(span, ..)
+            | Pat::TupleLit(span, ..)
+            | Pat::RecordLit(span, ..) => *span,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -138,60 +171,17 @@ pub enum Lit {
     Int(Result<u32, ()>),
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct LocalSyntaxMap<'surface, 'hir> {
-    pub exprs: SyntaxMap<'surface, 'hir, surface::Expr<'surface>, Expr<'hir>>,
-    pub pats: SyntaxMap<'surface, 'hir, surface::Pat<'surface>, Pat<'hir>>,
-}
-
-impl<'surface, 'hir> LocalSyntaxMap<'surface, 'hir> {
-    pub fn new() -> Self { Self::default() }
-
-    pub fn shrink_to_fit(&mut self) {
-        self.exprs.shrink_to_fit();
-        self.pats.shrink_to_fit();
-    }
-}
-
-impl<'surface, 'hir> Index<&'surface surface::Expr<'surface>> for LocalSyntaxMap<'surface, 'hir> {
-    type Output = &'hir Expr<'hir>;
-    fn index(&self, surface: &'surface surface::Expr<'surface>) -> &Self::Output {
-        &self.exprs.surface_to_hir[&Identity(surface)]
-    }
-}
-
-impl<'surface, 'hir> Index<&'surface surface::Pat<'surface>> for LocalSyntaxMap<'surface, 'hir> {
-    type Output = &'hir Pat<'hir>;
-    fn index(&self, surface: &'surface surface::Pat<'surface>) -> &Self::Output {
-        &self.pats.surface_to_hir[&Identity(surface)]
-    }
-}
-
-impl<'surface, 'hir> Index<&'hir Expr<'hir>> for LocalSyntaxMap<'surface, 'hir> {
-    type Output = &'surface surface::Expr<'surface>;
-    fn index(&self, hir: &'hir Expr<'hir>) -> &Self::Output {
-        &self.exprs.hir_to_surface[&Identity(hir)]
-    }
-}
-
-impl<'surface, 'hir> Index<&'hir Pat<'hir>> for LocalSyntaxMap<'surface, 'hir> {
-    type Output = &'surface surface::Pat<'surface>;
-    fn index(&self, hir: &'hir Pat<'hir>) -> &Self::Output {
-        &self.pats.hir_to_surface[&Identity(hir)]
-    }
-}
-
 #[cfg(test)]
 mod size_tests {
     use super::*;
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr>(), 32);
+        assert_eq!(std::mem::size_of::<Expr>(), 40);
     }
 
     #[test]
     fn pat_size() {
-        assert_eq!(std::mem::size_of::<Pat>(), 24);
+        assert_eq!(std::mem::size_of::<Pat>(), 32);
     }
 }

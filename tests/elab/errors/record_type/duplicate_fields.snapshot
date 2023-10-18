@@ -8,7 +8,6 @@ span   | source                                   | type
 12..36 | {x: Int, y: Bool, x: ()}                 | Type
 16..19 | Int                                      | Type
 24..28 | Bool                                     | Type
-33..35 | ()                                       | <missing>
 """
 
 stderr = """

@@ -25,7 +25,7 @@ use super::*;
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
 pub fn compile_match<'core>(
-    ctx: &mut ElabCtx<'_, '_, 'core>,
+    ctx: &mut ElabCtx<'_, 'core>,
     matrix: &mut PatMatrix<'core>,
     bodies: &[Body<'core>],
     mut shift_amount: EnvLen,
