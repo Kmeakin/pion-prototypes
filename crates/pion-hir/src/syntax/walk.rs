@@ -50,8 +50,13 @@ pub fn walk_expr<'hir, R>(
             });
             walk_expr(body, on_expr, on_pat)?;
         }
-        Expr::FunCall(_, fun, args) | Expr::MethodCall(_, _, fun, args) => {
+        Expr::FunCall(_, fun, args) => {
             walk_expr(fun, on_expr, on_pat)?;
+            args.iter()
+                .try_for_each(|arg| walk_expr(&arg.expr, on_expr, on_pat))?;
+        }
+        Expr::MethodCall(_, head, _, args) => {
+            walk_expr(head, on_expr, on_pat)?;
             args.iter()
                 .try_for_each(|arg| walk_expr(&arg.expr, on_expr, on_pat))?;
         }

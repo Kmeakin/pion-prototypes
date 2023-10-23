@@ -107,3 +107,61 @@ impl fmt::Display for ByteSpan {
         write!(f, "{}..{}", self.start, self.end)
     }
 }
+
+/// Index into token stream
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub struct TokenPos(u32);
+impl TokenPos {
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn truncate_usize(it: usize) -> Self { Self(it as u32) }
+}
+
+impl From<TokenPos> for usize {
+    fn from(pos: TokenPos) -> Self { pos.0 as Self }
+}
+
+impl From<TokenPos> for u32 {
+    fn from(pos: TokenPos) -> Self { pos.0 }
+}
+
+/// Span into token stream
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+pub struct TokenSpan {
+    start: TokenPos,
+    end: TokenPos,
+}
+
+impl TokenSpan {
+    pub fn new(start: TokenPos, end: TokenPos) -> Self { Self { start, end } }
+}
+
+impl From<TokenPos> for TokenSpan {
+    fn from(start: TokenPos) -> Self { Self::new(start, TokenPos(start.0 + 1)) }
+}
+
+impl From<TokenSpan> for Range<usize> {
+    fn from(tokenspan: TokenSpan) -> Self { tokenspan.start.into()..tokenspan.end.into() }
+}
+
+impl From<TokenSpan> for Range<u32> {
+    fn from(tokenspan: TokenSpan) -> Self { tokenspan.start.into()..tokenspan.end.into() }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Span {
+    ByteSpan(ByteSpan),
+    TokenSpan(TokenSpan),
+    TokenPos(TokenPos),
+}
+
+impl From<ByteSpan> for Span {
+    fn from(it: ByteSpan) -> Self { Self::ByteSpan(it) }
+}
+
+impl From<TokenSpan> for Span {
+    fn from(it: TokenSpan) -> Self { Self::TokenSpan(it) }
+}
+
+impl From<TokenPos> for Span {
+    fn from(it: TokenPos) -> Self { Self::TokenPos(it) }
+}

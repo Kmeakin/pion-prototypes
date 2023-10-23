@@ -63,8 +63,8 @@ impl<'surface> Subexprs<'surface> {
                 f(fun)?;
                 args.iter().try_for_each(|arg| f(&arg.expr))?;
             }
-            Expr::MethodCall(.., head, args) => {
-                f(head)?;
+            Expr::MethodCall(.., scrut, _, args) => {
+                f(scrut)?;
                 args.iter().try_for_each(|arg| f(&arg.expr))?;
             }
             Expr::Match(.., scrut, cases) => {
@@ -143,13 +143,14 @@ mod tests {
 
     #[test]
     fn test_subexprs() {
-        let span = ByteSpan::default();
+        let pos = TokenPos::default();
+        let span = TokenSpan::default();
         let bump = bumpalo::Bump::new();
 
         let expr0 = Expr::Error(span);
         assert_eq!(subexprs(&expr0), [&expr0]);
 
-        let expr1 = Expr::Lit(span, Lit::Bool(true));
+        let expr1 = Expr::Lit(Lit::Bool(BoolLit::True(pos)));
         assert_eq!(subexprs(&expr1), [&expr1]);
 
         let expr2 = Expr::Ann(span, bump.alloc((expr0, expr1)));
@@ -157,7 +158,12 @@ mod tests {
 
         let expr4 = Expr::Let(
             span,
-            bump.alloc((Pat::Underscore(span), Some(expr0), expr1, expr2)),
+            bump.alloc((
+                Pat::Underscore(Underscore { pos }),
+                Some(expr0),
+                expr1,
+                expr2,
+            )),
         );
         assert_eq!(
             subexprs(&expr4),

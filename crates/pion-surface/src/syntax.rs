@@ -1,54 +1,6 @@
-use pion_utils::interner::Symbol;
-use pion_utils::location::ByteSpan;
-use string32::Str32 as str32;
-
-use crate::reporting::SyntaxError;
+use pion_utils::location::{TokenPos, TokenSpan};
 
 mod iterators;
-
-pub fn parse_module<'surface>(
-    src: &str32,
-    bump: &'surface bumpalo::Bump,
-) -> (Module<'surface>, Vec<SyntaxError>) {
-    let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
-        Ok(token) if token.is_trivia() => None,
-        Ok(token) => Some(Ok((span.start, token, span.end))),
-        Err(error) => Some(Err((span, error))),
-    });
-
-    let mut errors = Vec::new();
-
-    match crate::grammar::ModuleParser::new().parse(src, bump, &mut errors, tokens) {
-        Ok(module) => (module, errors),
-        Err(error) => {
-            errors.push(SyntaxError::from_lalrpop(error));
-            (Module { items: &[] }, errors)
-        }
-    }
-}
-
-pub fn parse_expr<'surface>(
-    src: &str32,
-    bump: &'surface bumpalo::Bump,
-) -> (Expr<'surface>, Vec<SyntaxError>) {
-    let tokens = pion_lexer::lex(src).filter_map(|(result, span)| match result {
-        Ok(token) if token.is_trivia() => None,
-        Ok(token) => Some(Ok((span.start, token, span.end))),
-        Err(error) => Some(Err((span, error))),
-    });
-
-    let mut errors = Vec::new();
-
-    match crate::grammar::ExprParser::new().parse(src, bump, &mut errors, tokens) {
-        Ok(expr) => (expr, errors),
-        Err(error) => {
-            let error = SyntaxError::from_lalrpop(error);
-            let span = error.span();
-            errors.push(error);
-            (Expr::Error(span), errors)
-        }
-    }
-}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Module<'surface> {
@@ -57,60 +9,61 @@ pub struct Module<'surface> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Item<'surface> {
-    Error(ByteSpan),
+    Error(TokenSpan),
     Def(Def<'surface>),
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Def<'surface> {
-    pub span: ByteSpan,
-    pub name: (ByteSpan, Symbol),
+    pub span: TokenSpan,
+    pub name: Ident,
     pub r#type: Option<Expr<'surface>>,
     pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'surface> {
-    Error(ByteSpan),
-    Lit(ByteSpan, Lit),
-    Underscore(ByteSpan),
-    Ident(ByteSpan, Symbol),
-    Paren(ByteSpan, &'surface Self),
-    Ann(ByteSpan, &'surface (Self, Self)),
+    Error(TokenSpan),
+    Lit(Lit),
+    Underscore(Underscore),
+    Ident(Ident),
+    Paren(TokenSpan, &'surface Self),
+    Ann(TokenSpan, &'surface (Self, Self)),
 
     Let(
-        ByteSpan,
+        TokenSpan,
         &'surface (Pat<'surface>, Option<Self>, Self, Self),
     ),
 
-    ArrayLit(ByteSpan, &'surface [Self]),
-    RecordType(ByteSpan, &'surface [TypeField<'surface>]),
-    RecordLit(ByteSpan, &'surface [ExprField<'surface>]),
-    TupleLit(ByteSpan, &'surface [Self]),
-    FieldProj(ByteSpan, &'surface Self, (ByteSpan, Symbol)),
+    ArrayLit(TokenSpan, &'surface [Self]),
+    RecordType(TokenSpan, &'surface [TypeField<'surface>]),
+    RecordLit(TokenSpan, &'surface [ExprField<'surface>]),
+    TupleLit(TokenSpan, &'surface [Self]),
+    FieldProj(TokenSpan, &'surface Self, Ident),
 
-    FunArrow(ByteSpan, &'surface (Self, Self)),
-    FunType(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
-    FunLit(ByteSpan, &'surface [FunParam<'surface>], &'surface Self),
-    FunCall(ByteSpan, &'surface Self, &'surface [FunArg<'surface>]),
+    FunArrow(TokenSpan, &'surface (Self, Self)),
+    FunType(TokenSpan, &'surface [FunParam<'surface>], &'surface Self),
+    FunLit(TokenSpan, &'surface [FunParam<'surface>], &'surface Self),
+    FunCall(TokenSpan, &'surface Self, &'surface [FunArg<'surface>]),
     MethodCall(
-        ByteSpan,
-        (ByteSpan, Symbol),
+        TokenSpan,
         &'surface Self,
+        Ident,
         &'surface [FunArg<'surface>],
     ),
 
-    Match(ByteSpan, &'surface Self, &'surface [MatchCase<'surface>]),
-    If(ByteSpan, &'surface (Self, Self, Self)),
+    Match(TokenSpan, &'surface Self, &'surface [MatchCase<'surface>]),
+    If(TokenSpan, &'surface (Self, Self, Self)),
 }
 
 impl<'surface> Expr<'surface> {
-    pub fn span(&self) -> ByteSpan {
+    pub fn span(&self) -> TokenSpan {
         match self {
+            Expr::Lit(lit) => lit.span(),
+            Expr::Underscore(underscore) => underscore.span(),
+            Expr::Ident(ident) => ident.span(),
+
             Expr::Error(span, ..)
-            | Expr::Lit(span, ..)
-            | Expr::Underscore(span, ..)
-            | Expr::Ident(span, ..)
             | Expr::Paren(span, ..)
             | Expr::Ann(span, ..)
             | Expr::Let(span, ..)
@@ -132,7 +85,7 @@ impl<'surface> Expr<'surface> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunParam<'surface> {
-    pub span: ByteSpan,
+    pub span: TokenSpan,
     pub plicity: Plicity,
     pub pat: Pat<'surface>,
     pub r#type: Option<Expr<'surface>>,
@@ -140,63 +93,64 @@ pub struct FunParam<'surface> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct FunArg<'surface> {
-    pub span: ByteSpan,
+    pub span: TokenSpan,
     pub plicity: Plicity,
     pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Plicity {
-    Implicit,
+    Implicit(TokenPos),
     Explicit,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'surface> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub span: TokenSpan,
+    pub name: Ident,
     pub r#type: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'surface> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub span: TokenSpan,
+    pub name: Ident,
     pub expr: Option<Expr<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'surface> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub span: TokenSpan,
+    pub name: Ident,
     pub pat: Option<Pat<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MatchCase<'surface> {
+    pub span: TokenSpan,
     pub pat: Pat<'surface>,
-    pub expr: Expr<'surface>,
     pub guard: Option<Expr<'surface>>,
+    pub expr: Expr<'surface>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Pat<'surface> {
-    Error(ByteSpan),
-    Lit(ByteSpan, Lit),
-    Underscore(ByteSpan),
-    Ident(ByteSpan, Symbol),
-    Paren(ByteSpan, &'surface Self),
-    TupleLit(ByteSpan, &'surface [Self]),
-    RecordLit(ByteSpan, &'surface [PatField<'surface>]),
+    Error(TokenSpan),
+    Lit(Lit),
+    Underscore(Underscore),
+    Ident(Ident),
+    Paren(TokenSpan, &'surface Self),
+    TupleLit(TokenSpan, &'surface [Self]),
+    RecordLit(TokenSpan, &'surface [PatField<'surface>]),
 }
 
 impl<'surface> Pat<'surface> {
-    pub fn span(&self) -> ByteSpan {
+    pub fn span(&self) -> TokenSpan {
         match self {
+            Pat::Lit(lit, ..) => lit.span(),
+            Pat::Underscore(underscore) => underscore.span(),
+            Pat::Ident(ident, ..) => ident.span(),
             Pat::Error(span, ..)
-            | Pat::Lit(span, ..)
-            | Pat::Underscore(span, ..)
-            | Pat::Ident(span, ..)
             | Pat::Paren(span, ..)
             | Pat::TupleLit(span, ..)
             | Pat::RecordLit(span, ..) => *span,
@@ -206,15 +160,61 @@ impl<'surface> Pat<'surface> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Lit {
-    Bool(bool),
+    Bool(BoolLit),
     Int(IntLit),
+}
+impl Lit {
+    fn span(&self) -> TokenSpan {
+        match self {
+            Self::Bool(bool) => bool.span(),
+            Self::Int(int) => int.span(),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BoolLit {
+    True(TokenPos),
+    False(TokenPos),
+}
+impl BoolLit {
+    fn span(self) -> TokenSpan {
+        match self {
+            Self::True(pos) | Self::False(pos) => TokenSpan::from(pos),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum IntLit {
-    Dec(Symbol),
-    Bin(Symbol),
-    Hex(Symbol),
+    Dec(TokenPos),
+    Bin(TokenPos),
+    Hex(TokenPos),
+}
+impl IntLit {
+    fn span(self) -> TokenSpan {
+        match self {
+            Self::Dec(pos) | Self::Bin(pos) | Self::Hex(pos) => TokenSpan::from(pos),
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Ident {
+    pub pos: TokenPos,
+}
+
+impl Ident {
+    pub fn span(self) -> TokenSpan { TokenSpan::from(self.pos) }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Underscore {
+    pub pos: TokenPos,
+}
+
+impl Underscore {
+    pub fn span(self) -> TokenSpan { TokenSpan::from(self.pos) }
 }
 
 #[cfg(test)]
@@ -224,7 +224,7 @@ mod size_tests {
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr>(), 48);
+        assert_eq!(std::mem::size_of::<Expr>(), 40);
     }
 
     #[test]

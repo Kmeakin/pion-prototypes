@@ -3,6 +3,7 @@ use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notifi
 use lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
 };
+use pion_lexer::LexedSource;
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};
@@ -20,16 +21,19 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
             let file = SourceFile::read(path)?;
 
             let bump = bumpalo::Bump::new();
+            let mut tokens = Vec::new();
+            let source = LexedSource::new(&file.contents, &mut tokens);
 
             let mut symbols = Vec::new();
-            let (module, _) = pion_surface::syntax::parse_module(&file.contents, &bump);
+            let (module, _) = pion_surface::parse_module(source, &bump);
             for item in module.items {
                 let symbol = match item {
                     pion_surface::syntax::Item::Error(_) => continue,
                     pion_surface::syntax::Item::Def(def) => {
-                        let name = file.contents[def.name.0].to_owned().into();
-                        let range = convert::bytespan_to_lsp(def.span, &file)?;
-                        let selection_range = convert::bytespan_to_lsp(def.name.0, &file)?;
+                        let name = source.text(def.name.span()).to_owned();
+                        let range = convert::bytespan_to_lsp(source.bytespan(def.span), &file)?;
+                        let selection_range =
+                            convert::bytespan_to_lsp(source.bytespan(def.name.span()), &file)?;
 
                         #[allow(deprecated)]
                         // REASON: `deprecated` field is deprecated, but there is no other way to

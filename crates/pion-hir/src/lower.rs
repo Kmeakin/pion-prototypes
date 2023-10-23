@@ -1,5 +1,7 @@
+use pion_lexer::LexedSource;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
+use pion_utils::symbol::Symbol;
 
 mod diagnostics;
 pub use diagnostics::LowerDiagnostic;
@@ -8,9 +10,10 @@ use crate::syntax::*;
 
 pub fn lower_module<'surface, 'hir>(
     bump: &'hir bumpalo::Bump,
+    source: LexedSource,
     module: &'surface surface::Module<'surface>,
 ) -> (Module<'hir>, Vec<LowerDiagnostic>) {
-    let mut ctx = Ctx::new(bump);
+    let mut ctx = Ctx::new(bump, source);
     let module = ctx.module_to_hir(module);
     let errors = ctx.finish();
     (module, errors)
@@ -18,24 +21,27 @@ pub fn lower_module<'surface, 'hir>(
 
 pub fn lower_item<'surface, 'hir>(
     bump: &'hir bumpalo::Bump,
+    source: LexedSource,
     item: &'surface surface::Item<'surface>,
 ) -> (Item<'hir>, Vec<LowerDiagnostic>) {
-    let mut ctx = Ctx::new(bump);
+    let mut ctx = Ctx::new(bump, source);
     let item = ctx.item_to_hir(item);
     let errors = ctx.finish();
     (item, errors)
 }
 
-pub struct Ctx<'hir> {
+pub struct Ctx<'source, 'tokens, 'hir> {
     bump: &'hir bumpalo::Bump,
+    source: LexedSource<'source, 'tokens>,
     diagnostics: Vec<LowerDiagnostic>,
 }
 
 // Creation and destruction
-impl<'hir> Ctx<'hir> {
-    pub fn new(bump: &'hir bumpalo::Bump) -> Self {
+impl<'source, 'tokens, 'hir> Ctx<'source, 'tokens, 'hir> {
+    pub fn new(bump: &'hir bumpalo::Bump, source: LexedSource<'source, 'tokens>) -> Self {
         Self {
             bump,
+            source,
             diagnostics: Vec::new(),
         }
     }
@@ -44,7 +50,7 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Modules and items
-impl<'surface, 'hir> Ctx<'hir> {
+impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn module_to_hir(&mut self, module: &'surface surface::Module<'surface>) -> Module<'hir> {
         let items = self.lower_items(module.items);
         Module { items }
@@ -66,22 +72,28 @@ impl<'surface, 'hir> Ctx<'hir> {
         let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
         let expr = self.lower_expr(&def.expr);
         Def {
-            name: def.name.1,
+            name: self.ident_to_hir(def.name),
             r#type,
             expr,
         }
     }
+
+    fn ident_to_hir(&self, ident: surface::Ident) -> Ident {
+        let span = self.source.bytespan(ident.pos);
+        let symbol = Symbol::intern(self.source.text(span));
+        Ident { span, symbol }
+    }
 }
 
 // Expressions
-impl<'surface, 'hir> Ctx<'hir> {
+impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn expr_to_hir(&mut self, expr: &'surface surface::Expr<'surface>) -> Expr<'hir> {
-        let span = expr.span();
+        let span = self.source.bytespan(expr.span());
         match expr {
             surface::Expr::Error(_) => Expr::Error(span),
-            surface::Expr::Lit(_, lit) => Expr::Lit(span, self.lit_to_hir(span, *lit)),
+            surface::Expr::Lit(lit) => Expr::Lit(span, self.lit_to_hir(span, *lit)),
             surface::Expr::Underscore(_) => Expr::Underscore(span),
-            surface::Expr::Ident(_, symbol) => Expr::Ident(span, *symbol),
+            surface::Expr::Ident(ident) => Expr::Ident(span, self.ident_to_hir(*ident)),
             surface::Expr::Paren(_, expr) => self.expr_to_hir(expr),
             surface::Expr::Ann(_, (expr, r#type)) => {
                 let expr = self.expr_to_hir(expr);
@@ -106,9 +118,10 @@ impl<'surface, 'hir> Ctx<'hir> {
             surface::Expr::RecordLit(_, fields) => {
                 Expr::RecordLit(span, self.lower_expr_fields(fields))
             }
-            surface::Expr::FieldProj(.., scrut, (_, symbol)) => {
+            surface::Expr::FieldProj(.., scrut, name) => {
                 let scrut = self.lower_expr(scrut);
-                Expr::FieldProj(span, scrut, *symbol)
+                let name = self.ident_to_hir(*name);
+                Expr::FieldProj(span, scrut, name)
             }
 
             surface::Expr::FunArrow(.., (domain, codomain)) => {
@@ -131,10 +144,11 @@ impl<'surface, 'hir> Ctx<'hir> {
                 let args = self.lower_fun_args(args);
                 Expr::FunCall(span, fun, args)
             }
-            surface::Expr::MethodCall(_, (_, method), head, args) => {
+            surface::Expr::MethodCall(_, head, method, args) => {
                 let head = self.lower_expr(head);
+                let method = self.ident_to_hir(*method);
                 let args = self.lower_fun_args(args);
-                Expr::MethodCall(span, *method, head, args)
+                Expr::MethodCall(span, head, method, args)
             }
 
             surface::Expr::Match(_, scrut, cases) => {
@@ -166,8 +180,7 @@ impl<'surface, 'hir> Ctx<'hir> {
         field: &'surface surface::TypeField<'surface>,
     ) -> TypeField<'hir> {
         TypeField {
-            symbol_span: field.symbol_span,
-            symbol: field.symbol,
+            name: self.ident_to_hir(field.name),
             r#type: self.expr_to_hir(&field.r#type),
         }
     }
@@ -185,8 +198,7 @@ impl<'surface, 'hir> Ctx<'hir> {
         field: &'surface surface::ExprField<'surface>,
     ) -> ExprField<'hir> {
         ExprField {
-            symbol_span: field.symbol_span,
-            symbol: field.symbol,
+            name: self.ident_to_hir(field.name),
             r#expr: field.expr.as_ref().map(|expr| self.expr_to_hir(expr)),
         }
     }
@@ -229,7 +241,7 @@ impl<'surface, 'hir> Ctx<'hir> {
         let pat = self.pat_to_hir(&case.pat);
         let expr = self.expr_to_hir(&case.expr);
         let guard = case.guard.as_ref().map(|guard| self.expr_to_hir(guard));
-        MatchCase { pat, expr, guard }
+        MatchCase { pat, guard, expr }
     }
 
     fn lower_match_cases(
@@ -250,14 +262,14 @@ impl<'surface, 'hir> Ctx<'hir> {
 }
 
 // Patterns
-impl<'surface, 'hir> Ctx<'hir> {
+impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn pat_to_hir(&mut self, pat: &'surface surface::Pat<'surface>) -> Pat<'hir> {
-        let span = pat.span();
+        let span = self.source.bytespan(pat.span());
         match pat {
             surface::Pat::Error(..) => Pat::Error(span),
             surface::Pat::Lit(.., lit) => Pat::Lit(span, self.lit_to_hir(span, *lit)),
             surface::Pat::Underscore(..) => Pat::Underscore(span),
-            surface::Pat::Ident(.., symbol) => Pat::Ident(span, *symbol),
+            surface::Pat::Ident(.., ident) => Pat::Ident(span, self.ident_to_hir(*ident)),
             surface::Pat::Paren(.., pat) => self.pat_to_hir(pat),
             surface::Pat::TupleLit(.., pats) => Pat::TupleLit(span, self.lower_pats(pats)),
             surface::Pat::RecordLit(.., fields) => {
@@ -278,8 +290,7 @@ impl<'surface, 'hir> Ctx<'hir> {
 
     fn pat_field_to_hir(&mut self, field: &'surface surface::PatField<'surface>) -> PatField<'hir> {
         PatField {
-            symbol_span: field.symbol_span,
-            symbol: field.symbol,
+            name: self.ident_to_hir(field.name),
             pat: field.pat.as_ref().map(|pat| self.pat_to_hir(pat)),
         }
     }
@@ -294,24 +305,36 @@ impl<'surface, 'hir> Ctx<'hir> {
 }
 
 // Literals
-impl<'hir> Ctx<'hir> {
+impl<'source, 'tokens, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn lit_to_hir(&mut self, span: ByteSpan, lit: surface::Lit) -> Lit {
         match lit {
-            surface::Lit::Bool(b) => Lit::Bool(b),
+            surface::Lit::Bool(b) => match b {
+                surface::BoolLit::True(_) => Lit::Bool(true),
+                surface::BoolLit::False(_) => Lit::Bool(false),
+            },
             surface::Lit::Int(symbol) => Lit::Int(self.int_lit_to_hir(span, symbol)),
         }
     }
 
     fn int_lit_to_hir(&mut self, span: ByteSpan, int: surface::IntLit) -> Result<u32, ()> {
         match int {
-            surface::IntLit::Dec(sym) => self.parse_int(span, sym.as_str(), 10),
-            surface::IntLit::Bin(sym) => self.parse_int(span, &sym.as_str()[2..], 2),
-            surface::IntLit::Hex(sym) => self.parse_int(span, &sym.as_str()[2..], 16),
+            surface::IntLit::Dec(pos) => {
+                let text = self.source.text(self.source.bytespan(pos));
+                self.parse_int(span, text, 10)
+            }
+            surface::IntLit::Bin(pos) => {
+                let text = &self.source.text(self.source.bytespan(pos))[2..];
+                self.parse_int(span, text, 2)
+            }
+            surface::IntLit::Hex(pos) => {
+                let text = &self.source.text(self.source.bytespan(pos))[2..];
+                self.parse_int(span, text, 16)
+            }
         }
     }
 
-    fn parse_int(&mut self, span: ByteSpan, s: &str, radix: u32) -> Result<u32, ()> {
-        match u32::from_str_radix(s, radix) {
+    fn parse_int(&mut self, span: ByteSpan, text: &str, radix: u32) -> Result<u32, ()> {
+        match u32::from_str_radix(text, radix) {
             Ok(int) => Ok(int),
             Err(error) => {
                 self.diagnostics

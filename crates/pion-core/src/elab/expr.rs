@@ -51,7 +51,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 SynthExpr::new(expr, r#type)
             }
-            hir::Expr::Ident(_, symbol) => self.synth_ident_expr(*symbol, expr.span()),
+            hir::Expr::Ident(_, ident) => self.synth_ident_expr(*ident),
             hir::Expr::Ann(_, (expr, r#type)) => {
                 let Check(type_expr) = self.check_expr_is_type(r#type);
                 let type_value = self.eval_env().eval(&type_expr);
@@ -131,7 +131,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 self.with_scope(|this| {
                     for field in *fields {
-                        let name = FieldName::User(field.symbol);
+                        let name = FieldName::User(field.name.symbol);
 
                         if let Some(idx) = type_fields
                             .iter()
@@ -141,15 +141,15 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 kind: "record type",
                                 name,
                                 first_span: name_spans[idx],
-                                duplicate_span: field.symbol_span,
+                                duplicate_span: field.name.span,
                             });
                             continue;
                         }
 
                         let Check(r#type) = this.check_expr_is_type(&field.r#type);
                         let type_value = this.eval_env().eval(&r#type);
-                        type_fields.push((FieldName::User(field.symbol), r#type));
-                        name_spans.push(field.symbol_span);
+                        type_fields.push((FieldName::User(field.name.symbol), r#type));
+                        name_spans.push(field.name.span);
                         this.local_env
                             .push_param(BinderName::from(name), type_value);
                     }
@@ -165,7 +165,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let mut offset = EnvLen::new();
                 for field in *fields {
-                    let name = FieldName::User(field.symbol);
+                    let name = FieldName::User(field.name.symbol);
                     if let Some(idx) = expr_fields
                         .iter()
                         .position(|(potential_name, _)| *potential_name == name)
@@ -174,18 +174,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             kind: "record type",
                             name,
                             first_span: name_spans[idx],
-                            duplicate_span: field.symbol_span,
+                            duplicate_span: field.name.span,
                         });
                         continue;
                     }
 
                     let Synth(field_expr, field_type) = match field.expr.as_ref() {
                         Some(expr) => self.synth_expr(expr),
-                        None => self.synth_ident_expr(field.symbol, field.symbol_span),
+                        None => self.synth_ident_expr(field.name),
                     };
                     expr_fields.push((name, field_expr));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
-                    name_spans.push(field.symbol_span);
+                    name_spans.push(field.name.span);
                     offset.push();
                 }
 
@@ -193,8 +193,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 SynthExpr::new(expr, Type::RecordType(telescope))
             }
-            hir::Expr::FieldProj(_, scrut, symbol) => {
-                let name = FieldName::User(*symbol);
+            hir::Expr::FieldProj(_, scrut, ident) => {
+                let name = FieldName::User(ident.symbol);
                 let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
                 let scrut_value = self.eval_env().eval(&scrut_expr);
 
@@ -340,9 +340,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     args.len(),
                 )
             }
-            hir::Expr::MethodCall(_, method, head, args) => {
+            hir::Expr::MethodCall(_, head, method, args) => {
                 let span = expr.span();
-                let Synth(method_expr, method_type) = self.synth_ident_expr(*method, span);
+                let Synth(method_expr, method_type) = self.synth_ident_expr(*method);
                 if method_expr.is_error() {
                     return SynthExpr::ERROR;
                 }
@@ -511,7 +511,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 Value::RecordType(telescope)
                     if fields.len() == telescope.len()
                         && Iterator::eq(
-                            fields.iter().map(|field| FieldName::User(field.symbol)),
+                            fields
+                                .iter()
+                                .map(|field| FieldName::User(field.name.symbol)),
                             telescope.field_names(),
                         ) =>
                 {
@@ -523,7 +525,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             self.elim_env().split_telescope(telescope).unwrap();
                         let Check(field_expr) = match field.expr.as_ref() {
                             Some(expr) => self.check_expr(expr, &r#type),
-                            None => self.check_ident_expr(field.symbol, field.symbol_span, &r#type),
+                            None => self.check_ident_expr(field.name, &r#type),
                         };
                         let field_value = self.eval_env().eval(&field_expr);
                         telescope = cont(field_value);
@@ -664,28 +666,26 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    fn synth_ident_expr(&mut self, symbol: Symbol, span: ByteSpan) -> SynthExpr<'core> {
-        let name = LocalName::User(symbol);
+    fn synth_ident_expr(&mut self, ident: hir::Ident) -> SynthExpr<'core> {
+        let name = LocalName::User(ident.symbol);
         if let Some((index, entry)) = self.local_env.lookup(name) {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
         };
 
-        if let Some(prim) = Prim::from_symbol(symbol) {
+        if let Some(prim) = Prim::from_symbol(ident.symbol) {
             return SynthExpr::new(Expr::Prim(prim), prim.r#type());
         }
 
-        self.emit_diagnostic(ElabDiagnostic::UnboundName { name, span });
+        self.emit_diagnostic(ElabDiagnostic::UnboundName {
+            name,
+            span: ident.span,
+        });
         SynthExpr::ERROR
     }
 
-    fn check_ident_expr(
-        &mut self,
-        symbol: Symbol,
-        span: ByteSpan,
-        expected: &Type<'core>,
-    ) -> CheckExpr<'core> {
-        let Synth(expr, r#type) = self.synth_ident_expr(symbol, span);
-        CheckExpr::new(self.convert_expr(span, expr, r#type, expected))
+    fn check_ident_expr(&mut self, ident: hir::Ident, expected: &Type<'core>) -> CheckExpr<'core> {
+        let Synth(expr, r#type) = self.synth_ident_expr(ident);
+        CheckExpr::new(self.convert_expr(ident.span, expr, r#type, expected))
     }
 
     fn synth_fun_call(

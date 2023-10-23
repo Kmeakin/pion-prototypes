@@ -467,7 +467,7 @@ pub fn elab_def<'hir, 'core>(
     let r#type = ctx.zonk_env(bump).zonk(&r#type);
 
     let def = Def {
-        name: def.name,
+        name: def.name.symbol,
         r#type,
         expr,
     };

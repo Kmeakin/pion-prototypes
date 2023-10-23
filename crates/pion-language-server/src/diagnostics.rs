@@ -1,4 +1,5 @@
 use lsp_server::{Message, Notification};
+use pion_lexer::LexedSource;
 
 use crate::convert;
 use crate::server::Server;
@@ -11,11 +12,13 @@ pub fn report_diagnostics(server: &Server) -> anyhow::Result<()> {
 
     for (file_id, file) in server.files() {
         let uri = convert::path_to_url(file.path.as_ref())?;
+        let mut tokens = Vec::new();
+        let source = LexedSource::new(&file.contents, &mut tokens);
 
-        let (_, errors) = pion_surface::syntax::parse_module(&file.contents, &bump);
+        let (_, errors) = pion_surface::parse_module(source, &bump);
         let mut diagnostics = Vec::with_capacity(errors.len());
         for error in errors {
-            let diagnostic = error.to_diagnostic(file_id);
+            let diagnostic = error.to_diagnostic(file_id, &source);
             let diagnostic = convert::diagnostic_to_lsp(diagnostic, file)?;
             diagnostics.push(diagnostic);
         }

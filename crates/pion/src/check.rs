@@ -4,6 +4,7 @@ use anyhow::bail;
 use bpaf::Parser;
 use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::{Diagnostic, Severity};
+use pion_lexer::LexedSource;
 use pion_utils::source::{SourceFile, SourceMap};
 
 use crate::DumpFlags;
@@ -66,11 +67,17 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
 
     for (file_id, file) in source_map.iter() {
         let src32 = &file.contents;
-        let (surface_module, errors) = pion_surface::syntax::parse_module(src32, &bump);
-        diagnostics.extend(errors.iter().map(|error| error.to_diagnostic(file_id)));
+        let mut tokens = Vec::new();
+        let source = LexedSource::new(&file.contents, &mut tokens);
+        let (surface_module, errors) = pion_surface::parse_module(source, &bump);
+        diagnostics.extend(
+            errors
+                .iter()
+                .map(|error| error.to_diagnostic(file_id, &source)),
+        );
 
         for surface_item in surface_module.items {
-            let (hir_item, errors) = pion_hir::lower::lower_item(&bump, surface_item);
+            let (hir_item, errors) = pion_hir::lower::lower_item(&bump, source, surface_item);
             diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
 
             if let pion_hir::syntax::Item::Def(def) = hir_item {

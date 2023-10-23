@@ -40,13 +40,15 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                 SynthPat::new(Pat::Underscore(span), r#type)
             }
-            hir::Pat::Ident(_, symbol) => match self.check_duplicate_local(names, *symbol, span) {
-                Err(()) => SynthPat::error(span),
-                Ok(()) => {
-                    let r#type = self.push_unsolved_type(MetaSource::PatType { span });
-                    SynthPat::new(Pat::Ident(span, *symbol), r#type)
+            hir::Pat::Ident(_, ident) => {
+                match self.check_duplicate_local(names, ident.symbol, span) {
+                    Err(()) => SynthPat::error(span),
+                    Ok(()) => {
+                        let r#type = self.push_unsolved_type(MetaSource::PatType { span });
+                        SynthPat::new(Pat::Ident(span, ident.symbol), r#type)
+                    }
                 }
-            },
+            }
             hir::Pat::TupleLit(_, elems) => {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
                 let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -71,7 +73,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let mut offset = EnvLen::new();
                 for field in *fields {
-                    let name = FieldName::User(field.symbol);
+                    let name = FieldName::User(field.name.symbol);
                     if let Some(idx) = pat_fields
                         .iter()
                         .position(|(potential_name, _)| *potential_name == name)
@@ -80,18 +82,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             kind: "record type",
                             name,
                             first_span: name_spans[idx],
-                            duplicate_span: field.symbol_span,
+                            duplicate_span: field.name.span,
                         });
                         continue;
                     }
 
                     let Synth(field_pat, field_type) = match field.pat.as_ref() {
                         Some(pat) => self.synth_pat(pat, names),
-                        None => self.synth_ident_pat(field.symbol, field.symbol_span, names),
+                        None => self.synth_ident_pat(field.name, names),
                     };
                     pat_fields.push((name, field_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
-                    name_spans.push(field.symbol_span);
+                    name_spans.push(field.name.span);
                     offset.push();
                 }
 
@@ -118,10 +120,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let Check(core_pat) = match pat {
             hir::Pat::Error(..) => CheckPat::error(span),
             hir::Pat::Underscore(..) => CheckPat::new(Pat::Underscore(span)),
-            hir::Pat::Ident(_, symbol) => match self.check_duplicate_local(names, *symbol, span) {
-                Err(()) => CheckPat::error(span),
-                Ok(()) => CheckPat::new(Pat::Ident(span, *symbol)),
-            },
+            hir::Pat::Ident(_, ident) => {
+                match self.check_duplicate_local(names, ident.symbol, span) {
+                    Err(()) => CheckPat::error(span),
+                    Ok(()) => CheckPat::new(Pat::Ident(span, ident.symbol)),
+                }
+            }
             hir::Pat::TupleLit(_, elems) => match expected {
                 Value::RecordType(telescope) if elems.len() == telescope.len() => {
                     let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -146,7 +150,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 Type::RecordType(telescope)
                     if fields.len() == telescope.len()
                         && Iterator::eq(
-                            fields.iter().map(|field| FieldName::User(field.symbol)),
+                            fields
+                                .iter()
+                                .map(|field| FieldName::User(field.name.symbol)),
                             telescope.field_names(),
                         ) =>
                 {
@@ -158,12 +164,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             self.elim_env().split_telescope(telescope).unwrap();
                         let Check(field_pat) = match field.pat.as_ref() {
                             Some(pat) => self.check_pat(pat, &r#type, names),
-                            None => self.check_ident_pat(
-                                field.symbol,
-                                field.symbol_span,
-                                expected,
-                                names,
-                            ),
+                            None => self.check_ident_pat(field.name, expected, names),
                         };
                         let field_value = self.local_env.next_var();
                         telescope = cont(field_value);
@@ -198,10 +199,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
     fn synth_ident_pat(
         &mut self,
-        symbol: Symbol,
-        span: ByteSpan,
+        ident: hir::Ident,
         names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> SynthPat<'core> {
+        let hir::Ident { span, symbol } = ident;
         match self.check_duplicate_local(names, symbol, span) {
             Err(()) => SynthPat::error(span),
             Ok(()) => {
@@ -213,12 +214,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
     fn check_ident_pat(
         &mut self,
-        symbol: Symbol,
-        span: ByteSpan,
+        ident: hir::Ident,
         expected: &Type<'core>,
         names: &mut Vec<(ByteSpan, Symbol)>,
     ) -> CheckPat<'core> {
-        let Synth(pat, r#type) = self.synth_ident_pat(symbol, span, names);
+        let Synth(pat, r#type) = self.synth_ident_pat(ident, names);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
     }
 

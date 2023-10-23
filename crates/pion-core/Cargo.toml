@@ -15,7 +15,7 @@ pion-utils   = { path = "../pion-utils" }
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
 ecow               = { version = "0.2.0" }
-either             = { version = "1.9.0" }
+either             = { workspace = true }
 internal-iterator  = { workspace = true }
 nohash             = { workspace = true }
 pretty             = { version = "0.12.3" }

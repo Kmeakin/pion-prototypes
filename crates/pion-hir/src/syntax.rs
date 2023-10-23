@@ -17,7 +17,7 @@ pub enum Item<'hir> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Def<'hir> {
-    pub name: Symbol,
+    pub name: Ident,
     pub r#type: Option<&'hir Expr<'hir>>,
     pub expr: &'hir Expr<'hir>,
 }
@@ -27,7 +27,7 @@ pub enum Expr<'hir> {
     Error(ByteSpan),
     Lit(ByteSpan, Lit),
     Underscore(ByteSpan),
-    Ident(ByteSpan, Symbol),
+    Ident(ByteSpan, Ident),
     Ann(ByteSpan, &'hir (Self, Self)),
 
     Let(ByteSpan, &'hir (Pat<'hir>, Option<Self>, Self, Self)),
@@ -36,13 +36,13 @@ pub enum Expr<'hir> {
     TupleLit(ByteSpan, &'hir [Self]),
     RecordType(ByteSpan, &'hir [TypeField<'hir>]),
     RecordLit(ByteSpan, &'hir [ExprField<'hir>]),
-    FieldProj(ByteSpan, &'hir Self, Symbol),
+    FieldProj(ByteSpan, &'hir Self, Ident),
 
     FunArrow(ByteSpan, &'hir (Self, Self)),
     FunType(ByteSpan, &'hir [FunParam<'hir>], &'hir Self),
     FunLit(ByteSpan, &'hir [FunParam<'hir>], &'hir Self),
     FunCall(ByteSpan, &'hir Self, &'hir [FunArg<'hir>]),
-    MethodCall(ByteSpan, Symbol, &'hir Self, &'hir [FunArg<'hir>]),
+    MethodCall(ByteSpan, &'hir Self, Ident, &'hir [FunArg<'hir>]),
 
     Match(ByteSpan, &'hir Self, &'hir [MatchCase<'hir>]),
     If(ByteSpan, &'hir (Self, Self, Self)),
@@ -89,8 +89,8 @@ pub struct FunArg<'hir> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MatchCase<'hir> {
     pub pat: Pat<'hir>,
-    pub expr: Expr<'hir>,
     pub guard: Option<Expr<'hir>>,
+    pub expr: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -106,39 +106,27 @@ impl Plicity {
 impl From<surface::Plicity> for Plicity {
     fn from(other: surface::Plicity) -> Self {
         match other {
-            surface::Plicity::Implicit => Self::Implicit,
+            surface::Plicity::Implicit(..) => Self::Implicit,
             surface::Plicity::Explicit => Self::Explicit,
-        }
-    }
-}
-
-impl From<Plicity> for surface::Plicity {
-    fn from(other: Plicity) -> Self {
-        match other {
-            Plicity::Implicit => Self::Implicit,
-            Plicity::Explicit => Self::Explicit,
         }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TypeField<'hir> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub name: Ident,
     pub r#type: Expr<'hir>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ExprField<'hir> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub name: Ident,
     pub expr: Option<Expr<'hir>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PatField<'hir> {
-    pub symbol_span: ByteSpan,
-    pub symbol: Symbol,
+    pub name: Ident,
     pub pat: Option<Pat<'hir>>,
 }
 
@@ -147,7 +135,7 @@ pub enum Pat<'hir> {
     Error(ByteSpan),
     Lit(ByteSpan, Lit),
     Underscore(ByteSpan),
-    Ident(ByteSpan, Symbol),
+    Ident(ByteSpan, Ident),
     TupleLit(ByteSpan, &'hir [Self]),
     RecordLit(ByteSpan, &'hir [PatField<'hir>]),
 }
@@ -171,13 +159,19 @@ pub enum Lit {
     Int(Result<u32, ()>),
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Ident {
+    pub span: ByteSpan,
+    pub symbol: Symbol,
+}
+
 #[cfg(test)]
 mod size_tests {
     use super::*;
 
     #[test]
     fn expr_size() {
-        assert_eq!(std::mem::size_of::<Expr>(), 40);
+        assert_eq!(std::mem::size_of::<Expr>(), 48);
     }
 
     #[test]

@@ -166,7 +166,9 @@ fn block_comment(lexer: &mut logos::Lexer<'_, TokenKind>) -> Result<(), TokenErr
     Ok(())
 }
 
-pub fn lex(src: &str32) -> impl Iterator<Item = (Result<TokenKind, TokenError>, ByteSpan)> + '_ {
+pub type Token = (Result<TokenKind, TokenError>, ByteSpan);
+
+pub fn lex(src: &str32) -> impl Iterator<Item = Token> + '_ {
     logos::Lexer::new(src.as_str())
         .spanned()
         .map(|(result, range)| (result, ByteSpan::truncate_usize(range)))

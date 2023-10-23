@@ -1,22 +1,19 @@
 use pion_lexer::token::{TokenKind, TokenError};
-use pion_utils::interner::Symbol;
-use pion_utils::location::{BytePos, ByteSpan};
+use pion_utils::location::{TokenPos, TokenSpan};
 
 use bumpalo::Bump;
-use string32::Str32 as str32;
 
 use crate::syntax::*;
 use crate::reporting::SyntaxError;
 
-grammar<'source, 'surface>(
-    source: &'source str32,
+grammar<'surface>(
     bump: &'surface Bump,
     errors: &mut Vec<SyntaxError>,
 );
 
 extern {
-    type Location = BytePos;
-    type Error = (ByteSpan, TokenError);
+    type Location = TokenPos;
+    type Error = (TokenPos, TokenError);
 
     enum TokenKind {
         "Ident" => TokenKind::Ident,
@@ -59,13 +56,13 @@ pub Module: Module<'surface> = {
 }
 
 pub Item: Item<'surface> = {
-    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Item::Error(ByteSpan::new(start, end)) },
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Item::Error(TokenSpan::new(start, end)) },
     Def => Item::Def(<>),
 }
 
 Def: Def<'surface> = {
-    <start: @L> "def" <name: SpannedIdent> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: None, expr},
-    <start: @L> "def" <name: SpannedIdent> ":" <r#type: Expr> "=" <expr: Expr> ";" <end: @R> => Def{span: ByteSpan::new(start, end), name, r#type: Some(r#type), expr},
+    <start: @L> "def" <name: Ident> "=" <expr: Expr> ";" <end: @R> => Def{span: TokenSpan::new(start, end), name, r#type: None, expr},
+    <start: @L> "def" <name: Ident> ":" <r#type: Expr> "=" <expr: Expr> ";" <end: @R> => Def{span: TokenSpan::new(start, end), name, r#type: Some(r#type), expr},
 }
 
 // ==== Expressions ====
@@ -75,67 +72,69 @@ pub Expr: Expr<'surface> = {
 }
 
 LetExpr: Expr<'surface> = {
-    <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => Expr::Let(ByteSpan::new(start, end), bump.alloc((pat, r#type, init, body))),
-    <start: @L> "if" <scrut: Expr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => Expr::If(ByteSpan::new(start, end), bump.alloc((scrut, then, r#else))),
+    <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => Expr::Let(TokenSpan::new(start, end), bump.alloc((pat, r#type, init, body))),
+    <start: @L> "if" <scrut: Expr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => Expr::If(TokenSpan::new(start, end), bump.alloc((scrut, then, r#else))),
     FunExpr => <>,
 }
 
 FunExpr: Expr<'surface> = {
-    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: Expr> <end: @R> => Expr::FunLit(ByteSpan::new(start, end), params, bump.alloc(body)),
-    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: Expr> <end: @R> => Expr::FunType(ByteSpan::new(start, end), params, bump.alloc(body)),
-    <start: @L> <param: ProjExpr> "->" <body: Expr> <end: @R> => Expr::FunArrow(ByteSpan::new(start, end), bump.alloc((param, body))),
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "=>" <body: Expr> <end: @R> => Expr::FunLit(TokenSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> "fun" "(" <params: Seq<FunParam, ",">> ")" "->" <body: Expr> <end: @R> => Expr::FunType(TokenSpan::new(start, end), params, bump.alloc(body)),
+    <start: @L> <param: ProjExpr> "->" <body: Expr> <end: @R> => Expr::FunArrow(TokenSpan::new(start, end), bump.alloc((param, body))),
     ProjExpr => <>,
 }
 
 ProjExpr: Expr<'surface> = {
-    <start: @L> <head: ProjExpr> "." <name: SpannedIdent> <end: @R> => Expr::FieldProj(ByteSpan::new(start, end), bump.alloc(head), name),
+    <start: @L> <head: ProjExpr> "." <name: Ident> <end: @R> => Expr::FieldProj(TokenSpan::new(start, end), bump.alloc(head), name),
     CallExpr => <>,
 }
 
 CallExpr: Expr<'surface> = {
-    <start: @L> <fun: CallExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(ByteSpan::new(start, end), bump.alloc(fun), args),
-    <start: @L> <head: ProjExpr> "." <method: SpannedIdent> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::MethodCall(ByteSpan::new(start, end), method, bump.alloc(head), args),
+    <start: @L> <fun: CallExpr> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::FunCall(TokenSpan::new(start, end), bump.alloc(fun), args),
+    <start: @L> <head: ProjExpr> "." <method: Ident> "(" <args: Seq<FunArg, ",">> ")" <end: @R> => Expr::MethodCall(TokenSpan::new(start, end), bump.alloc(head), method, args),
     AtomExpr => <>,
 }
 
 AtomExpr: Expr<'surface> = {
-    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Expr::Error(ByteSpan::new(start, end)) },
-    <start: @L> <lit: Lit> <end: @R> => Expr::Lit(ByteSpan::new(start, end), lit),
-    <start: @L> "_" <end: @R> => Expr::Underscore(ByteSpan::new(start, end)),
-    <start: @L> <ident: Ident> <end: @R> => Expr::Ident(ByteSpan::new(start, end), ident),
-    <start: @L> "(" <expr: ProjExpr> ":" <r#type: FunExpr> ")" <end: @R> => Expr::Ann(ByteSpan::new(start, end), bump.alloc((expr, r#type))),
-    <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(ByteSpan::new(start, end), bump.alloc(expr)),
-    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), exprs),
-    <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(ByteSpan::new(start, end), exprs),
-    <start: @L> "match" <scrut: Expr> "{" <cases: Seq<MatchCase, ",">> "}" <end: @R> => Expr::Match(ByteSpan::new(start, end), bump.alloc(scrut), cases),
-    <start: @L> "{" "}" <end: @R> => Expr::TupleLit(ByteSpan::new(start, end), &[]),
-    <start: @L> "{" <fields: Seq1<ExprField, ",">> "}" <end: @R> => Expr::RecordLit(ByteSpan::new(start, end), fields),
-    <start: @L> "{" <fields: Seq1<TypeField, ",">> "}" <end: @R> => Expr::RecordType(ByteSpan::new(start, end), fields),
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Expr::Error(TokenSpan::new(start, end)) },
+
+    <lit: Lit> => Expr::Lit(lit),
+    <underscore: Underscore> => Expr::Underscore(underscore),
+    <ident: Ident> => Expr::Ident(ident),
+
+    <start: @L> "(" <expr: ProjExpr> ":" <r#type: FunExpr> ")" <end: @R> => Expr::Ann(TokenSpan::new(start, end), bump.alloc((expr, r#type))),
+    <start: @L> "(" <expr: Expr> ")" <end: @R> => Expr::Paren(TokenSpan::new(start, end), bump.alloc(expr)),
+    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Expr::TupleLit(TokenSpan::new(start, end), exprs),
+    <start: @L> "[" <exprs: Seq<Expr, ",">> "]" <end: @R> => Expr::ArrayLit(TokenSpan::new(start, end), exprs),
+    <start: @L> "match" <scrut: Expr> "{" <cases: Seq<MatchCase, ",">> "}" <end: @R> => Expr::Match(TokenSpan::new(start, end), bump.alloc(scrut), cases),
+    <start: @L> "{" "}" <end: @R> => Expr::TupleLit(TokenSpan::new(start, end), &[]),
+    <start: @L> "{" <fields: Seq1<ExprField, ",">> "}" <end: @R> => Expr::RecordLit(TokenSpan::new(start, end), fields),
+    <start: @L> "{" <fields: Seq1<TypeField, ",">> "}" <end: @R> => Expr::RecordType(TokenSpan::new(start, end), fields),
 }
 
 FunArg: FunArg<'surface> = {
-    <start: @L> <plicity: Plicity> <expr: Expr> <end: @R> => FunArg {span: ByteSpan::new(start, end), plicity, expr},
+    <start: @L> <plicity: Plicity> <expr: Expr> <end: @R> => FunArg {span: TokenSpan::new(start, end), plicity, expr},
 }
 
 FunParam: FunParam<'surface> = {
-    <start: @L> <plicity: Plicity> <pat: Pat> <r#type: (":" <Expr>)?> <end: @R> => FunParam {span: ByteSpan::new(start, end), plicity, pat, r#type},
+    <start: @L> <plicity: Plicity> <pat: Pat> <r#type: (":" <Expr>)?> <end: @R> => FunParam {span: TokenSpan::new(start, end), plicity, pat, r#type},
 }
 
 Plicity: Plicity = {
     () =>  Plicity::Explicit,
-    "@" => Plicity::Implicit,
+    <pos: @L> "@" => Plicity::Implicit(pos),
 }
 
 MatchCase: MatchCase<'surface> = {
-    <pat: Pat> <guard: ("if" <Expr>)?> "=>" <expr: Expr> => MatchCase {pat, expr, guard},
+    <start: @L> <pat: Pat> <guard: ("if" <Expr>)?> <end: @R> "=>" <expr: Expr> => MatchCase {span: TokenSpan::new(start, end), pat, guard, expr},
 }
 
 ExprField: ExprField<'surface> = {
-    <name: SpannedIdent> <expr: ("=" <Expr>)?> => ExprField {symbol_span: name.0, symbol: name.1, expr},
+    <start: @L> <name: Ident> <expr: ("=" <Expr>)?> <end: @R> => ExprField {span: TokenSpan::new(start, end), name, expr},
 }
 
 TypeField: TypeField<'surface> = {
-    <name: SpannedIdent> ":" <r#type: Expr> => TypeField {symbol_span: name.0, symbol: name.1, r#type},
+    <start: @L> <name: Ident> ":" <r#type: Expr> <end: @R> => TypeField {span: TokenSpan::new(start, end), name, r#type},
 }
 
 // ==== Patterns ====
@@ -145,31 +144,52 @@ pub Pat: Pat<'surface> = {
 }
 
 AtomPat: Pat<'surface> = {
-    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Pat::Error(ByteSpan::new(start, end)) },
-    <start: @L> <lit: Lit> <end: @R> => Pat::Lit(ByteSpan::new(start, end), lit),
-    <start: @L> "_" <end: @R> => Pat::Underscore(ByteSpan::new(start, end)),
-    <start: @L> <ident: Ident> <end: @R> => Pat::Ident(ByteSpan::new(start, end), ident),
-    <start: @L> "(" <pat: Pat> ")" <end: @R> => Pat::Paren(ByteSpan::new(start, end), bump.alloc(pat)),
-    <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::TupleLit(ByteSpan::new(start, end), pats),
-    <start: @L> "{" <fields: Seq<PatField, ",">> "}" <end: @R> => Pat::RecordLit(ByteSpan::new(start, end), fields),
+    <start: @L> <error: !> <end: @R> => { errors.push(SyntaxError::from_recovery(error)); Pat::Error(TokenSpan::new(start, end)) },
+    <lit: Lit> => Pat::Lit(lit),
+    <underscore: Underscore> => Pat::Underscore(underscore),
+    <ident: Ident> => Pat::Ident(ident),
+
+    <start: @L> "(" <pat: Pat> ")" <end: @R> => Pat::Paren(TokenSpan::new(start, end), bump.alloc(pat)),
+    <start: @L> <pats: Tuple<Pat>> <end: @R> => Pat::TupleLit(TokenSpan::new(start, end), pats),
+    <start: @L> "{" <fields: Seq<PatField, ",">> "}" <end: @R> => Pat::RecordLit(TokenSpan::new(start, end), fields),
 }
 
 PatField: PatField<'surface> = {
-    <name: SpannedIdent> <pat: ("=" <Pat>)?> => PatField {symbol_span: name.0, symbol: name.1, pat},
+    <start: @L> <name: Ident> <pat: ("=" <Pat>)?> <end: @R>  => PatField { span: TokenSpan::new(start, end), name, pat },
 }
 
 // ==== Literals ====
 
 Lit: Lit = {
-    "true" => Lit::Bool(true),
-    "false" => Lit::Bool(false),
-    Int => Lit::Int(<>),
+    BoolLit => Lit::Bool(<>),
+    IntLit => Lit::Int(<>),
 }
 
-Int: IntLit = {
-    <int: DecInt> => IntLit::Dec(int),
-    <int: BinInt> => IntLit::Bin(int),
-    <int: HexInt> => IntLit::Hex(int),
+BoolLit: BoolLit = {
+    <pos: @L> "true"  => BoolLit::True(pos),
+    <pos: @L> "false" => BoolLit::False(pos),
+}
+
+IntLit: IntLit = {
+    <pos: @L> "DecInt" => IntLit::Dec(pos),
+    <pos: @L> "BinInt" => IntLit::Bin(pos),
+    <pos: @L> "HexInt" => IntLit::Hex(pos),
+}
+
+// ==== Names ====
+
+Ident: Ident = {
+    <pos: @L> "Ident" => {
+        Ident { pos }
+    }
+}
+
+// ==== Underscores ====
+
+Underscore: Underscore = {
+    <pos: @L> "_" => {
+        Underscore { pos }
+    }
 }
 
 // ==== Generic parsers ====
@@ -205,37 +225,3 @@ Seq2<Elem, Sep>: &'surface [Elem] = {
         bump.alloc_slice_fill_with(len, |_| iter.next().unwrap())
     },
 };
-
-// ==== Tokens ====
-
-Ident: Symbol = {
-    <start: @L> "Ident" <end: @R> => {
-        let s = &source[ByteSpan::new(start, end)];
-        Symbol::intern(s)
-    }
-}
-
-SpannedIdent: (ByteSpan, Symbol) = {
-    <start: @L> <ident: Ident> <end: @R> => (ByteSpan::new(start, end), ident),
-}
-
-DecInt: Symbol = {
-    <start: @L> "DecInt" <end: @R> => {
-        let s = &source[ByteSpan::new(start, end)];
-        Symbol::intern(s)
-    }
-}
-
-BinInt: Symbol = {
-    <start: @L> "BinInt" <end: @R> => {
-        let s = &source[ByteSpan::new(start, end)];
-        Symbol::intern(s)
-    }
-}
-
-HexInt: Symbol = {
-    <start: @L> "HexInt" <end: @R> => {
-        let s = &source[ByteSpan::new(start, end)];
-        Symbol::intern(s)
-    }
-}
