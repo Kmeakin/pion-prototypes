@@ -819,6 +819,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pion-manual-lexer"
+version = "0.1.0"
+dependencies = [
+ "expect-test",
+ "pion-utils",
+ "string32",
+]
+
+[[package]]
 name = "pion-surface"
 version = "0.1.0"
 dependencies = [

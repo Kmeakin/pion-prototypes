@@ -1,10 +1,15 @@
 use std::fmt;
-use std::ops::{Index, Range};
+use std::ops::{Add, Index, Range};
 
 use string32::{Str32 as str32, String32};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct BytePos(u32);
+
+impl Add<u32> for BytePos {
+    type Output = Self;
+    fn add(self, rhs: u32) -> Self::Output { Self(self.0 + rhs) }
+}
 
 #[allow(clippy::cast_possible_truncation)]
 // REASON: truncations are made explicit by the methods
@@ -48,6 +53,10 @@ impl fmt::Display for BytePos {
 pub struct ByteSpan {
     pub start: BytePos,
     pub end: BytePos,
+}
+
+impl From<BytePos> for ByteSpan {
+    fn from(start: BytePos) -> Self { Self::new(start, BytePos(start.0 + 1)) }
 }
 
 impl Index<ByteSpan> for str {
