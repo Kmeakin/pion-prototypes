@@ -1,7 +1,7 @@
 use ecow::EcoVec;
 use either::*;
-use pion_utils::interner::Symbol;
 use pion_utils::slice_vec::SliceVec;
+use pion_utils::symbol::Symbol;
 
 use crate::env::{EnvLen, Index, Level, SharedEnv, SliceEnv, UniqueEnv};
 use crate::name::{BinderName, FieldName, LocalName};

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use pion_utils::interner::Symbol;
+use pion_utils::symbol::Symbol;
 
 /// Names for local variable *binders* - ie
 /// - `Expr::Let`

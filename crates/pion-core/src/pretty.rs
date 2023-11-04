@@ -1,4 +1,4 @@
-use pion_utils::interner::Symbol;
+use pion_utils::symbol::Symbol;
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
 use crate::env::Index;

@@ -2,8 +2,8 @@ use core::fmt;
 
 use ecow::{eco_vec, EcoVec};
 use pion_hir::syntax as hir;
-use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
+use pion_utils::symbol::Symbol;
 
 use crate::env::{EnvLen, Index, Level, SharedEnv};
 use crate::name::{BinderName, FieldName, LocalName};

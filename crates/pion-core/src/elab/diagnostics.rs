@@ -1,7 +1,7 @@
 use codespan_reporting::diagnostic::{Diagnostic as CodeSpanDiagnostic, Label};
-use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
+use pion_utils::symbol::Symbol;
 
 use super::{unify, MetaSource};
 use crate::name::{BinderName, FieldName, LocalName};

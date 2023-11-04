@@ -3,7 +3,6 @@ use std::hash::BuildHasherDefault;
 
 use nohash::IntMap;
 use pion_utils::identity::Identity;
-use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
 
 use self::unify::UnifyCtx;

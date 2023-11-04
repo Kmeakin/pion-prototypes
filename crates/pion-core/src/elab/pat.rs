@@ -1,5 +1,6 @@
 use pion_hir::syntax as hir;
 use pion_utils::slice_vec::SliceVec;
+use pion_utils::symbol::Symbol;
 
 use super::diagnostics::ElabDiagnostic;
 use super::r#match::Scrut;

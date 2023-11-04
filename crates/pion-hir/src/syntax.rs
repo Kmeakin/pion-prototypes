@@ -1,6 +1,6 @@
 use pion_surface::syntax as surface;
-use pion_utils::interner::Symbol;
 use pion_utils::location::ByteSpan;
+use pion_utils::symbol::Symbol;
 
 mod walk;
 
