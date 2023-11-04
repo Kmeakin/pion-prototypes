@@ -11,30 +11,36 @@ pub fn lex(src: &string32::Str32, tokens: &mut Vec<Token>, errors: &mut Vec<LexE
 }
 
 struct Ctx<'i, 'vec> {
-    original: &'i str,
-    input: std::str::CharIndices<'i>,
+    pos: u32,
+    source: &'i str,
     tokens: &'vec mut Vec<Token>,
     errors: &'vec mut Vec<LexError>,
 }
 
 impl<'i, 'vec> Ctx<'i, 'vec> {
-    fn new(
-        original: &'i str,
-        tokens: &'vec mut Vec<Token>,
-        errors: &'vec mut Vec<LexError>,
-    ) -> Self {
+    fn new(source: &'i str, tokens: &'vec mut Vec<Token>, errors: &'vec mut Vec<LexError>) -> Self {
         Self {
-            original,
-            input: original.char_indices(),
+            pos: 0,
+            source,
             tokens,
             errors,
         }
     }
 
+    fn remainder(&self) -> &'i str { &self.source[self.pos as usize..] }
+
     fn next_char(&mut self) -> Option<(BytePos, char)> {
-        self.input
-            .next()
-            .map(|(pos, c)| (BytePos::truncate_usize(pos), c))
+        match self.remainder().chars().next() {
+            None => {
+                debug_assert_eq!(self.remainder(), "");
+                None
+            }
+            Some(c) => {
+                let ret = (BytePos::new(self.pos), c);
+                self.pos += c.len_utf8() as u32;
+                Some(ret)
+            }
+        }
     }
 
     fn emit_token(&mut self, start: BytePos, len: u32, kind: TokenKind) {
@@ -44,7 +50,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
 
     fn emit_identlike(&mut self, start: BytePos, len: u32) {
         let span = ByteSpan::new(start, start + len);
-        let ident = &self.original[span];
+        let ident = &self.source[span];
         let kind = match ident {
             "def" => TokenKind::KwDef,
             "else" => TokenKind::KwElse,
@@ -91,16 +97,18 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             }
             '/' => match self.next_char() {
                 Some((_, '/')) => {
-                    let mut len = 2_u32;
-                    loop {
-                        match self.next_char() {
-                            None => return self.emit_token(start, len, TokenKind::LineComment),
-                            Some((_, '\n')) => {
-                                len += 1;
-                                self.emit_token(start, len, TokenKind::LineComment);
-                                break;
-                            }
-                            Some((_, c)) => len += c.len_utf8() as u32,
+                    let remainder = self.remainder();
+                    match remainder.find('\n') {
+                        None => {
+                            return self.emit_token(
+                                start,
+                                remainder.len() as u32 + 2,
+                                TokenKind::LineComment,
+                            )
+                        }
+                        Some(len) => {
+                            self.pos += len as u32 + 1;
+                            self.emit_token(start, len as u32 + 3, TokenKind::LineComment);
                         }
                     }
                 }
