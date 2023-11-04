@@ -1,5 +1,7 @@
 #![allow(clippy::cast_possible_truncation)]
 
+use std::str::Chars;
+
 use pion_utils::location::{BytePos, ByteSpan};
 
 use crate::token::{Token, TokenKind};
@@ -13,6 +15,7 @@ pub fn lex(src: &string32::Str32, tokens: &mut Vec<Token>, errors: &mut Vec<LexE
 struct Ctx<'i, 'vec> {
     pos: u32,
     source: &'i str,
+    chars: Chars<'i>,
     tokens: &'vec mut Vec<Token>,
     errors: &'vec mut Vec<LexError>,
 }
@@ -22,15 +25,16 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
         Self {
             pos: 0,
             source,
+            chars: source.chars(),
             tokens,
             errors,
         }
     }
 
-    fn remainder(&self) -> &'i str { &self.source[self.pos as usize..] }
+    fn remainder(&self) -> &'i str { unsafe { self.source.get_unchecked(self.pos as usize..) } }
 
     fn next_char(&mut self) -> Option<(BytePos, char)> {
-        match self.remainder().chars().next() {
+        match self.chars.next() {
             None => {
                 debug_assert_eq!(self.remainder(), "");
                 None
@@ -50,7 +54,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
 
     fn emit_identlike(&mut self, start: BytePos, len: u32) {
         let span = ByteSpan::new(start, start + len);
-        let ident = &self.source[span];
+        let ident = unsafe { self.source.get_unchecked(std::ops::Range::from(span)) };
         let kind = match ident {
             "def" => TokenKind::KwDef,
             "else" => TokenKind::KwElse,
@@ -98,7 +102,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             '/' => match self.next_char() {
                 Some((_, '/')) => {
                     let remainder = self.remainder();
-                    match remainder.find('\n') {
+                    match memchr::memchr(b'\n', remainder.as_bytes()) {
                         None => {
                             return self.emit_token(
                                 start,
@@ -108,6 +112,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                         }
                         Some(len) => {
                             self.pos += len as u32 + 1;
+                            self.chars = remainder.chars();
                             self.emit_token(start, len as u32 + 3, TokenKind::LineComment);
                         }
                     }
