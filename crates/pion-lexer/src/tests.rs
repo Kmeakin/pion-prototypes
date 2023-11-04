@@ -114,6 +114,20 @@ unclosed level 0
             BlockComment { span: 1..100 }("/* open level 0\n/* open level 1\n/* open level 2\nclose level 2 */\nunclosed level 1\nunclosed level 0\n")
         "#]],
     );
+
+    check(
+        "/*/",
+        expect![[r#"
+        0..3: BlockComment("/*/")
+        BlockComment { span: 0..3 }("/*/")
+    "#]],
+    );
+    check(
+        "/**/",
+        expect![[r#"
+            0..4: BlockComment("/**/")
+        "#]],
+    );
 }
 
 #[test]

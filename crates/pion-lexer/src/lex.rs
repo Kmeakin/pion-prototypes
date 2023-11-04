@@ -47,6 +47,11 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
         }
     }
 
+    fn advance_bytes(&mut self, len: u32) {
+        self.pos += len;
+        self.chars = self.remainder().chars();
+    }
+
     fn emit_token(&mut self, start: BytePos, len: u32, kind: TokenKind) {
         self.tokens
             .push(Token::new(kind, ByteSpan::new(start, start + len)));
@@ -111,8 +116,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                             )
                         }
                         Some(len) => {
-                            self.pos += len as u32 + 1;
-                            self.chars = remainder.chars();
+                            self.advance_bytes(len as u32 + 1);
                             self.emit_token(start, len as u32 + 3, TokenKind::LineComment);
                         }
                     }
@@ -121,42 +125,52 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                     let mut len = 2_u32;
                     let mut nesting = 1_u32;
                     loop {
-                        match self.next_char() {
-                            None => break,
-                            Some((_, '/')) => {
-                                len += 1;
-                                match self.next_char() {
-                                    None => break,
-                                    Some((_, '*')) => {
-                                        nesting += 1;
-                                        len += 1;
-                                    }
-                                    Some((_, c)) => len += c.len_utf8() as u32,
+                        // TODO: can we use `memchr` here?
+                        match self.remainder().find('/') {
+                            // unclosed block comment
+                            None => {
+                                len += self.remainder().len() as u32;
+                                self.errors.push(LexError::BlockComment {
+                                    span: ByteSpan::new(start, start + len),
+                                });
+                                return self.emit_token(start, len, TokenKind::BlockComment);
+                            }
+                            // closing
+                            Some(pos)
+                                if self
+                                    .remainder()
+                                    .as_bytes()
+                                    .get(pos.saturating_sub(1))
+                                    .copied()
+                                    == Some(b'*') =>
+                            {
+                                let pos = pos as u32 + 1;
+                                self.advance_bytes(pos);
+                                len += pos;
+                                nesting -= 1;
+                                if nesting == 0 {
+                                    self.emit_token(start, len, TokenKind::BlockComment);
+                                    break;
                                 }
                             }
-                            Some((_, '*')) => {
-                                len += 1;
-                                match self.next_char() {
-                                    None => break,
-                                    Some((_, '/')) => {
-                                        len += 1;
-                                        nesting -= 1;
-                                        if nesting == 0 {
-                                            break;
-                                        }
-                                    }
-                                    Some((_, c)) => len += c.len_utf8() as u32,
-                                }
+                            // opening
+                            Some(pos)
+                                if self.remainder().as_bytes().get(pos + 1).copied()
+                                    == Some(b'*') =>
+                            {
+                                let pos = pos as u32 + 2;
+                                self.advance_bytes(pos);
+                                len += pos;
+                                nesting += 1;
                             }
-                            Some((_, c)) => len += c.len_utf8() as u32,
+                            // lone '/'
+                            Some(pos) => {
+                                let pos = pos as u32 + 1;
+                                self.advance_bytes(pos);
+                                len += pos;
+                            }
                         }
                     }
-                    if nesting > 0 {
-                        self.errors.push(LexError::BlockComment {
-                            span: ByteSpan::new(start, start + len),
-                        });
-                    }
-                    self.emit_token(start, len, TokenKind::BlockComment);
                 }
                 Some((_, c)) => {
                     self.emit_unknown(start, 1);
