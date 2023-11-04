@@ -364,22 +364,40 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &Pat<'core>,
         scrut: &Scrut<'core>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
+        value: &Value<'core>,
+        toplevel: bool,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+    ) {
         let name = pat.name();
 
         match pat {
             Pat::Ident(..) | Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
-                self.local_env.push_param(name, scrut.r#type.clone());
+                if toplevel {
+                    let r#type = scrut.r#type.clone();
+                    self.local_env.push_param(name, r#type);
+                } else {
+                    let r#type = scrut.r#type.clone();
+                    let value = value.clone();
+                    self.local_env.push_def(name, r#type, value);
+                    let_vars.push((name, scrut.clone()));
+                }
             }
             Pat::RecordLit(_, fields) => {
                 let value = self.local_env.next_var();
-                self.local_env.push_param(name, scrut.r#type.clone());
-                self.push_record_pat(fields, scrut, &value, &mut let_vars);
+                if toplevel {
+                    self.local_env.push_param(name, scrut.r#type.clone());
+                }
+                self.push_record_pat(fields, scrut, &value, |this, pat, scrut, value| {
+                    this.push_param_pat(pat, scrut, value, false, let_vars);
+                });
             }
-            Pat::Or(..) => todo!(),
+            // We ensured that all alternatives bind the same set of names, so we onyl need to
+            // recurse on the first alternative
+            Pat::Or(.., alts) => {
+                let pat = alts.first().unwrap();
+                self.push_param_pat(pat, scrut, value, toplevel, let_vars);
+            }
         }
-        let_vars
     }
 
     pub fn push_def_pat(
@@ -387,10 +405,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         pat: &Pat<'core>,
         scrut: &Scrut<'core>,
         value: &Value<'core>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
+        toplevel: bool,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+    ) {
         let name = pat.name();
-
         match pat {
             Pat::Ident(..) => {
                 let r#type = scrut.r#type.clone();
@@ -399,16 +417,25 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 self.local_env.push_def(name, r#type, value);
             }
             Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
-                let r#type = scrut.r#type.clone();
-                let_vars.push((name, scrut.clone()));
-                self.local_env.push_def(name, r#type, value.clone());
+                if toplevel {
+                    let r#type = scrut.r#type.clone();
+                    let_vars.push((name, scrut.clone()));
+                    self.local_env.push_def(name, r#type, value.clone());
+                }
             }
             Pat::RecordLit(_, fields) => {
-                self.push_record_pat(fields, scrut, value, &mut let_vars);
+                self.push_record_pat(fields, scrut, value, |this, pat, scrut, value| {
+                    this.push_def_pat(pat, scrut, value, false, let_vars);
+                });
             }
-            Pat::Or(..) => todo!(),
+
+            // We ensured that all alternatives bind the same set of names, so we onyl need to
+            // recurse on the first alternative
+            Pat::Or(.., alts) => {
+                let pat = alts.first().unwrap();
+                self.push_def_pat(pat, scrut, value, toplevel, let_vars);
+            }
         }
-        let_vars
     }
 
     pub fn push_match_pat(
@@ -416,13 +443,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         pat: &Pat<'core>,
         scrut: &Scrut<'core>,
         value: &Value<'core>,
-    ) -> Vec<(BinderName, Scrut<'core>)> {
-        let mut let_vars = Vec::new();
+        toplevel: bool,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+    ) {
         let name = pat.name();
-
         match pat {
             Pat::Error(..) | Pat::Underscore(..) => {
-                (self.local_env).push_def(pat.name(), scrut.r#type.clone(), value.clone());
+                if toplevel {
+                    let r#type = scrut.r#type.clone();
+                    let value = value.clone();
+                    self.local_env.push_def(name, r#type, value);
+                }
             }
             Pat::Ident(..) => {
                 let r#type = scrut.r#type.clone();
@@ -432,11 +463,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
             Pat::Lit(..) => {}
             Pat::RecordLit(_, fields) => {
-                self.push_record_pat(fields, scrut, value, &mut let_vars);
+                self.push_record_pat(fields, scrut, value, |this, pat, scrut, value| {
+                    this.push_match_pat(pat, scrut, value, false, let_vars);
+                });
             }
-            Pat::Or(..) => todo!(),
+            // We ensured that all alternatives bind the same set of names, so we onyl need to
+            // recurse on the first alternative
+            Pat::Or(.., alts) => {
+                let pat = alts.first().unwrap();
+                self.push_match_pat(pat, scrut, value, false, let_vars);
+            }
         }
-        let_vars
     }
 
     fn push_record_pat(
@@ -444,7 +481,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         fields: &[(FieldName, Pat<'core>)],
         scrut: &Scrut<'core>,
         value: &Value<'core>,
-        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+        mut on_pat: impl FnMut(&mut Self, &Pat<'core>, &Scrut<'core>, &Value<'core>),
     ) {
         let Type::RecordType(mut telescope) = self.elim_env().update_metas(&scrut.r#type) else {
             unreachable!("expected record type, got {:?}", scrut.r#type)
@@ -458,18 +495,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let value = self.elim_env().field_proj(value.clone(), *label);
             let scrut = Scrut::new(expr, r#type);
 
-            match pat {
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {}
-                Pat::Ident(..) => {
-                    let r#type = scrut.r#type.clone();
-                    let_vars.push((pat.name(), scrut));
-                    self.local_env.push_def(pat.name(), r#type, value);
-                }
-                Pat::RecordLit(_, fields) => {
-                    self.push_record_pat(fields, &scrut, &value, let_vars);
-                }
-                Pat::Or(..) => todo!(),
-            }
+            on_pat(self, pat, &scrut, &value);
         }
     }
 }

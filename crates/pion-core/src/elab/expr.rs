@@ -667,7 +667,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let scrut = Scrut::new(init_expr, pat_type);
 
         let initial_len = self.local_env.len();
-        let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
+        let mut let_vars = Vec::new();
+        self.push_def_pat(&pat, &scrut, &init_value, true, &mut let_vars);
         let (body_expr, body_type) = elab_body(self, body);
         self.local_env.truncate(initial_len);
 
@@ -762,7 +763,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
         let (let_vars, codomain_expr) = self.with_scope(|this| {
-            let let_vars = this.push_param_pat(&pat, &scrut);
+            let mut let_vars = Vec::new();
+            let value = this.local_env.next_var();
+            this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
             let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain, idents);
             (let_vars, codomain_expr)
         });
@@ -800,10 +803,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let name = pat.name();
 
         let (let_defs, body_expr, body_type_expr) = self.with_scope(|this| {
-            let let_defs = this.push_param_pat(&pat, &scrut);
+            let mut let_vars = Vec::new();
+            let value = this.local_env.next_var();
+            this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
             let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body, idents);
             let body_type = this.quote_env().quote(&body_type_value);
-            (let_defs, body_expr, body_type)
+            (let_vars, body_expr, body_type)
         });
 
         let scrut_span = param.pat.span();
@@ -865,7 +870,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
                     let expected = this.elim_env().apply_closure(next_expected, arg);
-                    let let_defs = this.push_param_pat(&pat, &scrut);
+                    let mut let_defs = Vec::new();
+                    let value = this.local_env.next_var();
+                    this.push_param_pat(&pat, &scrut, &value, true, &mut let_defs);
                     let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected, idents);
                     (let_defs, body_expr)
                 });
@@ -927,7 +934,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         for case in cases {
             let initial_len = self.local_env.len();
             let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
-            let let_vars = self.push_match_pat(&pat, &scrut, &scrut_value);
+            let mut let_vars = Vec::new();
+            self.push_match_pat(&pat, &scrut, &scrut_value, true, &mut let_vars);
             let guard = case
                 .guard
                 .as_ref()
