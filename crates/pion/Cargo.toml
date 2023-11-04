@@ -14,7 +14,7 @@ workspace = true
 pion-core            = { path = "../pion-core" }
 pion-hir             = { path = "../pion-hir" }
 pion-language-server = { path = "../pion-language-server" }
-pion-manual-lexer    = { path = "../pion-manual-lexer" }
+pion-lexer           = { path = "../pion-lexer" }
 pion-surface         = { path = "../pion-surface" }
 pion-utils           = { path = "../pion-utils" }
 

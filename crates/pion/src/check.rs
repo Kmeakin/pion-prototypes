@@ -4,7 +4,7 @@ use anyhow::bail;
 use bpaf::Parser;
 use camino::Utf8PathBuf;
 use codespan_reporting::diagnostic::{Diagnostic, Severity};
-use pion_manual_lexer::LexedSource;
+use pion_lexer::LexedSource;
 use pion_utils::source::{SourceFile, SourceMap};
 
 use crate::DumpFlags;

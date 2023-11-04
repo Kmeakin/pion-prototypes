@@ -2,8 +2,8 @@ pub mod reporting;
 pub mod syntax;
 
 use lalrpop_util::lalrpop_mod;
-use pion_manual_lexer::token::TokenKind;
-use pion_manual_lexer::LexedSource;
+use pion_lexer::token::TokenKind;
+use pion_lexer::LexedSource;
 use pion_utils::location::TokenPos;
 use reporting::SyntaxError;
 use syntax::{Expr, Module};

@@ -8,9 +8,9 @@ version = { workspace = true }
 workspace = true
 
 [dependencies]
-pion-manual-lexer = { path = "../pion-manual-lexer" }
-pion-surface      = { path = "../pion-surface" }
-pion-utils        = { path = "../pion-utils" }
+pion-lexer   = { path = "../pion-lexer" }
+pion-surface = { path = "../pion-surface" }
+pion-utils   = { path = "../pion-utils" }
 
 anyhow             = { workspace = true }
 bumpalo            = { workspace = true }

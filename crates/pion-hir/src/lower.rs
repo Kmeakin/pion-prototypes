@@ -1,4 +1,4 @@
-use pion_manual_lexer::LexedSource;
+use pion_lexer::LexedSource;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 use pion_utils::symbol::Symbol;

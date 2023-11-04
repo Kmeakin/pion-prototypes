@@ -715,7 +715,7 @@ dependencies = [
  "pion-core",
  "pion-hir",
  "pion-language-server",
- "pion-manual-lexer",
+ "pion-lexer",
  "pion-surface",
  "pion-utils",
  "snapbox",
@@ -748,7 +748,7 @@ dependencies = [
  "codespan-reporting",
  "internal-iterator",
  "nohash",
- "pion-manual-lexer",
+ "pion-lexer",
  "pion-surface",
  "pion-utils",
 ]
@@ -763,14 +763,14 @@ dependencies = [
  "codespan-reporting",
  "lsp-server",
  "lsp-types",
- "pion-manual-lexer",
+ "pion-lexer",
  "pion-surface",
  "pion-utils",
  "serde_json",
 ]
 
 [[package]]
-name = "pion-manual-lexer"
+name = "pion-lexer"
 version = "0.1.0"
 dependencies = [
  "expect-test",
@@ -787,7 +787,7 @@ dependencies = [
  "internal-iterator",
  "lalrpop",
  "lalrpop-util",
- "pion-manual-lexer",
+ "pion-lexer",
  "pion-utils",
  "string32",
 ]

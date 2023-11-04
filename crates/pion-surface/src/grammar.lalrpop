@@ -1,4 +1,4 @@
-use pion_manual_lexer::token::TokenKind;
+use pion_lexer::token::TokenKind;
 use pion_utils::location::{TokenPos, TokenSpan};
 
 use bumpalo::Bump;

@@ -3,7 +3,7 @@ use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notifi
 use lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
 };
-use pion_manual_lexer::LexedSource;
+use pion_lexer::LexedSource;
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};

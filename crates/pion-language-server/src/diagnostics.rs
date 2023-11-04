@@ -1,5 +1,5 @@
 use lsp_server::{Message, Notification};
-use pion_manual_lexer::LexedSource;
+use pion_lexer::LexedSource;
 
 use crate::convert;
 use crate::server::Server;

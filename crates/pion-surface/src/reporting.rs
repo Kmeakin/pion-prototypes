@@ -1,6 +1,6 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use pion_manual_lexer::token::TokenKind;
-use pion_manual_lexer::LexedSource;
+use pion_lexer::token::TokenKind;
+use pion_lexer::LexedSource;
 use pion_utils::location::{TokenPos, TokenSpan};
 
 #[derive(Debug, PartialEq, Eq)]
