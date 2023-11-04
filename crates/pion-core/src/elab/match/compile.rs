@@ -28,7 +28,6 @@ pub fn compile_match<'core>(
     ctx: &mut ElabCtx<'_, 'core>,
     matrix: &mut PatMatrix<'core>,
     bodies: &[Body<'core>],
-    mut shift_amount: EnvLen,
 ) -> Expr<'core> {
     // Base case 1:
     // If the matrix is empty, matching always fails.
@@ -44,6 +43,7 @@ pub fn compile_match<'core>(
     //    - if the guard is true, continue to the RHS
     //    - if the guard is false, recurse on the remaining rows
     let row = matrix.row(0);
+    let mut shift_amount = EnvLen::new();
     if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
         let bump = ctx.bump;
         let index = matrix.row_index(0);
@@ -68,7 +68,7 @@ pub fn compile_match<'core>(
             Some(guard) => {
                 matrix.rows.remove(0);
                 matrix.indices.remove(0);
-                let r#else = compile_match(ctx, matrix, bodies, EnvLen::new());
+                let r#else = compile_match(ctx, matrix, bodies);
                 let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
                 Expr::r#if(ctx.bump, guard, *body, r#else)
             }
@@ -92,13 +92,12 @@ pub fn compile_match<'core>(
     for (pat, scrut) in matrix.column(0) {
         match pat {
             Pat::Lit(..) => {
-                let scrut_expr = scrut.expr.shift(ctx.bump, shift_amount);
                 let lits = matrix.column_literals(0);
 
                 let mut cases = SliceVec::new(ctx.bump, lits.len());
                 for lit in &lits {
                     let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(*lit));
-                    let expr = compile_match(ctx, &mut matrix, bodies, shift_amount);
+                    let expr = compile_match(ctx, &mut matrix, bodies);
                     cases.push((*lit, expr));
                 }
 
@@ -106,19 +105,19 @@ pub fn compile_match<'core>(
                     true => None,
                     false => {
                         let mut matrix = ctx.default_matrix(matrix);
-                        let body = compile_match(ctx, &mut matrix, bodies, shift_amount);
+                        let body = compile_match(ctx, &mut matrix, bodies);
                         Some(body)
                     }
                 };
 
-                return Expr::r#match(ctx.bump, scrut_expr, cases.into(), default);
+                return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
             }
 
             // There is only one constructor for each record type,
             // so we only need to generate a single subtree (ie no branching needed)
             Pat::RecordLit(_, fields) => {
                 let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
-                return compile_match(ctx, &mut matrix, bodies, shift_amount);
+                return compile_match(ctx, &mut matrix, bodies);
             }
 
             // Skip over non-constructor patterns

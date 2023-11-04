@@ -77,7 +77,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         self,
                         &mut matrix,
                         &[Body::new(let_vars, body_expr)],
-                        EnvLen::new(),
                     ),
                     Err(()) => Expr::Error,
                 };
@@ -430,7 +429,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         self,
                         &mut matrix,
                         &[Body::new(let_vars, body_expr)],
-                        EnvLen::new(),
                     ),
                     Err(()) => Expr::Error,
                 };
@@ -780,7 +778,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     this,
                     &mut matrix,
                     &[Body::new(let_vars, codomain_expr)],
-                    EnvLen::new(),
                 ),
                 Err(()) => Expr::Error,
             }
@@ -822,14 +819,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         this,
                         &mut (matrix.clone()),
                         &[Body::new(let_defs.clone(), body_expr)],
-                        EnvLen::new(),
                     );
 
                     let body_type = r#match::compile::compile_match(
                         this,
                         &mut matrix,
                         &[Body::new(let_defs.clone(), body_type_expr)],
-                        EnvLen::new(),
                     );
 
                     (body_expr, body_type)
@@ -886,7 +881,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             this,
                             &mut matrix,
                             &[Body::new(let_vars, body_expr)],
-                            EnvLen::new(),
                         ),
                         Err(()) => Expr::Error,
                     }
@@ -950,7 +944,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         let mut matrix = PatMatrix::new(rows);
         let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
-            Ok(()) => r#match::compile::compile_match(self, &mut matrix, &bodies, EnvLen::new()),
+            Ok(()) => r#match::compile::compile_match(self, &mut matrix, &bodies),
             Err(()) => Expr::Error,
         };
         CheckExpr::new(expr)
