@@ -1,14 +1,10 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use pion_lexer::token::{TokenError, TokenKind};
-use pion_lexer::LexedSource;
+use pion_manual_lexer::token::TokenKind;
+use pion_manual_lexer::LexedSource;
 use pion_utils::location::{TokenPos, TokenSpan};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum SyntaxError {
-    Lexer {
-        pos: TokenPos,
-        error: TokenError,
-    },
     InvalidToken {
         pos: TokenPos,
     },
@@ -28,15 +24,14 @@ pub enum SyntaxError {
 }
 
 pub type LalrpopParseError<'src> =
-    lalrpop_util::ParseError<TokenPos, TokenKind, (TokenPos, TokenError)>;
+    lalrpop_util::ParseError<TokenPos, TokenKind, std::convert::Infallible>;
 pub type LalrpopErrorRecovery<'src> =
-    lalrpop_util::ErrorRecovery<TokenPos, TokenKind, (TokenPos, TokenError)>;
+    lalrpop_util::ErrorRecovery<TokenPos, TokenKind, std::convert::Infallible>;
 
 impl SyntaxError {
     pub fn span(&self) -> TokenSpan {
         match self {
-            Self::Lexer { pos, .. }
-            | Self::InvalidToken { pos, .. }
+            Self::InvalidToken { pos, .. }
             | Self::UnrecognizedEof { pos, .. }
             | Self::UnrecognizedToken { pos, .. }
             | Self::ExtraToken { pos, .. } => TokenSpan::from(*pos),
@@ -50,9 +45,7 @@ impl SyntaxError {
 
     pub fn from_lalrpop(err: LalrpopParseError) -> Self {
         match err {
-            LalrpopParseError::User {
-                error: (pos, error),
-            } => Self::Lexer { pos, error },
+            LalrpopParseError::User { error } => match error {},
             LalrpopParseError::InvalidToken { location: pos } => Self::InvalidToken { pos },
             LalrpopParseError::UnrecognizedEof { location, expected } => Self::UnrecognizedEof {
                 pos: location,
@@ -76,10 +69,6 @@ impl SyntaxError {
         let primary_label = |pos: &TokenPos| Label::primary(file_id, source.bytespan(*pos));
 
         match self {
-            Self::Lexer { pos, error } => {
-                let span = source.bytespan(*pos);
-                error.to_diagnostic(span, file_id)
-            }
             Self::InvalidToken { pos } => Diagnostic::error()
                 .with_message("syntax error: invalid token")
                 .with_labels(vec![primary_label(pos)]),

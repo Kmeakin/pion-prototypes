@@ -1,4 +1,4 @@
-use pion_lexer::token::{TokenKind, TokenError};
+use pion_manual_lexer::token::TokenKind;
 use pion_utils::location::{TokenPos, TokenSpan};
 
 use bumpalo::Bump;
@@ -13,7 +13,7 @@ grammar<'surface>(
 
 extern {
     type Location = TokenPos;
-    type Error = (TokenPos, TokenError);
+    type Error = std::convert::Infallible;
 
     enum TokenKind {
         "Ident" => TokenKind::Ident,

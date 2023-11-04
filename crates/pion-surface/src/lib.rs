@@ -2,8 +2,8 @@ pub mod reporting;
 pub mod syntax;
 
 use lalrpop_util::lalrpop_mod;
-use pion_lexer::token::{TokenError, TokenKind};
-use pion_lexer::LexedSource;
+use pion_manual_lexer::token::TokenKind;
+use pion_manual_lexer::LexedSource;
 use pion_utils::location::TokenPos;
 use reporting::SyntaxError;
 use syntax::{Expr, Module};
@@ -22,20 +22,18 @@ lalrpop_mod!(
 
 fn tokens<'tokens>(
     source: LexedSource<'_, 'tokens>,
-) -> impl Iterator<Item = Result<(TokenPos, TokenKind, TokenPos), (TokenPos, TokenError)>> + 'tokens
-{
+) -> impl Iterator<Item = (TokenPos, TokenKind, TokenPos)> + 'tokens {
     source
         .all_tokens()
         .iter()
         .enumerate()
-        .filter_map(move |(index, (result, _))| match result {
-            Ok(kind) if kind.is_trivia() => None,
-            Ok(kind) => Some(Ok((
+        .filter_map(move |(index, token)| match token.kind() {
+            kind if kind.is_trivia() => None,
+            kind => Some((
                 TokenPos::truncate_usize(index),
-                *kind,
+                kind,
                 TokenPos::truncate_usize(index + 1),
-            ))),
-            Err(err) => Some(Err(((TokenPos::truncate_usize(index)), *err))),
+            )),
         })
 }
 

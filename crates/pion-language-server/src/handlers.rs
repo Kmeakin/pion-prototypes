@@ -3,7 +3,7 @@ use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notifi
 use lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
 };
-use pion_lexer::LexedSource;
+use pion_manual_lexer::LexedSource;
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};
@@ -22,7 +22,8 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
 
             let bump = bumpalo::Bump::new();
             let mut tokens = Vec::new();
-            let source = LexedSource::new(&file.contents, &mut tokens);
+            let mut errors = Vec::new();
+            let source = LexedSource::new(&file.contents, &mut tokens, &mut errors);
 
             let mut symbols = Vec::new();
             let (module, _) = pion_surface::parse_module(source, &bump);
