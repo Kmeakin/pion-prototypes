@@ -107,6 +107,10 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             '/' => match self.next_char() {
                 Some((_, '/')) => {
                     let remainder = self.remainder();
+                    // This `memchr` is safe because UTF-8 continuation bytes are always > 127 - ie
+                    // they cannot be confused for ASCII chars. Therefore the byte '\n' will only
+                    // appear in an ASCII newline character, and not in a multibyte unicode
+                    // character
                     match memchr::memchr(b'\n', remainder.as_bytes()) {
                         None => {
                             return self.emit_token(
@@ -125,8 +129,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                     let mut len = 2_u32;
                     let mut nesting = 1_u32;
                     loop {
-                        // TODO: can we use `memchr` here?
-                        match self.remainder().find('/') {
+                        match memchr::memchr(b'/', self.remainder().as_bytes()) {
                             // unclosed block comment
                             None => {
                                 len += self.remainder().len() as u32;
