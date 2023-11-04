@@ -220,7 +220,7 @@ impl<'arena> Body<'arena> {
     }
 }
 
-impl<'core> ElabCtx<'_, 'core> {
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
     /// Specialise `pat` with respect to the constructor `ctor`.
     pub fn specialize_pat(
         &self,

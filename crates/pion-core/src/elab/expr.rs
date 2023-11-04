@@ -59,28 +59,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 SynthExpr::new(expr, type_value)
             }
             hir::Expr::Let(_, (pat, r#type, init, body)) => {
-                let scrut_span = init.span();
-                let Synth(pat, pat_type) =
-                    self.synth_ann_pat(pat, r#type.as_ref(), &mut Vec::new());
-                let Check(init_expr) = self.check_expr(init, &pat_type);
-                let init_value = self.eval_env().eval(&init_expr);
-                let scrut = Scrut::new(init_expr, pat_type);
-
-                let initial_len = self.local_env.len();
-                let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
-                let Synth(body_expr, body_type) = self.synth_expr(body);
-                self.local_env.truncate(initial_len);
-
-                let mut matrix = PatMatrix::singleton(scrut, pat);
-                let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
-                    Ok(()) => r#match::compile::compile_match(
-                        self,
-                        &mut matrix,
-                        &[Body::new(let_vars, body_expr)],
-                    ),
-                    Err(()) => Expr::Error,
-                };
-                SynthExpr::new(expr, body_type)
+                let (expr, r#type) =
+                    self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
+                        let Synth(body_expr, body_type) = this.synth_expr(body);
+                        (body_expr, body_type)
+                    });
+                SynthExpr::new(expr, r#type)
             }
             hir::Expr::ArrayLit(_, elems) => {
                 let Some((first, rest)) = elems.split_first() else {
@@ -410,28 +394,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             hir::Expr::Error(..) => CheckExpr::ERROR,
 
             hir::Expr::Let(_, (pat, r#type, init, body)) => {
-                let scrut_span = init.span();
-
-                let Synth(pat, pat_type) =
-                    self.synth_ann_pat(pat, r#type.as_ref(), &mut Vec::new());
-                let Check(init_expr) = self.check_expr(init, &pat_type);
-                let init_value = self.eval_env().eval(&init_expr);
-                let scrut = Scrut::new(init_expr, pat_type);
-
-                let initial_len = self.local_env.len();
-                let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
-                let Check(body_expr) = self.check_expr(body, expected);
-                self.local_env.truncate(initial_len);
-
-                let mut matrix = PatMatrix::singleton(scrut, pat);
-                let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
-                    Ok(()) => r#match::compile::compile_match(
-                        self,
-                        &mut matrix,
-                        &[Body::new(let_vars, body_expr)],
-                    ),
-                    Err(()) => Expr::Error,
-                };
+                let (expr, _) = self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
+                    let Check(body_expr) = this.check_expr(body, expected);
+                    (body_expr, expected.clone())
+                });
                 CheckExpr::new(expr)
             }
             hir::Expr::ArrayLit(_, elems) => {
@@ -684,6 +650,37 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     fn check_ident_expr(&mut self, ident: Ident, expected: &Type<'core>) -> CheckExpr<'core> {
         let Synth(expr, r#type) = self.synth_ident_expr(ident);
         CheckExpr::new(self.convert_expr(ident.span, expr, r#type, expected))
+    }
+
+    pub fn elab_let(
+        &mut self,
+        pat: &'hir hir::Pat,
+        r#type: Option<&'hir hir::Expr>,
+        init: &'hir hir::Expr,
+        body: &'hir hir::Expr,
+        mut elab_body: impl FnMut(&mut Self, &'hir hir::Expr) -> (Expr<'core>, Type<'core>),
+    ) -> (Expr<'core>, Type<'core>) {
+        let scrut_span = init.span();
+        let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type, &mut Vec::new());
+        let Check(init_expr) = self.check_expr(init, &pat_type);
+        let init_value = self.eval_env().eval(&init_expr);
+        let scrut = Scrut::new(init_expr, pat_type);
+
+        let initial_len = self.local_env.len();
+        let let_vars = self.push_def_pat(&pat, &scrut, &init_value);
+        let (body_expr, body_type) = elab_body(self, body);
+        self.local_env.truncate(initial_len);
+
+        let mut matrix = PatMatrix::singleton(scrut, pat);
+        let expr = match r#match::coverage::check_coverage(self, &matrix, scrut_span) {
+            Ok(()) => r#match::compile::compile_match(
+                self,
+                &mut matrix,
+                &[Body::new(let_vars, body_expr)],
+            ),
+            Err(()) => Expr::Error,
+        };
+        (expr, body_type)
     }
 
     fn synth_fun_call(
