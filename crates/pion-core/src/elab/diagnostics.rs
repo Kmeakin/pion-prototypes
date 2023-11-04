@@ -1,7 +1,7 @@
 use codespan_reporting::diagnostic::{Diagnostic as CodeSpanDiagnostic, Label};
+use pion_hir::syntax::Ident;
 use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
-use pion_utils::symbol::Symbol;
 
 use super::{unify, MetaSource};
 use crate::name::{BinderName, FieldName, LocalName};
@@ -16,8 +16,7 @@ pub enum ElabDiagnostic {
         name: LocalName,
     },
     DuplicateLocalName {
-        name: Symbol,
-        first_span: ByteSpan,
+        first_ident: Ident,
         duplicate_span: ByteSpan,
     },
     Unification {
@@ -88,13 +87,15 @@ impl ElabDiagnostic {
                 .with_message(format!("unbound name `{name}`"))
                 .with_labels(vec![primary(*span)]),
             Self::DuplicateLocalName {
-                name,
-                first_span,
+                first_ident,
                 duplicate_span,
             } => CodeSpanDiagnostic::error()
-                .with_message(format!("duplicate definition of local name `{name}`"))
+                .with_message(format!(
+                    "duplicate definition of local name `{}`",
+                    first_ident.symbol
+                ))
                 .with_labels(vec![
-                    secondary(*first_span).with_message("first definition"),
+                    secondary(first_ident.span).with_message("first definition"),
                     primary(*duplicate_span).with_message("duplicate definition"),
                 ]),
             Self::FunAppPlicity {

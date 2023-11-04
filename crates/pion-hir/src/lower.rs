@@ -81,7 +81,7 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn ident_to_hir(&self, ident: surface::Ident) -> Ident {
         let span = self.source.bytespan(ident.pos);
         let symbol = Symbol::intern(self.source.text(span));
-        Ident { span, symbol }
+        Ident::new(symbol, span)
     }
 }
 

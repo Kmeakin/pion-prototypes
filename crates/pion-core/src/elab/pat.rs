@@ -1,6 +1,5 @@
-use pion_hir::syntax as hir;
+use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::slice_vec::SliceVec;
-use pion_utils::symbol::Symbol;
 
 use super::diagnostics::ElabDiagnostic;
 use super::r#match::Scrut;
@@ -22,7 +21,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        names: &mut Vec<Ident>,
     ) -> SynthPat<'core> {
         let span = pat.span();
 
@@ -42,7 +41,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 SynthPat::new(Pat::Underscore(span), r#type)
             }
             hir::Pat::Ident(_, ident) => {
-                match self.check_duplicate_local(names, ident.symbol, span) {
+                match self.check_duplicate_local(names, Ident::new(ident.symbol, span)) {
                     Err(()) => SynthPat::error(span),
                     Ok(()) => {
                         let r#type = self.push_unsolved_type(MetaSource::PatType { span });
@@ -114,19 +113,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> CheckPat<'core> {
         let span = pat.span();
 
         let Check(core_pat) = match pat {
             hir::Pat::Error(..) => CheckPat::error(span),
             hir::Pat::Underscore(..) => CheckPat::new(Pat::Underscore(span)),
-            hir::Pat::Ident(_, ident) => {
-                match self.check_duplicate_local(names, ident.symbol, span) {
-                    Err(()) => CheckPat::error(span),
-                    Ok(()) => CheckPat::new(Pat::Ident(span, ident.symbol)),
-                }
-            }
+            hir::Pat::Ident(_, ident) => match self.check_duplicate_local(idents, *ident) {
+                Err(()) => CheckPat::error(span),
+                Ok(()) => CheckPat::new(Pat::Ident(span, ident.symbol)),
+            },
             hir::Pat::TupleLit(_, elems) => match expected {
                 Value::RecordType(telescope) if elems.len() == telescope.len() => {
                     let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -136,7 +133,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
 
-                        let Check(elem_pat) = self.check_pat(elem, &r#type, names);
+                        let Check(elem_pat) = self.check_pat(elem, &r#type, idents);
                         let elem_value = self.local_env.next_var();
                         telescope = cont(elem_value);
                         pat_fields.push((name, elem_pat));
@@ -145,7 +142,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let pat = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(pat)
                 }
-                _ => self.synth_and_convert_pat(pat, expected, names),
+                _ => self.synth_and_convert_pat(pat, expected, idents),
             },
             hir::Pat::RecordLit(_, fields) => match expected {
                 Type::RecordType(telescope)
@@ -164,8 +161,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         let (name, r#type, cont) =
                             self.elim_env().split_telescope(telescope).unwrap();
                         let Check(field_pat) = match field.pat.as_ref() {
-                            Some(pat) => self.check_pat(pat, &r#type, names),
-                            None => self.check_ident_pat(field.name, expected, names),
+                            Some(pat) => self.check_pat(pat, &r#type, idents),
+                            None => self.check_ident_pat(field.name, expected, idents),
                         };
                         let field_value = self.local_env.next_var();
                         telescope = cont(field_value);
@@ -175,9 +172,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let expt = Pat::RecordLit(span, pat_fields.into());
                     CheckPat::new(expt)
                 }
-                _ => self.synth_and_convert_pat(pat, expected, names),
+                _ => self.synth_and_convert_pat(pat, expected, idents),
             },
-            hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, names),
+            hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, idents),
         };
 
         let type_expr = self.quote_env().quote(expected);
@@ -190,21 +187,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> CheckPat<'core> {
-        let Synth(pat, r#type) = self.synth_pat(pat, names);
+        let Synth(pat, r#type) = self.synth_pat(pat, idents);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
     }
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    fn synth_ident_pat(
-        &mut self,
-        ident: hir::Ident,
-        names: &mut Vec<(ByteSpan, Symbol)>,
-    ) -> SynthPat<'core> {
-        let hir::Ident { span, symbol } = ident;
-        match self.check_duplicate_local(names, symbol, span) {
+    fn synth_ident_pat(&mut self, ident: Ident, idents: &mut Vec<Ident>) -> SynthPat<'core> {
+        let Ident { span, symbol } = ident;
+        match self.check_duplicate_local(idents, ident) {
             Err(()) => SynthPat::error(span),
             Ok(()) => {
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
@@ -215,11 +208,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
     fn check_ident_pat(
         &mut self,
-        ident: hir::Ident,
+        ident: Ident,
         expected: &Type<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> CheckPat<'core> {
-        let Synth(pat, r#type) = self.synth_ident_pat(ident, names);
+        let Synth(pat, r#type) = self.synth_ident_pat(ident, idents);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
     }
 
@@ -227,14 +220,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> SynthPat<'core> {
         match r#type {
-            None => self.synth_pat(pat, names),
+            None => self.synth_pat(pat, idents),
             Some(r#type) => {
                 let Check(r#type) = self.check_expr_is_type(r#type);
                 let r#type = self.eval_env().eval(&r#type);
-                let Check(pat) = self.check_pat(pat, &r#type, names);
+                let Check(pat) = self.check_pat(pat, &r#type, idents);
                 SynthPat::new(pat, r#type)
             }
         }
@@ -245,12 +238,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
         expected: &Type<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> CheckPat<'core> {
         match r#type {
-            None => self.check_pat(pat, expected, names),
+            None => self.check_pat(pat, expected, idents),
             Some(r#type) => {
-                let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type), names);
+                let Synth(pat, r#type) = self.synth_ann_pat(pat, Some(r#type), idents);
                 CheckPat::new(self.convert_pat(pat, &r#type, expected))
             }
         }
@@ -259,9 +252,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_fun_param(
         &mut self,
         param: &'hir hir::FunParam<'hir>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> (Pat<'core>, Scrut<'core>) {
-        let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref(), names);
+        let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref(), idents);
         let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, r#type))
     }
@@ -270,9 +263,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         param: &'hir hir::FunParam<'hir>,
         expected: &Type<'core>,
-        names: &mut Vec<(ByteSpan, Symbol)>,
+        idents: &mut Vec<Ident>,
     ) -> (Pat<'core>, Scrut<'core>) {
-        let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected, names);
+        let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected, idents);
         let expr = Expr::Local((), Index::new());
         (pat, Scrut::new(expr, expected.clone()))
     }
@@ -295,22 +288,16 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
-    fn check_duplicate_local(
-        &mut self,
-        names: &mut Vec<(ByteSpan, Symbol)>,
-        symbol: Symbol,
-        span: ByteSpan,
-    ) -> Result<(), ()> {
-        match names.iter().find(|(_, n)| *n == symbol) {
+    fn check_duplicate_local(&mut self, idents: &mut Vec<Ident>, ident: Ident) -> Result<(), ()> {
+        match idents.iter().find(|i| i.symbol == ident.symbol) {
             None => {
-                names.push((span, symbol));
+                idents.push(ident);
                 Ok(())
             }
-            Some((first_span, name)) => {
+            Some(first_ident) => {
                 self.emit_diagnostic(ElabDiagnostic::DuplicateLocalName {
-                    name: *name,
-                    first_span: *first_span,
-                    duplicate_span: span,
+                    first_ident: *first_ident,
+                    duplicate_span: ident.span,
                 });
                 Err(())
             }

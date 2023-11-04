@@ -1,7 +1,7 @@
 use core::fmt;
 
 use ecow::{eco_vec, EcoVec};
-use pion_hir::syntax as hir;
+use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::location::ByteSpan;
 use pion_utils::symbol::Symbol;
 
@@ -23,7 +23,7 @@ pub enum Item<'core> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Def<'core> {
-    pub name: Symbol,
+    pub name: Ident,
     pub r#type: ZonkedExpr<'core>,
     pub expr: ZonkedExpr<'core>,
 }

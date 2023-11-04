@@ -161,8 +161,12 @@ pub enum Lit {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Ident {
-    pub span: ByteSpan,
     pub symbol: Symbol,
+    pub span: ByteSpan,
+}
+
+impl Ident {
+    pub fn new(symbol: Symbol, span: ByteSpan) -> Self { Self { symbol, span } }
 }
 
 #[cfg(test)]

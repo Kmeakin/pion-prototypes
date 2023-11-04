@@ -35,7 +35,7 @@ impl<'pretty> PrettyCtx<'pretty> {
         let expr = self.expr(&def.expr, Prec::MAX);
 
         self.text("def ")
-            .append(self.ident(def.name))
+            .append(self.ident(def.name.symbol))
             .append(": ")
             .append(r#type)
             .append(" =")
