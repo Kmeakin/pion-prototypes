@@ -802,7 +802,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let domain = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
 
-        let (let_defs, body_expr, body_type_expr) = self.with_scope(|this| {
+        let (let_vars, body_expr, body_type_expr) = self.with_scope(|this| {
             let mut let_vars = Vec::new();
             let value = this.local_env.next_var();
             this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
@@ -820,13 +820,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let body_expr = r#match::compile::compile_match(
                         this,
                         &mut (matrix.clone()),
-                        &[Body::new(let_defs.clone(), body_expr)],
+                        &[Body::new(let_vars.clone(), body_expr)],
                     );
 
                     let body_type = r#match::compile::compile_match(
                         this,
                         &mut matrix,
-                        &[Body::new(let_defs.clone(), body_type_expr)],
+                        &[Body::new(let_vars.clone(), body_type_expr)],
                     );
 
                     (body_expr, body_type)
@@ -870,11 +870,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
                     let expected = this.elim_env().apply_closure(next_expected, arg);
-                    let mut let_defs = Vec::new();
+                    let mut let_vars = Vec::new();
                     let value = this.local_env.next_var();
-                    this.push_param_pat(&pat, &scrut, &value, true, &mut let_defs);
+                    this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
                     let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected, idents);
-                    (let_defs, body_expr)
+                    (let_vars, body_expr)
                 });
 
                 let scrut_span = param.pat.span();
