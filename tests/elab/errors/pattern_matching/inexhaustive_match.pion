@@ -1,3 +1,5 @@
+def empty = fun(x: Bool) => match x {};
+
 def foo = fun(x: Bool) => match x {
     false => 1,
 };

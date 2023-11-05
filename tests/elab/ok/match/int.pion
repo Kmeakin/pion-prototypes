@@ -1,3 +1,7 @@
+def foo = fun(x) => match x {
+    _ => false,
+};
+
 def is-zero = fun(x) => match x {
     0 => true,
     _ => false,

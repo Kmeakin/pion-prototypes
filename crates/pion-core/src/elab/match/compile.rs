@@ -89,44 +89,44 @@ pub fn compile_match<'core>(
     // default branch as well.
     let column = matrix.column_to_split_on().unwrap();
     matrix.swap_columns(0, column);
-    for (pat, scrut) in matrix.column(0) {
-        match pat {
-            Pat::Lit(..) => {
-                let lits = matrix.column_literals(0);
+    let (_, scrut) = &matrix.row(0).elems[0];
 
-                let mut cases = SliceVec::new(ctx.bump, lits.len());
-                for lit in &lits {
-                    let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(*lit));
-                    let expr = compile_match(ctx, &mut matrix, bodies);
-                    cases.push((*lit, expr));
-                }
-
-                let default = match Lit::is_exhaustive(&lits) {
-                    true => None,
-                    false => {
-                        let mut matrix = ctx.default_matrix(matrix);
-                        let body = compile_match(ctx, &mut matrix, bodies);
-                        Some(body)
-                    }
-                };
-
-                return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
-            }
-
-            // There is only one constructor for each record type,
-            // so we only need to generate a single subtree (ie no branching needed)
-            Pat::RecordLit(_, fields) => {
-                let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
-                return compile_match(ctx, &mut matrix, bodies);
-            }
-
-            // Skip over non-constructor patterns
-            Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => continue,
-            Pat::Or(..) => todo!(),
-        }
+    let ctors = matrix.column_constructors(0);
+    if let Some(Constructor::Record(fields)) = ctors.first() {
+        let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
+        return compile_match(ctx, &mut matrix, bodies);
     }
 
-    unreachable!()
+    if ctors.is_empty() {
+        let mut matrix = ctx.default_matrix(matrix);
+        return compile_match(ctx, &mut matrix, bodies);
+    }
+
+    let lits: Vec<_> = ctors
+        .iter()
+        .map(|ctor| match ctor {
+            Constructor::Lit(lit) => *lit,
+            Constructor::Record(_) => unreachable!(),
+        })
+        .collect();
+
+    let mut cases = SliceVec::new(ctx.bump, lits.len());
+    for lit in &lits {
+        let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(*lit));
+        let expr = compile_match(ctx, &mut matrix, bodies);
+        cases.push((*lit, expr));
+    }
+
+    let default = match Lit::is_exhaustive(&lits) {
+        true => None,
+        false => {
+            let mut matrix = ctx.default_matrix(matrix);
+            let body = compile_match(ctx, &mut matrix, bodies);
+            Some(body)
+        }
+    };
+
+    return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
 }
 
 impl<'arena> PatMatrix<'arena> {
@@ -138,13 +138,8 @@ impl<'arena> PatMatrix<'arena> {
     pub fn column_to_split_on(&self) -> Option<usize> {
         assert!(!self.is_null(), "Cannot split null `PatternMatrix`");
 
-        (0..self.num_columns().unwrap()).find(|&column| {
-            self.column(column).any(|(pat, _)| match pat {
-                Pat::Lit(..) | Pat::RecordLit(..) => true,
-                Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => false,
-                Pat::Or(..) => todo!(),
-            })
-        })
+        (0..self.num_columns().unwrap())
+            .find(|&column| self.column(column).any(|(pat, _)| pat.has_constructors()))
     }
 
     pub fn swap_columns(&mut self, column1: usize, column2: usize) {

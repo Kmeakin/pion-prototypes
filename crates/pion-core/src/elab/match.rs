@@ -22,6 +22,34 @@ pub enum Constructor<'core> {
     Record(&'core [(FieldName, Pat<'core>)]),
 }
 
+impl<'core> Pat<'core> {
+    pub fn for_each_constructor(&self, on_constructor: &mut impl FnMut(Constructor<'core>)) {
+        match self {
+            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {}
+            Pat::Lit(_, lit) => on_constructor(Constructor::Lit(*lit)),
+            Pat::RecordLit(.., fields) => on_constructor(Constructor::Record(fields)),
+            Pat::Or(.., pats) => {
+                pats.iter()
+                    .for_each(|pat| pat.for_each_constructor(on_constructor));
+            }
+        }
+    }
+
+    pub fn has_constructors(&self) -> bool {
+        let mut constructor_seen = false;
+        self.for_each_constructor(&mut |_| constructor_seen = true);
+        constructor_seen
+    }
+
+    pub fn constructors(&self) -> Vec<Constructor> {
+        let mut ctors = Vec::new();
+        self.for_each_constructor(&mut |ctor| ctors.push(ctor));
+        ctors.sort_unstable();
+        ctors.dedup();
+        ctors
+    }
+}
+
 impl<'core> PartialEq for Constructor<'core> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -146,20 +174,17 @@ impl<'arena> PatMatrix<'arena> {
 
     /// Collect all the `Constructor`s in the `index`th column
     pub fn column_constructors(&self, index: usize) -> Vec<Constructor<'arena>> {
-        let mut ctors: Vec<_> = self
-            .column(index)
-            .filter_map(|(pat, _)| match pat {
-                Pat::Lit(_, lit) => Some(Constructor::Lit(*lit)),
-                Pat::RecordLit(_, fields) => Some(Constructor::Record(fields)),
-                _ => None,
-            })
-            .collect();
+        let mut ctors = Vec::new();
+        for (pat, _) in self.column(index) {
+            pat.for_each_constructor(&mut |ctor| ctors.push(ctor));
+        }
         ctors.sort_unstable();
         ctors.dedup();
         ctors
     }
 
     /// Collect all the `Lit`s in the `index`th column
+    #[cfg(FALSE)]
     pub fn column_literals(&self, index: usize) -> Vec<Lit> {
         let mut lits: Vec<_> = self
             .column(index)
@@ -227,14 +252,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         pat: &Pat<'core>,
         ctor: &Constructor,
         scrut: &Scrut<'core>,
-    ) -> Option<OwnedPatRow<'core>> {
+    ) -> Vec<OwnedPatRow<'core>> {
         match pat {
             Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => {
                 let columns = vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
-                Some(OwnedPatRow::new(columns, None))
+                vec![OwnedPatRow::new(columns, None)]
             }
             Pat::Lit(_, lit) if *ctor == Constructor::Lit(*lit) => {
-                Some(OwnedPatRow::new(vec![], None))
+                vec![OwnedPatRow::new(vec![], None)]
             }
             Pat::RecordLit(_, fields) if *ctor == Constructor::Record(fields) => {
                 let mut columns = Vec::with_capacity(fields.len());
@@ -251,25 +276,30 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let scrut = Scrut::new(scrut_expr, r#type);
                     columns.push((*pattern, scrut));
                 }
-                Some(OwnedPatRow::new(columns, None))
+                vec![OwnedPatRow::new(columns, None)]
             }
-            Pat::Lit(..) | Pat::RecordLit(..) => None,
-            Pat::Or(..) => todo!(),
+            Pat::Lit(..) | Pat::RecordLit(..) => vec![],
+            Pat::Or(.., pats) => pats
+                .iter()
+                .flat_map(|pat| self.specialize_pat(pat, ctor, scrut))
+                .collect(),
         }
     }
 
-    /// Specialise `self` with respect to the constructor `ctor`.
+    /// Specialise `row` with respect to the constructor `ctor`.
     pub fn specialize_row(
         &self,
         row: BorrowedPatRow<'core, '_>,
         ctor: &Constructor,
-    ) -> Option<OwnedPatRow<'core>> {
+    ) -> Vec<OwnedPatRow<'core>> {
         assert!(!row.elems.is_empty(), "Cannot specialize empty `PatRow`");
         let ((pat, scrut), rest) = row.elems.split_first().unwrap();
-        let mut new_row = self.specialize_pat(pat, ctor, scrut)?;
-        new_row.elems.extend_from_slice(rest);
-        new_row.guard = row.guard;
-        Some(new_row)
+        let mut new_rows = self.specialize_pat(pat, ctor, scrut);
+        for new_row in &mut new_rows {
+            new_row.elems.extend_from_slice(rest);
+            new_row.guard = row.guard;
+        }
+        new_rows
     }
 
     /// Specialise `matrix` with respect to the constructor `ctor`.  This is the
@@ -283,7 +313,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let mut rows = Vec::with_capacity(len);
         let mut indices = Vec::with_capacity(len);
         for (row, body) in matrix.iter() {
-            if let Some(row) = self.specialize_row(row.as_ref(), ctor) {
+            for row in self.specialize_row(row.as_ref(), ctor) {
                 rows.push(row);
                 indices.push(body);
             }

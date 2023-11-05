@@ -1,6 +1,23 @@
-exit status: 0
+exit status: 1
 
 stdout = """
+def foo: ?0 -> Bool = fun(x: ?0) => false;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..47 | fun(x) => match x {\n    _ => false,\n}  | ?0 -> Bool
+20..47 | match x {\n    _ => false,\n}            | Bool
+26..27 | x                                        | ?0
+39..44 | false                                    | Bool
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | x                                        | ?0
+34..35 | _                                        | ?0
+metavars:
+?0 = <unsolved>
+?1 = fun(_: #error) => Bool
+
 def is-zero: Int -> Bool =
     fun(x: Int) => match x {
         0 => true,
@@ -9,22 +26,28 @@ def is-zero: Int -> Bool =
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-14..66 | fun(x) => match x ...n    _ => false,\n} | Int -> Bool
-24..66 | match x {\n    0 =...n    _ => false,\n} | Bool
-30..31 | x                                        | ?0
-43..47 | true                                     | Bool
-58..63 | false                                    | Bool
+64..116 | fun(x) => match x ...n    _ => false,\n} | Int -> Bool
+74..116 | match x {\n    0 =...n    _ => false,\n} | Bool
+80..81 | x                                        | ?0
+93..97 | true                                     | Bool
+108..113 | false                                    | Bool
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-18..19 | x                                        | ?0
-38..39 | 0                                        | Int
-53..54 | _                                        | Int
+68..69 | x                                        | ?0
+88..89 | 0                                        | Int
+103..104 | _                                        | Int
 metavars:
 ?0 = Int
 ?1 = fun(_: #error) => Bool
 """
 
 stderr = """
+error: unable to infer pattern type
+  ┌─ tests/elab/ok/match/int.pion:1:15
+  │
+1 │ def foo = fun(x) => match x {
+  │               ^
 
+aborting due to 1 previous error
 """

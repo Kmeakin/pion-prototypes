@@ -70,7 +70,7 @@ fn is_useful<'core>(
         return true;
     }
 
-    let (pat, _) = row.elems.first().unwrap();
+    let (pat, scrut) = row.elems.first().unwrap();
     match pat {
         // Inductive case 1:
         // If the first pattern is a constructed pattern, specialise the matrix and test row and
@@ -98,7 +98,16 @@ fn is_useful<'core>(
                 }
             }
         }
-        Pat::Or(..) => todo!(),
+        Pat::Or(.., alts) => {
+            let mut flattened = alts.iter().map(|alt| {
+                let mut elems = Vec::with_capacity(row.elems.len() + 1);
+                elems.push((*alt, scrut.clone()));
+                elems.extend_from_slice(&row.elems[1..]);
+                PatRow::new(elems, row.guard)
+            });
+
+            flattened.any(|row| is_useful(ctx, matrix, row.as_ref()))
+        }
     }
 }
 
@@ -109,9 +118,6 @@ fn is_useful_ctor<'core>(
     ctor: &Constructor<'core>,
 ) -> bool {
     let matrix = ctx.specialize_matrix(matrix, ctor);
-    let row = ctx.specialize_row(row, ctor);
-    match row {
-        None => false,
-        Some(row) => is_useful(ctx, &matrix, row.as_ref()),
-    }
+    let rows = ctx.specialize_row(row, ctor);
+    rows.iter().any(|row| is_useful(ctx, &matrix, row.as_ref()))
 }
