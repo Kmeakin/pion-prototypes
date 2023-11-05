@@ -83,12 +83,12 @@ fn is_useful<'core>(
         // column of matrix and test for exhaustiveness
         Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => {
             let ctors = matrix.column_constructors(0);
-            match Constructor::is_exhaustive(&ctors) {
+            match ctors.is_exhaustive() {
                 // Inductive case 2a:
                 // If the constructors are exhaustive, specialise the matrix and test row against
                 // each constructor and recurse
                 true => ctors
-                    .into_iter()
+                    .iter()
                     .any(|ctor| is_useful_ctor(ctx, matrix, row, &ctor)),
                 // Inductive case 2b:
                 // If the constructors are not exhaustive, recurse on the defaulted matrix

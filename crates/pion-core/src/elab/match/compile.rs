@@ -92,41 +92,60 @@ pub fn compile_match<'core>(
     let (_, scrut) = &matrix.row(0).elems[0];
 
     let ctors = matrix.column_constructors(0);
-    if let Some(Constructor::Record(fields)) = ctors.first() {
-        let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
-        return compile_match(ctx, &mut matrix, bodies);
-    }
-
-    if ctors.is_empty() {
-        let mut matrix = ctx.default_matrix(matrix);
-        return compile_match(ctx, &mut matrix, bodies);
-    }
-
-    let lits: Vec<_> = ctors
-        .iter()
-        .map(|ctor| match ctor {
-            Constructor::Lit(lit) => *lit,
-            Constructor::Record(_) => unreachable!(),
-        })
-        .collect();
-
-    let mut cases = SliceVec::new(ctx.bump, lits.len());
-    for lit in &lits {
-        let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(*lit));
-        let expr = compile_match(ctx, &mut matrix, bodies);
-        cases.push((*lit, expr));
-    }
-
-    let default = match Lit::is_exhaustive(&lits) {
-        true => None,
-        false => {
+    match &ctors {
+        Constructors::Empty => {
             let mut matrix = ctx.default_matrix(matrix);
-            let body = compile_match(ctx, &mut matrix, bodies);
-            Some(body)
+            return compile_match(ctx, &mut matrix, bodies);
         }
-    };
+        Constructors::Record(fields) => {
+            let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
+            return compile_match(ctx, &mut matrix, bodies);
+        }
+        Constructors::Bools(bools) => {
+            let true_branch = match bools[1] {
+                true => {
+                    let mut matrix =
+                        ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(true)));
+                    compile_match(ctx, &mut matrix, bodies)
+                }
+                false => {
+                    let mut matrix = ctx.default_matrix(matrix);
+                    compile_match(ctx, &mut matrix, bodies)
+                }
+            };
+            let false_branch = match bools[0] {
+                true => {
+                    let mut matrix =
+                        ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(false)));
+                    compile_match(ctx, &mut matrix, bodies)
+                }
+                false => {
+                    let mut matrix = ctx.default_matrix(matrix);
+                    compile_match(ctx, &mut matrix, bodies)
+                }
+            };
+            return Expr::r#if(ctx.bump, scrut.expr, true_branch, false_branch);
+        }
+        Constructors::Ints(ints) => {
+            let mut cases = SliceVec::new(ctx.bump, ints.len());
+            for int in ints {
+                let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Int(*int)));
+                let expr = compile_match(ctx, &mut matrix, bodies);
+                cases.push((Lit::Int(*int), expr));
+            }
 
-    return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
+            let default = match ctors.is_exhaustive() {
+                true => None,
+                false => {
+                    let mut matrix = ctx.default_matrix(matrix);
+                    let body = compile_match(ctx, &mut matrix, bodies);
+                    Some(body)
+                }
+            };
+
+            return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
+        }
+    }
 }
 
 impl<'arena> PatMatrix<'arena> {

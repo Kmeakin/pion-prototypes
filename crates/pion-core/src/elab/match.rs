@@ -1,3 +1,7 @@
+use std::ops::ControlFlow;
+
+use internal_iterator::InternalIterator;
+
 use super::*;
 use crate::name::FieldName;
 
@@ -22,31 +26,125 @@ pub enum Constructor<'core> {
     Record(&'core [(FieldName, Pat<'core>)]),
 }
 
-impl<'core> Pat<'core> {
-    pub fn for_each_constructor(&self, on_constructor: &mut impl FnMut(Constructor<'core>)) {
+#[derive(Debug, Clone)]
+pub enum Constructors<'core> {
+    Empty,
+    Record(&'core [(FieldName, Pat<'core>)]),
+    Bools([bool; 2]),
+    Ints(Vec<u32>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstructorsIter<'core, 'inner> {
+    inner: &'inner Constructors<'core>,
+}
+
+impl<'core, 'inner> InternalIterator for ConstructorsIter<'core, 'inner> {
+    type Item = Constructor<'core>;
+    fn try_for_each<R, F>(self, mut f: F) -> ControlFlow<R>
+    where
+        F: FnMut(Self::Item) -> ControlFlow<R>,
+    {
+        match self.inner {
+            Constructors::Empty => {}
+            Constructors::Record(fields) => f(Constructor::Record(fields))?,
+            Constructors::Bools(bools) => {
+                if bools[0] {
+                    f(Constructor::Lit(Lit::Bool(false)))?;
+                }
+                if bools[1] {
+                    f(Constructor::Lit(Lit::Bool(true)))?;
+                }
+            }
+            Constructors::Ints(ints) => ints
+                .iter()
+                .try_for_each(|int| f(Constructor::Lit(Lit::Int(*int))))?,
+        }
+        ControlFlow::Continue(())
+    }
+}
+
+impl<'core> Constructors<'core> {
+    pub fn is_exhaustive(&self) -> bool {
         match self {
-            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {}
+            Constructors::Empty => false,
+            Constructors::Record(_) => true,
+            Constructors::Bools(bools) => bools[0] & bools[1],
+            Constructors::Ints(ints) => ints.len() as u128 >= u32::MAX as u128,
+        }
+    }
+
+    pub fn deduped(mut self) -> Self {
+        if let Constructors::Ints(ref mut ints) = self {
+            ints.sort_unstable();
+            ints.dedup();
+        }
+        self
+    }
+
+    pub fn iter(&self) -> ConstructorsIter<'core, '_> { ConstructorsIter { inner: self } }
+}
+
+impl<'core> Pat<'core> {
+    pub fn for_each_constructor(
+        &self,
+        on_constructor: &mut impl FnMut(Constructor<'core>) -> ControlFlow<()>,
+    ) -> ControlFlow<()> {
+        match self {
+            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => ControlFlow::Continue(()),
             Pat::Lit(_, lit) => on_constructor(Constructor::Lit(*lit)),
             Pat::RecordLit(.., fields) => on_constructor(Constructor::Record(fields)),
-            Pat::Or(.., pats) => {
-                pats.iter()
-                    .for_each(|pat| pat.for_each_constructor(on_constructor));
-            }
+            Pat::Or(.., pats) => pats
+                .iter()
+                .try_for_each(|pat| pat.for_each_constructor(on_constructor)),
         }
     }
 
     pub fn has_constructors(&self) -> bool {
         let mut constructor_seen = false;
-        self.for_each_constructor(&mut |_| constructor_seen = true);
+        self.for_each_constructor(&mut |_| {
+            constructor_seen = true;
+            ControlFlow::Break(())
+        });
         constructor_seen
     }
 
-    pub fn constructors(&self) -> Vec<Constructor> {
-        let mut ctors = Vec::new();
-        self.for_each_constructor(&mut |ctor| ctors.push(ctor));
-        ctors.sort_unstable();
-        ctors.dedup();
-        ctors
+    pub fn constructors(&self) -> Constructors<'core> {
+        let mut ctors = Constructors::Empty;
+        self.collect_constructors(&mut ctors);
+        ctors.deduped()
+    }
+
+    pub fn collect_constructors(&self, ctors: &mut Constructors<'core>) -> ControlFlow<()> {
+        self.for_each_constructor(&mut |ctor| {
+            match ctor {
+                Constructor::Lit(Lit::Bool(b)) => match ctors {
+                    Constructors::Empty => *ctors = Constructors::Bools([!b, b]),
+                    Constructors::Bools(ref mut bools) => {
+                        bools[usize::from(b)] = true;
+                        if bools[0] & bools[1] {
+                            return ControlFlow::Break(());
+                        }
+                    }
+                    Constructors::Record(_) | Constructors::Ints(_) => unreachable!(),
+                },
+                Constructor::Lit(Lit::Int(x)) => match ctors {
+                    Constructors::Empty => *ctors = Constructors::Ints(vec![x]),
+                    Constructors::Ints(ref mut ints) => ints.push(x),
+                    Constructors::Record(_) | Constructors::Bools(_) => unreachable!(),
+                },
+                Constructor::Record(fields) => {
+                    match ctors {
+                        Constructors::Empty => *ctors = Constructors::Record(fields),
+                        Constructors::Bools(..)
+                        | Constructors::Ints(..)
+                        | Constructors::Record(..) => unreachable!(),
+                    }
+                    return ControlFlow::Break(());
+                }
+            }
+            ControlFlow::Continue(())
+        })
     }
 }
 
@@ -173,29 +271,11 @@ impl<'arena> PatMatrix<'arena> {
     pub fn row_index(&self, index: usize) -> usize { self.indices[index] }
 
     /// Collect all the `Constructor`s in the `index`th column
-    pub fn column_constructors(&self, index: usize) -> Vec<Constructor<'arena>> {
-        let mut ctors = Vec::new();
-        for (pat, _) in self.column(index) {
-            pat.for_each_constructor(&mut |ctor| ctors.push(ctor));
-        }
-        ctors.sort_unstable();
-        ctors.dedup();
-        ctors
-    }
-
-    /// Collect all the `Lit`s in the `index`th column
-    #[cfg(FALSE)]
-    pub fn column_literals(&self, index: usize) -> Vec<Lit> {
-        let mut lits: Vec<_> = self
-            .column(index)
-            .filter_map(|(pat, _)| match pat {
-                Pat::Lit(_, lit) => Some(*lit),
-                _ => None,
-            })
-            .collect();
-        lits.sort_unstable();
-        lits.dedup();
-        lits
+    pub fn column_constructors(&self, index: usize) -> Constructors<'arena> {
+        let mut ctors = Constructors::Empty;
+        self.column(index)
+            .try_for_each(|(pat, _)| pat.collect_constructors(&mut ctors));
+        ctors.deduped()
     }
 
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&OwnedPatRow<'arena>, usize)> {

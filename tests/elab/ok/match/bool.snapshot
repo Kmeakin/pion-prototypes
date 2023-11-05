@@ -49,10 +49,10 @@ metavars:
 
 def apply: Bool -> (Bool -> Int) -> Int =
     fun(x: Bool, f: Bool -> Int) => match x {
-        true => 1,
-        _ =>
+        false =>
             let z: Bool = x;
             f(z),
+        true => 1,
     };
 types of expressions:
 span   | source                                   | type

@@ -58,13 +58,13 @@ metavars:
 
 def bar: Bool -> (Bool -> Bool) -> Int -> Int =
     fun(x: Bool, f: Bool -> Bool, y: Int) => match x {
-        true => 0,
-        _ =>
+        false =>
             let z: Bool = x;
             match f(z) {
                 false => 3,
                 true => y,
             },
+        true => 0,
     };
 types of expressions:
 span   | source                                   | type
