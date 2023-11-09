@@ -88,7 +88,7 @@ fn is_useful<'core>(
                 // If the constructors are exhaustive, specialise the matrix and test row against
                 // each constructor and recurse
                 true => ctors
-                    .iter()
+                    .into_internal_iter()
                     .any(|ctor| is_useful_ctor(ctx, matrix, row, &ctor)),
                 // Inductive case 2b:
                 // If the constructors are not exhaustive, recurse on the defaulted matrix

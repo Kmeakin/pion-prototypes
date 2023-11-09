@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use internal_iterator::InternalIterator;
+use internal_iterator::{InternalIterator, IntoInternalIterator};
 
 use super::*;
 use crate::name::FieldName;
@@ -81,8 +81,12 @@ impl<'core> Constructors<'core> {
         }
         self
     }
+}
 
-    pub fn iter(&self) -> ConstructorsIter<'core, '_> { ConstructorsIter { inner: self } }
+impl<'inner, 'core> IntoInternalIterator for &'inner Constructors<'core> {
+    type Item = Constructor<'core>;
+    type IntoIter = ConstructorsIter<'core, 'inner>;
+    fn into_internal_iter(self) -> Self::IntoIter { ConstructorsIter { inner: self } }
 }
 
 impl<'core> Pat<'core> {
