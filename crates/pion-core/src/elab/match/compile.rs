@@ -26,126 +26,129 @@ use super::*;
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
-pub fn compile_match<'core>(
-    ctx: &mut ElabCtx<'_, 'core>,
-    matrix: &mut PatMatrix<'core>,
-    bodies: &[Body<'core>],
-) -> Expr<'core> {
-    // Base case 1:
-    // If the matrix is empty, matching always fails.
-    if matrix.is_null() {
-        return Expr::Error;
-    }
+impl<'hir, 'core> ElabCtx<'hir, 'core> {
+    pub fn compile_match(
+        &mut self,
+        matrix: &mut PatMatrix<'core>,
+        bodies: &[Body<'core>],
+    ) -> Expr<'core> {
+        // Base case 1:
+        // If the matrix is empty, matching always fails.
+        if matrix.is_null() {
+            return Expr::Error;
+        }
 
-    // Base case 2:
-    // If the first row is all wildcards, matching always suceeds.
-    // Bind all the variables in scope with `let`, and either
-    // a) if there is no guard, continue to the RHS
-    // b) if there is a guard, branch on the guard:
-    //    - if the guard is true, continue to the RHS
-    //    - if the guard is false, recurse on the remaining rows
-    let row = matrix.row(0);
-    let mut shift_amount = EnvLen::new();
-    if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
-        let bump = ctx.bump;
-        let index = matrix.row_index(0);
-        let Body {
-            expr: body,
-            let_vars,
-        } = &bodies[index];
+        // Base case 2:
+        // If the first row is all wildcards, matching always suceeds.
+        // Bind all the variables in scope with `let`, and either
+        // a) if there is no guard, continue to the RHS
+        // b) if there is a guard, branch on the guard:
+        //    - if the guard is true, continue to the RHS
+        //    - if the guard is false, recurse on the remaining rows
+        let row = matrix.row(0);
+        let mut shift_amount = EnvLen::new();
+        if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
+            let bump = self.bump;
+            let index = matrix.row_index(0);
+            let Body {
+                expr: body,
+                let_vars,
+            } = &bodies[index];
 
-        let initial_len = ctx.local_env.len();
-        let let_vars = let_vars.iter().map(|(name, scrut)| {
-            let r#type = ctx.quote_env().quote(&scrut.r#type);
-            let init = scrut.expr.shift(bump, shift_amount);
-            let value = ctx.eval_env().eval(&init);
-            ctx.local_env.push_def(*name, scrut.r#type.clone(), value);
-            shift_amount.push();
-            (*name, (r#type, init, Expr::Error))
-        });
-        let let_vars = bump.alloc_slice_fill_iter(let_vars);
+            let initial_len = self.local_env.len();
+            let let_vars = let_vars.iter().map(|(name, scrut)| {
+                let r#type = self.quote_env().quote(&scrut.r#type);
+                let init = scrut.expr.shift(bump, shift_amount);
+                let value = self.eval_env().eval(&init);
+                self.local_env.push_def(*name, scrut.r#type.clone(), value);
+                shift_amount.push();
+                (*name, (r#type, init, Expr::Error))
+            });
+            let let_vars = bump.alloc_slice_fill_iter(let_vars);
 
-        let body = match row.guard {
-            None => *body,
-            Some(guard) => {
-                matrix.rows.remove(0);
-                matrix.indices.remove(0);
-                let r#else = compile_match(ctx, matrix, bodies);
-                let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
-                Expr::r#if(ctx.bump, guard, *body, r#else)
+            let body = match row.guard {
+                None => *body,
+                Some(guard) => {
+                    matrix.rows.remove(0);
+                    matrix.indices.remove(0);
+                    let r#else = self.compile_match(matrix, bodies);
+                    let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
+                    Expr::r#if(self.bump, guard, *body, r#else)
+                }
+            };
+
+            self.local_env.truncate(initial_len);
+
+            return let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
+                tuple.2 = body;
+                Expr::Let(*name, tuple)
+            });
+        }
+
+        // Inductive case:
+        // The matrix must have at least one column with at least one non-wildcard
+        // pattern. Select such a column, and for each constructor in the column,
+        // generate a decision subtree. If the column is non-exhaustive, generate a
+        // default branch as well.
+        let column = matrix.column_to_split_on().unwrap();
+        matrix.swap_columns(0, column);
+        let (_, scrut) = &matrix.row(0).elems[0];
+
+        let ctors = matrix.column_constructors(0);
+        match &ctors {
+            Constructors::Empty => {
+                let mut matrix = default_matrix(matrix);
+                return self.compile_match(&mut matrix, bodies);
             }
-        };
-
-        ctx.local_env.truncate(initial_len);
-
-        return let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
-            tuple.2 = body;
-            Expr::Let(*name, tuple)
-        });
-    }
-
-    // Inductive case:
-    // The matrix must have at least one column with at least one non-wildcard
-    // pattern. Select such a column, and for each constructor in the column,
-    // generate a decision subtree. If the column is non-exhaustive, generate a
-    // default branch as well.
-    let column = matrix.column_to_split_on().unwrap();
-    matrix.swap_columns(0, column);
-    let (_, scrut) = &matrix.row(0).elems[0];
-
-    let ctors = matrix.column_constructors(0);
-    match &ctors {
-        Constructors::Empty => {
-            let mut matrix = default_matrix(matrix);
-            return compile_match(ctx, &mut matrix, bodies);
-        }
-        Constructors::Record(fields) => {
-            let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Record(fields));
-            return compile_match(ctx, &mut matrix, bodies);
-        }
-        Constructors::Bools(bools) => {
-            let true_branch = match bools[1] {
-                true => {
-                    let mut matrix =
-                        ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(true)));
-                    compile_match(ctx, &mut matrix, bodies)
-                }
-                false => {
-                    let mut matrix = default_matrix(matrix);
-                    compile_match(ctx, &mut matrix, bodies)
-                }
-            };
-            let false_branch = match bools[0] {
-                true => {
-                    let mut matrix =
-                        ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(false)));
-                    compile_match(ctx, &mut matrix, bodies)
-                }
-                false => {
-                    let mut matrix = default_matrix(matrix);
-                    compile_match(ctx, &mut matrix, bodies)
-                }
-            };
-            return Expr::r#if(ctx.bump, scrut.expr, true_branch, false_branch);
-        }
-        Constructors::Ints(ints) => {
-            let mut cases = SliceVec::new(ctx.bump, ints.len());
-            for int in ints {
-                let mut matrix = ctx.specialize_matrix(matrix, &Constructor::Lit(Lit::Int(*int)));
-                let expr = compile_match(ctx, &mut matrix, bodies);
-                cases.push((Lit::Int(*int), expr));
+            Constructors::Record(fields) => {
+                let mut matrix = self.specialize_matrix(matrix, &Constructor::Record(fields));
+                return self.compile_match(&mut matrix, bodies);
             }
-
-            let default = match ctors.is_exhaustive() {
-                true => None,
-                false => {
-                    let mut matrix = default_matrix(matrix);
-                    let body = compile_match(ctx, &mut matrix, bodies);
-                    Some(body)
+            Constructors::Bools(bools) => {
+                let true_branch = match bools[1] {
+                    true => {
+                        let mut matrix =
+                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(true)));
+                        self.compile_match(&mut matrix, bodies)
+                    }
+                    false => {
+                        let mut matrix = default_matrix(matrix);
+                        self.compile_match(&mut matrix, bodies)
+                    }
+                };
+                let false_branch = match bools[0] {
+                    true => {
+                        let mut matrix =
+                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(false)));
+                        self.compile_match(&mut matrix, bodies)
+                    }
+                    false => {
+                        let mut matrix = default_matrix(matrix);
+                        self.compile_match(&mut matrix, bodies)
+                    }
+                };
+                return Expr::r#if(self.bump, scrut.expr, true_branch, false_branch);
+            }
+            Constructors::Ints(ints) => {
+                let mut cases = SliceVec::new(self.bump, ints.len());
+                for int in ints {
+                    let mut matrix =
+                        self.specialize_matrix(matrix, &Constructor::Lit(Lit::Int(*int)));
+                    let expr = self.compile_match(&mut matrix, bodies);
+                    cases.push((Lit::Int(*int), expr));
                 }
-            };
 
-            return Expr::r#match(ctx.bump, scrut.expr, cases.into(), default);
+                let default = match ctors.is_exhaustive() {
+                    true => None,
+                    false => {
+                        let mut matrix = default_matrix(matrix);
+                        let body = self.compile_match(&mut matrix, bodies);
+                        Some(body)
+                    }
+                };
+
+                return Expr::r#match(self.bump, scrut.expr, cases.into(), default);
+            }
         }
     }
 }
