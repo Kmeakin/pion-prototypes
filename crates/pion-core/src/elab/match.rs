@@ -405,6 +405,28 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         PatMatrix { rows, indices }
     }
 
+    pub fn default_pat(&self, pat: &Pat<'core>) -> Vec<OwnedPatRow<'core>> {
+        match pat {
+            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
+                vec![OwnedPatRow::new(vec![], None)]
+            }
+            Pat::Lit(..) | Pat::RecordLit(..) => vec![],
+            Pat::Or(.., alts) => alts.iter().flat_map(|pat| self.default_pat(pat)).collect(),
+        }
+    }
+
+    pub fn default_row(&self, row: BorrowedPatRow<'core, '_>) -> Vec<OwnedPatRow<'core>> {
+        assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
+
+        let ((pat, _), rest) = row.elems.split_first().unwrap();
+        let mut new_rows = self.default_pat(pat);
+        for new_row in &mut new_rows {
+            new_row.elems.extend_from_slice(rest);
+            new_row.guard = row.guard;
+        }
+        new_rows
+    }
+
     /// Discard the first column, and all rows starting with a constructed
     /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
     /// matching to good decision trees*.
@@ -418,13 +440,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let mut rows = Vec::with_capacity(len);
         let mut indices = Vec::with_capacity(len);
         for (row, body) in matrix.iter() {
-            let (pat, _) = row.elems.first().unwrap();
-            if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
-                rows.push(PatRow::new(row.elems[1..].to_vec(), row.guard));
+            for row in self.default_row(row.as_ref()) {
+                rows.push(row);
                 indices.push(body);
             }
         }
-
         PatMatrix { rows, indices }
     }
 }
