@@ -19,6 +19,7 @@
 
 use pion_utils::slice_vec::SliceVec;
 
+use super::decompose::*;
 use super::*;
 
 /// Compilation of pattern matrices to decision trees.
@@ -94,7 +95,7 @@ pub fn compile_match<'core>(
     let ctors = matrix.column_constructors(0);
     match &ctors {
         Constructors::Empty => {
-            let mut matrix = ctx.default_matrix(matrix);
+            let mut matrix = default_matrix(matrix);
             return compile_match(ctx, &mut matrix, bodies);
         }
         Constructors::Record(fields) => {
@@ -109,7 +110,7 @@ pub fn compile_match<'core>(
                     compile_match(ctx, &mut matrix, bodies)
                 }
                 false => {
-                    let mut matrix = ctx.default_matrix(matrix);
+                    let mut matrix = default_matrix(matrix);
                     compile_match(ctx, &mut matrix, bodies)
                 }
             };
@@ -120,7 +121,7 @@ pub fn compile_match<'core>(
                     compile_match(ctx, &mut matrix, bodies)
                 }
                 false => {
-                    let mut matrix = ctx.default_matrix(matrix);
+                    let mut matrix = default_matrix(matrix);
                     compile_match(ctx, &mut matrix, bodies)
                 }
             };
@@ -137,7 +138,7 @@ pub fn compile_match<'core>(
             let default = match ctors.is_exhaustive() {
                 true => None,
                 false => {
-                    let mut matrix = ctx.default_matrix(matrix);
+                    let mut matrix = default_matrix(matrix);
                     let body = compile_match(ctx, &mut matrix, bodies);
                     Some(body)
                 }

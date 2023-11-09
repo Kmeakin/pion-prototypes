@@ -7,6 +7,7 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
+use super::decompose::default_matrix;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 
@@ -93,7 +94,7 @@ fn is_useful<'core>(
                 // Inductive case 2b:
                 // If the constructors are not exhaustive, recurse on the defaulted matrix
                 false => {
-                    let matrix = ctx.default_matrix(matrix);
+                    let matrix = default_matrix(matrix);
                     is_useful(ctx, &matrix, PatRow::new(&row.elems[1..], row.guard))
                 }
             }
