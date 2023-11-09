@@ -17,8 +17,6 @@
 
 // TODO: Use join points to prevent code size explosion. See [Compiling without continuations](https://www.microsoft.com/en-us/research/publication/compiling-without-continuations)
 
-use pion_utils::slice_vec::SliceVec;
-
 use super::constructors::*;
 use super::decompose::*;
 use super::*;
@@ -105,10 +103,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Bools(bools) => {
-                let true_branch = match bools[1] {
+                let mut do_branch = |b| match bools[usize::from(b)] {
                     true => {
                         let mut matrix =
-                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(true)));
+                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(b)));
                         self.compile_match(&mut matrix, bodies)
                     }
                     false => {
@@ -116,27 +114,21 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         self.compile_match(&mut matrix, bodies)
                     }
                 };
-                let false_branch = match bools[0] {
-                    true => {
-                        let mut matrix =
-                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(false)));
-                        self.compile_match(&mut matrix, bodies)
-                    }
-                    false => {
-                        let mut matrix = default_matrix(matrix);
-                        self.compile_match(&mut matrix, bodies)
-                    }
-                };
+
+                let true_branch = do_branch(true);
+                let false_branch = do_branch(false);
                 return Expr::r#if(self.bump, scrut.expr, true_branch, false_branch);
             }
+
             Constructors::Ints(ints) => {
-                let mut cases = SliceVec::new(self.bump, ints.len());
-                for int in ints {
+                let bump = self.bump;
+                let cases = ints.iter().map(|int| {
                     let mut matrix =
                         self.specialize_matrix(matrix, &Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(&mut matrix, bodies);
-                    cases.push((Lit::Int(*int), expr));
-                }
+                    (Lit::Int(*int), expr)
+                });
+                let cases = bump.alloc_slice_fill_iter(cases);
 
                 let default = match ctors.is_exhaustive() {
                     true => None,
@@ -146,8 +138,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         Some(body)
                     }
                 };
-
-                return Expr::r#match(self.bump, scrut.expr, cases.into(), default);
+                return Expr::r#match(self.bump, scrut.expr, cases, default);
             }
         }
     }
