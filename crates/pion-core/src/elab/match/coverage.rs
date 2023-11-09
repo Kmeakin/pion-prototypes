@@ -7,6 +7,7 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
+use super::constructors::Constructor;
 use super::decompose::default_matrix;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;

@@ -1,3 +1,4 @@
+use super::constructors::Constructor;
 use super::*;
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
