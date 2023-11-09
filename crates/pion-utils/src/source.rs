@@ -133,7 +133,7 @@ impl SourceMap {
     }
 
     pub fn get(&self, file_id: FileId) -> Option<&SourceFile> {
-        self.file_id_to_files.get(usize::try_from(file_id).ok()?)
+        self.file_id_to_files.get(usize::from(file_id))
     }
 
     pub fn try_get(&self, file_id: FileId) -> Result<&SourceFile, codespan_files::Error> {

@@ -70,7 +70,7 @@ impl<'core> Constructors<'core> {
             Constructors::Empty => false,
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools[0] & bools[1],
-            Constructors::Ints(ints) => ints.len() as u128 >= u32::MAX as u128,
+            Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
         }
     }
 
