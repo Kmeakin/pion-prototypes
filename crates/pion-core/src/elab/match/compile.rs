@@ -99,14 +99,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Record(fields) => {
-                let mut matrix = self.specialize_matrix(matrix, &Constructor::Record(fields));
+                let mut matrix = self.specialize_matrix(matrix, Constructor::Record(fields));
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Bools(bools) => {
                 let mut do_branch = |b| match bools[usize::from(b)] {
                     true => {
                         let mut matrix =
-                            self.specialize_matrix(matrix, &Constructor::Lit(Lit::Bool(b)));
+                            self.specialize_matrix(matrix, Constructor::Lit(Lit::Bool(b)));
                         self.compile_match(&mut matrix, bodies)
                     }
                     false => {
@@ -124,7 +124,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let bump = self.bump;
                 let cases = ints.iter().map(|int| {
                     let mut matrix =
-                        self.specialize_matrix(matrix, &Constructor::Lit(Lit::Int(*int)));
+                        self.specialize_matrix(matrix, Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(&mut matrix, bodies);
                     (Lit::Int(*int), expr)
                 });

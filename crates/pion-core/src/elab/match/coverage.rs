@@ -47,7 +47,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     /// A row of patterns, *q*, is useful relative to a matrix *m* iff there is
     /// a value matched by `q` and not matched by *m*. This is the `U`
     /// function in *Warnings for pattern matching*
-    fn is_useful(&mut self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
+    fn is_useful(&self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
         if let Some(n) = matrix.num_columns() {
             debug_assert_eq!(
                 n,
@@ -74,9 +74,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             // Inductive case 1:
             // If the first pattern is a constructed pattern, specialise the matrix and test row and
             // recurse
-            Pat::Lit(_, lit) => self.is_useful_ctor(matrix, row, &Constructor::Lit(*lit)),
+            Pat::Lit(_, lit) => self.is_useful_ctor(matrix, row, Constructor::Lit(*lit)),
             Pat::RecordLit(_, fields) => {
-                self.is_useful_ctor(matrix, row, &Constructor::Record(fields))
+                self.is_useful_ctor(matrix, row, Constructor::Record(fields))
             }
 
             // Inductive case 2:
@@ -90,7 +90,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     // against each constructor and recurse
                     true => ctors
                         .into_internal_iter()
-                        .any(|ctor| self.is_useful_ctor(matrix, row, &ctor)),
+                        .any(|ctor| self.is_useful_ctor(matrix, row, ctor)),
                     // Inductive case 2b:
                     // If the constructors are not exhaustive, recurse on the defaulted matrix
                     false => {
@@ -113,13 +113,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 
     fn is_useful_ctor(
-        &mut self,
+        &self,
         matrix: &PatMatrix<'core>,
         row: BorrowedPatRow<'core, '_>,
-        ctor: &Constructor<'core>,
+        ctor: Constructor<'core>,
     ) -> bool {
         let matrix = self.specialize_matrix(matrix, ctor);
-        let rows = self.specialize_row(row, ctor);
-        rows.iter().any(|row| self.is_useful(&matrix, row.as_ref()))
+        self.specialize_row(row, ctor)
+            .any(|row| self.is_useful(&matrix, row.as_ref()))
     }
 }
