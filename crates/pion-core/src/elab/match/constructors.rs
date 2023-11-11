@@ -77,26 +77,26 @@ pub struct ConstructorsIter<'core, 'inner> {
 
 impl<'core, 'inner> InternalIterator for ConstructorsIter<'core, 'inner> {
     type Item = Constructor<'core>;
-    fn try_for_each<R, F>(self, mut f: F) -> ControlFlow<R>
+    fn try_for_each<R, F>(self, mut on_ctor: F) -> ControlFlow<R>
     where
         F: FnMut(Self::Item) -> ControlFlow<R>,
     {
         match self.inner {
-            Constructors::Empty => {}
-            Constructors::Record(fields) => f(Constructor::Record(fields))?,
+            Constructors::Empty => ControlFlow::Continue(()),
+            Constructors::Record(fields) => on_ctor(Constructor::Record(fields)),
             Constructors::Bools(bools) => {
                 if bools[0] {
-                    f(Constructor::Lit(Lit::Bool(false)))?;
+                    on_ctor(Constructor::Lit(Lit::Bool(false)))?;
                 }
                 if bools[1] {
-                    f(Constructor::Lit(Lit::Bool(true)))?;
+                    on_ctor(Constructor::Lit(Lit::Bool(true)))?;
                 }
+                ControlFlow::Continue(())
             }
             Constructors::Ints(ints) => ints
                 .iter()
-                .try_for_each(|int| f(Constructor::Lit(Lit::Int(*int))))?,
+                .try_for_each(|int| on_ctor(Constructor::Lit(Lit::Int(*int)))),
         }
-        ControlFlow::Continue(())
     }
 }
 
@@ -117,19 +117,14 @@ impl<'core> InternalIterator for PatConstructors<'core> {
     {
         fn recur<'core, R>(
             pat: Pat<'core>,
-            f: &mut impl FnMut(Constructor<'core>) -> ControlFlow<R>,
+            on_ctor: &mut impl FnMut(Constructor<'core>) -> ControlFlow<R>,
         ) -> ControlFlow<R> {
             match pat {
-                Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {}
-                Pat::Lit(_, lit) => f(Constructor::Lit(lit))?,
-                Pat::RecordLit(.., fields) => f(Constructor::Record(fields))?,
-                Pat::Or(.., pats) => {
-                    for pat in pats {
-                        recur(*pat, f)?;
-                    }
-                }
+                Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => ControlFlow::Continue(()),
+                Pat::Lit(_, lit) => on_ctor(Constructor::Lit(lit)),
+                Pat::RecordLit(.., fields) => on_ctor(Constructor::Record(fields)),
+                Pat::Or(.., pats) => pats.iter().try_for_each(|pat| recur(*pat, on_ctor)),
             }
-            ControlFlow::Continue(())
         }
 
         recur(self.pat, &mut f)
@@ -137,7 +132,7 @@ impl<'core> InternalIterator for PatConstructors<'core> {
 }
 
 impl<'core> Pat<'core> {
-    pub fn has_constructors(&self) -> bool { self.constructors().any(|_| true) }
+    pub fn has_constructors(&self) -> bool { self.constructors().next().is_some() }
 }
 
 impl<'core> PatMatrix<'core> {
@@ -147,34 +142,41 @@ impl<'core> PatMatrix<'core> {
         self.column(index)
             .into_internal()
             .flat_map(|(pat, _)| pat.constructors())
-            .try_for_each(|ctor| {
-                match ctor {
-                    Constructor::Lit(Lit::Bool(b)) => match ctors {
-                        Constructors::Empty => ctors = Constructors::Bools([!b, b]),
-                        Constructors::Bools(ref mut bools) => {
-                            bools[usize::from(b)] = true;
-                            if bools[0] & bools[1] {
-                                return ControlFlow::Break(());
-                            }
-                        }
-                        Constructors::Record(_) | Constructors::Ints(_) => unreachable!(),
-                    },
-                    Constructor::Lit(Lit::Int(x)) => match ctors {
-                        Constructors::Empty => ctors = Constructors::Ints(vec![x]),
-                        Constructors::Ints(ref mut ints) => ints.push(x),
-                        Constructors::Record(_) | Constructors::Bools(_) => unreachable!(),
-                    },
-                    Constructor::Record(fields) => {
-                        match ctors {
-                            Constructors::Empty => ctors = Constructors::Record(fields),
-                            Constructors::Bools(..)
-                            | Constructors::Ints(..)
-                            | Constructors::Record(..) => unreachable!(),
-                        }
-                        return ControlFlow::Break(());
+            .try_for_each(|ctor| match ctor {
+                Constructor::Lit(Lit::Bool(b)) => match ctors {
+                    Constructors::Empty => {
+                        ctors = Constructors::Bools([!b, b]);
+                        ControlFlow::Continue(())
                     }
-                }
-                ControlFlow::Continue(())
+                    Constructors::Bools(ref mut bools) => {
+                        bools[usize::from(b)] = true;
+                        if bools[0] & bools[1] {
+                            return ControlFlow::Break(());
+                        }
+                        ControlFlow::Continue(())
+                    }
+                    Constructors::Record(_) | Constructors::Ints(_) => unreachable!(),
+                },
+                Constructor::Lit(Lit::Int(x)) => match ctors {
+                    Constructors::Empty => {
+                        ctors = Constructors::Ints(vec![x]);
+                        ControlFlow::Continue(())
+                    }
+                    Constructors::Ints(ref mut ints) => {
+                        ints.push(x);
+                        ControlFlow::Continue(())
+                    }
+                    Constructors::Record(_) | Constructors::Bools(_) => unreachable!(),
+                },
+                Constructor::Record(fields) => match ctors {
+                    Constructors::Empty => {
+                        ctors = Constructors::Record(fields);
+                        ControlFlow::Break(())
+                    }
+                    Constructors::Bools(..) | Constructors::Ints(..) | Constructors::Record(..) => {
+                        unreachable!()
+                    }
+                },
             });
         ctors.deduped()
     }
