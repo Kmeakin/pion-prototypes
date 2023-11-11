@@ -206,10 +206,9 @@ impl ElabDiagnostic {
                         span,
                         name: BinderName::Underscore,
                     } => (span, "implicit argument".into()),
-                    MetaSource::ImplicitArg {
-                        span,
-                        name: BinderName::User(name),
-                    } => (span, format!("implicit argument `{name}`")),
+                    MetaSource::ImplicitArg { span, name } => {
+                        (span, format!("implicit argument `{name}`"))
+                    }
                     MetaSource::PatType { span } => (span, "pattern type".into()),
                     MetaSource::MatchType { span } => (span, "type of match expression".into()),
                 };

@@ -462,8 +462,9 @@ pub fn elab_def<'hir, 'core>(
             (expr, r#type)
         }
     };
-    let expr = ctx.zonk_env(bump).zonk(&expr);
-    let r#type = ctx.zonk_env(bump).zonk(&r#type);
+    let mut zonk_env = ctx.zonk_env(bump);
+    let expr = zonk_env.zonk(&expr);
+    let r#type = zonk_env.zonk(&r#type);
 
     let def = Def {
         name: def.name,

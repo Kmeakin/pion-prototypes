@@ -545,11 +545,11 @@ mod size_tests {
 
     #[test]
     fn value_size() {
-        assert_eq!(std::mem::size_of::<Value>(), 40);
+        assert_eq!(std::mem::size_of::<Value>(), 48);
     }
 
     #[test]
     fn value_field_size() {
-        assert_eq!(std::mem::size_of::<(FieldName, Value)>(), 48);
+        assert_eq!(std::mem::size_of::<(FieldName, Value)>(), 56);
     }
 }

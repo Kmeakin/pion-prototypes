@@ -8,18 +8,15 @@ use pion_utils::symbol::Symbol;
 /// - `Expr::FunLit`
 /// - `Expr::Match`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+// TODO: shrink
 pub enum BinderName {
+    /// An underscore pattern was used
     Underscore,
+    /// An identifier pattern was used
     User(Symbol),
-}
-impl BinderName {
-    #[must_use]
-    pub fn or(self, other: Self) -> Self {
-        match (self, other) {
-            (Self::User(symbol), _) | (_, Self::User(symbol)) => Self::User(symbol),
-            (Self::Underscore, Self::Underscore) => Self::Underscore,
-        }
-    }
+    /// An underscore pattern was used, but the variable it bound was refered to
+    /// in the body, so a fresh variable name needs to be generated
+    Gensym(u32),
 }
 
 impl fmt::Display for BinderName {
@@ -27,6 +24,7 @@ impl fmt::Display for BinderName {
         match self {
             Self::Underscore => write!(f, "_"),
             Self::User(symbol) => write!(f, "{symbol}"),
+            Self::Gensym(n) => write!(f, "g#{n}"),
         }
     }
 }
@@ -35,6 +33,7 @@ impl From<LocalName> for BinderName {
     fn from(local_name: LocalName) -> Self {
         match local_name {
             LocalName::User(symbol) => Self::User(symbol),
+            LocalName::Gensym(n) => Self::Gensym(n),
         }
     }
 }
@@ -49,14 +48,17 @@ impl From<FieldName> for BinderName {
 
 /// Names for local variables *uses* - ie `Expr::Local`
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+// TODO: shrink
 pub enum LocalName {
     User(Symbol),
+    Gensym(u32),
 }
 
 impl fmt::Display for LocalName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::User(symbol) => write!(f, "{symbol}"),
+            Self::Gensym(n) => write!(f, "g#{n}"),
         }
     }
 }

@@ -281,6 +281,7 @@ impl<'pretty> PrettyCtx<'pretty> {
     pub fn local_name(&'pretty self, name: LocalName) -> DocBuilder<'pretty> {
         match name {
             LocalName::User(symbol) => self.ident(symbol),
+            LocalName::Gensym(n) => self.text(format!("g#{n}")),
         }
     }
 
@@ -288,6 +289,7 @@ impl<'pretty> PrettyCtx<'pretty> {
         match name {
             BinderName::Underscore => self.text("_"),
             BinderName::User(symbol) => self.ident(symbol),
+            BinderName::Gensym(n) => self.text(format!("g#{n}")),
         }
     }
 
