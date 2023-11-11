@@ -72,7 +72,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let (pat, scrut) = row.elems.first().unwrap();
         match pat {
             // Inductive case 1:
-            // If the first pattern is a constructed pattern, specialise the matrix and test row and
+            // If the first pattern is a constructed pattern, specialize the matrix and test row and
             // recurse
             Pat::Lit(_, lit) => self.is_useful_ctor(matrix, row, Constructor::Lit(*lit)),
             Pat::RecordLit(_, fields) => {
@@ -86,7 +86,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let ctors = matrix.column_constructors(0);
                 match ctors.is_exhaustive() {
                     // Inductive case 2a:
-                    // If the constructors are exhaustive, specialise the matrix and test row
+                    // If the constructors are exhaustive, specialize the matrix and test row
                     // against each constructor and recurse
                     true => ctors
                         .into_internal_iter()

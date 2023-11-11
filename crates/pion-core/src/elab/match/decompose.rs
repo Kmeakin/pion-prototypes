@@ -17,7 +17,7 @@ pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    /// Specialise `pat` with respect to the constructor `ctor`.
+    /// Specialize `pat` with respect to the constructor `ctor`.
     fn specialize_pat<'ctx, 'scrut>(
         &'ctx self,
         pat: Pat<'core>,
@@ -85,7 +85,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
-    /// Specialise `row` with respect to the constructor `ctor`.
+    /// Specialize `row` with respect to the constructor `ctor`.
     pub fn specialize_row<'ctx, 'row>(
         &'ctx self,
         row: BorrowedPatRow<'core, 'row>,
@@ -118,7 +118,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
-    /// Specialise `matrix` with respect to the constructor `ctor`.  This is the
+    /// Specialize `matrix` with respect to the constructor `ctor`.  This is the
     /// `S` function in *Compiling pattern matching to good decision trees*.
     pub fn specialize_matrix(
         &self,

@@ -37,7 +37,7 @@ impl PartialRenaming {
         }
     }
 
-    /// Re-initialise the renaming to the requested `source_len`, reusing the
+    /// Re-initialize the renaming to the requested `source_len`, reusing the
     /// previous allocation.
     fn init(&mut self, source_len: EnvLen) {
         self.source.clear();
@@ -406,7 +406,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         Ok(())
     }
 
-    /// Re-initialise the [`UnificationCtx::renaming`] by mapping the local
+    /// Re-initialize the [`UnificationCtx::renaming`] by mapping the local
     /// variables in the spine to the local variables in the solution. This
     /// can fail if the spine does not contain distinct local variables.
     fn init_renaming(&mut self, spine: &[Elim<'core>]) -> Result<(), SpineError> {
