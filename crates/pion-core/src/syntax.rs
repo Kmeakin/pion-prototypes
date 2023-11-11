@@ -529,6 +529,11 @@ mod size_tests {
     }
 
     #[test]
+    fn zonked_expr_size() {
+        assert_eq!(std::mem::size_of::<ZonkedExpr>(), 32);
+    }
+
+    #[test]
     fn expr_field_size() {
         assert_eq!(std::mem::size_of::<(FieldName, Expr)>(), 40);
     }
@@ -545,11 +550,11 @@ mod size_tests {
 
     #[test]
     fn value_size() {
-        assert_eq!(std::mem::size_of::<Value>(), 48);
+        assert_eq!(std::mem::size_of::<Value>(), 40);
     }
 
     #[test]
     fn value_field_size() {
-        assert_eq!(std::mem::size_of::<(FieldName, Value)>(), 56);
+        assert_eq!(std::mem::size_of::<(FieldName, Value)>(), 48);
     }
 }

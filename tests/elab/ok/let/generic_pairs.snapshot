@@ -27,8 +27,8 @@ span   | source                                   | type
 54..55 | x                                        | ?0(A, B, p)
 57..58 | _                                        | ?1(A, B, p)
 metavars:
-?0 = fun(g#0: #error, _: #error, _: #error) => g#0
-?1 = fun(_: #error, g#1: #error, _: #error) => g#1
+?0 = fun(_: #error, _: #error, _: #error) => _#2
+?1 = fun(_: #error, _: #error, _: #error) => _#1
 
 def snd: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -56,8 +56,8 @@ span   | source                                   | type
 122..123 | _                                        | ?0(A, B, p)
 125..126 | y                                        | ?1(A, B, p)
 metavars:
-?0 = fun(g#0: #error, _: #error, _: #error) => g#0
-?1 = fun(_: #error, g#1: #error, _: #error) => g#1
+?0 = fun(_: #error, _: #error, _: #error) => _#2
+?1 = fun(_: #error, _: #error, _: #error) => _#1
 """
 
 stderr = """

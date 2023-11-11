@@ -4,10 +4,11 @@ use std::hash::BuildHasherDefault;
 use nohash::IntMap;
 use pion_utils::identity::Identity;
 use pion_utils::location::ByteSpan;
+use pion_utils::symbol::Symbol;
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, Level, SharedEnv, UniqueEnv};
-use crate::name::{BinderName, LocalName};
+use crate::name::BinderName;
 use crate::pretty;
 use crate::semantics::{ElimEnv, EvalEnv, QuoteEnv, ZonkEnv};
 use crate::syntax::*;
@@ -233,9 +234,8 @@ impl<'core> LocalEnv<'core> {
         self.values.truncate(len);
     }
 
-    fn lookup(&self, name: LocalName) -> Option<(Index, LocalEntry<'_, 'core>)> {
-        let index = self.names.index_of_elem(&BinderName::from(name))?;
-
+    fn lookup(&self, symbol: Symbol) -> Option<(Index, LocalEntry<'_, 'core>)> {
+        let index = self.names.index_of_elem(&BinderName::User(symbol))?;
         let name = self.names.get_index(index).copied()?;
         let info = self.infos.get_index(index).copied()?;
         let r#type = self.types.get_index(index)?;

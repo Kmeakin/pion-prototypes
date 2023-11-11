@@ -28,7 +28,7 @@ span   | source                                   | type
 62..63 | x                                        | A
 65..66 | y                                        | B
 metavars:
-?0 = fun(g#0: #error, _: #error, _: #error) => g#0
+?0 = fun(_: #error, _: #error, _: #error) => _#2
 
 def fst2: fun(A: Type, B: Type) -> (A, B) -> A =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -56,7 +56,7 @@ span   | source                                   | type
 140..141 | x                                        | A
 143..144 | _                                        | B
 metavars:
-?0 = fun(g#0: #error, _: #error, _: #error) => g#0
+?0 = fun(_: #error, _: #error, _: #error) => _#2
 
 def snd1: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -85,7 +85,7 @@ span   | source                                   | type
 218..219 | x                                        | A
 221..222 | y                                        | B
 metavars:
-?0 = fun(_: #error, g#0: #error, _: #error) => g#0
+?0 = fun(_: #error, _: #error, _: #error) => _#1
 
 def snd2: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -113,7 +113,7 @@ span   | source                                   | type
 296..297 | _                                        | A
 299..300 | y                                        | B
 metavars:
-?0 = fun(_: #error, g#0: #error, _: #error) => g#0
+?0 = fun(_: #error, _: #error, _: #error) => _#1
 
 def swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
     fun(A: Type, B: Type, p: (A, B)) =>
@@ -144,7 +144,7 @@ span   | source                                   | type
 374..375 | x                                        | A
 377..378 | y                                        | B
 metavars:
-?0 = fun(g#1: #error, g#0: #error, _: #error) => (g#0, g#1)
+?0 = fun(_: #error, _: #error, _: #error) => (_#1, _#3)
 """
 
 stderr = """

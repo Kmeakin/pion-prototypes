@@ -4,7 +4,7 @@ use pion_utils::location::ByteSpan;
 use pion_utils::source::FileId;
 
 use super::{unify, MetaSource};
-use crate::name::{BinderName, FieldName, LocalName};
+use crate::name::{BinderName, FieldName};
 use crate::syntax::Plicity;
 
 type String = Box<str>;
@@ -12,8 +12,7 @@ type String = Box<str>;
 #[derive(Debug, Clone)]
 pub enum ElabDiagnostic {
     UnboundName {
-        span: ByteSpan,
-        name: LocalName,
+        ident: Ident,
     },
     DuplicateLocalName {
         first_ident: Ident,
@@ -83,9 +82,9 @@ impl ElabDiagnostic {
         let secondary = |span: ByteSpan| Label::secondary(file_id, span);
 
         match self {
-            Self::UnboundName { span, name } => CodeSpanDiagnostic::error()
-                .with_message(format!("unbound name `{name}`"))
-                .with_labels(vec![primary(*span)]),
+            Self::UnboundName { ident } => CodeSpanDiagnostic::error()
+                .with_message(format!("unbound name `{}`", ident.symbol))
+                .with_labels(vec![primary(ident.span)]),
             Self::DuplicateLocalName {
                 first_ident,
                 duplicate_span,

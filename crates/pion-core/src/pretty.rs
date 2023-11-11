@@ -61,7 +61,7 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Error => self.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
-            Expr::Local(name, ..) => self.local_name(*name),
+            Expr::Local(name, var) => self.local_name(*name, *var),
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
@@ -278,10 +278,10 @@ impl<'pretty> PrettyCtx<'pretty> {
 
     pub fn prim(&'pretty self, prim: Prim) -> DocBuilder<'pretty> { self.text(prim.name()) }
 
-    pub fn local_name(&'pretty self, name: LocalName) -> DocBuilder<'pretty> {
+    pub fn local_name(&'pretty self, name: LocalName, var: Index) -> DocBuilder<'pretty> {
         match name {
+            LocalName::Generated => self.text(format!("_#{var}")),
             LocalName::User(symbol) => self.ident(symbol),
-            LocalName::Gensym(n) => self.text(format!("g#{n}")),
         }
     }
 
@@ -289,7 +289,6 @@ impl<'pretty> PrettyCtx<'pretty> {
         match name {
             BinderName::Underscore => self.text("_"),
             BinderName::User(symbol) => self.ident(symbol),
-            BinderName::Gensym(n) => self.text(format!("g#{n}")),
         }
     }
 

@@ -2,12 +2,12 @@ exit status: 0
 
 stdout = """
 def FstType: Type =
-    fun(g#0: (Type, Type)) ->
-        let A: Type = g#0._0;
-        let B: Type = g#0._1;
-        fun(g#1: (g#0._0, g#0._1)) ->
-            let a: g#0._0 = g#1._0;
-            let b: g#0._1 = g#1._1;
+    fun(_: (Type, Type)) ->
+        let A: Type = _#0._0;
+        let B: Type = _#1._1;
+        fun(_: (_#2._0, _#3._1)) ->
+            let a: _#3._0 = _#0._0;
+            let b: _#4._1 = _#1._1;
             A;
 types of expressions:
 span   | source                                   | type
@@ -26,17 +26,17 @@ span   | source                                   | type
 18..24 | (A, B)                                   | (Type, Type)
 19..20 | A                                        | Type
 22..23 | B                                        | Type
-40..46 | (a, b)                                   | (g#0._0, g#0._1)
-41..42 | a                                        | g#0._0
-44..45 | b                                        | g#0._1
+40..46 | (a, b)                                   | (_#2._0, _#3._1)
+41..42 | a                                        | _#2._0
+44..45 | b                                        | _#2._1
 
 def SndType: Type =
-    fun(g#0: (Type, Type)) ->
-        let A: Type = g#0._0;
-        let B: Type = g#0._1;
-        fun(g#1: (g#0._0, g#0._1)) ->
-            let a: g#0._0 = g#1._0;
-            let b: g#0._1 = g#1._1;
+    fun(_: (Type, Type)) ->
+        let A: Type = _#0._0;
+        let B: Type = _#1._1;
+        fun(_: (_#2._0, _#3._1)) ->
+            let a: _#3._0 = _#0._0;
+            let b: _#4._1 = _#1._1;
             B;
 types of expressions:
 span   | source                                   | type
@@ -55,9 +55,9 @@ span   | source                                   | type
 80..86 | (A, B)                                   | (Type, Type)
 81..82 | A                                        | Type
 84..85 | B                                        | Type
-102..108 | (a, b)                                   | (g#0._0, g#0._1)
-103..104 | a                                        | g#0._0
-106..107 | b                                        | g#0._1
+102..108 | (a, b)                                   | (_#2._0, _#3._1)
+103..104 | a                                        | _#2._0
+106..107 | b                                        | _#2._1
 """
 
 stderr = """

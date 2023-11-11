@@ -8,6 +8,10 @@ type Repr = usize;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct EnvLen(Repr);
 
+impl fmt::Display for EnvLen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
+
 impl From<EnvLen> for usize {
     fn from(len: EnvLen) -> Self { len.0 }
 }
@@ -48,6 +52,10 @@ impl EnvLen {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct Index(Repr);
 
+impl fmt::Display for Index {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
+
 impl From<Index> for usize {
     fn from(index: Index) -> Self { index.0 }
 }
@@ -69,6 +77,10 @@ impl Index {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
 pub struct Level(Repr);
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
 
 impl From<Level> for usize {
     fn from(level: Level) -> Self { level.0 }

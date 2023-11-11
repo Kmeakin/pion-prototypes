@@ -1,19 +1,19 @@
 exit status: 0
 
 stdout = """
-def fst: fun(g#2: (Type, Type)) ->
-    let A: Type = g#2._0;
-    let B: Type = g#2._1;
-    fun(g#3: (g#2._0, g#2._1)) ->
-        let a: g#2._0 = g#3._0;
-        let b: g#2._1 = g#3._1;
+def fst: fun(_: (Type, Type)) ->
+    let A: Type = _#0._0;
+    let B: Type = _#1._1;
+    fun(_: (_#2._0, _#3._1)) ->
+        let a: _#3._0 = _#0._0;
+        let b: _#4._1 = _#1._1;
         A =
-    fun(g#0: (Type, Type)) =>
-        let A: Type = g#0._0;
-        let B: Type = g#0._1;
-        fun(g#1: (g#0._0, g#0._1)) =>
-            let x: g#0._0 = g#1._0;
-            let y: g#0._1 = g#1._1;
+    fun(_: (Type, Type)) =>
+        let A: Type = _#0._0;
+        let B: Type = _#1._1;
+        fun(_: (_#2._0, _#3._1)) =>
+            let x: _#3._0 = _#0._0;
+            let y: _#4._1 = _#1._1;
             x;
 types of expressions:
 span   | source                                   | type
@@ -26,43 +26,43 @@ span   | source                                   | type
 44..45 | A                                        | Type
 47..48 | B                                        | Type
 54..55 | A                                        | Type
-65..111 | fun((A, B): (Type,...x, y): (A, B)) => x | fun(g#0: (Type, Type)) -> (g#0._0, g#0._1) -> g#0._0
+65..111 | fun((A, B): (Type,...x, y): (A, B)) => x | fun(_: (Type, Type)) -> (_#0._0, _#1._1) -> _#1._0
 77..89 | (Type, Type)                             | Type
 78..82 | Type                                     | Type
 84..88 | Type                                     | Type
 99..105 | (A, B)                                   | Type
 100..101 | A                                        | Type
 103..104 | B                                        | Type
-110..111 | x                                        | g#0._0
+110..111 | x                                        | _#5._0
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 13..19 | (A, B)                                   | (Type, Type)
 14..15 | A                                        | Type
 17..18 | B                                        | Type
-35..41 | (a, b)                                   | (g#0._0, g#0._1)
-36..37 | a                                        | g#0._0
-39..40 | b                                        | g#0._1
+35..41 | (a, b)                                   | (_#2._0, _#3._1)
+36..37 | a                                        | _#2._0
+39..40 | b                                        | _#2._1
 69..75 | (A, B)                                   | (Type, Type)
 70..71 | A                                        | Type
 73..74 | B                                        | Type
-91..97 | (x, y)                                   | (g#0._0, g#0._1)
-92..93 | x                                        | g#0._0
-95..96 | y                                        | g#0._1
+91..97 | (x, y)                                   | (_#2._0, _#3._1)
+92..93 | x                                        | _#2._0
+95..96 | y                                        | _#2._1
 
-def snd: fun(g#2: (Type, Type)) ->
-    let A: Type = g#2._0;
-    let B: Type = g#2._1;
-    fun(g#3: (g#2._0, g#2._1)) ->
-        let a: g#2._0 = g#3._0;
-        let b: g#2._1 = g#3._1;
+def snd: fun(_: (Type, Type)) ->
+    let A: Type = _#0._0;
+    let B: Type = _#1._1;
+    fun(_: (_#2._0, _#3._1)) ->
+        let a: _#3._0 = _#0._0;
+        let b: _#4._1 = _#1._1;
         B =
-    fun(g#0: (Type, Type)) =>
-        let A: Type = g#0._0;
-        let B: Type = g#0._1;
-        fun(g#1: (g#0._0, g#0._1)) =>
-            let x: g#0._0 = g#1._0;
-            let y: g#0._1 = g#1._1;
+    fun(_: (Type, Type)) =>
+        let A: Type = _#0._0;
+        let B: Type = _#1._1;
+        fun(_: (_#2._0, _#3._1)) =>
+            let x: _#3._0 = _#0._0;
+            let y: _#4._1 = _#1._1;
             y;
 types of expressions:
 span   | source                                   | type
@@ -75,29 +75,29 @@ span   | source                                   | type
 158..159 | A                                        | Type
 161..162 | B                                        | Type
 168..169 | B                                        | Type
-179..225 | fun((A, B): (Type,...x, y): (A, B)) => y | fun(g#0: (Type, Type)) -> (g#0._0, g#0._1) -> g#0._1
+179..225 | fun((A, B): (Type,...x, y): (A, B)) => y | fun(_: (Type, Type)) -> (_#0._0, _#1._1) -> _#1._1
 191..203 | (Type, Type)                             | Type
 192..196 | Type                                     | Type
 198..202 | Type                                     | Type
 213..219 | (A, B)                                   | Type
 214..215 | A                                        | Type
 217..218 | B                                        | Type
-224..225 | y                                        | g#0._1
+224..225 | y                                        | _#5._1
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 127..133 | (A, B)                                   | (Type, Type)
 128..129 | A                                        | Type
 131..132 | B                                        | Type
-149..155 | (a, b)                                   | (g#0._0, g#0._1)
-150..151 | a                                        | g#0._0
-153..154 | b                                        | g#0._1
+149..155 | (a, b)                                   | (_#2._0, _#3._1)
+150..151 | a                                        | _#2._0
+153..154 | b                                        | _#2._1
 183..189 | (A, B)                                   | (Type, Type)
 184..185 | A                                        | Type
 187..188 | B                                        | Type
-205..211 | (x, y)                                   | (g#0._0, g#0._1)
-206..207 | x                                        | g#0._0
-209..210 | y                                        | g#0._1
+205..211 | (x, y)                                   | (_#2._0, _#3._1)
+206..207 | x                                        | _#2._0
+209..210 | y                                        | _#2._1
 """
 
 stderr = """

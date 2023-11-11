@@ -5,7 +5,7 @@ use pion_utils::slice_vec::SliceVec;
 use super::diagnostics::ElabDiagnostic;
 use super::r#match::{Body, PatMatrix, PatRow, Scrut};
 use super::*;
-use crate::name::{FieldName, LocalName};
+use crate::name::FieldName;
 use crate::prim::Prim;
 
 pub type SynthExpr<'core> = Synth<'core, Expr<'core>>;
@@ -631,8 +631,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
     fn synth_ident_expr(&mut self, ident: Ident) -> SynthExpr<'core> {
-        let name = LocalName::User(ident.symbol);
-        if let Some((index, entry)) = self.local_env.lookup(name) {
+        if let Some((index, entry)) = self.local_env.lookup(ident.symbol) {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
         };
 
@@ -640,10 +639,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             return SynthExpr::new(Expr::Prim(prim), prim.r#type());
         }
 
-        self.emit_diagnostic(ElabDiagnostic::UnboundName {
-            name,
-            span: ident.span,
-        });
+        self.emit_diagnostic(ElabDiagnostic::UnboundName { ident });
         SynthExpr::ERROR
     }
 
