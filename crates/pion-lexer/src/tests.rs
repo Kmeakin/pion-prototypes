@@ -36,12 +36,16 @@ fn empty() { check("", expect![[""]]) }
 #[test]
 fn unknown() {
     check(
-        "~`",
+        "~λ字🍆",
         expect![[r#"
             0..1: Error("~")
-            1..2: Error("`")
+            1..3: Error("λ")
+            3..6: Error("字")
+            6..10: Error("🍆")
             UnknownChar { span: 0..1 }("~")
-            UnknownChar { span: 1..2 }("`")
+            UnknownChar { span: 1..3 }("λ")
+            UnknownChar { span: 3..6 }("字")
+            UnknownChar { span: 6..10 }("🍆")
         "#]],
     );
 }

@@ -1,7 +1,5 @@
 #![allow(clippy::cast_possible_truncation)]
 
-use std::str::Chars;
-
 use pion_utils::location::{BytePos, ByteSpan};
 
 use crate::token::{Token, TokenKind};
@@ -15,7 +13,6 @@ pub fn lex(src: &string32::Str32, tokens: &mut Vec<Token>, errors: &mut Vec<LexE
 struct Ctx<'i, 'vec> {
     pos: u32,
     source: &'i str,
-    chars: Chars<'i>,
     tokens: &'vec mut Vec<Token>,
     errors: &'vec mut Vec<LexError>,
 }
@@ -25,7 +22,6 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
         Self {
             pos: 0,
             source,
-            chars: source.chars(),
             tokens,
             errors,
         }
@@ -33,31 +29,28 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
 
     fn remainder(&self) -> &'i str { unsafe { self.source.get_unchecked(self.pos as usize..) } }
 
-    fn next_char(&mut self) -> Option<(BytePos, char)> {
-        match self.chars.next() {
+    fn next_byte(&mut self) -> Option<(BytePos, u8)> {
+        match self.remainder().bytes().next() {
             None => {
                 debug_assert_eq!(self.remainder(), "");
                 None
             }
             Some(c) => {
                 let ret = (BytePos::new(self.pos), c);
-                self.pos += c.len_utf8() as u32;
+                self.pos += 1;
                 Some(ret)
             }
         }
     }
 
-    fn advance_bytes(&mut self, len: u32) {
-        self.pos += len;
-        self.chars = self.remainder().chars();
-    }
+    fn advance_bytes(&mut self, len: u32) { self.pos += len; }
 
     fn emit_token(&mut self, start: BytePos, len: u32, kind: TokenKind) {
         self.tokens
             .push(Token::new(kind, ByteSpan::new(start, start + len)));
     }
 
-    fn emit_identlike(&mut self, start: BytePos, len: u32) {
+    fn emit_ident_or_keyword(&mut self, start: BytePos, len: u32) {
         let span = ByteSpan::new(start, start + len);
         let ident = unsafe { self.source.get_unchecked(std::ops::Range::from(span)) };
         let kind = match ident {
@@ -83,20 +76,20 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
     }
 
     fn lex(&mut self) {
-        if let Some((start, c)) = self.next_char() {
+        if let Some((start, c)) = self.next_byte() {
             self.inner_loop(start, c);
         }
     }
 
-    fn inner_loop(&mut self, start: BytePos, c: char) {
+    fn inner_loop(&mut self, start: BytePos, c: u8) {
         match c {
             // trivia
-            c if c.is_whitespace() => {
-                let mut len = c.len_utf8() as u32;
+            c if c.is_ascii_whitespace() => {
+                let mut len = 1;
                 loop {
-                    match self.next_char() {
+                    match self.next_byte() {
                         None => return self.emit_token(start, len, TokenKind::Whitespace),
-                        Some((_, c)) if c.is_whitespace() => len += c.len_utf8() as u32,
+                        Some((_, c)) if c.is_ascii_whitespace() => len += 1,
                         Some((pos, c)) => {
                             self.emit_token(start, len, TokenKind::Whitespace);
                             return self.inner_loop(pos, c);
@@ -104,8 +97,8 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                     }
                 }
             }
-            '/' => match self.next_char() {
-                Some((_, '/')) => {
+            b'/' => match self.next_byte() {
+                Some((_, b'/')) => {
                     let remainder = self.remainder();
                     // This `memchr` is safe because UTF-8 continuation bytes are always > 127 - ie
                     // they cannot be confused for ASCII chars. Therefore the byte '\n' will only
@@ -125,7 +118,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                         }
                     }
                 }
-                Some((_, '*')) => {
+                Some((_, b'*')) => {
                     let mut len = 2_u32;
                     let mut nesting = 1_u32;
                     loop {
@@ -183,28 +176,28 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             },
 
             // punctuation
-            '(' => self.emit_token(start, 1, TokenKind::LParen),
-            ')' => self.emit_token(start, 1, TokenKind::RParen),
-            '[' => self.emit_token(start, 1, TokenKind::LSquare),
-            ']' => self.emit_token(start, 1, TokenKind::RSquare),
-            '{' => self.emit_token(start, 1, TokenKind::LCurly),
-            '}' => self.emit_token(start, 1, TokenKind::RCurly),
-            ',' => self.emit_token(start, 1, TokenKind::Comma),
-            ';' => self.emit_token(start, 1, TokenKind::Semicolon),
-            ':' => self.emit_token(start, 1, TokenKind::Colon),
-            '.' => self.emit_token(start, 1, TokenKind::Dot),
-            '@' => self.emit_token(start, 1, TokenKind::At),
-            '|' => self.emit_token(start, 1, TokenKind::Pipe),
-            '=' => match self.next_char() {
-                Some((_, '>')) => self.emit_token(start, 2, TokenKind::FatArrow),
+            b'(' => self.emit_token(start, 1, TokenKind::LParen),
+            b')' => self.emit_token(start, 1, TokenKind::RParen),
+            b'[' => self.emit_token(start, 1, TokenKind::LSquare),
+            b']' => self.emit_token(start, 1, TokenKind::RSquare),
+            b'{' => self.emit_token(start, 1, TokenKind::LCurly),
+            b'}' => self.emit_token(start, 1, TokenKind::RCurly),
+            b',' => self.emit_token(start, 1, TokenKind::Comma),
+            b';' => self.emit_token(start, 1, TokenKind::Semicolon),
+            b':' => self.emit_token(start, 1, TokenKind::Colon),
+            b'.' => self.emit_token(start, 1, TokenKind::Dot),
+            b'@' => self.emit_token(start, 1, TokenKind::At),
+            b'|' => self.emit_token(start, 1, TokenKind::Pipe),
+            b'=' => match self.next_byte() {
+                Some((_, b'>')) => self.emit_token(start, 2, TokenKind::FatArrow),
                 Some((pos, c)) => {
                     self.emit_token(start, 1, TokenKind::Eq);
                     return self.inner_loop(pos, c);
                 }
                 None => return self.emit_token(start, 1, TokenKind::Eq),
             },
-            '-' => match self.next_char() {
-                Some((_, '>')) => self.emit_token(start, 2, TokenKind::ThinArrow),
+            b'-' => match self.next_byte() {
+                Some((_, b'>')) => self.emit_token(start, 2, TokenKind::ThinArrow),
                 Some((pos, c)) => {
                     self.emit_unknown(start, 1);
                     return self.inner_loop(pos, c);
@@ -213,29 +206,29 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             },
 
             // integer literals
-            '0'..='9' => {
+            b'0'..=b'9' => {
                 let mut len = 1_u32;
                 let mut kind = TokenKind::DecInt;
-                match self.next_char() {
+                match self.next_byte() {
                     None => return self.emit_token(start, len, kind),
-                    Some((_, 'b' | 'B')) => {
+                    Some((_, b'b' | b'B')) => {
                         len += 1;
                         kind = TokenKind::BinInt;
                     }
-                    Some((_, 'x' | 'X')) => {
+                    Some((_, b'x' | b'X')) => {
                         len += 1;
                         kind = TokenKind::HexInt;
                     }
-                    Some((_, '0'..='9' | 'a'..='f' | 'A'..='F' | '_')) => len += 1,
+                    Some((_, b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F' | b'_')) => len += 1,
                     Some((pos, c)) => {
                         self.emit_token(start, len, kind);
                         return self.inner_loop(pos, c);
                     }
                 }
                 loop {
-                    match self.next_char() {
+                    match self.next_byte() {
                         None => return self.emit_token(start, len, kind),
-                        Some((_, '0'..='9' | 'a'..='f' | 'A'..='F' | '_')) => len += 1,
+                        Some((_, b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F' | b'_')) => len += 1,
                         Some((pos, c)) => {
                             self.emit_token(start, len, kind);
                             return self.inner_loop(pos, c);
@@ -245,23 +238,23 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             }
 
             // identifiers
-            'r' => {
+            b'r' => {
                 let mut len = 1_u32;
                 let mut kind = TokenKind::Ident;
-                match self.next_char() {
+                match self.next_byte() {
                     None => return self.emit_token(start, len, kind),
-                    Some((_, '#')) => {
+                    Some((_, b'#')) => {
                         kind = TokenKind::RawIdent;
                         len += 1;
                     }
-                    Some((_, c)) if is_ident_continue(c) => len += c.len_utf8() as u32,
+                    Some((_, c)) if is_ident_continue(c) => len += 1,
                     Some((pos, c)) => {
                         self.emit_token(start, len, kind);
                         return self.inner_loop(pos, c);
                     }
                 }
                 loop {
-                    match self.next_char() {
+                    match self.next_byte() {
                         Some((_, c)) if is_ident_continue(c) => len += 1,
                         Some((pos, c)) => {
                             self.emit_token(start, len, kind);
@@ -274,23 +267,60 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
             c if is_ident_start(c) => {
                 let mut len = 1_u32;
                 loop {
-                    match self.next_char() {
+                    match self.next_byte() {
                         Some((_, c)) if is_ident_continue(c) => len += 1,
                         Some((pos, c)) => {
-                            self.emit_identlike(start, len);
+                            self.emit_ident_or_keyword(start, len);
                             return self.inner_loop(pos, c);
                         }
-                        None => return self.emit_identlike(start, len),
+                        None => return self.emit_ident_or_keyword(start, len),
                     }
                 }
             }
 
-            _ => self.emit_unknown(start, 1),
+            _ => {
+                let len = len_utf8_branchless(c);
+                self.advance_bytes(len - 1);
+                self.emit_unknown(start, len);
+            }
         }
         self.lex();
     }
 }
 
-fn is_ident_start(c: char) -> bool { matches!(c, 'a'..='z' | 'A'..='Z' | '_') }
+fn is_ident_start(c: u8) -> bool { matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'_') }
 
-fn is_ident_continue(c: char) -> bool { matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'| '-') }
+fn is_ident_continue(c: u8) -> bool {
+    matches!(c, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_'| b'-')
+}
+
+#[allow(clippy::useless_let_if_seq)]
+fn len_utf8_branchless(c: u8) -> u32 {
+    let mut ret = 1;
+    if (c & 0b1100_0000) == 0b1100_0000 {
+        ret = 2;
+    }
+    if (c & 0b1110_0000) == 0b1110_0000 {
+        ret = 3;
+    }
+    if (c & 0b1111_0000) == 0b1111_0000 {
+        ret = 4;
+    }
+    ret
+}
+
+#[test]
+fn test_len_utf8_branchless() {
+    fn check(c: char, len: u32) {
+        assert_eq!(c.len_utf8() as u32, len);
+        let mut dst = [0; 4];
+        let bytes = c.encode_utf8(&mut dst);
+        let first_byte = bytes.as_bytes()[0];
+        assert_eq!(len_utf8_branchless(first_byte), len);
+    }
+
+    check('~', 1);
+    check('λ', 2);
+    check('字', 3);
+    check('🍆', 4);
+}
