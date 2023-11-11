@@ -144,7 +144,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 }
 
-impl<'arena> PatMatrix<'arena> {
+impl<'core> PatMatrix<'core> {
     /// Return the index of any column in the matrix with at least one
     /// non-wildcard pattern. At the moment, we simply select the leftmost
     /// column, but more advanced splitting heuristcs can be used to minimize

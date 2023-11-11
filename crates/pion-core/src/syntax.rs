@@ -433,27 +433,27 @@ pub enum Elim<'core> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Closure<'arena> {
-    pub local_values: SharedEnv<Value<'arena>>,
-    pub expr: &'arena Expr<'arena>,
+pub struct Closure<'core> {
+    pub local_values: SharedEnv<Value<'core>>,
+    pub expr: &'core Expr<'core>,
 }
 
-impl<'arena> Closure<'arena> {
-    pub const fn new(local_values: SharedEnv<Value<'arena>>, expr: &'arena Expr<'arena>) -> Self {
+impl<'core> Closure<'core> {
+    pub const fn new(local_values: SharedEnv<Value<'core>>, expr: &'core Expr<'core>) -> Self {
         Self { local_values, expr }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Telescope<'arena> {
-    pub local_values: SharedEnv<Value<'arena>>,
-    pub fields: &'arena [(FieldName, Expr<'arena>)],
+pub struct Telescope<'core> {
+    pub local_values: SharedEnv<Value<'core>>,
+    pub fields: &'core [(FieldName, Expr<'core>)],
 }
 
-impl<'arena> Telescope<'arena> {
+impl<'core> Telescope<'core> {
     pub const fn new(
-        local_values: SharedEnv<Value<'arena>>,
-        fields: &'arena [(FieldName, Expr<'arena>)],
+        local_values: SharedEnv<Value<'core>>,
+        fields: &'core [(FieldName, Expr<'core>)],
     ) -> Self {
         Self {
             local_values,
@@ -465,7 +465,7 @@ impl<'arena> Telescope<'arena> {
 
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
-    pub fn exprs(&self) -> impl ExactSizeIterator<Item = &Expr<'arena>> + '_ {
+    pub fn exprs(&self) -> impl ExactSizeIterator<Item = &Expr<'core>> + '_ {
         self.fields.iter().map(|(_, expr)| expr)
     }
 
@@ -475,17 +475,17 @@ impl<'arena> Telescope<'arena> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Cases<'arena, P> {
-    pub local_values: SharedEnv<Value<'arena>>,
-    pub pattern_cases: &'arena [(P, Expr<'arena>)],
-    pub default_case: &'arena Option<Expr<'arena>>,
+pub struct Cases<'core, P> {
+    pub local_values: SharedEnv<Value<'core>>,
+    pub pattern_cases: &'core [(P, Expr<'core>)],
+    pub default_case: &'core Option<Expr<'core>>,
 }
 
-impl<'arena, P> Cases<'arena, P> {
+impl<'core, P> Cases<'core, P> {
     pub fn new(
-        local_values: SharedEnv<Value<'arena>>,
-        pattern_cases: &'arena [(P, Expr<'arena>)],
-        default_case: &'arena Option<Expr<'arena>>,
+        local_values: SharedEnv<Value<'core>>,
+        pattern_cases: &'core [(P, Expr<'core>)],
+        default_case: &'core Option<Expr<'core>>,
     ) -> Self {
         Self {
             local_values,
@@ -499,12 +499,12 @@ impl<'arena, P> Cases<'arena, P> {
     pub fn is_empty(&self) -> bool { self.pattern_cases.is_empty() }
 }
 
-pub type PatternCase<'arena, P> = (P, Value<'arena>);
+pub type PatternCase<'core, P> = (P, Value<'core>);
 
 #[derive(Debug, Clone)]
-pub enum SplitCases<'arena, P> {
-    Case(PatternCase<'arena, P>, Cases<'arena, P>),
-    Default(Value<'arena>),
+pub enum SplitCases<'core, P> {
+    Case(PatternCase<'core, P>, Cases<'core, P>),
+    Default(Value<'core>),
     None,
 }
 

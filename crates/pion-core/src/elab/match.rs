@@ -20,13 +20,13 @@ impl<'core> Scrut<'core> {
 }
 
 #[derive(Debug, Clone)]
-pub struct PatMatrix<'arena> {
-    rows: Vec<OwnedPatRow<'arena>>,
+pub struct PatMatrix<'core> {
+    rows: Vec<OwnedPatRow<'core>>,
     indices: Vec<usize>,
 }
 
-impl<'arena> PatMatrix<'arena> {
-    pub fn new(rows: Vec<OwnedPatRow<'arena>>) -> Self {
+impl<'core> PatMatrix<'core> {
+    pub fn new(rows: Vec<OwnedPatRow<'core>>) -> Self {
         if let Some((first, rows)) = rows.split_first() {
             for row in rows {
                 debug_assert_eq!(
@@ -40,7 +40,7 @@ impl<'arena> PatMatrix<'arena> {
         Self { rows, indices }
     }
 
-    pub fn singleton(scrut: Scrut<'arena>, pat: Pat<'arena>) -> Self {
+    pub fn singleton(scrut: Scrut<'core>, pat: Pat<'core>) -> Self {
         Self::new(vec![PatRow::new(vec![(pat, scrut)], None)])
     }
 
@@ -56,19 +56,19 @@ impl<'arena> PatMatrix<'arena> {
     pub fn is_unit(&self) -> bool { self.num_columns() == Some(0) }
 
     /// Iterate over all the pairs in the `index`th column
-    pub fn column(&self, index: usize) -> impl ExactSizeIterator<Item = &RowEntry<'arena>> + '_ {
+    pub fn column(&self, index: usize) -> impl ExactSizeIterator<Item = &RowEntry<'core>> + '_ {
         self.rows.iter().map(move |row| &row.elems[index])
     }
 
-    pub fn row(&self, index: usize) -> &OwnedPatRow<'arena> { &self.rows[index] }
+    pub fn row(&self, index: usize) -> &OwnedPatRow<'core> { &self.rows[index] }
 
     pub fn row_index(&self, index: usize) -> usize { self.indices[index] }
 
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&OwnedPatRow<'arena>, usize)> {
+    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&OwnedPatRow<'core>, usize)> {
         self.rows.iter().zip(self.indices.iter().copied())
     }
 
-    fn push_row(&mut self, row: OwnedPatRow<'arena>) {
+    fn push_row(&mut self, row: OwnedPatRow<'core>) {
         self.rows.push(row);
         self.indices.push(self.indices.len());
     }
@@ -94,19 +94,19 @@ pub type BorrowedPatRow<'core, 'a> = PatRow<'core, &'a [RowEntry<'core>]>;
 
 /// An element in a `PatRow`: `<scrut.expr> is <pat> if <guard>`.
 /// This notation is taken from [How to compile pattern matching]
-pub type RowEntry<'arena> = (Pat<'arena>, Scrut<'arena>);
+pub type RowEntry<'core> = (Pat<'core>, Scrut<'core>);
 
 #[derive(Debug, Clone)]
 /// The right hand side of a match clause
-pub struct Body<'arena> {
+pub struct Body<'core> {
     /// The variables to be let-bound before `expr` is evaluated
-    let_vars: Vec<(BinderName, Scrut<'arena>)>,
+    let_vars: Vec<(BinderName, Scrut<'core>)>,
     /// The expression to be evaluated
-    expr: Expr<'arena>,
+    expr: Expr<'core>,
 }
 
-impl<'arena> Body<'arena> {
-    pub fn new(let_vars: Vec<(BinderName, Scrut<'arena>)>, expr: Expr<'arena>) -> Self {
+impl<'core> Body<'core> {
+    pub fn new(let_vars: Vec<(BinderName, Scrut<'core>)>, expr: Expr<'core>) -> Self {
         Self { let_vars, expr }
     }
 }
