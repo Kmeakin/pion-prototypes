@@ -18,7 +18,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         input_matrix: &PatMatrix<'core>,
         scrut_span: ByteSpan,
     ) -> Result<(), ()> {
-        let mut temp_matrix = PatMatrix::new(vec![]);
+        let mut temp_matrix = PatMatrix::new(Vec::with_capacity(input_matrix.rows.len()));
 
         // A matrix row is reachable iff it is useful relative to the rows in the matrix
         // above it
