@@ -50,61 +50,107 @@ fn unknown() {
     );
 }
 
-#[test]
-fn line_comments() {
-    check(
-        "
+mod line_comments {
+    use super::*;
+
+    #[test]
+    fn line_comment_no_newline() {
+        check(
+            "// line comment",
+            expect![[r#"
+        0..15: LineComment("// line comment")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn line_comment_no_follow_chars() {
+        check(
+            "//",
+            expect![[r#"
+        0..2: LineComment("//")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn line_comment_newline() {
+        check(
+            "// line comment\n",
+            expect![[r#"
+        0..16: LineComment("// line comment\n")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn multiple_line_comments() {
+        check(
+            "
 // line 1
 // line 2
 // line 3",
-        expect![[r#"
+            expect![[r#"
             0..1: Whitespace("\n")
             1..11: LineComment("// line 1\n")
             11..21: LineComment("// line 2\n")
             21..30: LineComment("// line 3")
         "#]],
-    );
+        );
+    }
 }
 
-#[test]
-fn block_comments() {
-    check(
-        "/* block comment */",
-        expect![[r#"
+mod block_comments {
+    use super::*;
+
+    #[test]
+    fn single_block_comment() {
+        check(
+            "/* block comment */",
+            expect![[r#"
             0..19: BlockComment("/* block comment */")
         "#]],
-    );
+        );
+    }
 
-    check(
-        "
+    #[test]
+    fn single_block_comment_multiple_levels() {
+        check(
+            "
 /* open level 0
 /* open level 1
 close level 1 */
 close level 0 */
 ",
-        expect![[r#"
+            expect![[r#"
             0..1: Whitespace("\n")
             1..66: BlockComment("/* open level 0\n/* open level 1\nclose level 1 */\nclose level 0 */")
             66..67: Whitespace("\n")
         "#]],
-    );
+        );
+    }
 
-    check(
-        "
+    #[test]
+    fn single_block_comment_single_unclosed_level() {
+        check(
+            "
 /* open level 0
 /* open level 1
 close level 1 */
 unclosed level 0
 ",
-        expect![[r#"
+            expect![[r#"
             0..1: Whitespace("\n")
             1..67: BlockComment("/* open level 0\n/* open level 1\nclose level 1 */\nunclosed level 0\n")
             BlockComment { span: 1..67 }("/* open level 0\n/* open level 1\nclose level 1 */\nunclosed level 0\n")
         "#]],
-    );
+        );
+    }
 
-    check(
-        "
+    #[test]
+    fn single_block_comment_multiple_unclosed_levels() {
+        check(
+            "
 /* open level 0
 /* open level 1
 /* open level 2
@@ -112,56 +158,120 @@ close level 2 */
 unclosed level 1
 unclosed level 0
 ",
-        expect![[r#"
+            expect![[r#"
             0..1: Whitespace("\n")
             1..100: BlockComment("/* open level 0\n/* open level 1\n/* open level 2\nclose level 2 */\nunclosed level 1\nunclosed level 0\n")
             BlockComment { span: 1..100 }("/* open level 0\n/* open level 1\n/* open level 2\nclose level 2 */\nunclosed level 1\nunclosed level 0\n")
         "#]],
-    );
+        );
+    }
 
-    check(
-        "/*/",
-        expect![[r#"
+    #[test]
+    fn single_block_comment_close_immediately_after_open() {
+        check(
+            "/**/",
+            expect![[r#"
+            0..4: BlockComment("/**/")
+        "#]],
+        );
+    }
+
+    #[test]
+    fn single_block_comment_slash_star_slash() {
+        check(
+            "/*/",
+            expect![[r#"
         0..3: BlockComment("/*/")
         BlockComment { span: 0..3 }("/*/")
     "#]],
-    );
-    check(
-        "/**/",
-        expect![[r#"
-            0..4: BlockComment("/**/")
-        "#]],
-    );
+        );
+    }
 }
 
-#[test]
-fn punctuation() {
-    check(
-        "(){}[]_,;:.@=->=>",
-        expect![[r#"
-            0..1: LParen("(")
-            1..2: RParen(")")
-            2..3: LCurly("{")
-            3..4: RCurly("}")
-            4..5: LSquare("[")
-            5..6: RSquare("]")
-            6..7: Underscore("_")
-            7..8: Comma(",")
-            8..9: Semicolon(";")
-            9..10: Colon(":")
-            10..11: Dot(".")
-            11..12: At("@")
-            12..13: Eq("=")
-            13..15: ThinArrow("->")
-            15..17: FatArrow("=>")
-        "#]],
-    );
+mod punctuation {
+    use super::*;
+
+    #[test]
+    fn single_char_punctuation() {
+        check(
+            "(){}[]_,;:.@=|",
+            expect![[r#"
+                0..1: LParen("(")
+                1..2: RParen(")")
+                2..3: LCurly("{")
+                3..4: RCurly("}")
+                4..5: LSquare("[")
+                5..6: RSquare("]")
+                6..7: Underscore("_")
+                7..8: Comma(",")
+                8..9: Semicolon(";")
+                9..10: Colon(":")
+                10..11: Dot(".")
+                11..12: At("@")
+                12..13: Eq("=")
+                13..14: Pipe("|")
+            "#]],
+        );
+    }
+
+    #[test]
+    fn thin_arrow() {
+        check(
+            "->",
+            expect![[r#"
+        0..2: ThinArrow("->")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn dash_error_eof() {
+        check(
+            "-",
+            expect![[r#"
+        0..1: Error("-")
+        UnknownChar { span: 0..1 }("-")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn dash_error_other_char() {
+        check(
+            "-a",
+            expect![[r#"
+        0..1: Error("-")
+        1..2: Ident("a")
+        UnknownChar { span: 0..1 }("-")
+    "#]],
+        );
+    }
+
+    #[test]
+    fn fat_arrow() {
+        check(
+            "=>",
+            expect![[r#"
+                0..2: FatArrow("=>")
+            "#]],
+        );
+    }
+
+    #[test]
+    fn eq() {
+        check(
+            "=",
+            expect![[r#"
+                0..1: Eq("=")
+            "#]],
+        );
+    }
 }
 
 #[test]
 fn keywords() {
     check(
-        "def else false fun if let match then true",
+        "def else false fun if let match then true _",
         expect![[r#"
             0..3: KwDef("def")
             3..4: Whitespace(" ")
@@ -180,6 +290,8 @@ fn keywords() {
             32..36: KwThen("then")
             36..37: Whitespace(" ")
             37..41: KwTrue("true")
+            41..42: Whitespace(" ")
+            42..43: Underscore("_")
         "#]],
     );
 }
@@ -204,28 +316,36 @@ fn identifiers() {
     );
 }
 
-#[test]
-fn literals() {
-    check(
-        "
-1234_5678__90
-0b1111_0000
-0B0000__1111
-0x1234_5678_9abc_def0
-0X1234_5678_9ABC_DEF0
-",
-        expect![[r#"
-            0..1: Whitespace("\n")
-            1..14: DecInt("1234_5678__90")
-            14..15: Whitespace("\n")
-            15..26: BinInt("0b1111_0000")
-            26..27: Whitespace("\n")
-            27..39: BinInt("0B0000__1111")
-            39..40: Whitespace("\n")
-            40..61: HexInt("0x1234_5678_9abc_def0")
-            61..62: Whitespace("\n")
-            62..83: HexInt("0X1234_5678_9ABC_DEF0")
-            83..84: Whitespace("\n")
-        "#]],
-    );
+mod literals {
+    use super::*;
+
+    #[test]
+    fn dec_int_literal() { check("123456789", expect![[r#"
+        0..9: DecInt("123456789")
+    "#]]); }
+
+    #[test]
+    fn dec_int_literal_with_underscores() { check("12345_67__89", expect![[r#"
+        0..12: DecInt("12345_67__89")
+    "#]]); }
+
+    #[test]
+    fn bin_int_literal() { check("0b11110000", expect![[r#"
+        0..10: BinInt("0b11110000")
+    "#]]); }
+
+    #[test]
+    fn bin_int_literal_with_underscores() { check("0B1111_000__0", expect![[r#"
+        0..13: BinInt("0B1111_000__0")
+    "#]]); }
+
+    #[test]
+    fn hex_int_literal() { check("0x123456789abcdef", expect![[r#"
+        0..17: HexInt("0x123456789abcdef")
+    "#]]); }
+
+    #[test]
+    fn hex_int_literal_with_underscores() { check("0X123456789_abcde__f", expect![[r#"
+        0..20: HexInt("0X123456789_abcde__f")
+    "#]]); }
 }
