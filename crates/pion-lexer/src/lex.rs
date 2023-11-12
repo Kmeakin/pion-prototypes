@@ -17,8 +17,12 @@ struct Ctx<'i, 'vec> {
     errors: &'vec mut Vec<LexError>,
 }
 
-impl<'i, 'vec> Ctx<'i, 'vec> {
-    fn new(source: &'i str, tokens: &'vec mut Vec<Token>, errors: &'vec mut Vec<LexError>) -> Self {
+impl<'source, 'vec> Ctx<'source, 'vec> {
+    fn new(
+        source: &'source str,
+        tokens: &'vec mut Vec<Token>,
+        errors: &'vec mut Vec<LexError>,
+    ) -> Self {
         Self {
             pos: 0,
             source,
@@ -27,16 +31,15 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
         }
     }
 
-    fn remainder(&self) -> &'i str { unsafe { self.source.get_unchecked(self.pos as usize..) } }
+    fn remainder(&self) -> &'source [u8] {
+        unsafe { self.source.as_bytes().get_unchecked(self.pos as usize..) }
+    }
 
     fn next_byte(&mut self) -> Option<(BytePos, u8)> {
-        match self.remainder().bytes().next() {
-            None => {
-                debug_assert_eq!(self.remainder(), "");
-                None
-            }
+        match self.remainder().iter().next() {
+            None => None,
             Some(c) => {
-                let ret = (BytePos::new(self.pos), c);
+                let ret = (BytePos::new(self.pos), *c);
                 self.pos += 1;
                 Some(ret)
             }
@@ -104,7 +107,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                     // they cannot be confused for ASCII chars. Therefore the byte '\n' will only
                     // appear in an ASCII newline character, and not in a multibyte unicode
                     // character
-                    match memchr::memchr(b'\n', remainder.as_bytes()) {
+                    match memchr::memchr(b'\n', remainder) {
                         None => {
                             return self.emit_token(
                                 start,
@@ -122,7 +125,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                     let mut len = 2_u32;
                     let mut nesting = 1_u32;
                     loop {
-                        match memchr::memchr(b'/', self.remainder().as_bytes()) {
+                        match memchr::memchr(b'/', self.remainder()) {
                             // unclosed block comment
                             None => {
                                 len += self.remainder().len() as u32;
@@ -133,11 +136,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                             }
                             // closing
                             Some(pos)
-                                if self
-                                    .remainder()
-                                    .as_bytes()
-                                    .get(pos.saturating_sub(1))
-                                    .copied()
+                                if self.remainder().get(pos.saturating_sub(1)).copied()
                                     == Some(b'*') =>
                             {
                                 let pos = pos as u32 + 1;
@@ -150,10 +149,7 @@ impl<'i, 'vec> Ctx<'i, 'vec> {
                                 }
                             }
                             // opening
-                            Some(pos)
-                                if self.remainder().as_bytes().get(pos + 1).copied()
-                                    == Some(b'*') =>
-                            {
+                            Some(pos) if self.remainder().get(pos + 1).copied() == Some(b'*') => {
                                 let pos = pos as u32 + 2;
                                 self.advance_bytes(pos);
                                 len += pos;
