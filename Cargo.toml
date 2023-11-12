@@ -42,5 +42,5 @@ lto   = "thin"
 panic = "abort"
 
 [profile.profiling]
-debug    = "full"
+debug    = true
 inherits = "release"
