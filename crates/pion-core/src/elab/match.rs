@@ -90,7 +90,13 @@ impl<'core> OwnedPatRow<'core> {
     fn as_ref(&self) -> BorrowedPatRow<'core, '_> { PatRow::new(self.elems.as_ref(), self.guard) }
 }
 
-pub type BorrowedPatRow<'core, 'a> = PatRow<'core, &'a [RowEntry<'core>]>;
+pub type BorrowedPatRow<'core, 'row> = PatRow<'core, &'row [RowEntry<'core>]>;
+
+impl<'core, 'row> BorrowedPatRow<'core, 'row> {
+    fn to_owned(&self) -> OwnedPatRow<'core> {
+        OwnedPatRow::new(self.elems.to_vec(),self.guard)
+    }
+}
 
 /// An element in a `PatRow`: `<scrut.expr> is <pat> if <guard>`.
 /// This notation is taken from [How to compile pattern matching]

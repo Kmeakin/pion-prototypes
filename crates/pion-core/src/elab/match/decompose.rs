@@ -152,7 +152,7 @@ pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
     let mut indices = Vec::with_capacity(len);
     for (row, body) in matrix.iter() {
         default_row(row.as_ref()).for_each(|row| {
-            rows.push(row);
+            rows.push(row.to_owned());
             indices.push(body);
         });
     }
@@ -165,9 +165,9 @@ struct DefaultedRow<'core, 'row> {
 
 fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'core, 'row> {
     impl<'core, 'row> InternalIterator for DefaultedRow<'core, 'row> {
-        type Item = OwnedPatRow<'core>;
+        type Item = BorrowedPatRow<'core, 'row>;
 
-        fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
+        fn try_for_each<R, F>(self, on_row: F) -> ControlFlow<R>
         where
             F: FnMut(Self::Item) -> ControlFlow<R>,
         {
@@ -175,45 +175,51 @@ fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'c
             assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
 
             let ((pat, _), rest) = row.elems.split_first().unwrap();
-            default_pat(*pat).try_for_each(|mut new_row| {
-                new_row.elems.extend_from_slice(rest);
-                new_row.guard = row.guard;
-                on_row(new_row)
-            })
+            default_pat(*pat, rest, row.guard).try_for_each(on_row)
         }
     }
 
     DefaultedRow { row }
 }
 
-struct DefaultedPat<'core> {
+struct DefaultedPat<'core, 'row> {
     pat: Pat<'core>,
+    rest: &'row [RowEntry<'core>],
+    guard: Option<Expr<'core>>,
 }
 
-fn default_pat(pat: Pat) -> DefaultedPat {
-    impl<'core> InternalIterator for DefaultedPat<'core> {
-        type Item = OwnedPatRow<'core>;
+fn default_pat<'core, 'row>(
+    pat: Pat<'core>,
+    rest: &'row [RowEntry<'core>],
+    guard: Option<Expr<'core>>,
+) -> DefaultedPat<'core, 'row> {
+    impl<'core, 'row> InternalIterator for DefaultedPat<'core, 'row> {
+        type Item = BorrowedPatRow<'core, 'row>;
 
         fn try_for_each<R, F>(self, mut f: F) -> ControlFlow<R>
         where
             F: FnMut(Self::Item) -> ControlFlow<R>,
         {
-            fn recur<'core, R>(
+            fn recur<'core, 'row, R>(
                 pat: Pat<'core>,
-                on_row: &mut impl FnMut(OwnedPatRow<'core>) -> ControlFlow<R>,
+                rest: &'row [RowEntry<'core>],
+                guard: Option<Expr<'core>>,
+                on_row: &mut impl FnMut(BorrowedPatRow<'core, 'row>) -> ControlFlow<R>,
             ) -> ControlFlow<R> {
                 match pat {
                     Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                        on_row(OwnedPatRow::new(vec![], None))
+                        on_row(BorrowedPatRow::new(rest, guard))
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
-                    Pat::Or(.., alts) => alts.iter().try_for_each(|pat| recur(*pat, on_row)),
+                    Pat::Or(.., alts) => alts
+                        .iter()
+                        .try_for_each(|pat| recur(*pat, rest, guard, on_row)),
                 }
             }
 
-            recur(self.pat, &mut f)
+            recur(self.pat, self.rest, self.guard, &mut f)
         }
     }
 
-    DefaultedPat { pat }
+    DefaultedPat { pat, rest, guard }
 }
