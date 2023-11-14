@@ -101,9 +101,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
             Pat::Or(.., alts) => {
                 let mut flattened = alts.iter().map(|alt| {
-                    let mut elems = Vec::with_capacity(row.elems.len() + 1);
-                    elems.push((*alt, scrut.clone()));
-                    elems.extend_from_slice(&row.elems[1..]);
+                    let elems = std::iter::once((*alt, scrut.clone()))
+                        .chain(row.elems[1..].iter().cloned())
+                        .collect();
                     PatRow::new(elems, row.guard)
                 });
 
