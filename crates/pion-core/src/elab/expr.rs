@@ -453,20 +453,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     CheckExpr::new(expr)
                 }
                 _ if expected.is_type() => {
-                    let mut type_fields = SliceVec::new(self.bump, elems.len());
-
-                    self.with_scope(|this| {
-                        for (index, elem) in elems.iter().enumerate() {
-                            let name = FieldName::tuple(index);
-                            let Check(r#type) = this.check_expr_is_type(elem);
-                            let type_value = this.eval_env().eval(&r#type);
-                            type_fields.push((name, r#type));
-                            this.local_env
-                                .push_param(BinderName::from(name), type_value);
-                        }
+                    let type_fields = self.with_scope(|this| {
+                        this.bump
+                            .alloc_slice_fill_iter(elems.iter().enumerate().map(|(index, elem)| {
+                                let name = FieldName::tuple(index);
+                                let Check(r#type) = this.check_expr_is_type(elem);
+                                let type_value = this.eval_env().eval(&r#type);
+                                this.local_env
+                                    .push_param(BinderName::from(name), type_value);
+                                (name, r#type)
+                            }))
                     });
-
-                    let expr = Expr::RecordType(type_fields.into());
+                    let expr = Expr::RecordType(type_fields);
                     CheckExpr::new(expr)
                 }
                 _ => self.synth_and_convert_expr(expr, expected),
