@@ -93,9 +93,7 @@ impl<'core> OwnedPatRow<'core> {
 pub type BorrowedPatRow<'core, 'row> = PatRow<'core, &'row [RowEntry<'core>]>;
 
 impl<'core, 'row> BorrowedPatRow<'core, 'row> {
-    fn to_owned(&self) -> OwnedPatRow<'core> {
-        OwnedPatRow::new(self.elems.to_vec(),self.guard)
-    }
+    fn to_owned(self) -> OwnedPatRow<'core> { OwnedPatRow::new(self.elems.to_vec(), self.guard) }
 }
 
 /// An element in a `PatRow`: `<scrut.expr> is <pat> if <guard>`.

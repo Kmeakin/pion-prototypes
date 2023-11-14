@@ -69,7 +69,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             return true;
         }
 
-        let (pat, scrut) = row.elems.first().unwrap();
+        let ((pat, scrut), rest) = row.elems.split_first().unwrap();
         match pat {
             // Inductive case 1:
             // If the first pattern is a constructed pattern, specialize the matrix and test row and
@@ -95,20 +95,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     // If the constructors are not exhaustive, recurse on the defaulted matrix
                     false => {
                         let matrix = default_matrix(matrix);
-                        self.is_useful(&matrix, PatRow::new(&row.elems[1..], row.guard))
+                        self.is_useful(&matrix, PatRow::new(rest, row.guard))
                     }
                 }
             }
-            Pat::Or(.., alts) => {
-                let mut flattened = alts.iter().map(|alt| {
-                    let elems = std::iter::once((*alt, scrut.clone()))
-                        .chain(row.elems[1..].iter().cloned())
-                        .collect();
-                    PatRow::new(elems, row.guard)
-                });
-
-                flattened.any(|row| self.is_useful(matrix, row.as_ref()))
-            }
+            Pat::Or(.., alts) => alts.iter().any(|alt| {
+                let elems = std::iter::once((*alt, scrut.clone()))
+                    .chain(rest.iter().cloned())
+                    .collect();
+                let row = PatRow::new(elems, row.guard);
+                self.is_useful(matrix, row.as_ref())
+            }),
         }
     }
 
