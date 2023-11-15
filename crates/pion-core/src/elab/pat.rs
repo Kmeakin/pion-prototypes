@@ -157,12 +157,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let mut telescope = telescope.clone();
 
                     for elem in *elems {
-                        let (name, r#type, cont) =
-                            self.elim_env().split_telescope(telescope).unwrap();
+                        let (name, r#type, update_telescope) =
+                            self.elim_env().split_telescope(&mut telescope).unwrap();
 
                         let Check(elem_pat) = self.check_pat(elem, &r#type, idents);
                         let elem_value = self.local_env.next_var();
-                        telescope = cont(elem_value);
+                        update_telescope(elem_value);
                         pat_fields.push((name, elem_pat));
                     }
 
@@ -185,14 +185,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let mut telescope = telescope.clone();
 
                     for field in *fields {
-                        let (name, r#type, cont) =
-                            self.elim_env().split_telescope(telescope).unwrap();
+                        let (name, r#type, update_telescope) =
+                            self.elim_env().split_telescope(&mut telescope).unwrap();
                         let Check(field_pat) = match field.pat.as_ref() {
                             Some(pat) => self.check_pat(pat, &r#type, idents),
                             None => self.check_ident_pat(field.name, expected, idents),
                         };
                         let field_value = self.local_env.next_var();
-                        telescope = cont(field_value);
+                        update_telescope(field_value);
                         pat_fields.push((name, field_pat));
                     }
 
@@ -488,9 +488,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         };
 
         for (label, pat) in fields {
-            let (_, r#type, cont) = self.elim_env().split_telescope(telescope).unwrap();
+            let (_, r#type, update_telescope) =
+                self.elim_env().split_telescope(&mut telescope).unwrap();
 
-            telescope = cont(self.local_env.next_var());
+            update_telescope(self.local_env.next_var());
             let expr = Expr::field_proj(self.bump, scrut.expr, *label);
             let value = self.elim_env().field_proj(value.clone(), *label);
             let scrut = Scrut::new(expr, r#type);

@@ -284,9 +284,12 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         }
 
         let len = self.local_env;
-        while let Some(((_, left_value, left_cont), (_, right_value, right_cont))) = Option::zip(
-            self.elim_env().split_telescope(left_telescope),
-            self.elim_env().split_telescope(right_telescope),
+        while let Some((
+            (_, left_value, update_left_telescope),
+            (_, right_value, update_right_telescope),
+        )) = Option::zip(
+            self.elim_env().split_telescope(&mut left_telescope),
+            self.elim_env().split_telescope(&mut right_telescope),
         ) {
             if let Err(error) = self.unify(&left_value, &right_value) {
                 self.local_env.truncate(len);
@@ -296,8 +299,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             let left_var = Value::local(self.local_env.to_level());
             let right_var = Value::local(self.local_env.to_level());
 
-            left_telescope = left_cont(left_var);
-            right_telescope = right_cont(right_var);
+            update_left_telescope(left_var);
+            update_right_telescope(right_var);
             self.local_env.push();
         }
 
@@ -568,12 +571,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         let mut telescope = telescope;
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
-        while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
+        while let Some((name, value, update_telescope)) =
+            self.elim_env().split_telescope(&mut telescope)
+        {
             match self.rename(meta_var, &value) {
                 Ok(expr) => {
                     expr_fields.push((name, expr));
                     let source_var = self.renaming.next_local_var();
-                    telescope = cont(source_var);
+                    update_telescope(source_var);
                     self.renaming.push_local();
                 }
                 Err(error) => {

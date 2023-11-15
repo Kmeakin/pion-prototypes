@@ -182,7 +182,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let scrut_value = self.eval_env().eval(&scrut_expr);
 
                 match scrut_type {
-                    Value::RecordType(telescope) => {
+                    Value::RecordType(mut telescope) => {
                         if !telescope
                             .field_names()
                             .any(|potential_name| potential_name == name)
@@ -197,20 +197,19 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             return SynthExpr::ERROR;
                         }
 
-                        let mut telescope = telescope;
-                        let r#type = loop {
-                            let (potential_name, r#type, cont) =
-                                self.elim_env().split_telescope(telescope).unwrap();
+                        while let Some((potential_name, r#type, update_telescope)) =
+                            self.elim_env().split_telescope(&mut telescope)
+                        {
                             if potential_name == name {
-                                break r#type;
+                                let expr = Expr::field_proj(self.bump, scrut_expr, name);
+                                return SynthExpr::new(expr, r#type);
                             }
 
                             let projected = self.elim_env().field_proj(scrut_value.clone(), name);
-                            telescope = cont(projected);
-                        };
+                            update_telescope(projected);
+                        }
 
-                        let expr = Expr::field_proj(self.bump, scrut_expr, name);
-                        SynthExpr::new(expr, r#type)
+                        unreachable!()
                     }
                     _ if scrut_type.is_error() => SynthExpr::ERROR,
                     _ => {
@@ -440,12 +439,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let mut telescope = telescope.clone();
 
                     for elem in *elems {
-                        let (name, r#type, cont) =
-                            self.elim_env().split_telescope(telescope).unwrap();
+                        let (name, r#type, update_telescope) =
+                            self.elim_env().split_telescope(&mut telescope).unwrap();
 
                         let Check(elem_expr) = self.check_expr(elem, &r#type);
                         let elem_value = self.eval_env().eval(&elem_expr);
-                        telescope = cont(elem_value);
+                        update_telescope(elem_value);
                         expr_fields.push((name, elem_expr));
                     }
 
@@ -483,14 +482,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let mut telescope = telescope.clone();
 
                     for field in *fields {
-                        let (name, r#type, cont) =
-                            self.elim_env().split_telescope(telescope).unwrap();
+                        let (name, r#type, update_telescope) =
+                            self.elim_env().split_telescope(&mut telescope).unwrap();
                         let Check(field_expr) = match field.expr.as_ref() {
                             Some(expr) => self.check_expr(expr, &r#type),
                             None => self.check_ident_expr(field.name, &r#type),
                         };
                         let field_value = self.eval_env().eval(&field_expr);
-                        telescope = cont(field_value);
+                        update_telescope(field_value);
                         expr_fields.push((name, field_expr));
                     }
 

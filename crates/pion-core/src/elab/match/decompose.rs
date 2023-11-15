@@ -57,9 +57,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             };
 
                             for (label, pattern) in fields {
-                                let (_, r#type, cont) =
-                                    ctx.elim_env().split_telescope(telescope).unwrap();
-                                telescope = cont(ctx.local_env.next_var());
+                                let (_, r#type, update_telescope) =
+                                    ctx.elim_env().split_telescope(&mut telescope).unwrap();
+                                update_telescope(ctx.local_env.next_var());
                                 let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
                                 let scrut = Scrut::new(scrut_expr, r#type);
                                 columns.push((*pattern, scrut));

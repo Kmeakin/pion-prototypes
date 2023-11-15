@@ -119,20 +119,15 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         self.eval_env(&mut closure.local_values).eval(closure.expr)
     }
 
-    pub fn split_telescope(
+    pub fn split_telescope<'tele>(
         &self,
-        mut telescope: Telescope<'core>,
-    ) -> Option<(
-        FieldName,
-        Value<'core>,
-        impl FnOnce(Value<'core>) -> Telescope<'core>,
-    )> {
+        telescope: &'tele mut Telescope<'core>,
+    ) -> Option<(FieldName, Value<'core>, impl FnOnce(Value<'core>) + 'tele)> {
         let ((name, expr), fields) = telescope.fields.split_first()?;
         let value = self.eval_env(&mut telescope.local_values).eval(expr);
         Some((*name, value, move |prev| {
             telescope.local_values.push(prev);
             telescope.fields = fields;
-            telescope
         }))
     }
 
@@ -366,15 +361,14 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     /// Quote a [telescope][Telescope] back into a slice of [exprs][Expr].
     fn quote_telescope(
         &mut self,
-        telescope: Telescope<'core>,
+        mut telescope: Telescope<'core>,
     ) -> &'core [(FieldName, Expr<'core>)] {
         let len = self.local_len();
-        let mut telescope = telescope;
         let mut expr_fields = SliceVec::new(self.bump, telescope.len());
 
-        while let Some((name, value, cont)) = self.elim_env().split_telescope(telescope) {
+        while let Some((name, value, cont)) = self.elim_env().split_telescope(&mut telescope) {
             let var = Value::local(self.local_len.to_level());
-            telescope = cont(var);
+            cont(var);
             expr_fields.push((name, self.quote(&value)));
             self.push_local();
         }
