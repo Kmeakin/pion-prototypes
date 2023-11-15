@@ -319,16 +319,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
         loop {
             match (
-                self.elim_env().split_cases(left_cases),
-                self.elim_env().split_cases(right_cases),
+                self.elim_env().split_cases(&mut left_cases),
+                self.elim_env().split_cases(&mut right_cases),
             ) {
                 (
-                    SplitCases::Case((left_lit, left_value), left_cont),
-                    SplitCases::Case((right_lit, right_value), right_cont),
+                    SplitCases::Case((left_lit, left_value)),
+                    SplitCases::Case((right_lit, right_value)),
                 ) if left_lit == right_lit => {
                     self.unify(&left_value, &right_value)?;
-                    left_cases = left_cont;
-                    right_cases = right_cont;
                 }
                 (SplitCases::Default(left_value), SplitCases::Default(right_value)) => {
                     return self.unify(&left_value, &right_value)
@@ -490,10 +488,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let mut cases = cases.clone();
                         let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
-                            match self.elim_env().split_cases(cases) {
-                                SplitCases::Case((lit, expr), next_cases) => {
+                            match self.elim_env().split_cases(&mut cases) {
+                                SplitCases::Case((lit, expr)) => {
                                     pattern_cases.push((lit, self.rename(meta_var, &expr)?));
-                                    cases = next_cases;
                                 }
                                 SplitCases::Default(value) => {
                                     break Some(self.rename(meta_var, &value)?)

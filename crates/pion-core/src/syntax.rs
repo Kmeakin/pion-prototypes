@@ -503,7 +503,7 @@ pub type PatternCase<'core, P> = (P, Value<'core>);
 
 #[derive(Debug, Clone)]
 pub enum SplitCases<'core, P> {
-    Case(PatternCase<'core, P>, Cases<'core, P>),
+    Case(PatternCase<'core, P>),
     Default(Value<'core>),
     None,
 }

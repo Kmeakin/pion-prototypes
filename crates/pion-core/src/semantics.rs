@@ -131,14 +131,11 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }))
     }
 
-    pub fn split_cases(&self, mut cases: Cases<'core, Lit>) -> SplitCases<'core, Lit> {
+    pub fn split_cases(&self, cases: &mut Cases<'core, Lit>) -> SplitCases<'core, Lit> {
         match cases.pattern_cases.split_first() {
-            Some(((pat, expr), pattern_cases)) => {
-                cases.pattern_cases = pattern_cases;
-                SplitCases::Case(
-                    (*pat, self.eval_env(&mut cases.local_values).eval(expr)),
-                    cases,
-                )
+            Some(((pat, expr), rest)) => {
+                cases.pattern_cases = rest;
+                SplitCases::Case((*pat, self.eval_env(&mut cases.local_values).eval(expr)))
             }
             None => match cases.default_case {
                 Some(expr) => {
@@ -292,10 +289,9 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                         let mut cases = cases.clone();
                         let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
-                            match self.elim_env().split_cases(cases) {
-                                SplitCases::Case((lit, expr), next_cases) => {
+                            match self.elim_env().split_cases(&mut cases) {
+                                SplitCases::Case((lit, expr)) => {
                                     pattern_cases.push((lit, self.quote(&expr)));
-                                    cases = next_cases;
                                 }
                                 SplitCases::Default(value) => break Some(self.quote(&value)),
                                 SplitCases::None => break None,
