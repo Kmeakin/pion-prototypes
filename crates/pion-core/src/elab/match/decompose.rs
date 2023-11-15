@@ -36,10 +36,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             let mut columns =
                                 vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
                             columns.extend_from_slice(rest.elems);
-                            on_row(OwnedPatRow::new(columns, rest.guard))
+                            on_row(OwnedPatRow::new(columns, rest.guard, rest.body))
                         }
                         Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(rest.elems.to_vec(), rest.guard))
+                            on_row(OwnedPatRow::new(rest.elems.to_vec(), rest.guard, rest.body))
                         }
                         Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                             let Type::RecordType(mut telescope) =
@@ -58,7 +58,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 columns.push((*pattern, scrut));
                             }
                             columns.extend_from_slice(rest.elems);
-                            on_row(OwnedPatRow::new(columns, rest.guard))
+                            on_row(OwnedPatRow::new(columns, rest.guard, rest.body))
                         }
                         Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
                         Pat::Or(.., pats) => pats
@@ -90,14 +90,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     ) -> PatMatrix<'core> {
         let len = matrix.num_rows();
         let mut rows = Vec::with_capacity(len);
-        let mut indices = Vec::with_capacity(len);
-        for (row, body) in matrix.iter() {
+        for row in matrix.rows() {
             self.specialize_row(row.as_ref(), ctor).for_each(|row| {
                 rows.push(row);
-                indices.push(body);
             });
         }
-        PatMatrix { rows, indices }
+        PatMatrix { rows }
     }
 }
 
@@ -112,14 +110,12 @@ pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
 
     let len = matrix.num_rows();
     let mut rows = Vec::with_capacity(len);
-    let mut indices = Vec::with_capacity(len);
-    for (row, body) in matrix.iter() {
+    for row in matrix.rows() {
         default_row(row.as_ref()).for_each(|row| {
             rows.push(row.to_owned());
-            indices.push(body);
         });
     }
-    PatMatrix { rows, indices }
+    PatMatrix { rows }
 }
 
 struct DefaultedRow<'core, 'row> {

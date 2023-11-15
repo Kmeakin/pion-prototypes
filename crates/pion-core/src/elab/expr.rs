@@ -906,7 +906,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let scrut = Scrut::new(scrut_expr, scrut_type);
         let scrut_value = self.eval_env().eval(&scrut.expr);
 
-        for case in cases {
+        for (index, case) in cases.iter().enumerate() {
             let initial_len = self.local_env.len();
             let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
             let mut let_vars = Vec::new();
@@ -918,7 +918,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let Check(expr) = self.check_expr(&case.expr, expected);
             self.local_env.truncate(initial_len);
 
-            rows.push(PatRow::new(vec![(pat, scrut.clone())], guard));
+            rows.push(PatRow::new(vec![(pat, scrut.clone())], guard, index));
             bodies.push(Body::new(let_vars, expr));
         }
 

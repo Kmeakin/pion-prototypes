@@ -22,7 +22,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         // A matrix row is reachable iff it is useful relative to the rows in the matrix
         // above it
-        for (row, _) in input_matrix.iter() {
+        for row in input_matrix.rows() {
             if !self.is_useful(&temp_matrix, row.as_ref()) {
                 let pat_span = row.elems.first().unwrap().0.span();
                 self.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
@@ -36,7 +36,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         // A matrix is exhaustive iff the the wildcard pattern `_` is not useful
         let dummy_scrut = Scrut::new(Expr::Error, Type::Error);
         let elems = [(Pat::Underscore(scrut_span), dummy_scrut)];
-        if self.is_useful(&temp_matrix, PatRow::new(&elems, None)) {
+        if self.is_useful(&temp_matrix, PatRow::new(&elems, None, 0)) {
             self.emit_diagnostic(ElabDiagnostic::InexhaustiveMatch { scrut_span });
             Err(())
         } else {
@@ -99,7 +99,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     // If the constructors are not exhaustive, recurse on the defaulted matrix
                     false => {
                         let matrix = default_matrix(matrix);
-                        self.is_useful(&matrix, PatRow::new(rest, row.guard))
+                        self.is_useful(&matrix, PatRow::new(rest, row.guard, row.body))
                     }
                 }
             }
@@ -107,7 +107,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let elems = std::iter::once((*alt, scrut.clone()))
                     .chain(rest.iter().cloned())
                     .collect();
-                let row = PatRow::new(elems, row.guard);
+                let row = PatRow::new(elems, row.guard, row.body);
                 self.is_useful_inner(matrix, row.as_ref())
             }),
         }

@@ -47,7 +47,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let mut shift_amount = EnvLen::new();
         if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
             let bump = self.bump;
-            let index = matrix.row_index(0);
+            let index = matrix.row(0).body;
             let Body {
                 expr: body,
                 let_vars,
@@ -68,7 +68,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 None => *body,
                 Some(guard) => {
                     matrix.rows.remove(0);
-                    matrix.indices.remove(0);
                     let r#else = self.compile_match(matrix, bodies);
                     let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
                     Expr::r#if(self.bump, guard, *body, r#else)
