@@ -435,20 +435,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     if telescope.len() == elems.len()
                         && FieldName::are_tuple_field_names(telescope.field_names()) =>
                 {
-                    let mut expr_fields = SliceVec::new(self.bump, elems.len());
                     let mut telescope = telescope.clone();
-
-                    for elem in *elems {
+                    let expr_fields = self.bump.alloc_slice_fill_iter(elems.iter().map(|elem| {
                         let (name, r#type, update_telescope) =
                             self.elim_env().split_telescope(&mut telescope).unwrap();
 
                         let Check(elem_expr) = self.check_expr(elem, &r#type);
                         let elem_value = self.eval_env().eval(&elem_expr);
                         update_telescope(elem_value);
-                        expr_fields.push((name, elem_expr));
-                    }
+                        (name, elem_expr)
+                    }));
 
-                    let expr = Expr::RecordLit(expr_fields.into());
+                    let expr = Expr::RecordLit(expr_fields);
                     CheckExpr::new(expr)
                 }
                 _ if expected.is_type() => {
@@ -478,10 +476,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             telescope.field_names(),
                         ) =>
                 {
-                    let mut expr_fields = SliceVec::new(self.bump, fields.len());
                     let mut telescope = telescope.clone();
-
-                    for field in *fields {
+                    let expr_fields = self.bump.alloc_slice_fill_iter(fields.iter().map(|field| {
                         let (name, r#type, update_telescope) =
                             self.elim_env().split_telescope(&mut telescope).unwrap();
                         let Check(field_expr) = match field.expr.as_ref() {
@@ -490,10 +486,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         };
                         let field_value = self.eval_env().eval(&field_expr);
                         update_telescope(field_value);
-                        expr_fields.push((name, field_expr));
-                    }
+                        (name, field_expr)
+                    }));
 
-                    let expr = Expr::RecordLit(expr_fields.into());
+                    let expr = Expr::RecordLit(expr_fields);
                     CheckExpr::new(expr)
                 }
                 _ => self.synth_and_convert_expr(expr, expected),

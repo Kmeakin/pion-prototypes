@@ -181,10 +181,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                             telescope.field_names(),
                         ) =>
                 {
-                    let mut pat_fields = SliceVec::new(self.bump, fields.len());
                     let mut telescope = telescope.clone();
-
-                    for field in *fields {
+                    let pat_fields = self.bump.alloc_slice_fill_iter(fields.iter().map(|field| {
                         let (name, r#type, update_telescope) =
                             self.elim_env().split_telescope(&mut telescope).unwrap();
                         let Check(field_pat) = match field.pat.as_ref() {
@@ -193,11 +191,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         };
                         let field_value = self.local_env.next_var();
                         update_telescope(field_value);
-                        pat_fields.push((name, field_pat));
-                    }
+                        (name, field_pat)
+                    }));
 
-                    let expt = Pat::RecordLit(span, pat_fields.into());
-                    CheckPat::new(expt)
+                    let expr = Pat::RecordLit(span, pat_fields);
+                    CheckPat::new(expr)
                 }
                 _ => self.synth_and_convert_pat(pat, expected, idents),
             },
