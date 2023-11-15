@@ -3,13 +3,6 @@ use std::ops::ControlFlow;
 use super::constructors::Constructor;
 use super::*;
 
-struct SpecializedPat<'ctx, 'hir, 'core, 'scrut> {
-    ctx: &'ctx ElabCtx<'hir, 'core>,
-    pat: Pat<'core>,
-    ctor: Constructor<'core>,
-    scrut: &'scrut Scrut<'core>,
-}
-
 pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
     ctx: &'ctx ElabCtx<'hir, 'core>,
     row: BorrowedPatRow<'core, 'row>,
@@ -17,74 +10,6 @@ pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    /// Specialize `pat` with respect to the constructor `ctor`.
-    fn specialize_pat<'ctx, 'scrut>(
-        &'ctx self,
-        pat: Pat<'core>,
-        ctor: Constructor<'core>,
-        scrut: &'scrut Scrut<'core>,
-    ) -> SpecializedPat<'ctx, 'hir, 'core, 'scrut> {
-        impl<'ctx, 'hir, 'core, 'scrut> InternalIterator for SpecializedPat<'ctx, 'hir, 'core, 'scrut> {
-            type Item = OwnedPatRow<'core>;
-
-            fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
-            where
-                F: FnMut(Self::Item) -> ControlFlow<R>,
-            {
-                fn recur<'ctx, 'hir, 'core, 'scrut, R>(
-                    ctx: &'ctx ElabCtx<'hir, 'core>,
-                    pat: Pat<'core>,
-                    ctor: Constructor<'core>,
-                    scrut: &'scrut Scrut<'core>,
-                    on_row: &mut impl FnMut(OwnedPatRow<'core>) -> ControlFlow<R>,
-                ) -> ControlFlow<R> {
-                    match pat {
-                        Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                            let columns =
-                                vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
-                            on_row(OwnedPatRow::new(columns, None))
-                        }
-                        Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(vec![], None))
-                        }
-                        Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
-                            let mut columns = Vec::with_capacity(fields.len());
-
-                            let Type::RecordType(mut telescope) =
-                                ctx.elim_env().update_metas(&scrut.r#type)
-                            else {
-                                unreachable!("expected record type, got {:?}", scrut.r#type)
-                            };
-
-                            for (label, pattern) in fields {
-                                let (_, r#type, update_telescope) =
-                                    ctx.elim_env().split_telescope(&mut telescope).unwrap();
-                                update_telescope(ctx.local_env.next_var());
-                                let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
-                                let scrut = Scrut::new(scrut_expr, r#type);
-                                columns.push((*pattern, scrut));
-                            }
-                            on_row(OwnedPatRow::new(columns, None))
-                        }
-                        Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
-                        Pat::Or(.., pats) => pats
-                            .iter()
-                            .try_for_each(|pat| recur(ctx, *pat, ctor, scrut, on_row)),
-                    }
-                }
-
-                recur(self.ctx, self.pat, self.ctor, self.scrut, &mut on_row)
-            }
-        }
-
-        SpecializedPat {
-            ctx: self,
-            pat,
-            ctor,
-            scrut,
-        }
-    }
-
     /// Specialize `row` with respect to the constructor `ctor`.
     pub fn specialize_row<'ctx, 'row>(
         &'ctx self,
@@ -98,16 +23,54 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             where
                 F: FnMut(Self::Item) -> ControlFlow<R>,
             {
-                let Self { ctx, row, ctor } = self;
+                fn recur<'ctx, 'hir, 'core, 'scrut, R>(
+                    ctx: &'ctx ElabCtx<'hir, 'core>,
+                    pat: Pat<'core>,
+                    scrut: &'scrut Scrut<'core>,
+                    rest: BorrowedPatRow<'core, '_>,
+                    ctor: Constructor<'core>,
+                    on_row: &mut impl FnMut(OwnedPatRow<'core>) -> ControlFlow<R>,
+                ) -> ControlFlow<R> {
+                    match pat {
+                        Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
+                            let mut columns =
+                                vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
+                            columns.extend_from_slice(rest.elems);
+                            on_row(OwnedPatRow::new(columns, rest.guard))
+                        }
+                        Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
+                            on_row(OwnedPatRow::new(rest.elems.to_vec(), rest.guard))
+                        }
+                        Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
+                            let Type::RecordType(mut telescope) =
+                                ctx.elim_env().update_metas(&scrut.r#type)
+                            else {
+                                unreachable!("expected record type, got {:?}", scrut.r#type)
+                            };
 
+                            let mut columns = Vec::with_capacity(fields.len() + rest.elems.len());
+                            for (label, pattern) in fields {
+                                let (_, r#type, update_telescope) =
+                                    ctx.elim_env().split_telescope(&mut telescope).unwrap();
+                                update_telescope(ctx.local_env.next_var());
+                                let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
+                                let scrut = Scrut::new(scrut_expr, r#type);
+                                columns.push((*pattern, scrut));
+                            }
+                            columns.extend_from_slice(rest.elems);
+                            on_row(OwnedPatRow::new(columns, rest.guard))
+                        }
+                        Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
+                        Pat::Or(.., pats) => pats
+                            .iter()
+                            .try_for_each(|pat| recur(ctx, *pat, scrut, rest, ctor, on_row)),
+                    }
+                }
+
+                let Self { ctx, row, ctor } = self;
                 assert!(!row.elems.is_empty(), "Cannot specialize empty `PatRow`");
-                let ((pat, scrut), rest) = row.elems.split_first().unwrap();
-                ctx.specialize_pat(*pat, ctor, scrut)
-                    .try_for_each(|mut new_row| {
-                        new_row.elems.extend_from_slice(rest);
-                        new_row.guard = row.guard;
-                        on_row(new_row)
-                    })
+                let ((pat, scrut), rest) = row.split_first().unwrap();
+                recur(ctx, *pat, scrut, rest, ctor, &mut on_row)
             }
         }
 
@@ -167,28 +130,7 @@ fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'c
     impl<'core, 'row> InternalIterator for DefaultedRow<'core, 'row> {
         type Item = BorrowedPatRow<'core, 'row>;
 
-        fn try_for_each<R, F>(self, on_row: F) -> ControlFlow<R>
-        where
-            F: FnMut(Self::Item) -> ControlFlow<R>,
-        {
-            let Self { row } = self;
-            assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
-            default_pat(row).try_for_each(on_row)
-        }
-    }
-
-    DefaultedRow { row }
-}
-
-struct DefaultedPat<'core, 'row> {
-    row: BorrowedPatRow<'core, 'row>,
-}
-
-fn default_pat<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedPat<'core, 'row> {
-    impl<'core, 'row> InternalIterator for DefaultedPat<'core, 'row> {
-        type Item = BorrowedPatRow<'core, 'row>;
-
-        fn try_for_each<R, F>(self, mut f: F) -> ControlFlow<R>
+        fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
         where
             F: FnMut(Self::Item) -> ControlFlow<R>,
         {
@@ -205,10 +147,11 @@ fn default_pat<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedPat<'c
             }
 
             let Self { row } = self;
+            assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
             let ((pat, _), row) = row.split_first().unwrap();
-            recur(*pat, row, &mut f)
+            recur(*pat, row, &mut on_row)
         }
     }
 
-    DefaultedPat { row }
+    DefaultedRow { row }
 }
