@@ -173,9 +173,7 @@ fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'c
         {
             let Self { row } = self;
             assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
-
-            let ((pat, _), rest) = row.elems.split_first().unwrap();
-            default_pat(*pat, rest, row.guard).try_for_each(on_row)
+            default_pat(row).try_for_each(on_row)
         }
     }
 
@@ -183,16 +181,10 @@ fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'c
 }
 
 struct DefaultedPat<'core, 'row> {
-    pat: Pat<'core>,
-    rest: &'row [RowEntry<'core>],
-    guard: Option<Expr<'core>>,
+    row: BorrowedPatRow<'core, 'row>,
 }
 
-fn default_pat<'core, 'row>(
-    pat: Pat<'core>,
-    rest: &'row [RowEntry<'core>],
-    guard: Option<Expr<'core>>,
-) -> DefaultedPat<'core, 'row> {
+fn default_pat<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedPat<'core, 'row> {
     impl<'core, 'row> InternalIterator for DefaultedPat<'core, 'row> {
         type Item = BorrowedPatRow<'core, 'row>;
 
@@ -202,24 +194,21 @@ fn default_pat<'core, 'row>(
         {
             fn recur<'core, 'row, R>(
                 pat: Pat<'core>,
-                rest: &'row [RowEntry<'core>],
-                guard: Option<Expr<'core>>,
+                row: BorrowedPatRow<'core, 'row>,
                 on_row: &mut impl FnMut(BorrowedPatRow<'core, 'row>) -> ControlFlow<R>,
             ) -> ControlFlow<R> {
                 match pat {
-                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                        on_row(BorrowedPatRow::new(rest, guard))
-                    }
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => on_row(row),
                     Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
-                    Pat::Or(.., alts) => alts
-                        .iter()
-                        .try_for_each(|pat| recur(*pat, rest, guard, on_row)),
+                    Pat::Or(.., alts) => alts.iter().try_for_each(|pat| recur(*pat, row, on_row)),
                 }
             }
 
-            recur(self.pat, self.rest, self.guard, &mut f)
+            let Self { row } = self;
+            let ((pat, _), row) = row.split_first().unwrap();
+            recur(*pat, row, &mut f)
         }
     }
 
-    DefaultedPat { pat, rest, guard }
+    DefaultedPat { row }
 }
