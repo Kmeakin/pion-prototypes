@@ -69,6 +69,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             return true;
         }
 
+        self.is_useful_inner(matrix, row)
+    }
+
+    fn is_useful_inner(&self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
         let ((pat, scrut), rest) = row.elems.split_first().unwrap();
         match pat {
             // Inductive case 1:
@@ -104,7 +108,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     .chain(rest.iter().cloned())
                     .collect();
                 let row = PatRow::new(elems, row.guard);
-                self.is_useful(matrix, row.as_ref())
+                self.is_useful_inner(matrix, row.as_ref())
             }),
         }
     }
