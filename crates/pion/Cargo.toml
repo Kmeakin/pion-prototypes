@@ -23,7 +23,7 @@ bpaf               = { version = "0.9.5" }
 bumpalo            = { workspace = true }
 camino             = { workspace = true }
 codespan-reporting = { workspace = true }
-tikv-jemallocator  = { version = "0.5.4" }
+mimalloc           = { version = "0.1.39" }
 
 [dev-dependencies]
 snapbox = { version = "0.4.14", features = ["harness"] }
