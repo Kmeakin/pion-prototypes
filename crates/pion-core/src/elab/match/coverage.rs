@@ -103,13 +103,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     }
                 }
             }
-            Pat::Or(.., alts) => alts.iter().any(|alt| {
-                let elems = std::iter::once((*alt, scrut.clone()))
+            Pat::Or(.., alts) => {
+                let alt = Pat::Error(ByteSpan::default());
+                let mut elems: Vec<_> = std::iter::once((alt, scrut.clone()))
                     .chain(rest.iter().cloned())
                     .collect();
-                let row = PatRow::new(elems, row.guard, row.body);
-                self.is_useful_inner(matrix, row.as_ref())
-            }),
+                alts.iter().any(|alt| {
+                    elems[0].0 = *alt;
+                    let row = PatRow::new(elems.as_slice(), row.guard, row.body);
+                    self.is_useful_inner(matrix, row)
+                })
+            }
         }
     }
 
