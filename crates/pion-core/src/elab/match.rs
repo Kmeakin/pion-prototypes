@@ -68,12 +68,12 @@ impl<'core> PatMatrix<'core> {
 #[derive(Debug, Copy, Clone)]
 pub struct PatRow<'core, E> {
     pub elems: E,
-    pub guard: Option<Expr<'core>>,
+    pub guard: Option<&'core Expr<'core>>,
     pub body: usize,
 }
 
 impl<'core, E> PatRow<'core, E> {
-    pub fn new(elems: E, guard: Option<Expr<'core>>, body: usize) -> Self {
+    pub fn new(elems: E, guard: Option<&'core Expr<'core>>, body: usize) -> Self {
         Self { elems, guard, body }
     }
 }

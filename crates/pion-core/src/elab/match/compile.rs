@@ -70,7 +70,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     matrix.rows.remove(0);
                     let r#else = self.compile_match(matrix, bodies);
                     let r#else = r#else.shift(bump, shift_amount); // TODO: is there a more efficient way?
-                    Expr::r#if(self.bump, guard, *body, r#else)
+                    Expr::r#if(self.bump, *guard, *body, r#else)
                 }
             };
 
