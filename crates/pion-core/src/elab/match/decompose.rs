@@ -37,11 +37,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
                             let mut columns =
                                 vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
-                            columns.extend_from_slice(rest.elems);
+                            columns.extend_from_slice(rest.pairs);
                             on_row(OwnedPatRow::new(columns, rest.guard, rest.body))
                         }
                         Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(rest.elems.to_vec(), rest.guard, rest.body))
+                            on_row(OwnedPatRow::new(rest.pairs.to_vec(), rest.guard, rest.body))
                         }
                         Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                             let Type::RecordType(mut telescope) =
@@ -50,7 +50,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 unreachable!("expected record type, got {:?}", scrut.r#type)
                             };
 
-                            let mut columns = Vec::with_capacity(fields.len() + rest.elems.len());
+                            let mut columns = Vec::with_capacity(fields.len() + rest.pairs.len());
                             for (label, pattern) in fields {
                                 let (_, r#type, update_telescope) =
                                     ctx.elim_env().split_telescope(&mut telescope).unwrap();
@@ -59,7 +59,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 let scrut = Scrut::new(scrut_expr, r#type);
                                 columns.push((*pattern, scrut));
                             }
-                            columns.extend_from_slice(rest.elems);
+                            columns.extend_from_slice(rest.pairs);
                             on_row(OwnedPatRow::new(columns, rest.guard, rest.body))
                         }
                         Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
@@ -70,7 +70,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 }
 
                 let Self { ctx, row, ctor } = self;
-                assert!(!row.elems.is_empty(), "Cannot specialize empty `PatRow`");
+                assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
                 let ((pat, scrut), rest) = row.split_first().unwrap();
                 recur(ctx, *pat, scrut, rest, ctor, &mut on_row)
             }
@@ -145,7 +145,7 @@ fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'c
             }
 
             let Self { row } = self;
-            assert!(!row.elems.is_empty(), "Cannot default empty `PatRow`");
+            assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
             let ((pat, _), row) = row.split_first().unwrap();
             recur(*pat, row, &mut on_row)
         }

@@ -46,7 +46,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         //    - if the guard is false, recurse on the remaining rows
         let row = matrix.row(0);
         let mut shift_amount = EnvLen::new();
-        if row.elems.iter().all(|(pat, _)| pat.is_wildcard()) {
+        if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
             let bump = self.bump;
             let index = matrix.row(0).body;
             let Body {
@@ -90,7 +90,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         // default branch as well.
         let column = matrix.column_to_split_on().unwrap();
         matrix.swap_columns(0, column);
-        let (_, scrut) = &matrix.row(0).elems[0];
+        let (_, scrut) = &matrix.row(0).pairs[0];
 
         let ctors = matrix.column_constructors(0);
         match &ctors {
@@ -170,7 +170,7 @@ impl<'core> PatMatrix<'core> {
         );
 
         for row in &mut self.rows {
-            row.elems.swap(column1, column2);
+            row.pairs.swap(column1, column2);
         }
     }
 }

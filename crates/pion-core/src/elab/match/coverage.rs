@@ -25,7 +25,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         // above it
         for row in input_matrix.rows() {
             if !self.is_useful(&temp_matrix, row.as_ref()) {
-                let pat_span = row.elems.first().unwrap().0.span();
+                let pat_span = row.pairs.first().unwrap().0.span();
                 self.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
             }
 
@@ -52,7 +52,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         if let Some(n) = matrix.num_columns() {
             debug_assert_eq!(
                 n,
-                row.elems.len(),
+                row.pairs.len(),
                 "`row` must have a pattern for each column of `matrix`"
             );
         }
@@ -74,7 +74,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 
     fn is_useful_inner(&self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
-        let ((pat, scrut), rest) = row.elems.split_first().unwrap();
+        let ((pat, scrut), rest) = row.pairs.split_first().unwrap();
         match pat {
             // Inductive case 1:
             // If the first pattern is a constructed pattern, specialize the matrix and test row and
