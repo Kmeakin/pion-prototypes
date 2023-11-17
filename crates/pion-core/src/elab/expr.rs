@@ -911,7 +911,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
             let mut let_vars = Vec::new();
             self.push_match_pat(&pat, &scrut, &scrut_value, true, &mut let_vars);
-            let guard = case.guard.as_ref().map(|guard| self.check_expr_is_bool(guard).0);
+            let guard = case
+                .guard
+                .as_ref()
+                .map(|guard| self.check_expr_is_bool(guard).0);
             let guard = guard.map(|guard| self.bump.alloc(guard) as &_);
             let Check(expr) = self.check_expr(&case.expr, expected);
             self.local_env.truncate(initial_len);

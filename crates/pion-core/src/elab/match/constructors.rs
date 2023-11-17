@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use internal_iterator::{InternalIterator, IntoInternalIterator, IteratorExt};
 use pion_utils::slice_eq_by_key;
 
+use super::matrix::PatMatrix;
 use super::*;
 use crate::name::FieldName;
 

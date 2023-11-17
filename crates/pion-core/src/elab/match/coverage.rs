@@ -9,6 +9,7 @@
 
 use super::constructors::Constructor;
 use super::decompose::default_matrix;
+use super::matrix::BorrowedPatRow;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 

@@ -1,7 +1,9 @@
 use std::ops::ControlFlow;
 
 use super::constructors::Constructor;
+use super::matrix::BorrowedPatRow;
 use super::*;
+use crate::elab::r#match::matrix::OwnedPatRow;
 
 pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
     ctx: &'ctx ElabCtx<'hir, 'core>,

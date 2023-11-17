@@ -19,6 +19,7 @@
 
 use super::constructors::*;
 use super::decompose::*;
+use super::matrix::PatMatrix;
 use super::*;
 
 /// Compilation of pattern matrices to decision trees.
