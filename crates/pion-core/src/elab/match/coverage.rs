@@ -14,6 +14,7 @@ use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
+    #[allow(clippy::result_unit_err)]
     pub fn check_coverage(
         &mut self,
         input_matrix: &PatMatrix<'core>,
