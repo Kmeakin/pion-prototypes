@@ -244,7 +244,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     return SynthExpr::new(expr, Type::TYPE);
                 }
 
-                self.synth_fun_type(params, codomain, &mut Vec::new())
+                self.synth_fun_type(params, codomain, &mut Vec::new_in(self.bump))
             }
             hir::Expr::FunLit(_, params, body) => {
                 // empty parameter list is treated as a single unit parameter
@@ -271,7 +271,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     return SynthExpr::new(expr, r#type);
                 }
 
-                self.synth_fun_lit(params, body, &mut Vec::new())
+                self.synth_fun_lit(params, body, &mut Vec::new_in(self.bump))
             }
             hir::Expr::FunCall(_, fun, args) => {
                 let call_span = expr.span();
@@ -552,7 +552,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     }
                 }
 
-                self.check_fun_lit(params, body, expected, &mut Vec::new())
+                self.check_fun_lit(params, body, expected, &mut Vec::new_in(self.bump))
             }
             hir::Expr::Match(_, scrut, cases) => self.check_match(scrut, cases, expected),
             hir::Expr::If(_, (scrut, then, r#else)) => {
@@ -650,20 +650,22 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         mut elab_body: impl FnMut(&mut Self, &'hir hir::Expr) -> (Expr<'core>, Type<'core>),
     ) -> (Expr<'core>, Type<'core>) {
         let scrut_span = init.span();
-        let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type, &mut Vec::new());
+        let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type, &mut Vec::new_in(self.bump));
         let Check(init_expr) = self.check_expr(init, &pat_type);
         let init_value = self.eval_env().eval(&init_expr);
         let scrut = Scrut::new(init_expr, pat_type);
 
         let initial_len = self.local_env.len();
-        let mut let_vars = Vec::new();
+        let mut let_vars = Vec::new_in(self.bump);
         self.push_def_pat(&pat, &scrut, &init_value, true, &mut let_vars);
         let (body_expr, body_type) = elab_body(self, body);
         self.local_env.truncate(initial_len);
 
-        let mut matrix = PatMatrix::singleton(scrut, pat);
+        let mut matrix = PatMatrix::singleton(self.bump, scrut, pat);
         let expr = match self.check_coverage(&matrix, scrut_span) {
-            Ok(()) => self.compile_match(&mut matrix, &[Body::new(let_vars, body_expr)]),
+            Ok(()) => {
+                self.compile_match(self.bump, &mut matrix, &[Body::new(&let_vars, body_expr)])
+            }
             Err(()) => Expr::Error,
         };
         (expr, body_type)
@@ -736,7 +738,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         codomain: &'hir hir::Expr<'hir>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
             let Check(codomain_expr) = self.check_expr_is_type(codomain);
@@ -748,7 +750,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
         let (let_vars, codomain_expr) = self.with_scope(|this| {
-            let mut let_vars = Vec::new();
+            let mut let_vars = Vec::new_in(this.bump);
             let value = this.local_env.next_var();
             this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
             let Synth(codomain_expr, _) = this.synth_fun_type(params, codomain, idents);
@@ -757,9 +759,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         let scrut_span = param.pat.span();
         let codomain_expr = self.with_param(name, scrut.r#type.clone(), |this| {
-            let mut matrix = PatMatrix::singleton(scrut, pat);
+            let mut matrix = PatMatrix::singleton(self.bump, scrut, pat);
             match this.check_coverage(&matrix, scrut_span) {
-                Ok(()) => this.compile_match(&mut matrix, &[Body::new(let_vars, codomain_expr)]),
+                Ok(()) => this.compile_match(
+                    self.bump,
+                    &mut matrix,
+                    &[Body::new(&let_vars, codomain_expr)],
+                ),
                 Err(()) => Expr::Error,
             }
         });
@@ -772,7 +778,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         params: &'hir [hir::FunParam<'hir>],
         body: &'hir hir::Expr<'hir>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> SynthExpr<'core> {
         let Some((param, params)) = params.split_first() else {
             return self.synth_expr(body);
@@ -784,7 +790,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let name = pat.name();
 
         let (let_vars, body_expr, body_type_expr) = self.with_scope(|this| {
-            let mut let_vars = Vec::new();
+            let mut let_vars = Vec::new_in(this.bump);
             let value = this.local_env.next_var();
             this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
             let Synth(body_expr, body_type_value) = this.synth_fun_lit(params, body, idents);
@@ -793,19 +799,23 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         });
 
         let scrut_span = param.pat.span();
-        let mut matrix = PatMatrix::singleton(scrut.clone(), pat);
+        let mut matrix = PatMatrix::singleton(self.bump, scrut.clone(), pat);
         let (body_expr, body_type) = self.with_param(name, scrut.r#type.clone(), |this| match this
             .check_coverage(&matrix, scrut_span)
         {
             Err(()) => (Expr::Error, Expr::Error),
             Ok(()) => {
                 let body_expr = this.compile_match(
+                    self.bump,
                     &mut (matrix.clone()),
-                    &[Body::new(let_vars.clone(), body_expr)],
+                    &[Body::new(&let_vars, body_expr)],
                 );
 
-                let body_type =
-                    this.compile_match(&mut matrix, &[Body::new(let_vars.clone(), body_type_expr)]);
+                let body_type = this.compile_match(
+                    self.bump,
+                    &mut matrix,
+                    &[Body::new(&let_vars, body_type_expr)],
+                );
 
                 (body_expr, body_type)
             }
@@ -827,7 +837,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         params: &'hir [hir::FunParam<'hir>],
         body: &'hir hir::Expr<'hir>,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> CheckExpr<'core> {
         let Some((param, rest_params)) = params.split_first() else {
             return self.check_expr(body, expected);
@@ -847,7 +857,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
                     let expected = this.elim_env().apply_closure(next_expected, arg);
-                    let mut let_vars = Vec::new();
+                    let mut let_vars = Vec::new_in(this.bump);
                     let value = this.local_env.next_var();
                     this.push_param_pat(&pat, &scrut, &value, true, &mut let_vars);
                     let Check(body_expr) = this.check_fun_lit(rest_params, body, &expected, idents);
@@ -856,11 +866,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let scrut_span = param.pat.span();
                 let body_expr = self.with_param(name, scrut.r#type.clone(), |this| {
-                    let mut matrix = PatMatrix::singleton(scrut, pat);
+                    let mut matrix = PatMatrix::singleton(self.bump, scrut, pat);
                     match this.check_coverage(&matrix, scrut_span) {
-                        Ok(()) => {
-                            this.compile_match(&mut matrix, &[Body::new(let_vars, body_expr)])
-                        }
+                        Ok(()) => this.compile_match(
+                            self.bump,
+                            &mut matrix,
+                            &[Body::new(&let_vars, body_expr)],
+                        ),
                         Err(()) => Expr::Error,
                     }
                 });
@@ -899,8 +911,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
         let scrut_span = scrut.span();
-        let mut rows = Vec::with_capacity(cases.len());
-        let mut bodies = Vec::with_capacity(cases.len());
+        let mut rows = Vec::with_capacity_in(cases.len(), self.bump);
+        let mut bodies = Vec::with_capacity_in(cases.len(), self.bump);
 
         let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
         let scrut = Scrut::new(scrut_expr, scrut_type);
@@ -908,8 +920,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         for (index, case) in cases.iter().enumerate() {
             let initial_len = self.local_env.len();
-            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new());
-            let mut let_vars = Vec::new();
+            let Check(pat) = self.check_pat(&case.pat, &scrut.r#type, &mut Vec::new_in(self.bump));
+            let mut let_vars = Vec::new_in(self.bump);
             self.push_match_pat(&pat, &scrut, &scrut_value, true, &mut let_vars);
             let guard = case
                 .guard
@@ -919,13 +931,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let Check(expr) = self.check_expr(&case.expr, expected);
             self.local_env.truncate(initial_len);
 
-            rows.push(PatRow::new(vec![(pat, scrut.clone())], guard, index));
-            bodies.push(Body::new(let_vars, expr));
+            rows.push(PatRow::new(
+                [(pat, scrut.clone())].to_vec_in(self.bump),
+                guard,
+                index,
+            ));
+            bodies.push(Body::new(let_vars.leak(), expr));
         }
 
         let mut matrix = PatMatrix::new(rows);
         let expr = match self.check_coverage(&matrix, scrut_span) {
-            Ok(()) => self.compile_match(&mut matrix, &bodies),
+            Ok(()) => self.compile_match(self.bump, &mut matrix, &bodies),
             Err(()) => Expr::Error,
         };
         CheckExpr::new(expr)

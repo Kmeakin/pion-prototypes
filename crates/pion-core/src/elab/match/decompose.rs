@@ -5,7 +5,8 @@ use super::matrix::BorrowedPatRow;
 use super::*;
 use crate::elab::r#match::matrix::OwnedPatRow;
 
-pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
+pub struct SpecializedRow<'bump, 'ctx, 'hir, 'core, 'row> {
+    bump: &'bump bumpalo::Bump,
     ctx: &'ctx ElabCtx<'hir, 'core>,
     row: BorrowedPatRow<'core, 'row>,
     ctor: Constructor<'core>,
@@ -13,36 +14,43 @@ pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
     /// Specialize `row` with respect to the constructor `ctor`.
-    pub fn specialize_row<'ctx, 'row>(
+    pub fn specialize_row<'bump, 'ctx, 'row>(
         &'ctx self,
+        bump: &'bump bumpalo::Bump,
         row: BorrowedPatRow<'core, 'row>,
         ctor: Constructor<'core>,
-    ) -> SpecializedRow<'ctx, 'hir, 'core, 'row> {
-        impl<'ctx, 'hir, 'core, 'row> InternalIterator for SpecializedRow<'ctx, 'hir, 'core, 'row> {
-            type Item = OwnedPatRow<'core>;
+    ) -> SpecializedRow<'bump, 'ctx, 'hir, 'core, 'row> {
+        impl<'bump, 'ctx, 'hir, 'core, 'row> InternalIterator
+            for SpecializedRow<'bump, 'ctx, 'hir, 'core, 'row>
+        {
+            type Item = OwnedPatRow<'bump, 'core>;
 
             fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
             where
                 F: FnMut(Self::Item) -> ControlFlow<R>,
             {
-                fn recur<'ctx, 'hir, 'core, 'scrut, R>(
+                fn recur<'bump, 'ctx, 'hir, 'core, 'scrut, 'row, R>(
                     ctx: &'ctx ElabCtx<'hir, 'core>,
+                    bump: &'bump bumpalo::Bump,
                     pat: Pat<'core>,
                     scrut: &'scrut Scrut<'core>,
-                    rest: BorrowedPatRow<'core, '_>,
+                    rest: BorrowedPatRow<'core, 'row>,
                     ctor: Constructor<'core>,
-                    on_row: &mut impl FnMut(OwnedPatRow<'core>) -> ControlFlow<R>,
+                    on_row: &mut impl FnMut(OwnedPatRow<'bump, 'core>) -> ControlFlow<R>,
                 ) -> ControlFlow<R> {
                     match pat {
                         Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                            let mut columns =
-                                vec![(Pat::Underscore(pat.span()), scrut.clone()); ctor.arity()];
+                            let mut columns = Vec::with_capacity_in(ctor.arity(), bump);
+                            columns.extend(
+                                std::iter::repeat((Pat::Underscore(pat.span()), scrut.clone()))
+                                    .take(ctor.arity()),
+                            );
                             columns.extend_from_slice(rest.pairs);
                             on_row(OwnedPatRow::new(columns, rest.guard, rest.body))
                         }
-                        Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(rest.pairs.to_vec(), rest.guard, rest.body))
-                        }
+                        Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => on_row(
+                            OwnedPatRow::new(rest.pairs.to_vec_in(bump), rest.guard, rest.body),
+                        ),
                         Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                             let Type::RecordType(mut telescope) =
                                 ctx.elim_env().update_metas(&scrut.r#type)
@@ -50,7 +58,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 unreachable!("expected record type, got {:?}", scrut.r#type)
                             };
 
-                            let mut columns = Vec::with_capacity(fields.len() + rest.pairs.len());
+                            let mut columns =
+                                Vec::with_capacity_in(fields.len() + rest.pairs.len(), bump);
                             for (label, pattern) in fields {
                                 let (_, r#type, update_telescope) =
                                     ctx.elim_env().split_telescope(&mut telescope).unwrap();
@@ -65,18 +74,24 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
                         Pat::Or(.., pats) => pats
                             .iter()
-                            .try_for_each(|pat| recur(ctx, *pat, scrut, rest, ctor, on_row)),
+                            .try_for_each(|pat| recur(ctx, bump, *pat, scrut, rest, ctor, on_row)),
                     }
                 }
 
-                let Self { ctx, row, ctor } = self;
+                let Self {
+                    bump,
+                    ctx,
+                    row,
+                    ctor,
+                } = self;
                 assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
                 let ((pat, scrut), rest) = row.split_first().unwrap();
-                recur(ctx, *pat, scrut, rest, ctor, &mut on_row)
+                recur(ctx, bump, *pat, scrut, rest, ctor, &mut on_row)
             }
         }
 
         SpecializedRow {
+            bump,
             ctx: self,
             row,
             ctor,
@@ -85,17 +100,19 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
     /// Specialize `matrix` with respect to the constructor `ctor`.  This is the
     /// `S` function in *Compiling pattern matching to good decision trees*.
-    pub fn specialize_matrix(
+    pub fn specialize_matrix<'bump>(
         &self,
-        matrix: &PatMatrix<'core>,
+        bump: &'bump bumpalo::Bump,
+        matrix: &PatMatrix<'bump, 'core>,
         ctor: Constructor<'core>,
-    ) -> PatMatrix<'core> {
+    ) -> PatMatrix<'bump, 'core> {
         let len = matrix.num_rows();
-        let mut rows = Vec::with_capacity(len);
+        let mut rows = Vec::with_capacity_in(len, bump);
         for row in matrix.rows() {
-            self.specialize_row(row.as_ref(), ctor).for_each(|row| {
-                rows.push(row);
-            });
+            self.specialize_row(bump, row.as_ref(), ctor)
+                .for_each(|row| {
+                    rows.push(row);
+                });
         }
         PatMatrix { rows }
     }
@@ -104,17 +121,20 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 /// Discard the first column, and all rows starting with a constructed
 /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
 /// matching to good decision trees*.
-pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
+pub fn default_matrix<'bump, 'core>(
+    bump: &'bump bumpalo::Bump,
+    matrix: &PatMatrix<'bump, 'core>,
+) -> PatMatrix<'bump, 'core> {
     assert!(
         !matrix.is_unit(),
         "Cannot default `PatMatrix` with no columns"
     );
 
     let len = matrix.num_rows();
-    let mut rows = Vec::with_capacity(len);
+    let mut rows = Vec::with_capacity_in(len, bump);
     for row in matrix.rows() {
         default_row(row.as_ref()).for_each(|row| {
-            rows.push(row.to_owned());
+            rows.push(row.to_owned(bump));
         });
     }
     PatMatrix { rows }

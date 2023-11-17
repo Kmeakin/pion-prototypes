@@ -21,7 +21,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
-        names: &mut Vec<Ident>,
+        names: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> SynthPat<'core> {
         let span = pat.span();
 
@@ -140,7 +140,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> CheckPat<'core> {
         let span = pat.span();
 
@@ -239,7 +239,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> CheckPat<'core> {
         let Synth(pat, r#type) = self.synth_pat(pat, idents);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
@@ -247,7 +247,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    fn synth_ident_pat(&mut self, ident: Ident, idents: &mut Vec<Ident>) -> SynthPat<'core> {
+    fn synth_ident_pat(
+        &mut self,
+        ident: Ident,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
+    ) -> SynthPat<'core> {
         let Ident { span, symbol } = ident;
         match self.check_duplicate_local(idents, ident) {
             Err(()) => SynthPat::error(span),
@@ -262,7 +266,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         ident: Ident,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> CheckPat<'core> {
         let Synth(pat, r#type) = self.synth_ident_pat(ident, idents);
         CheckPat::new(self.convert_pat(pat, &r#type, expected))
@@ -272,7 +276,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> SynthPat<'core> {
         match r#type {
             None => self.synth_pat(pat, idents),
@@ -290,7 +294,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         pat: &'hir hir::Pat<'hir>,
         r#type: Option<&'hir hir::Expr<'hir>>,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> CheckPat<'core> {
         match r#type {
             None => self.check_pat(pat, expected, idents),
@@ -304,7 +308,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_fun_param(
         &mut self,
         param: &'hir hir::FunParam<'hir>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Synth(pat, r#type) = self.synth_ann_pat(&param.pat, param.r#type.as_ref(), idents);
         let expr = Expr::Local((), Index::new());
@@ -315,7 +319,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         param: &'hir hir::FunParam<'hir>,
         expected: &Type<'core>,
-        idents: &mut Vec<Ident>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> (Pat<'core>, Scrut<'core>) {
         let Check(pat) = self.check_ann_pat(&param.pat, param.r#type.as_ref(), expected, idents);
         let expr = Expr::Local((), Index::new());
@@ -340,7 +344,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
-    fn check_duplicate_local(&mut self, idents: &mut Vec<Ident>, ident: Ident) -> Result<(), ()> {
+    fn check_duplicate_local(
+        &mut self,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
+        ident: Ident,
+    ) -> Result<(), ()> {
         match idents.iter().find(|i| i.symbol == ident.symbol) {
             None => {
                 idents.push(ident);
@@ -364,7 +372,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         scrut: &Scrut<'core>,
         value: &Value<'core>,
         toplevel: bool,
-        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>), &bumpalo::Bump>,
     ) {
         let name = pat.name();
 
@@ -404,7 +412,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         scrut: &Scrut<'core>,
         value: &Value<'core>,
         toplevel: bool,
-        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>), &bumpalo::Bump>,
     ) {
         let name = pat.name();
         match pat {
@@ -442,7 +450,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         scrut: &Scrut<'core>,
         value: &Value<'core>,
         toplevel: bool,
-        let_vars: &mut Vec<(BinderName, Scrut<'core>)>,
+        let_vars: &mut Vec<(BinderName, Scrut<'core>), &bumpalo::Bump>,
     ) {
         let name = pat.name();
         match pat {

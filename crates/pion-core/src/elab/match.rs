@@ -24,15 +24,15 @@ impl<'core> Scrut<'core> {
 
 #[derive(Debug, Clone)]
 /// The right hand side of a match clause
-pub struct Body<'core> {
+pub struct Body<'bump, 'core> {
     /// The variables to be let-bound before `expr` is evaluated
-    let_vars: Vec<(BinderName, Scrut<'core>)>,
+    let_vars: &'bump [(BinderName, Scrut<'core>)],
     /// The expression to be evaluated
     expr: Expr<'core>,
 }
 
-impl<'core> Body<'core> {
-    pub fn new(let_vars: Vec<(BinderName, Scrut<'core>)>, expr: Expr<'core>) -> Self {
+impl<'bump, 'core> Body<'bump, 'core> {
+    pub fn new(let_vars: &'bump [(BinderName, Scrut<'core>)], expr: Expr<'core>) -> Self {
         Self { let_vars, expr }
     }
 }

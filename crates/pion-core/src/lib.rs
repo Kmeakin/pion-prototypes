@@ -1,3 +1,5 @@
+#![feature(allocator_api)]
+
 pub mod elab;
 mod env;
 pub mod name;

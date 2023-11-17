@@ -15,12 +15,13 @@ use crate::elab::diagnostics::ElabDiagnostic;
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
     #[allow(clippy::result_unit_err)]
-    pub fn check_coverage(
+    pub fn check_coverage<'bump>(
         &mut self,
-        input_matrix: &PatMatrix<'core>,
+        input_matrix: &PatMatrix<'bump, 'core>,
         scrut_span: ByteSpan,
     ) -> Result<(), ()> {
-        let mut temp_matrix = PatMatrix::new(Vec::with_capacity(input_matrix.rows.len()));
+        let mut temp_matrix =
+            PatMatrix::new(Vec::with_capacity_in(input_matrix.rows.len(), self.bump));
 
         // A matrix row is reachable iff it is useful relative to the rows in the matrix
         // above it
@@ -49,7 +50,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     /// A row of patterns, *q*, is useful relative to a matrix *m* iff there is
     /// a value matched by `q` and not matched by *m*. This is the `U`
     /// function in *Warnings for pattern matching*
-    fn is_useful(&self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
+    fn is_useful<'bump>(
+        &self,
+        matrix: &PatMatrix<'bump, 'core>,
+        row: BorrowedPatRow<'core, '_>,
+    ) -> bool {
         if let Some(n) = matrix.num_columns() {
             debug_assert_eq!(
                 n,
@@ -74,7 +79,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         self.is_useful_inner(matrix, row)
     }
 
-    fn is_useful_inner(&self, matrix: &PatMatrix<'core>, row: BorrowedPatRow<'core, '_>) -> bool {
+    fn is_useful_inner<'bump>(
+        &self,
+        matrix: &PatMatrix<'bump, 'core>,
+        row: BorrowedPatRow<'core, '_>,
+    ) -> bool {
         let ((pat, scrut), rest) = row.pairs.split_first().unwrap();
         match pat {
             // Inductive case 1:
@@ -100,7 +109,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     // Inductive case 2b:
                     // If the constructors are not exhaustive, recurse on the defaulted matrix
                     false => {
-                        let matrix = default_matrix(matrix);
+                        let matrix = default_matrix(self.bump, matrix);
                         self.is_useful(&matrix, PatRow::new(rest, row.guard, row.body))
                     }
                 }
@@ -119,14 +128,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
-    fn is_useful_ctor(
+    fn is_useful_ctor<'bump>(
         &self,
-        matrix: &PatMatrix<'core>,
+        matrix: &PatMatrix<'bump, 'core>,
         row: BorrowedPatRow<'core, '_>,
         ctor: Constructor<'core>,
     ) -> bool {
-        let matrix = self.specialize_matrix(matrix, ctor);
-        self.specialize_row(row, ctor)
+        let matrix = self.specialize_matrix(self.bump, matrix, ctor);
+        self.specialize_row(self.bump, row, ctor)
             .any(|row| self.is_useful(&matrix, row.as_ref()))
     }
 }

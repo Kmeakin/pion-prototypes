@@ -136,7 +136,7 @@ impl<'core> Pat<'core> {
     pub fn has_constructors(&self) -> bool { self.constructors().next().is_some() }
 }
 
-impl<'core> PatMatrix<'core> {
+impl<'bump, 'core> PatMatrix<'bump, 'core> {
     /// Collect all the `Constructor`s in the `index`th column
     pub fn column_constructors(&self, index: usize) -> Constructors<'core> {
         let mut ctors = Constructors::Empty;
