@@ -653,10 +653,22 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let Synth(pat, pat_type) = self.synth_ann_pat(pat, r#type, &mut Vec::new_in(self.bump));
         let Check(init_expr) = self.check_expr(init, &pat_type);
         let init_value = self.eval_env().eval(&init_expr);
-        let scrut = Scrut::new(init_expr, pat_type);
+
+        // FAST-PATH:
+        // skip pattern compilation and coverage checking if it's a wildcard pattern
+        if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
+            let name = pat.name();
+            let pat_type_expr = self.quote_env().quote(&pat_type);
+            self.local_env.push_def(name, pat_type, init_value);
+            let (body_expr, body_type) = elab_body(self, body);
+            self.local_env.pop();
+            let expr = Expr::r#let(self.bump, name, pat_type_expr, init_expr, body_expr);
+            return (expr, body_type);
+        }
 
         let initial_len = self.local_env.len();
         let mut let_vars = Vec::new_in(self.bump);
+        let scrut = Scrut::new(init_expr, pat_type);
         self.push_def_pat(&pat, &scrut, &init_value, true, &mut let_vars);
         let (body_expr, body_type) = elab_body(self, body);
         self.local_env.truncate(initial_len);
@@ -749,6 +761,17 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let (pat, scrut) = self.synth_fun_param(param, idents);
         let domain_expr = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
+
+        // FAST-PATH:
+        // skip pattern compilation and coverage checking if it's a wildcard pattern
+        if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
+            self.local_env.push_param(name, scrut.r#type);
+            let Synth(codomain_expr, _) = self.synth_fun_type(params, codomain, idents);
+            self.local_env.pop();
+            let expr = Expr::fun_type(self.bump, plicity, name, domain_expr, codomain_expr);
+            return SynthExpr::new(expr, Type::TYPE);
+        }
+
         let (let_vars, codomain_expr) = self.with_scope(|this| {
             let mut let_vars = Vec::new_in(this.bump);
             let value = this.local_env.next_var();
@@ -788,6 +811,25 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let (pat, scrut) = self.synth_fun_param(param, idents);
         let domain = self.quote_env().quote(&scrut.r#type);
         let name = pat.name();
+
+        // FAST-PATH:
+        // skip pattern compilation and coverage checking if it's a wildcard pattern
+        if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
+            self.local_env.push_param(name, scrut.r#type.clone());
+            let Synth(body_expr, body_type_value) = self.synth_fun_lit(params, body, idents);
+            let body_type = self.quote_env().quote(&body_type_value);
+            self.local_env.pop();
+
+            let expr = Expr::fun_lit(self.bump, plicity, name, domain, body_expr);
+            let r#type = Type::fun_type(
+                self.bump,
+                plicity,
+                name,
+                scrut.r#type,
+                Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+            );
+            return SynthExpr::new(expr, r#type);
+        }
 
         let (let_vars, body_expr, body_type_expr) = self.with_scope(|this| {
             let mut let_vars = Vec::new_in(this.bump);
@@ -853,6 +895,19 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let domain_expr = self.quote_env().quote(expected_domain);
                 let (pat, scrut) = self.check_fun_param(param, expected_domain, idents);
                 let name = pat.name();
+
+                // FAST-PATH:
+                // skip pattern compilation and coverage checking if it's a wildcard pattern
+                if let Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) = pat {
+                    let arg = self.local_env.next_var();
+                    let expected = self.elim_env().apply_closure(next_expected, arg);
+                    self.local_env.push_param(name, scrut.r#type);
+                    let Check(body_expr) = self.check_fun_lit(rest_params, body, &expected, idents);
+                    self.local_env.pop();
+                    let expr =
+                        Expr::fun_lit(self.bump, param_plicity, name, domain_expr, body_expr);
+                    return CheckExpr::new(expr);
+                }
 
                 let (let_vars, body_expr) = self.with_scope(|this| {
                     let arg = this.local_env.next_var();
