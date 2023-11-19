@@ -3,7 +3,7 @@ use crate::syntax::*;
 
 #[derive(Debug, Clone)]
 pub struct PatMatrix<'bump, 'core> {
-    pub rows: Vec<OwnedPatRow<'bump, 'core>, &'bump bumpalo::Bump>,
+    rows: Vec<OwnedPatRow<'bump, 'core>, &'bump bumpalo::Bump>,
 }
 
 impl<'bump, 'core> PatMatrix<'bump, 'core> {
@@ -42,11 +42,13 @@ impl<'bump, 'core> PatMatrix<'bump, 'core> {
 
     pub fn row(&self, index: usize) -> &OwnedPatRow<'bump, 'core> { &self.rows[index] }
 
-    pub fn rows(&self) -> impl ExactSizeIterator<Item = &OwnedPatRow<'bump, 'core>> {
-        self.rows.iter()
-    }
+    pub fn rows(&self) -> &[OwnedPatRow<'bump, 'core>] { &self.rows }
+
+    pub fn rows_mut(&mut self) -> &mut [OwnedPatRow<'bump, 'core>] { &mut self.rows }
 
     pub fn push_row(&mut self, row: OwnedPatRow<'bump, 'core>) { self.rows.push(row); }
+
+    pub fn remove_row(&mut self, row: usize) { self.rows.remove(row); }
 }
 
 #[derive(Debug, Copy, Clone)]

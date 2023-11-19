@@ -69,7 +69,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let body = match row.guard {
                 None => *body,
                 Some(guard) => {
-                    matrix.rows.remove(0);
+                    matrix.remove_row(0);
                     let r#else = self.compile_match(bump, matrix, bodies);
                     let r#else = r#else.shift(self_bump, shift_amount); // TODO: is there a more efficient way?
                     Expr::r#if(self.bump, *guard, *body, r#else)
@@ -170,7 +170,7 @@ impl<'bump, 'core> PatMatrix<'bump, 'core> {
             self.num_columns()
         );
 
-        for row in &mut self.rows {
+        for row in self.rows_mut() {
             row.pairs.swap(column1, column2);
         }
     }

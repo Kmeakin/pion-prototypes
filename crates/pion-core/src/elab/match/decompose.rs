@@ -114,7 +114,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     rows.push(row);
                 });
         }
-        PatMatrix { rows }
+        PatMatrix::new(rows)
     }
 }
 
@@ -137,7 +137,7 @@ pub fn default_matrix<'bump, 'core>(
             rows.push(row.to_owned(bump));
         });
     }
-    PatMatrix { rows }
+    PatMatrix::new(rows)
 }
 
 struct DefaultedRow<'core, 'row> {
