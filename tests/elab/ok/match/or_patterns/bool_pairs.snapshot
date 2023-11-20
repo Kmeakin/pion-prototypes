@@ -3,13 +3,13 @@ exit status: 0
 stdout = """
 def and3: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
-        false => match (x, y)._1 {
-            false => false,
-            true => false,
-        },
         true => match (x, y)._1 {
-            false => false,
             true => true,
+            false => false,
+        },
+        false => match (x, y)._1 {
+            true => false,
+            false => false,
         },
     };
 types of expressions:
@@ -47,13 +47,13 @@ metavars:
 
 def or3: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
-        false => match (x, y)._1 {
-            false => false,
-            true => true,
-        },
         true => match (x, y)._1 {
-            false => true,
             true => true,
+            false => true,
+        },
+        false => match (x, y)._1 {
+            true => true,
+            false => false,
         },
     };
 types of expressions:
@@ -91,11 +91,11 @@ metavars:
 
 def or4: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
-        false => match (x, y)._1 {
-            false => false,
-            true => true,
-        },
         true => true,
+        false => match (x, y)._1 {
+            true => true,
+            false => false,
+        },
     };
 types of expressions:
 span   | source                                   | type

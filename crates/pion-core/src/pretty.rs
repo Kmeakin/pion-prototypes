@@ -226,9 +226,9 @@ impl<'pretty> PrettyCtx<'pretty> {
                 let r#else = self.text("false =>").append(r#else).append(",");
                 let cases = self
                     .hardline()
-                    .append(r#else)
+                    .append(then)
                     .append(self.hardline())
-                    .append(then);
+                    .append(r#else);
 
                 self.text("match ")
                     .append(scrut)

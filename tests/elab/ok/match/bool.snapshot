@@ -3,8 +3,8 @@ exit status: 0
 stdout = """
 def not: Bool -> Bool =
     fun(x: Bool) => match x {
-        false => true,
         true => false,
+        false => true,
     };
 types of expressions:
 span   | source                                   | type
@@ -26,8 +26,8 @@ metavars:
 
 def bool-to-int: Bool -> Int =
     fun(x: Bool) => match x {
-        false => 0,
         true => 1,
+        false => 0,
     };
 types of expressions:
 span   | source                                   | type
@@ -49,10 +49,10 @@ metavars:
 
 def apply: Bool -> (Bool -> Int) -> Int =
     fun(x: Bool, f: Bool -> Int) => match x {
+        true => 1,
         false =>
             let z: Bool = x;
             f(z),
-        true => 1,
     };
 types of expressions:
 span   | source                                   | type

@@ -3,8 +3,8 @@ exit status: 0
 stdout = """
 def foo: Bool -> Int =
     fun(x: Bool) => match x {
-        false => 2,
         true => 1,
+        false => 2,
     };
 types of expressions:
 span   | source                                   | type

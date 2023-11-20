@@ -4,20 +4,20 @@ stdout = """
 def foo: Int -> Bool -> Bool -> Int =
     fun(x: Int, y: Bool, z: Bool) => match x {
         1 => match y {
-            false => 6,
             true => 1,
+            false => 6,
         },
         2 => match z {
-            false => 6,
             true => 2,
+            false => 6,
         },
         3 => match y {
-            false => 6,
             true => 3,
+            false => 6,
         },
         4 => match z {
-            false => 6,
             true => 4,
+            false => 6,
         },
         5 => 5,
         _ => 6,
@@ -58,13 +58,13 @@ metavars:
 
 def bar: Bool -> (Bool -> Bool) -> Int -> Int =
     fun(x: Bool, f: Bool -> Bool, y: Int) => match x {
+        true => 0,
         false =>
             let z: Bool = x;
             match f(z) {
-                false => 3,
                 true => y,
+                false => 3,
             },
-        true => 0,
     };
 types of expressions:
 span   | source                                   | type
@@ -100,26 +100,26 @@ def baz: Int -> Int -> (Int -> Bool) -> Int =
         0 =>
             let a: Int = (x, y)._1;
             match f(a) {
+                true => a,
                 false =>
                     let b: Int = (x, y)._1;
                     match f(b) {
+                        true => b,
                         false =>
                             let c: Int = (x, y)._1;
                             match f(c) {
+                                true => c,
                                 false =>
                                     let d: Int = (x, y)._1;
                                     match f(d) {
+                                        true => d,
                                         false =>
                                             let aa: Int = (x, y)._0;
                                             let bb: Int = (x, y)._1;
                                             bb,
-                                        true => d,
                                     },
-                                true => c,
                             },
-                        true => b,
                     },
-                true => a,
             },
         _ =>
             let aa: Int = (x, y)._0;

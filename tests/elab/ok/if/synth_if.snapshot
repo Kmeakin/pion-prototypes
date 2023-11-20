@@ -3,8 +3,8 @@ exit status: 0
 stdout = """
 def a: Int =
     match true {
-        false => 0,
         true => 1,
+        false => 0,
     };
 types of expressions:
 span   | source                                   | type
