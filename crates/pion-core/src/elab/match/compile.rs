@@ -72,7 +72,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     matrix.remove_row(0);
                     let r#else = self.compile_match(bump, matrix, bodies);
                     let r#else = r#else.shift(self_bump, shift_amount); // TODO: is there a more efficient way?
-                    Expr::r#if(self.bump, *guard, *body, r#else)
+                    Expr::match_bool(self.bump, *guard, *body, r#else)
                 }
             };
 
@@ -118,7 +118,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let true_branch = do_branch(true);
                 let false_branch = do_branch(false);
-                return Expr::r#if(self.bump, scrut.expr, true_branch, false_branch);
+                return Expr::match_bool(self.bump, scrut.expr, true_branch, false_branch);
             }
 
             Constructors::Ints(ints) => {
@@ -127,7 +127,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let mut matrix =
                         self.specialize_matrix(bump, matrix, Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(bump, &mut matrix, bodies);
-                    (Lit::Int(*int), expr)
+                    (*int, expr)
                 });
                 let cases = bump.alloc_slice_fill_iter(cases);
 
@@ -139,7 +139,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         Some(body)
                     }
                 };
-                return Expr::r#match(self.bump, scrut.expr, cases, default);
+                return Expr::r#match_int(self.bump, scrut.expr, cases, default);
             }
         }
     }

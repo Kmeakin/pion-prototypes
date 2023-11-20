@@ -5,7 +5,8 @@ use pion_utils::slice_vec::SliceVec;
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
 use crate::name::{BinderName, FieldName, LocalName};
 use crate::syntax::{
-    Cases, Closure, Elim, Expr, Head, Lit, Plicity, SplitCases, Telescope, Value, ZonkedExpr,
+    BoolCases, Closure, Elim, Expr, Head, IntCases, Lit, Plicity, SplitCases, Telescope, Value,
+    ZonkedExpr,
 };
 
 #[derive(Copy, Clone)]
@@ -55,7 +56,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         (spine.into_iter()).fold(head, |head, elim| match elim {
             Elim::FunApp(plicity, arg) => self.fun_app(plicity, head, arg),
             Elim::FieldProj(name) => self.field_proj(head, name),
-            Elim::Match(cases) => self.match_scrut(head, cases.clone()),
+            Elim::MatchBool(cases) => self.match_bool(head, cases.clone()),
+            Elim::MatchInt(cases) => self.match_int(head, cases.clone()),
         })
     }
 
@@ -92,10 +94,31 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }
     }
 
-    pub fn match_scrut(&self, scrut: Value<'core>, mut cases: Cases<'core, Lit>) -> Value<'core> {
+    pub fn match_bool(&self, scrut: Value<'core>, mut cases: BoolCases<'core>) -> Value<'core> {
         match scrut {
             Value::Error => Value::Error,
-            Value::Lit(lit) => {
+            Value::Lit(Lit::Bool(true)) => {
+                return self
+                    .eval_env(&mut cases.local_values)
+                    .eval(&cases.pattern_cases[0]);
+            }
+            Value::Lit(Lit::Bool(false)) => {
+                return self
+                    .eval_env(&mut cases.local_values)
+                    .eval(&cases.pattern_cases[1]);
+            }
+            Value::Stuck(head, mut spine) => {
+                spine.push(Elim::MatchBool(cases));
+                Value::Stuck(head, spine)
+            }
+            _ => panic!("Bad scrut match: {scrut:?} {cases:?}"),
+        }
+    }
+
+    pub fn match_int(&self, scrut: Value<'core>, mut cases: IntCases<'core, u32>) -> Value<'core> {
+        match scrut {
+            Value::Error => Value::Error,
+            Value::Lit(Lit::Int(lit)) => {
                 for (pat_lit, expr) in cases.pattern_cases {
                     if lit == *pat_lit {
                         return self.eval_env(&mut cases.local_values).eval(expr);
@@ -107,7 +130,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 }
             }
             Value::Stuck(head, mut spine) => {
-                spine.push(Elim::Match(cases));
+                spine.push(Elim::MatchInt(cases));
                 Value::Stuck(head, spine)
             }
             _ => panic!("Bad scrut match: {scrut:?} {cases:?}"),
@@ -131,7 +154,17 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }))
     }
 
-    pub fn split_cases(&self, cases: &mut Cases<'core, Lit>) -> SplitCases<'core, Lit> {
+    pub fn split_bool_cases(
+        &self,
+        mut cases: BoolCases<'core>,
+    ) -> (Value<'core>, impl FnMut() -> Value<'core> + '_) {
+        let [then, r#else] = cases.pattern_cases;
+        let then = self.eval_env(&mut cases.local_values).eval(then);
+        let r#else = move || self.eval_env(&mut cases.local_values).eval(r#else);
+        (then, r#else)
+    }
+
+    pub fn split_int_cases(&self, cases: &mut IntCases<'core, u32>) -> SplitCases<'core, u32> {
         match cases.pattern_cases.split_first() {
             Some(((pat, expr), rest)) => {
                 cases.pattern_cases = rest;
@@ -228,10 +261,15 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 let head = self.eval(head);
                 self.elim_env().field_proj(head, *name)
             }
-            Expr::Match((scrut, default), cases) => {
+            Expr::MatchBool([scrut, cases @ ..]) => {
                 let scrut = self.eval(scrut);
-                let cases = Cases::new(self.local_values.clone(), cases, default);
-                self.elim_env().match_scrut(scrut, cases)
+                let cases = BoolCases::new(self.local_values.clone(), cases);
+                self.elim_env().match_bool(scrut, cases)
+            }
+            Expr::MatchInt((scrut, default), cases) => {
+                let scrut = self.eval(scrut);
+                let cases = IntCases::new(self.local_values.clone(), cases, default);
+                self.elim_env().match_int(scrut, cases)
             }
         }
     }
@@ -285,11 +323,23 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                         Expr::fun_app(self.bump, *plicity, head, self.quote(arg))
                     }
                     Elim::FieldProj(name) => Expr::field_proj(self.bump, head, *name),
-                    Elim::Match(cases) => {
+                    Elim::MatchBool(cases) => {
+                        let mut cases = cases.clone();
+                        let [then, r#else] = cases.pattern_cases;
+
+                        let elim_env = self.elim_env();
+                        let then = elim_env.eval_env(&mut cases.local_values).eval(then);
+                        let r#else = elim_env.eval_env(&mut cases.local_values).eval(r#else);
+
+                        let then = self.quote(&then);
+                        let r#else = self.quote(&r#else);
+                        Expr::match_bool(self.bump, head, then, r#else)
+                    }
+                    Elim::MatchInt(cases) => {
                         let mut cases = cases.clone();
                         let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
-                            match self.elim_env().split_cases(&mut cases) {
+                            match self.elim_env().split_int_cases(&mut cases) {
                                 SplitCases::Case((lit, expr)) => {
                                     pattern_cases.push((lit, self.quote(&expr)));
                                 }
@@ -297,7 +347,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                                 SplitCases::None => break None,
                             }
                         };
-                        Expr::r#match(self.bump, head, pattern_cases.into(), default)
+                        Expr::r#match_int(self.bump, head, pattern_cases.into(), default)
                     }
                 })
             }
@@ -435,15 +485,17 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
             },
             // These exprs might be elimination spines with metavariables at
             // their head that need to be unfolded.
-            Expr::Meta(..) | Expr::FunApp(..) | Expr::FieldProj(..) | Expr::Match(..) => {
-                match self.zonk_meta_var_spines(expr) {
-                    Left(expr) => expr,
-                    Right(value) => {
-                        let expr = self.quote_env().quote(&value);
-                        self.zonk(&expr)
-                    }
+            Expr::Meta(..)
+            | Expr::FunApp(..)
+            | Expr::FieldProj(..)
+            | Expr::MatchBool(..)
+            | Expr::MatchInt(..) => match self.zonk_meta_var_spines(expr) {
+                Left(expr) => expr,
+                Right(value) => {
+                    let expr = self.quote_env().quote(&value);
+                    self.zonk(&expr)
                 }
-            }
+            },
             Expr::Let(name, (r#type, init, body)) => {
                 let r#type = self.zonk(r#type);
                 let init = self.zonk(init);
@@ -515,17 +567,29 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
                 Left(scrut_expr) => Left(Expr::field_proj(self.out_bump, scrut_expr, *name)),
                 Right(scrut_value) => Right(self.elim_env().field_proj(scrut_value, *name)),
             },
-            Expr::Match((scrut, default), cases) => match self.zonk_meta_var_spines(scrut) {
+            Expr::MatchBool([scrut, cases @ ..]) => match self.zonk_meta_var_spines(scrut) {
+                Left(scrut_expr) => {
+                    let [then, r#else] = cases;
+                    let then = self.zonk(then);
+                    let r#else = self.zonk(r#else);
+                    Left(Expr::match_bool(self.out_bump, scrut_expr, then, r#else))
+                }
+                Right(scrut_value) => {
+                    let cases = BoolCases::new(self.local_values.clone(), cases);
+                    Right(self.elim_env().match_bool(scrut_value, cases))
+                }
+            },
+            Expr::MatchInt((scrut, default), cases) => match self.zonk_meta_var_spines(scrut) {
                 Left(scrut_expr) => {
                     let cases = self.out_bump.alloc_slice_fill_iter(
                         cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
                     );
                     let default = default.map(|expr| self.zonk(&expr));
-                    Left(Expr::r#match(self.out_bump, scrut_expr, cases, default))
+                    Left(Expr::r#match_int(self.out_bump, scrut_expr, cases, default))
                 }
                 Right(scrut_value) => {
-                    let cases = Cases::new(self.local_values.clone(), cases, default);
-                    Right(self.elim_env().match_scrut(scrut_value, cases))
+                    let cases = IntCases::new(self.local_values.clone(), cases, default);
+                    Right(self.elim_env().match_int(scrut_value, cases))
                 }
             },
             expr => Left(self.zonk(expr)),

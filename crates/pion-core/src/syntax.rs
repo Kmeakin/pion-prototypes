@@ -48,7 +48,8 @@ pub enum Expr<'core, Name = ()> {
     RecordLit(&'core [(FieldName, Self)]),
     FieldProj(&'core Self, FieldName),
 
-    Match(&'core (Self, Option<Self>), &'core [(Lit, Self)]),
+    MatchBool(&'core [Self; 3]),
+    MatchInt(&'core (Self, Option<Self>), &'core [(u32, Self)]),
 }
 
 impl<'core, Name> Expr<'core, Name> {
@@ -130,25 +131,17 @@ impl<'core, Name> Expr<'core, Name> {
         Self::RecordLit(bump.alloc_slice_fill_iter(fields))
     }
 
-    pub fn r#match(
-        bump: &'core bumpalo::Bump,
-        scrut: Self,
-        cases: &'core [(Lit, Self)],
-        default: Option<Self>,
-    ) -> Self {
-        Self::Match(bump.alloc((scrut, default)), cases)
+    pub fn match_bool(bump: &'core bumpalo::Bump, scrut: Self, then: Self, r#else: Self) -> Self {
+        Self::MatchBool(bump.alloc([scrut, then, r#else]))
     }
 
-    pub fn r#if(bump: &'core bumpalo::Bump, scrut: Self, then: Self, r#else: Self) -> Self
-    where
-        Name: Copy,
-    {
-        Self::r#match(
-            bump,
-            scrut,
-            bump.alloc_slice_copy(&[(Lit::Bool(false), r#else), (Lit::Bool(true), then)]),
-            None,
-        )
+    pub fn r#match_int(
+        bump: &'core bumpalo::Bump,
+        scrut: Self,
+        cases: &'core [(u32, Self)],
+        default: Option<Self>,
+    ) -> Self {
+        Self::MatchInt(bump.alloc((scrut, default)), cases)
     }
 
     pub fn binds_local(&self, var: Index) -> bool {
@@ -169,7 +162,8 @@ impl<'core, Name> Expr<'core, Name> {
                 .any(|((_, r#type), var)| r#type.binds_local(var)),
             Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.binds_local(var)),
             Expr::FieldProj(scrut, _) => scrut.binds_local(var),
-            Expr::Match((scrut, default), cases) => {
+            Expr::MatchBool(cases) => cases.iter().any(|expr| expr.binds_local(var)),
+            Expr::MatchInt((scrut, default), cases) => {
                 scrut.binds_local(var)
                     || cases.iter().any(|(_, expr)| expr.binds_local(var))
                     || default.as_ref().map_or(false, |expr| expr.binds_local(var))
@@ -251,13 +245,19 @@ impl<'core, Name> Expr<'core, Name> {
             Expr::FieldProj(scrut, label) => {
                 Expr::field_proj(bump, scrut.shift_inner(bump, min, amount), *label)
             }
-            Expr::Match((scrut, default), branches) => {
+            Expr::MatchBool([scrut, then, r#else]) => Expr::match_bool(
+                bump,
+                scrut.shift_inner(bump, min, amount),
+                then.shift_inner(bump, min, amount),
+                r#else.shift_inner(bump, min, amount),
+            ),
+            Expr::MatchInt((scrut, default), branches) => {
                 let scrut = scrut.shift_inner(bump, min, amount);
                 let cases = branches
                     .iter()
                     .map(|(lit, expr)| (*lit, expr.shift_inner(bump, min, amount)));
                 let default = default.map(|expr| (expr.shift_inner(bump, min, amount)));
-                Expr::r#match(bump, scrut, bump.alloc_slice_fill_iter(cases), default)
+                Expr::r#match_int(bump, scrut, bump.alloc_slice_fill_iter(cases), default)
             }
         }
     }
@@ -429,7 +429,8 @@ pub enum Head {
 pub enum Elim<'core> {
     FunApp(Plicity, Value<'core>),
     FieldProj(FieldName),
-    Match(Cases<'core, Lit>),
+    MatchBool(BoolCases<'core>),
+    MatchInt(IntCases<'core, u32>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -475,13 +476,31 @@ impl<'core> Telescope<'core> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Cases<'core, P> {
+pub struct BoolCases<'core> {
+    pub local_values: SharedEnv<Value<'core>>,
+    pub pattern_cases: &'core [Expr<'core>; 2],
+}
+
+impl<'core> BoolCases<'core> {
+    pub fn new(
+        local_values: SharedEnv<Value<'core>>,
+        pattern_cases: &'core [Expr<'core>; 2],
+    ) -> Self {
+        Self {
+            local_values,
+            pattern_cases,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntCases<'core, P> {
     pub local_values: SharedEnv<Value<'core>>,
     pub pattern_cases: &'core [(P, Expr<'core>)],
     pub default_case: &'core Option<Expr<'core>>,
 }
 
-impl<'core, P> Cases<'core, P> {
+impl<'core, P> IntCases<'core, P> {
     pub fn new(
         local_values: SharedEnv<Value<'core>>,
         pattern_cases: &'core [(P, Expr<'core>)],

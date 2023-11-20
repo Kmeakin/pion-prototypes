@@ -241,7 +241,32 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 }
                 (Elim::FieldProj(left_name), Elim::FieldProj(right_name))
                     if left_name == right_name => {}
-                (Elim::Match(left_cases), Elim::Match(right_cases)) => {
+                (Elim::MatchBool(left_cases), Elim::MatchBool(right_cases)) => {
+                    let mut left_cases = left_cases.clone();
+                    let mut right_cases = right_cases.clone();
+
+                    let elim_env = self.elim_env();
+                    let mut left_eval_env = elim_env.eval_env(&mut left_cases.local_values);
+                    let mut right_eval_env = elim_env.eval_env(&mut right_cases.local_values);
+
+                    let [left_then, left_else] = left_cases.pattern_cases;
+                    let [right_then, right_else] = left_cases.pattern_cases;
+
+                    let left_then = left_eval_env.eval(left_then);
+                    let right_then = right_eval_env.eval(right_then);
+
+                    self.unify(&left_then, &right_then)?;
+
+                    let elim_env = self.elim_env();
+                    let mut left_eval_env = elim_env.eval_env(&mut left_cases.local_values);
+                    let mut right_eval_env = elim_env.eval_env(&mut right_cases.local_values);
+
+                    let left_else = left_eval_env.eval(left_else);
+                    let right_else = right_eval_env.eval(right_else);
+
+                    self.unify(&left_else, &right_else)?;
+                }
+                (Elim::MatchInt(left_cases), Elim::MatchInt(right_cases)) => {
                     self.unify_cases(left_cases, right_cases)?;
                 }
                 _ => return Err(UnifyError::Mismatch),
@@ -311,16 +336,16 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// Unify two [cases][Cases].
     fn unify_cases(
         &mut self,
-        left_cases: &Cases<'core, Lit>,
-        right_cases: &Cases<'core, Lit>,
+        left_cases: &IntCases<'core, u32>,
+        right_cases: &IntCases<'core, u32>,
     ) -> Result<(), UnifyError> {
         let mut left_cases = left_cases.clone();
         let mut right_cases = right_cases.clone();
 
         loop {
             match (
-                self.elim_env().split_cases(&mut left_cases),
-                self.elim_env().split_cases(&mut right_cases),
+                self.elim_env().split_int_cases(&mut left_cases),
+                self.elim_env().split_int_cases(&mut right_cases),
             ) {
                 (
                     SplitCases::Case((left_lit, left_value)),
@@ -424,7 +449,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
                 Elim::FieldProj(name) => return Err(SpineError::FieldProj(*name)),
-                Elim::Match(_) => return Err(SpineError::Match),
+                Elim::MatchBool(_) | Elim::MatchInt(_) => return Err(SpineError::Match),
             }
         }
         Ok(())
@@ -443,7 +468,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     expr,
                 )
             }
-            Elim::FieldProj(_) | Elim::Match(_) => {
+            Elim::FieldProj(_) | Elim::MatchBool(_) | Elim::MatchInt(_) => {
                 unreachable!("should have been caught by `init_renaming`")
             }
         })
@@ -484,11 +509,23 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         Ok(Expr::fun_app(self.bump, *plicity, head, arg))
                     }
                     Elim::FieldProj(name) => Ok(Expr::field_proj(self.bump, head, *name)),
-                    Elim::Match(cases) => {
+                    Elim::MatchBool(cases) => {
+                        let mut cases = cases.clone();
+                        let [then, r#else] = cases.pattern_cases;
+
+                        let elim_env = self.elim_env();
+                        let then = elim_env.eval_env(&mut cases.local_values).eval(then);
+                        let r#else = elim_env.eval_env(&mut cases.local_values).eval(r#else);
+
+                        let then = self.rename(meta_var, &then)?;
+                        let r#else = self.rename(meta_var, &r#else)?;
+                        Ok(Expr::match_bool(self.bump, head, then, r#else))
+                    }
+                    Elim::MatchInt(cases) => {
                         let mut cases = cases.clone();
                         let mut pattern_cases = SliceVec::new(self.bump, cases.len());
                         let default = loop {
-                            match self.elim_env().split_cases(&mut cases) {
+                            match self.elim_env().split_int_cases(&mut cases) {
                                 SplitCases::Case((lit, expr)) => {
                                     pattern_cases.push((lit, self.rename(meta_var, &expr)?));
                                 }
@@ -498,7 +535,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                                 SplitCases::None => break None,
                             }
                         };
-                        Ok(Expr::r#match(
+                        Ok(Expr::match_int(
                             self.bump,
                             head,
                             pattern_cases.into(),

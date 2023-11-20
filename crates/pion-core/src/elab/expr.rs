@@ -350,7 +350,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let Check(scrut_expr) = self.check_expr_is_bool(scrut);
                 let Synth(then_expr, then_type) = self.synth_expr(then);
                 let Check(else_expr) = self.check_expr(r#else, &then_type);
-                let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
+                let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
                 SynthExpr::new(expr, then_type)
             }
         }
@@ -559,7 +559,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let Check(scrut_expr) = self.check_expr_is_bool(scrut);
                 let Check(then_expr) = self.check_expr(then, expected);
                 let Check(else_expr) = self.check_expr(r#else, expected);
-                let expr = Expr::r#if(self.bump, scrut_expr, then_expr, else_expr);
+                let expr = Expr::match_bool(self.bump, scrut_expr, then_expr, else_expr);
                 CheckExpr::new(expr)
             }
 

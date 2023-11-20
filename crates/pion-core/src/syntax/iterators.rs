@@ -51,7 +51,8 @@ impl<'core> Subexprs<'core> {
                 f(fun)?;
                 f(arg)?;
             }
-            Expr::Match(.., (scrut, default), cases) => {
+            Expr::MatchBool(.., cases) => cases.iter().try_for_each(&mut f)?,
+            Expr::MatchInt(.., (scrut, default), cases) => {
                 f(scrut)?;
                 cases.iter().try_for_each(|(_, expr)| f(expr))?;
                 if let Some(expr) = default {

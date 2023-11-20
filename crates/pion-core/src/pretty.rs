@@ -217,11 +217,32 @@ impl<'pretty> PrettyCtx<'pretty> {
                 let scrut = self.expr(scrut, Prec::Proj);
                 scrut.append(".").append(self.field_name(*name))
             }
-            Expr::Match((scrut, default), cases) => {
+            Expr::MatchBool([scrut, then, r#else]) => {
+                let scrut = self.expr(scrut, Prec::MAX);
+                let then = self.blocklike_expr(then, Prec::MAX);
+                let r#else = self.blocklike_expr(r#else, Prec::MAX);
+
+                let then = self.text("true =>").append(then).append(",");
+                let r#else = self.text("false =>").append(r#else).append(",");
+                let cases = self
+                    .hardline()
+                    .append(r#else)
+                    .append(self.hardline())
+                    .append(then);
+
+                self.text("match ")
+                    .append(scrut)
+                    .append(" {")
+                    .append(cases.nest(INDENT))
+                    .append(self.hardline())
+                    .append("}")
+                    .group()
+            }
+            Expr::MatchInt((scrut, default), cases) => {
                 let scrut = self.expr(scrut, Prec::MAX);
                 let cases = cases.iter().map(|(lit, expr)| {
                     let expr = self.blocklike_expr(expr, Prec::MAX);
-                    self.lit(*lit).append(" =>").append(expr)
+                    self.lit(Lit::Int(*lit)).append(" =>").append(expr)
                 });
                 let default = default.as_ref().map(|expr| {
                     let expr = self.blocklike_expr(expr, Prec::MAX);
@@ -229,7 +250,7 @@ impl<'pretty> PrettyCtx<'pretty> {
                 });
                 let cases = cases.chain(default);
                 let cases = cases.map(|case| self.hardline().append(case).append(","));
-                let cases = self.concat(cases).nest(4);
+                let cases = self.concat(cases).nest(INDENT);
                 self.text("match ")
                     .append(scrut)
                     .append(" {")
@@ -245,7 +266,7 @@ impl<'pretty> PrettyCtx<'pretty> {
     fn blocklike_expr(&'pretty self, expr: &ZonkedExpr<'_>, prec: Prec) -> DocBuilder<'pretty> {
         let pretty_expr = self.expr(expr, prec);
         match expr {
-            Expr::Match(..) => self.space().append(pretty_expr),
+            Expr::MatchBool(..) | Expr::MatchInt(..) => self.space().append(pretty_expr),
             _ => self.line().append(pretty_expr).group().nest(INDENT),
         }
     }
@@ -335,7 +356,8 @@ fn expr_prec(expr: &ZonkedExpr<'_>) -> Prec {
         Expr::RecordType(..) => Prec::Atom,
         Expr::RecordLit(..) => Prec::Atom,
         Expr::FieldProj(..) => Prec::Proj,
-        Expr::Match(..) => Prec::Atom,
+        Expr::MatchBool(..) => Prec::Atom,
+        Expr::MatchInt(..) => Prec::Atom,
     }
 }
 
