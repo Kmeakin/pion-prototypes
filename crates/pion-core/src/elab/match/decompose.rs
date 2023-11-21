@@ -1,5 +1,7 @@
 use std::ops::ControlFlow;
 
+use internal_iterator::InternalIterator;
+
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;
 use super::*;

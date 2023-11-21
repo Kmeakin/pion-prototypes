@@ -119,6 +119,8 @@ mod tests {
         expr.subexprs().collect()
     }
 
+    fn subpats<'core>(pat: &'core Pat<'core>) -> Vec<&'core Pat<'core>> { pat.subpats().collect() }
+
     #[test]
     fn test_subexprs() {
         let bump = bumpalo::Bump::new();
@@ -137,5 +139,20 @@ mod tests {
             subexprs(&expr4),
             vec![&expr4, &expr0, &expr1, &expr2, &expr0, &expr1]
         );
+    }
+
+    #[test]
+    fn test_subpats() {
+        let bump = bumpalo::Bump::new();
+        let span = ByteSpan::default();
+
+        let expr0 = Pat::Error(span);
+        assert_eq!(subpats(&expr0), [&expr0]);
+
+        let expr1 = Pat::Lit(span, Lit::Bool(true));
+        assert_eq!(subpats(&expr1), [&expr1]);
+
+        let expr2 = Pat::Or(span, bump.alloc([expr0, expr1]));
+        assert_eq!(subpats(&expr2), [&expr2, &expr0, &expr1]);
     }
 }

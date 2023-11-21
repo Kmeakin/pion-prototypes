@@ -1,9 +1,6 @@
-use internal_iterator::{InternalIterator, IntoInternalIterator};
-
 use super::*;
 
 pub mod compile;
-pub mod coverage;
 
 mod constructors;
 mod decompose;

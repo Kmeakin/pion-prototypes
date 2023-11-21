@@ -19,8 +19,6 @@ mod r#match;
 mod pat;
 mod unify;
 
-mod new_match;
-
 pub struct ElabCtx<'hir, 'core> {
     bump: &'core bumpalo::Bump,
     local_env: LocalEnv<'core>,

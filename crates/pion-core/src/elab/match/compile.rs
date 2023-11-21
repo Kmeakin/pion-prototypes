@@ -14,13 +14,39 @@
 //! [Compiling pattern matching to good decision trees]: https://dl.acm.org/doi/10.1145/1411304.1411311
 //! [The Case for Pattern Matching]: https://alan-j-hu.github.io/writing/pattern-matching.html
 //! [How to compile pattern matching]: https://julesjacobs.com/notes/patternmatching/patternmatching.pdf
+//!
+//! - [Warnings for pattern matching](http://moscova.inria.fr/~maranget/papers/warn/index.html)
+//! - [rustc usefulness check](https://github.com/rust-lang/rust/blob/8a09420ac48658cad726e0a6997687ceac4151e3/compiler/rustc_mir_build/src/thir/pattern/usefulness.rs)
 
 // TODO: Use join points to prevent code size explosion. See [Compiling without continuations](https://www.microsoft.com/en-us/research/publication/compiling-without-continuations)
+
+// TODO: Currently we only report that the match is non-exhaustive, but we do
+// not report which patterns are missing. The algorithm for calculating the set
+// of missing patterns is described in part two of *Warnings for pattern
+// matching*
+
+use std::ops::{Deref, DerefMut};
 
 use super::constructors::*;
 use super::decompose::*;
 use super::matrix::PatMatrix;
 use super::*;
+use crate::elab::diagnostics::ElabDiagnostic;
+
+pub struct PatternCompiler<'hir, 'core, 'elab> {
+    elab_ctx: &'elab mut ElabCtx<'hir, 'core>,
+    reachable_rows: Vec<usize>,
+    inexhaustive: bool,
+}
+
+impl<'hir, 'core, 'elab> Deref for PatternCompiler<'hir, 'core, 'elab> {
+    type Target = ElabCtx<'hir, 'core>;
+    fn deref(&self) -> &Self::Target { self.elab_ctx }
+}
+
+impl<'hir, 'core, 'elab> DerefMut for PatternCompiler<'hir, 'core, 'elab> {
+    fn deref_mut(&mut self) -> &mut Self::Target { self.elab_ctx }
+}
 
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
@@ -30,10 +56,57 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         &mut self,
         matrix: &mut PatMatrix<'core>,
         bodies: &[Body<'bump, 'core>],
+        scrut_span: ByteSpan,
+        report_errors: bool,
+    ) -> Expr<'core> {
+        let mut compiler = PatternCompiler::new(self);
+        let expr = compiler.compile_match(matrix, bodies);
+
+        let PatternCompiler {
+            elab_ctx: _,
+            reachable_rows,
+            inexhaustive,
+        } = compiler;
+
+        if report_errors {
+            if inexhaustive {
+                self.emit_diagnostic(ElabDiagnostic::InexhaustiveMatch { scrut_span });
+            }
+
+            for (idx, row) in matrix.rows().iter().enumerate() {
+                if !reachable_rows.contains(&idx) {
+                    let pat_span = row.pairs[0].0.span();
+                    self.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
+                }
+            }
+        }
+
+        if inexhaustive {
+            Expr::Error
+        } else {
+            expr
+        }
+    }
+}
+
+impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
+    pub fn new(elab_ctx: &'elab mut ElabCtx<'hir, 'core>) -> Self {
+        Self {
+            elab_ctx,
+            reachable_rows: Vec::default(),
+            inexhaustive: false,
+        }
+    }
+
+    fn compile_match<'bump>(
+        &mut self,
+        matrix: &mut PatMatrix<'core>,
+        bodies: &[Body<'bump, 'core>],
     ) -> Expr<'core> {
         // Base case 1:
         // If the matrix is empty, matching always fails.
         if matrix.is_null() {
+            self.inexhaustive = true;
             return Expr::Error;
         }
 
@@ -49,6 +122,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
             let self_bump = self.bump;
             let index = matrix.row(0).body;
+            self.reachable_rows.push(index);
+
             let Body {
                 expr: body,
                 let_vars,

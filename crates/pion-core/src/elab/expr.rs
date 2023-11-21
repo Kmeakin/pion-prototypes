@@ -674,10 +674,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         self.local_env.truncate(initial_len);
 
         let mut matrix = PatMatrix::singleton(scrut, pat);
-        let expr = match self.check_coverage(&matrix, scrut_span) {
-            Ok(()) => self.compile_match(&mut matrix, &[Body::new(&let_vars, body_expr)]),
-            Err(()) => Expr::Error,
-        };
+        let expr = self.compile_match(
+            &mut matrix,
+            &[Body::new(&let_vars, body_expr)],
+            scrut_span,
+            true,
+        );
+
         (expr, body_type)
     }
 
@@ -781,10 +784,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let scrut_span = param.pat.span();
         let codomain_expr = self.with_param(name, scrut.r#type.clone(), |this| {
             let mut matrix = PatMatrix::singleton(scrut, pat);
-            match this.check_coverage(&matrix, scrut_span) {
-                Ok(()) => this.compile_match(&mut matrix, &[Body::new(&let_vars, codomain_expr)]),
-                Err(()) => Expr::Error,
-            }
+            this.compile_match(
+                &mut matrix,
+                &[Body::new(&let_vars, codomain_expr)],
+                scrut_span,
+                true,
+            )
         });
 
         let expr = Expr::fun_type(self.bump, plicity, name, domain_expr, codomain_expr);
@@ -836,19 +841,22 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         let scrut_span = param.pat.span();
         let mut matrix = PatMatrix::singleton(scrut.clone(), pat);
-        let (body_expr, body_type) = self.with_param(name, scrut.r#type.clone(), |this| match this
-            .check_coverage(&matrix, scrut_span)
-        {
-            Err(()) => (Expr::Error, Expr::Error),
-            Ok(()) => {
-                let body_expr =
-                    this.compile_match(&mut (matrix.clone()), &[Body::new(&let_vars, body_expr)]);
+        let (body_expr, body_type) = self.with_param(name, scrut.r#type.clone(), |this| {
+            let body_expr = this.compile_match(
+                &mut (matrix.clone()),
+                &[Body::new(&let_vars, body_expr)],
+                scrut_span,
+                true,
+            );
 
-                let body_type =
-                    this.compile_match(&mut matrix, &[Body::new(&let_vars, body_type_expr)]);
+            let body_type = this.compile_match(
+                &mut matrix,
+                &[Body::new(&let_vars, body_type_expr)],
+                scrut_span,
+                false,
+            );
 
-                (body_expr, body_type)
-            }
+            (body_expr, body_type)
         });
 
         let expr = Expr::fun_lit(self.bump, plicity, name, domain, body_expr);
@@ -910,12 +918,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let scrut_span = param.pat.span();
                 let body_expr = self.with_param(name, scrut.r#type.clone(), |this| {
                     let mut matrix = PatMatrix::singleton(scrut, pat);
-                    match this.check_coverage(&matrix, scrut_span) {
-                        Ok(()) => {
-                            this.compile_match(&mut matrix, &[Body::new(&let_vars, body_expr)])
-                        }
-                        Err(()) => Expr::Error,
-                    }
+                    this.compile_match(
+                        &mut matrix,
+                        &[Body::new(&let_vars, body_expr)],
+                        scrut_span,
+                        true,
+                    )
                 });
 
                 let expr = Expr::fun_lit(self.bump, param_plicity, name, domain_expr, body_expr);
@@ -977,10 +985,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
 
         let mut matrix = PatMatrix::new(rows);
-        let expr = match self.check_coverage(&matrix, scrut_span) {
-            Ok(()) => self.compile_match(&mut matrix, &bodies),
-            Err(()) => Expr::Error,
-        };
+        let expr = self.compile_match(&mut matrix, &bodies, scrut_span, true);
+
         CheckExpr::new(expr)
     }
 
