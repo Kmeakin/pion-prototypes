@@ -12,6 +12,10 @@ impl fmt::Display for EnvLen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
+impl From<usize> for EnvLen {
+    fn from(len: usize) -> Self { Self(len) }
+}
+
 impl From<EnvLen> for usize {
     fn from(len: EnvLen) -> Self { len.0 }
 }

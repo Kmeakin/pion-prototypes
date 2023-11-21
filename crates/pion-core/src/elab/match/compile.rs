@@ -52,10 +52,10 @@ impl<'hir, 'core, 'elab> DerefMut for PatternCompiler<'hir, 'core, 'elab> {
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    pub fn compile_match<'bump>(
+    pub fn compile_match(
         &mut self,
         matrix: &mut PatMatrix<'core>,
-        bodies: &[Body<'bump, 'core>],
+        bodies: &[Body<'core>],
         scrut_span: ByteSpan,
         report_errors: bool,
     ) -> Expr<'core> {
@@ -98,10 +98,10 @@ impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
         }
     }
 
-    fn compile_match<'bump>(
+    fn compile_match(
         &mut self,
         matrix: &mut PatMatrix<'core>,
-        bodies: &[Body<'bump, 'core>],
+        bodies: &[Body<'core>],
     ) -> Expr<'core> {
         // Base case 1:
         // If the matrix is empty, matching always fails.
@@ -118,44 +118,33 @@ impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
         //    - if the guard is true, continue to the RHS
         //    - if the guard is false, recurse on the remaining rows
         let row = matrix.row(0);
-        let mut shift_amount = EnvLen::new();
         if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
             let self_bump = self.bump;
             let index = matrix.row(0).body;
+            let body = &bodies[index];
             self.reachable_rows.push(index);
 
-            let Body {
-                expr: body,
-                let_vars,
-            } = &bodies[index];
-
-            let initial_len = self.local_env.len();
-            let let_vars = let_vars.iter().map(|(name, scrut)| {
-                let r#type = self.quote_env().quote(&scrut.r#type);
-                let init = scrut.expr.shift(self_bump, shift_amount);
-                let value = self.eval_env().eval(&init);
-                self.local_env.push_def(*name, scrut.r#type.clone(), value);
-                shift_amount.push();
-                (*name, (r#type, init, Expr::Error))
-            });
-            let let_vars = self_bump.alloc_slice_fill_iter(let_vars);
-
-            let body = match row.guard {
-                None => *body,
-                Some(guard) => {
+            match body {
+                Body::Success { expr } => return *expr,
+                Body::GuardIf {
+                    let_vars,
+                    guard_expr,
+                    expr,
+                } => {
+                    let guard_expr = *guard_expr;
+                    let shift_amount = EnvLen::from(let_vars.len());
                     matrix.remove_row(0);
                     let r#else = self.compile_match(matrix, bodies);
                     let r#else = r#else.shift(self_bump, shift_amount); // TODO: is there a more efficient way?
-                    Expr::match_bool(self.bump, *guard, *body, r#else)
+                    let expr = Expr::match_bool(self.bump, guard_expr, *expr, r#else);
+                    return let_vars
+                        .iter()
+                        .rev()
+                        .fold(expr, |body, (name, (r#type, init, _))| {
+                            Expr::r#let(self.bump, *name, *r#type, *init, body)
+                        });
                 }
-            };
-
-            self.local_env.truncate(initial_len);
-
-            return let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
-                tuple.2 = body;
-                Expr::Let(*name, tuple)
-            });
+            }
         }
 
         // Inductive case:

@@ -43,10 +43,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                     .take(ctor.arity()),
                             );
                             pairs.extend_from_slice(rest.pairs);
-                            on_row(OwnedPatRow::new(pairs, rest.guard, rest.body))
+                            on_row(OwnedPatRow::new(pairs, rest.body))
                         }
                         Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(rest.pairs.to_vec(), rest.guard, rest.body))
+                            on_row(OwnedPatRow::new(rest.pairs.to_vec(), rest.body))
                         }
                         Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                             let Type::RecordType(mut telescope) =
@@ -65,7 +65,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 pairs.push((*pattern, scrut));
                             }
                             pairs.extend_from_slice(rest.pairs);
-                            on_row(OwnedPatRow::new(pairs, rest.guard, rest.body))
+                            on_row(OwnedPatRow::new(pairs, rest.body))
                         }
                         Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
                         Pat::Or(.., pats) => pats

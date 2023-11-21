@@ -72,6 +72,17 @@ impl<'core, Name> Expr<'core, Name> {
         Self::Let(name, bump.alloc((r#type, init, body)))
     }
 
+    pub fn lets(let_vars: &'core mut [(BinderName, (Self, Self, Self))], body: Self) -> Self
+    where
+        Name: PartialEq + std::fmt::Debug,
+    {
+        let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
+            debug_assert_eq!(tuple.2, Expr::Error);
+            tuple.2 = body;
+            Expr::Let(*name, tuple)
+        })
+    }
+
     pub fn fun_lit(
         bump: &'core bumpalo::Bump,
         plicity: Plicity,

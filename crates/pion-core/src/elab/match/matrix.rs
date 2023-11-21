@@ -21,7 +21,7 @@ impl<'core> PatMatrix<'core> {
     }
 
     pub fn singleton(scrut: Scrut<'core>, pat: Pat<'core>) -> Self {
-        Self::new([PatRow::new([(pat, scrut)].to_vec(), None, 0)].to_vec())
+        Self::new([PatRow::new([(pat, scrut)].to_vec(), 0)].to_vec())
     }
 
     pub fn num_rows(&self) -> usize { self.rows.len() }
@@ -52,36 +52,31 @@ impl<'core> PatMatrix<'core> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct PatRow<'core, P> {
+pub struct PatRow<P> {
     pub pairs: P,
-    pub guard: Option<&'core Expr<'core>>,
     pub body: usize,
 }
 
-impl<'core, P> PatRow<'core, P> {
-    pub fn new(pairs: P, guard: Option<&'core Expr<'core>>, body: usize) -> Self {
-        Self { pairs, guard, body }
-    }
+impl<P> PatRow<P> {
+    pub fn new(pairs: P, body: usize) -> Self { Self { pairs, body } }
 }
 
-pub type OwnedPatRow<'core> = PatRow<'core, Vec<PatPair<'core>>>;
+pub type OwnedPatRow<'core> = PatRow<Vec<PatPair<'core>>>;
 
 impl<'core> OwnedPatRow<'core> {
     pub fn as_ref(&self) -> BorrowedPatRow<'core, '_> {
-        PatRow::new(self.pairs.as_ref(), self.guard, self.body)
+        PatRow::new(self.pairs.as_ref(), self.body)
     }
 }
 
-pub type BorrowedPatRow<'core, 'row> = PatRow<'core, &'row [PatPair<'core>]>;
+pub type BorrowedPatRow<'core, 'row> = PatRow<&'row [PatPair<'core>]>;
 
 impl<'core, 'row> BorrowedPatRow<'core, 'row> {
-    pub fn to_owned(self) -> OwnedPatRow<'core> {
-        OwnedPatRow::new(self.pairs.to_vec(), self.guard, self.body)
-    }
+    pub fn to_owned(self) -> OwnedPatRow<'core> { OwnedPatRow::new(self.pairs.to_vec(), self.body) }
 
     pub fn split_first(&self) -> Option<(&PatPair<'core>, Self)> {
         let (first, rest) = self.pairs.split_first()?;
-        Some((first, Self::new(rest, self.guard, self.body)))
+        Some((first, Self::new(rest, self.body)))
     }
 }
 
