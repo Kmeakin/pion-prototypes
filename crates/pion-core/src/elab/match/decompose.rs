@@ -110,6 +110,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
 /// matching to good decision trees*.
 pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
+    fn recur<'core>(
+        pat: Pat<'core>,
+        row: BorrowedPatRow<'core, '_>,
+        rows: &mut Vec<OwnedPatRow<'core>>,
+    ) {
+        match pat {
+            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => rows.push(row.to_owned()),
+            Pat::Lit(..) | Pat::RecordLit(..) => {}
+            Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, rows)),
+        }
+    }
+
     assert!(
         !matrix.is_unit(),
         "Cannot default `PatMatrix` with no columns"
@@ -118,43 +130,10 @@ pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
     let len = matrix.num_rows();
     let mut rows = Vec::with_capacity(len);
     for row in matrix.rows() {
-        default_row(row.as_ref()).for_each(|row| {
-            rows.push(row.to_owned());
-        });
+        let row = row.as_ref();
+        assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
+        let ((pat, _), row) = row.split_first().unwrap();
+        recur(*pat, row, &mut rows);
     }
     PatMatrix::new(rows)
-}
-
-struct DefaultedRow<'core, 'row> {
-    row: BorrowedPatRow<'core, 'row>,
-}
-
-fn default_row<'core, 'row>(row: BorrowedPatRow<'core, 'row>) -> DefaultedRow<'core, 'row> {
-    impl<'core, 'row> InternalIterator for DefaultedRow<'core, 'row> {
-        type Item = BorrowedPatRow<'core, 'row>;
-
-        fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
-        where
-            F: FnMut(Self::Item) -> ControlFlow<R>,
-        {
-            fn recur<'core, 'row, R>(
-                pat: Pat<'core>,
-                row: BorrowedPatRow<'core, 'row>,
-                on_row: &mut impl FnMut(BorrowedPatRow<'core, 'row>) -> ControlFlow<R>,
-            ) -> ControlFlow<R> {
-                match pat {
-                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => on_row(row),
-                    Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
-                    Pat::Or(.., alts) => alts.iter().try_for_each(|pat| recur(*pat, row, on_row)),
-                }
-            }
-
-            let Self { row } = self;
-            assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
-            let ((pat, _), row) = row.split_first().unwrap();
-            recur(*pat, row, &mut on_row)
-        }
-    }
-
-    DefaultedRow { row }
 }

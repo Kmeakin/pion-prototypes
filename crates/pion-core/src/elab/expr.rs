@@ -998,21 +998,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     Some(expr)
                 }
             };
+            let Check(expr) = self.check_expr(&case.expr, expected);
+            self.local_env.truncate(initial_len);
 
-            let body = {
-                let Check(expr) = self.check_expr(&case.expr, expected);
-                self.local_env.truncate(initial_len);
-
-                match guard {
-                    None => Body::Success {
-                        expr: Expr::lets(let_vars, expr),
-                    },
-                    Some(guard) => Body::GuardIf {
-                        let_vars,
-                        guard_expr: guard,
-                        expr,
-                    },
-                }
+            let body = match guard {
+                None => Body::Success {
+                    expr: Expr::lets(let_vars, expr),
+                },
+                Some(guard) => Body::GuardIf {
+                    let_vars,
+                    guard_expr: guard,
+                    expr,
+                },
             };
 
             rows.push(PatRow::new([(pat, scrut.clone())].to_vec(), index));
