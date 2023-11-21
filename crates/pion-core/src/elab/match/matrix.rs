@@ -2,12 +2,12 @@ use super::Scrut;
 use crate::syntax::*;
 
 #[derive(Debug, Clone)]
-pub struct PatMatrix<'bump, 'core> {
-    rows: Vec<OwnedPatRow<'bump, 'core>, &'bump bumpalo::Bump>,
+pub struct PatMatrix<'core> {
+    rows: Vec<OwnedPatRow<'core>>,
 }
 
-impl<'bump, 'core> PatMatrix<'bump, 'core> {
-    pub fn new(rows: Vec<OwnedPatRow<'bump, 'core>, &'bump bumpalo::Bump>) -> Self {
+impl<'core> PatMatrix<'core> {
+    pub fn new(rows: Vec<OwnedPatRow<'core>>) -> Self {
         if let Some((first, rows)) = rows.split_first() {
             for row in rows {
                 debug_assert_eq!(
@@ -20,8 +20,8 @@ impl<'bump, 'core> PatMatrix<'bump, 'core> {
         Self { rows }
     }
 
-    pub fn singleton(bump: &'bump bumpalo::Bump, scrut: Scrut<'core>, pat: Pat<'core>) -> Self {
-        Self::new([PatRow::new([(pat, scrut)].to_vec_in(bump), None, 0)].to_vec_in(bump))
+    pub fn singleton(scrut: Scrut<'core>, pat: Pat<'core>) -> Self {
+        Self::new([PatRow::new([(pat, scrut)].to_vec(), None, 0)].to_vec())
     }
 
     pub fn num_rows(&self) -> usize { self.rows.len() }
@@ -40,13 +40,13 @@ impl<'bump, 'core> PatMatrix<'bump, 'core> {
         self.rows.iter().map(move |row| &row.pairs[index])
     }
 
-    pub fn row(&self, index: usize) -> &OwnedPatRow<'bump, 'core> { &self.rows[index] }
+    pub fn row(&self, index: usize) -> &OwnedPatRow<'core> { &self.rows[index] }
 
-    pub fn rows(&self) -> &[OwnedPatRow<'bump, 'core>] { &self.rows }
+    pub fn rows(&self) -> &[OwnedPatRow<'core>] { &self.rows }
 
-    pub fn rows_mut(&mut self) -> &mut [OwnedPatRow<'bump, 'core>] { &mut self.rows }
+    pub fn rows_mut(&mut self) -> &mut [OwnedPatRow<'core>] { &mut self.rows }
 
-    pub fn push_row(&mut self, row: OwnedPatRow<'bump, 'core>) { self.rows.push(row); }
+    pub fn push_row(&mut self, row: OwnedPatRow<'core>) { self.rows.push(row); }
 
     pub fn remove_row(&mut self, row: usize) { self.rows.remove(row); }
 }
@@ -64,9 +64,9 @@ impl<'core, P> PatRow<'core, P> {
     }
 }
 
-pub type OwnedPatRow<'bump, 'core> = PatRow<'core, Vec<PatPair<'core>, &'bump bumpalo::Bump>>;
+pub type OwnedPatRow<'core> = PatRow<'core, Vec<PatPair<'core>>>;
 
-impl<'bump, 'core> OwnedPatRow<'bump, 'core> {
+impl<'core> OwnedPatRow<'core> {
     pub fn as_ref(&self) -> BorrowedPatRow<'core, '_> {
         PatRow::new(self.pairs.as_ref(), self.guard, self.body)
     }
@@ -75,8 +75,8 @@ impl<'bump, 'core> OwnedPatRow<'bump, 'core> {
 pub type BorrowedPatRow<'core, 'row> = PatRow<'core, &'row [PatPair<'core>]>;
 
 impl<'core, 'row> BorrowedPatRow<'core, 'row> {
-    pub fn to_owned<'bump>(self, bump: &'bump bumpalo::Bump) -> OwnedPatRow<'bump, 'core> {
-        OwnedPatRow::new(self.pairs.to_vec_in(bump), self.guard, self.body)
+    pub fn to_owned(self) -> OwnedPatRow<'core> {
+        OwnedPatRow::new(self.pairs.to_vec(), self.guard, self.body)
     }
 
     pub fn split_first(&self) -> Option<(&PatPair<'core>, Self)> {

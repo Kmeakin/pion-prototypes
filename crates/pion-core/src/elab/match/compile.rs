@@ -28,8 +28,7 @@ use super::*;
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn compile_match<'bump>(
         &mut self,
-        bump: &'bump bumpalo::Bump,
-        matrix: &mut PatMatrix<'bump, 'core>,
+        matrix: &mut PatMatrix<'core>,
         bodies: &[Body<'bump, 'core>],
     ) -> Expr<'core> {
         // Base case 1:
@@ -70,7 +69,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 None => *body,
                 Some(guard) => {
                     matrix.remove_row(0);
-                    let r#else = self.compile_match(bump, matrix, bodies);
+                    let r#else = self.compile_match(matrix, bodies);
                     let r#else = r#else.shift(self_bump, shift_amount); // TODO: is there a more efficient way?
                     Expr::match_bool(self.bump, *guard, *body, r#else)
                 }
@@ -96,23 +95,23 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let ctors = matrix.column_constructors(0);
         match &ctors {
             Constructors::Empty => {
-                let mut matrix = default_matrix(self.bump, matrix);
-                return self.compile_match(bump, &mut matrix, bodies);
+                let mut matrix = default_matrix(matrix);
+                return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Record(fields) => {
-                let mut matrix = self.specialize_matrix(bump, matrix, Constructor::Record(fields));
-                return self.compile_match(bump, &mut matrix, bodies);
+                let mut matrix = self.specialize_matrix(matrix, Constructor::Record(fields));
+                return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Bools(bools) => {
                 let mut do_branch = |b| match bools[usize::from(b)] {
                     true => {
                         let mut matrix =
-                            self.specialize_matrix(bump, matrix, Constructor::Lit(Lit::Bool(b)));
-                        self.compile_match(bump, &mut matrix, bodies)
+                            self.specialize_matrix(matrix, Constructor::Lit(Lit::Bool(b)));
+                        self.compile_match(&mut matrix, bodies)
                     }
                     false => {
-                        let mut matrix = default_matrix(self.bump, matrix);
-                        self.compile_match(bump, &mut matrix, bodies)
+                        let mut matrix = default_matrix(matrix);
+                        self.compile_match(&mut matrix, bodies)
                     }
                 };
 
@@ -125,8 +124,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let bump = self.bump;
                 let cases = ints.iter().map(|int| {
                     let mut matrix =
-                        self.specialize_matrix(bump, matrix, Constructor::Lit(Lit::Int(*int)));
-                    let expr = self.compile_match(bump, &mut matrix, bodies);
+                        self.specialize_matrix(matrix, Constructor::Lit(Lit::Int(*int)));
+                    let expr = self.compile_match(&mut matrix, bodies);
                     (*int, expr)
                 });
                 let cases = bump.alloc_slice_fill_iter(cases);
@@ -134,8 +133,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let default = match ctors.is_exhaustive() {
                     true => None,
                     false => {
-                        let mut matrix = default_matrix(self.bump, matrix);
-                        let body = self.compile_match(bump, &mut matrix, bodies);
+                        let mut matrix = default_matrix(matrix);
+                        let body = self.compile_match(&mut matrix, bodies);
                         Some(body)
                     }
                 };
@@ -145,7 +144,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 }
 
-impl<'bump, 'core> PatMatrix<'bump, 'core> {
+impl<'core> PatMatrix<'core> {
     /// Return the index of any column in the matrix with at least one
     /// non-wildcard pattern. At the moment, we simply select the leftmost
     /// column, but more advanced splitting heuristcs can be used to minimize
