@@ -39,8 +39,9 @@ impl<'core> PatMatrix<'core> {
                     }
                     Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                         let mut pairs = Vec::with_capacity(fields.len() + rest.pairs.len());
+                        let scrut_expr = bump.alloc(expr);
                         for (label, pattern) in fields {
-                            let expr = Expr::field_proj(bump, expr, *label);
+                            let expr = Expr::FieldProj(scrut_expr, *label);
                             pairs.push((*pattern, expr));
                         }
                         pairs.extend_from_slice(rest.pairs);
