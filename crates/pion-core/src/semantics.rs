@@ -536,11 +536,124 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
         }
     }
 
+    pub fn zonk_value(&mut self, value: &Value<'core>) -> ZonkedExpr<'out> {
+        let value = self.elim_env().update_metas(value);
+        match value {
+            Value::Error => Expr::Error,
+            Value::Lit(lit) => Expr::Lit(lit),
+            Value::Stuck(head, spine) => {
+                spine
+                    .iter()
+                    .fold(self.zonk_head(head), |head, elim| match elim {
+                        Elim::FunApp(plicity, arg) => {
+                            Expr::fun_app(self.out_bump, *plicity, head, self.zonk_value(arg))
+                        }
+                        Elim::FieldProj(name) => Expr::field_proj(self.out_bump, head, *name),
+                        Elim::MatchBool(cases) => {
+                            let mut cases = cases.clone();
+                            let [then, r#else] = cases.pattern_cases;
+
+                            let elim_env = self.elim_env();
+                            let then = elim_env.eval_env(&mut cases.local_values).eval(then);
+                            let r#else = elim_env.eval_env(&mut cases.local_values).eval(r#else);
+
+                            let then = self.zonk_value(&then);
+                            let r#else = self.zonk_value(&r#else);
+                            Expr::match_bool(self.out_bump, head, then, r#else)
+                        }
+                        Elim::MatchInt(cases) => {
+                            let mut cases = cases.clone();
+                            let mut pattern_cases = SliceVec::new(self.out_bump, cases.len());
+                            let default = loop {
+                                match self.elim_env().split_int_cases(&mut cases) {
+                                    SplitCases::Case((lit, expr)) => {
+                                        pattern_cases.push((lit, self.zonk_value(&expr)));
+                                    }
+                                    SplitCases::Default(value) => {
+                                        break Some(self.zonk_value(&value))
+                                    }
+                                    SplitCases::None => break None,
+                                }
+                            };
+                            Expr::r#match_int(self.out_bump, head, pattern_cases.into(), default)
+                        }
+                    })
+            }
+            Value::FunType(plicity, name, domain, body) => {
+                let domain = self.zonk_value(domain);
+                let body = self.zonk_closure(name, body);
+                Expr::fun_type(self.out_bump, plicity, name, domain, body)
+            }
+            Value::FunLit(plicity, name, domain, body) => {
+                let domain = self.zonk_value(domain);
+                let body = self.zonk_closure(name, body);
+                Expr::fun_lit(self.out_bump, plicity, name, domain, body)
+            }
+            Value::ArrayLit(exprs) => Expr::array_lit(
+                self.out_bump,
+                exprs.iter().map(|value| self.zonk_value(value)),
+            ),
+            Value::RecordType(mut telescope) => {
+                let len = self.local_len();
+                let mut expr_fields = SliceVec::new(self.out_bump, telescope.len());
+                while let Some((name, value, cont)) =
+                    self.elim_env().split_telescope(&mut telescope)
+                {
+                    let var = Value::local(self.local_len().to_level());
+                    cont(var);
+                    expr_fields.push((name, self.zonk_value(&value)));
+                    self.push_local(BinderName::from(name));
+                }
+
+                self.truncate_local(len);
+                Expr::RecordType(expr_fields.into())
+            }
+            Value::RecordLit(fields) => Expr::record_lit(
+                self.out_bump,
+                fields
+                    .iter()
+                    .map(|(name, value)| (*name, self.zonk_value(value))),
+            ),
+        }
+    }
+
+    fn zonk_head(&mut self, head: Head) -> ZonkedExpr<'out> {
+        match head {
+            Head::Prim(prim) => Expr::Prim(prim),
+            Head::Local(var) => match self.local_names.get_level(var) {
+                Some(BinderName::User(symbol)) => Expr::Local(
+                    LocalName::User(*symbol),
+                    self.local_len().level_to_index(var).unwrap(),
+                ),
+                Some(BinderName::Underscore) => Expr::Local(
+                    LocalName::Generated,
+                    self.local_len().level_to_index(var).unwrap(),
+                ),
+                None => panic!("Unbound local variable: {var:?}"),
+            },
+            Head::Meta(var) => match self.get_meta(var) {
+                Some(value) => self.zonk_value(value),
+                None => Expr::Meta(var),
+            },
+        }
+    }
+
     fn zonk_with_binder(&mut self, name: BinderName, expr: &Expr<'core>) -> ZonkedExpr<'out> {
         self.push_local(name);
         let ret = self.zonk(expr);
         self.pop_local();
         ret
+    }
+
+    fn zonk_closure(&mut self, name: BinderName, closure: Closure<'core>) -> ZonkedExpr<'out> {
+        let var = Value::local(self.local_len().to_level());
+        let value = self.elim_env().apply_closure(closure, var);
+
+        self.push_local(name);
+        let expr = self.zonk_value(&value);
+        self.pop_local();
+
+        expr
     }
 
     /// Unfold elimination spines with solved metavariables at their head.

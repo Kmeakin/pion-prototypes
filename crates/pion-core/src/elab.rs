@@ -41,7 +41,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 
     pub fn finish_with<T>(mut self, value: T) -> ElabResult<'hir, 'core, T> {
-        let mut quote_env = QuoteEnv::new(self.bump, &self.meta_env.values, self.local_env.len());
         let mut zonk_env = ZonkEnv::new(
             self.bump,
             self.bump,
@@ -49,13 +48,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             &mut self.local_env.values,
             &mut self.local_env.names,
         );
-        let metavars = self
-            .bump
-            .alloc_slice_fill_iter(self.meta_env.values.iter().map(|value| {
-                value
-                    .as_ref()
-                    .map(|value| zonk_env.zonk(&quote_env.quote(value)))
-            }));
+        let metavars = self.bump.alloc_slice_fill_iter(
+            self.meta_env
+                .values
+                .iter()
+                .map(|value| value.as_ref().map(|value| zonk_env.zonk_value(value))),
+        );
 
         let meta_env = std::mem::take(&mut self.meta_env);
         for entry in meta_env.iter() {
@@ -158,8 +156,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 
     fn pretty_value(&mut self, value: &Value<'core>) -> Box<str> {
-        let expr = self.quote_env().quote(value);
-        let expr = self.zonk_env(self.bump).zonk(&expr);
+        let expr = self.zonk_env(self.bump).zonk_value(value);
         let pretty_ctx = pretty::PrettyCtx::new(self.bump);
         let doc = pretty_ctx.expr(&expr, pretty::Prec::MAX);
         doc.pretty(80).to_string().into()
@@ -482,9 +479,8 @@ pub fn elab_expr<'hir, 'core>(
     let mut ctx = ElabCtx::new(bump);
 
     let Synth(expr, r#type) = ctx.synth_expr(expr);
-    let r#type = ctx.quote_env().quote(&r#type);
 
     let expr = ctx.zonk_env(bump).zonk(&expr);
-    let r#type = ctx.zonk_env(bump).zonk(&r#type);
+    let r#type = ctx.zonk_env(bump).zonk_value(&r#type);
     ctx.finish_with((expr, r#type))
 }

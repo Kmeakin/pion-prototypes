@@ -23,8 +23,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     pub fn synth_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> SynthExpr<'core> {
         let Synth(core_expr, r#type) = self.synth_expr_inner(expr);
 
-        let type_expr = self.quote_env().quote(&r#type);
-        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
+        let type_expr = self.zonk_env(self.bump).zonk_value(&r#type);
         self.type_map.insert_expr(expr, type_expr);
         Synth(core_expr, r#type)
     }
@@ -364,8 +363,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let expected = self.elim_env().update_metas(expected);
         let Check(core_expr) = self.check_expr_inner(expr, &expected);
 
-        let type_expr = self.quote_env().quote(&expected);
-        let type_expr = self.zonk_env(self.bump).zonk(&type_expr);
+        let type_expr = self.zonk_env(self.bump).zonk_value(&expected);
         self.type_map.insert_expr(expr, type_expr);
         Check(core_expr)
     }
