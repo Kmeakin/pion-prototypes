@@ -124,12 +124,8 @@ impl<'core> PatternCompiler<'core> {
                     let r#else = self.compile_match(matrix, bodies);
                     let r#else = r#else.shift(self.bump, shift_amount); // TODO: is there a more efficient way?
                     let expr = Expr::match_bool(self.bump, guard_expr, *expr, r#else);
-                    return let_vars
-                        .iter()
-                        .rev()
-                        .fold(expr, |body, (name, (r#type, init, _))| {
-                            Expr::r#let(self.bump, *name, *r#type, *init, body)
-                        });
+                    let let_vars = self.bump.alloc_slice_copy(let_vars);
+                    return Expr::lets(let_vars, expr);
                 }
             }
         }
