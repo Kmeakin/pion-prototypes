@@ -19,6 +19,7 @@ either             = { workspace = true }
 internal-iterator  = { workspace = true }
 nohash             = { workspace = true }
 pretty             = { version = "0.12.3" }
+smallvec           = { version = "1.11.2", features = ["union"] }
 string32           = { workspace = true }
 
 [dev-dependencies]

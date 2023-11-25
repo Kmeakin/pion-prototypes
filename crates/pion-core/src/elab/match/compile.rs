@@ -25,14 +25,16 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
+use smallvec::{smallvec, SmallVec};
+
 use super::constructors::*;
 use super::matrix::PatMatrix;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 
-pub struct PatternCompiler<'core> {
+struct PatternCompiler<'core> {
     bump: &'core bumpalo::Bump,
-    reachable_rows: Vec<usize>,
+    reachable_rows: SmallVec<[bool; 16]>,
     inexhaustive: bool,
 }
 
@@ -47,7 +49,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         scrut_span: ByteSpan,
         report_errors: bool,
     ) -> Expr<'core> {
-        let mut compiler = PatternCompiler::new(self.bump);
+        let mut compiler = PatternCompiler::new(self.bump, bodies.len());
         let expr = compiler.compile_match(matrix, bodies);
 
         let PatternCompiler {
@@ -61,8 +63,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 self.emit_diagnostic(ElabDiagnostic::InexhaustiveMatch { scrut_span });
             }
 
-            for (idx, row) in matrix.rows().iter().enumerate() {
-                if !reachable_rows.contains(&idx) {
+            for (idx, row) in matrix.rows().enumerate() {
+                if !reachable_rows[idx] {
                     let pat_span = row.pairs[0].0.span();
                     self.emit_diagnostic(ElabDiagnostic::UnreachablePat { pat_span });
                 }
@@ -78,10 +80,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 }
 
 impl<'core> PatternCompiler<'core> {
-    pub fn new(bump: &'core bumpalo::Bump) -> Self {
+    fn new(bump: &'core bumpalo::Bump, rows: usize) -> Self {
         Self {
             bump,
-            reachable_rows: Vec::default(),
+            reachable_rows: smallvec![false; rows],
             inexhaustive: false,
         }
     }
@@ -109,7 +111,7 @@ impl<'core> PatternCompiler<'core> {
         if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
             let index = matrix.row(0).body;
             let body = &bodies[index];
-            self.reachable_rows.push(index);
+            self.reachable_rows[index] = true;
 
             match body {
                 Body::Success { expr } => return *expr,

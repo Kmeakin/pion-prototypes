@@ -980,7 +980,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
         let scrut_span = scrut.span();
-        let mut rows = Vec::with_capacity(cases.len());
+        let mut matrix = PatMatrix::with_capacity(cases.len(), 1);
         let mut bodies = Vec::with_capacity_in(cases.len(), self.bump);
 
         let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
@@ -1012,11 +1012,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 },
             };
 
-            rows.push(PatRow::new([(pat, scrut.expr)].to_vec(), index));
+            matrix.push_row(PatRow::new(&[(pat, scrut.expr)], index));
             bodies.push(body);
         }
 
-        let mut matrix = PatMatrix::new(rows);
         let expr = self.compile_match(&mut matrix, &bodies, scrut_span, true);
 
         CheckExpr::new(expr)

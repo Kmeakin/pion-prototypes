@@ -3,7 +3,6 @@
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;
 use super::*;
-use crate::elab::r#match::matrix::OwnedPatRow;
 
 impl<'core> PatMatrix<'core> {
     /// Specialize `self` with respect to the constructor `ctor`.  This is the
@@ -14,12 +13,12 @@ impl<'core> PatMatrix<'core> {
             "Cannot specialize `PatMatrix` with no columns"
         );
 
-        let mut rows = Vec::with_capacity(self.num_rows());
+        let mut matrix =
+            PatMatrix::with_capacity(self.num_rows(), self.num_columns() + ctor.arity() - 1);
         for row in self.rows() {
             assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
-            let row = row.as_ref();
             let ((pat, expr), rest) = row.split_first().unwrap();
-            recur(bump, *pat, *expr, rest, ctor, &mut rows);
+            recur(bump, *pat, *expr, rest, ctor, &mut matrix);
 
             fn recur<'core>(
                 bump: &'core bumpalo::Bump,
@@ -27,36 +26,34 @@ impl<'core> PatMatrix<'core> {
                 expr: Expr<'core>,
                 rest: BorrowedPatRow<'core, '_>,
                 ctor: Constructor<'core>,
-                rows: &mut Vec<OwnedPatRow<'core>>,
+                matrix: &mut PatMatrix<'core>,
             ) {
                 match pat {
                     Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
                         let pairs = std::iter::repeat((Pat::Underscore(pat.span()), expr))
                             .take(ctor.arity())
-                            .chain(rest.pairs.iter().copied())
-                            .collect();
-                        rows.push(OwnedPatRow::new(pairs, rest.body));
+                            .chain(rest.pairs.iter().copied());
+                        matrix.pairs.extend(pairs);
+                        matrix.body_indices.push(rest.body);
                     }
-                    Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                        rows.push(OwnedPatRow::new(rest.pairs.to_vec(), rest.body));
-                    }
+                    Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => matrix.push_row(rest),
                     Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                         let scrut_expr = bump.alloc(expr);
                         let pairs = fields
                             .iter()
                             .map(|(label, pattern)| (*pattern, Expr::FieldProj(scrut_expr, *label)))
-                            .chain(rest.pairs.iter().copied())
-                            .collect();
-                        rows.push(OwnedPatRow::new(pairs, rest.body));
+                            .chain(rest.pairs.iter().copied());
+                        matrix.pairs.extend(pairs);
+                        matrix.body_indices.push(rest.body);
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
                     Pat::Or(.., pats) => pats
                         .iter()
-                        .for_each(|pat| recur(bump, *pat, expr, rest, ctor, rows)),
+                        .for_each(|pat| recur(bump, *pat, expr, rest, ctor, matrix)),
                 }
             }
         }
-        PatMatrix::new(rows)
+        matrix
     }
 
     /// Discard the first column, and all rows starting with a constructed
@@ -68,28 +65,24 @@ impl<'core> PatMatrix<'core> {
             "Cannot default `PatMatrix` with no columns"
         );
 
-        let len = self.num_rows();
-        let mut rows = Vec::with_capacity(len);
+        let mut matrix = PatMatrix::with_capacity(self.num_rows(), self.num_columns() - 1);
         for row in self.rows() {
-            let row = row.as_ref();
             assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
             let ((pat, _), row) = row.split_first().unwrap();
-            recur(*pat, row, &mut rows);
+            recur(*pat, row, &mut matrix);
 
             fn recur<'core>(
                 pat: Pat<'core>,
                 row: BorrowedPatRow<'core, '_>,
-                rows: &mut Vec<OwnedPatRow<'core>>,
+                matrix: &mut PatMatrix<'core>,
             ) {
                 match pat {
-                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                        rows.push(row.to_owned());
-                    }
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => matrix.push_row(row),
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
-                    Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, rows)),
+                    Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, matrix)),
                 }
             }
         }
-        PatMatrix::new(rows)
+        matrix
     }
 }
