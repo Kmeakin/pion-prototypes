@@ -1,93 +1,11 @@
-use std::ops::ControlFlow;
-
-use internal_iterator::InternalIterator;
+#![allow(clippy::items_after_statements)]
 
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;
 use super::*;
 use crate::elab::r#match::matrix::OwnedPatRow;
 
-pub struct SpecializedRow<'ctx, 'hir, 'core, 'row> {
-    ctx: &'ctx ElabCtx<'hir, 'core>,
-    row: BorrowedPatRow<'core, 'row>,
-    ctor: Constructor<'core>,
-}
-
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
-    /// Specialize `row` with respect to the constructor `ctor`.
-    pub fn specialize_row<'ctx, 'row>(
-        &'ctx self,
-        row: BorrowedPatRow<'core, 'row>,
-        ctor: Constructor<'core>,
-    ) -> SpecializedRow<'ctx, 'hir, 'core, 'row> {
-        impl<'ctx, 'hir, 'core, 'row> InternalIterator for SpecializedRow<'ctx, 'hir, 'core, 'row> {
-            type Item = OwnedPatRow<'core>;
-
-            fn try_for_each<R, F>(self, mut on_row: F) -> ControlFlow<R>
-            where
-                F: FnMut(Self::Item) -> ControlFlow<R>,
-            {
-                fn recur<'bump, 'ctx, 'hir, 'core, 'scrut, 'row, R>(
-                    ctx: &'ctx ElabCtx<'hir, 'core>,
-                    pat: Pat<'core>,
-                    scrut: &'scrut Scrut<'core>,
-                    rest: BorrowedPatRow<'core, 'row>,
-                    ctor: Constructor<'core>,
-                    on_row: &mut impl FnMut(OwnedPatRow<'core>) -> ControlFlow<R>,
-                ) -> ControlFlow<R> {
-                    match pat {
-                        Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                            let mut pairs = Vec::with_capacity(ctor.arity());
-                            pairs.extend(
-                                std::iter::repeat((Pat::Underscore(pat.span()), scrut.clone()))
-                                    .take(ctor.arity()),
-                            );
-                            pairs.extend_from_slice(rest.pairs);
-                            on_row(OwnedPatRow::new(pairs, rest.body))
-                        }
-                        Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
-                            on_row(OwnedPatRow::new(rest.pairs.to_vec(), rest.body))
-                        }
-                        Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
-                            let Type::RecordType(mut telescope) =
-                                ctx.elim_env().update_metas(&scrut.r#type)
-                            else {
-                                unreachable!("expected record type, got {:?}", scrut.r#type)
-                            };
-
-                            let mut pairs = Vec::with_capacity(fields.len() + rest.pairs.len());
-                            for (label, pattern) in fields {
-                                let (_, r#type, update_telescope) =
-                                    ctx.elim_env().split_telescope(&mut telescope).unwrap();
-                                update_telescope(ctx.local_env.next_var());
-                                let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
-                                let scrut = Scrut::new(scrut_expr, r#type);
-                                pairs.push((*pattern, scrut));
-                            }
-                            pairs.extend_from_slice(rest.pairs);
-                            on_row(OwnedPatRow::new(pairs, rest.body))
-                        }
-                        Pat::Lit(..) | Pat::RecordLit(..) => ControlFlow::Continue(()),
-                        Pat::Or(.., pats) => pats
-                            .iter()
-                            .try_for_each(|pat| recur(ctx, *pat, scrut, rest, ctor, on_row)),
-                    }
-                }
-
-                let Self { ctx, row, ctor } = self;
-                assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
-                let ((pat, scrut), rest) = row.split_first().unwrap();
-                recur(ctx, *pat, scrut, rest, ctor, &mut on_row)
-            }
-        }
-
-        SpecializedRow {
-            ctx: self,
-            row,
-            ctor,
-        }
-    }
-
     /// Specialize `matrix` with respect to the constructor `ctor`.  This is the
     /// `S` function in *Compiling pattern matching to good decision trees*.
     pub fn specialize_matrix(
@@ -98,9 +16,57 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let len = matrix.num_rows();
         let mut rows = Vec::with_capacity(len);
         for row in matrix.rows() {
-            self.specialize_row(row.as_ref(), ctor).for_each(|row| {
-                rows.push(row);
-            });
+            assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
+            let row = row.as_ref();
+            let ((pat, scrut), rest) = row.split_first().unwrap();
+            recur(self, *pat, scrut, rest, ctor, &mut rows);
+
+            fn recur<'core>(
+                ctx: &ElabCtx<'_, 'core>,
+                pat: Pat<'core>,
+                scrut: &Scrut<'core>,
+                rest: BorrowedPatRow<'core, '_>,
+                ctor: Constructor<'core>,
+                rows: &mut Vec<OwnedPatRow<'core>>,
+            ) {
+                match pat {
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
+                        let mut pairs = Vec::with_capacity(ctor.arity());
+                        pairs.extend(
+                            std::iter::repeat((Pat::Underscore(pat.span()), scrut.clone()))
+                                .take(ctor.arity()),
+                        );
+                        pairs.extend_from_slice(rest.pairs);
+                        rows.push(OwnedPatRow::new(pairs, rest.body));
+                    }
+                    Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
+                        rows.push(OwnedPatRow::new(rest.pairs.to_vec(), rest.body));
+                    }
+                    Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
+                        let Type::RecordType(mut telescope) =
+                            ctx.elim_env().update_metas(&scrut.r#type)
+                        else {
+                            unreachable!("expected record type, got {:?}", scrut.r#type)
+                        };
+
+                        let mut pairs = Vec::with_capacity(fields.len() + rest.pairs.len());
+                        for (label, pattern) in fields {
+                            let (_, r#type, update_telescope) =
+                                ctx.elim_env().split_telescope(&mut telescope).unwrap();
+                            update_telescope(ctx.local_env.next_var());
+                            let scrut_expr = Expr::field_proj(ctx.bump, scrut.expr, *label);
+                            let scrut = Scrut::new(scrut_expr, r#type);
+                            pairs.push((*pattern, scrut));
+                        }
+                        pairs.extend_from_slice(rest.pairs);
+                        rows.push(OwnedPatRow::new(pairs, rest.body));
+                    }
+                    Pat::Lit(..) | Pat::RecordLit(..) => {}
+                    Pat::Or(.., pats) => pats
+                        .iter()
+                        .for_each(|pat| recur(ctx, *pat, scrut, rest, ctor, rows)),
+                }
+            }
         }
         PatMatrix::new(rows)
     }
@@ -110,18 +76,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
 /// matching to good decision trees*.
 pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
-    fn recur<'core>(
-        pat: Pat<'core>,
-        row: BorrowedPatRow<'core, '_>,
-        rows: &mut Vec<OwnedPatRow<'core>>,
-    ) {
-        match pat {
-            Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => rows.push(row.to_owned()),
-            Pat::Lit(..) | Pat::RecordLit(..) => {}
-            Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, rows)),
-        }
-    }
-
     assert!(
         !matrix.is_unit(),
         "Cannot default `PatMatrix` with no columns"
@@ -134,6 +88,18 @@ pub fn default_matrix<'core>(matrix: &PatMatrix<'core>) -> PatMatrix<'core> {
         assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
         let ((pat, _), row) = row.split_first().unwrap();
         recur(*pat, row, &mut rows);
+
+        fn recur<'core>(
+            pat: Pat<'core>,
+            row: BorrowedPatRow<'core, '_>,
+            rows: &mut Vec<OwnedPatRow<'core>>,
+        ) {
+            match pat {
+                Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => rows.push(row.to_owned()),
+                Pat::Lit(..) | Pat::RecordLit(..) => {}
+                Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, rows)),
+            }
+        }
     }
     PatMatrix::new(rows)
 }
