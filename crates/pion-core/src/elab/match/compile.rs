@@ -25,27 +25,16 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
-use std::ops::{Deref, DerefMut};
-
 use super::constructors::*;
 use super::decompose::*;
 use super::matrix::PatMatrix;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
 
-pub struct PatternCompiler<'hir, 'core, 'elab> {
-    elab_ctx: &'elab mut ElabCtx<'hir, 'core>,
+pub struct PatternCompiler<'core> {
+    bump: &'core bumpalo::Bump,
     reachable_rows: Vec<usize>,
     inexhaustive: bool,
-}
-
-impl<'hir, 'core, 'elab> Deref for PatternCompiler<'hir, 'core, 'elab> {
-    type Target = ElabCtx<'hir, 'core>;
-    fn deref(&self) -> &Self::Target { self.elab_ctx }
-}
-
-impl<'hir, 'core, 'elab> DerefMut for PatternCompiler<'hir, 'core, 'elab> {
-    fn deref_mut(&mut self) -> &mut Self::Target { self.elab_ctx }
 }
 
 /// Compilation of pattern matrices to decision trees.
@@ -59,11 +48,11 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         scrut_span: ByteSpan,
         report_errors: bool,
     ) -> Expr<'core> {
-        let mut compiler = PatternCompiler::new(self);
+        let mut compiler = PatternCompiler::new(self.bump);
         let expr = compiler.compile_match(matrix, bodies);
 
         let PatternCompiler {
-            elab_ctx: _,
+            bump: _,
             reachable_rows,
             inexhaustive,
         } = compiler;
@@ -89,10 +78,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
     }
 }
 
-impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
-    pub fn new(elab_ctx: &'elab mut ElabCtx<'hir, 'core>) -> Self {
+impl<'core> PatternCompiler<'core> {
+    pub fn new(bump: &'core bumpalo::Bump) -> Self {
         Self {
-            elab_ctx,
+            bump,
             reachable_rows: Vec::default(),
             inexhaustive: false,
         }
@@ -163,14 +152,14 @@ impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Record(fields) => {
-                let mut matrix = self.specialize_matrix(matrix, Constructor::Record(fields));
+                let mut matrix = specialize_matrix(self.bump, matrix, Constructor::Record(fields));
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Bools(bools) => {
                 let mut do_branch = |b| match bools[usize::from(b)] {
                     true => {
                         let mut matrix =
-                            self.specialize_matrix(matrix, Constructor::Lit(Lit::Bool(b)));
+                            specialize_matrix(self.bump, matrix, Constructor::Lit(Lit::Bool(b)));
                         self.compile_match(&mut matrix, bodies)
                     }
                     false => {
@@ -181,14 +170,14 @@ impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
 
                 let true_branch = do_branch(true);
                 let false_branch = do_branch(false);
-                return Expr::match_bool(self.bump, scrut.expr, true_branch, false_branch);
+                return Expr::match_bool(self.bump, *scrut, true_branch, false_branch);
             }
 
             Constructors::Ints(ints) => {
                 let bump = self.bump;
                 let cases = ints.iter().map(|int| {
                     let mut matrix =
-                        self.specialize_matrix(matrix, Constructor::Lit(Lit::Int(*int)));
+                        specialize_matrix(self.bump, matrix, Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(&mut matrix, bodies);
                     (*int, expr)
                 });
@@ -202,7 +191,7 @@ impl<'hir, 'core, 'elab> PatternCompiler<'hir, 'core, 'elab> {
                         Some(body)
                     }
                 };
-                return Expr::r#match_int(self.bump, scrut.expr, cases, default);
+                return Expr::r#match_int(self.bump, *scrut, cases, default);
             }
         }
     }

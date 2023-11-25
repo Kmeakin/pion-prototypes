@@ -1,4 +1,3 @@
-use super::Scrut;
 use crate::syntax::*;
 
 #[derive(Debug, Clone)]
@@ -20,8 +19,8 @@ impl<'core> PatMatrix<'core> {
         Self { rows }
     }
 
-    pub fn singleton(scrut: Scrut<'core>, pat: Pat<'core>) -> Self {
-        Self::new([PatRow::new([(pat, scrut)].to_vec(), 0)].to_vec())
+    pub fn singleton(expr: Expr<'core>, pat: Pat<'core>) -> Self {
+        Self::new([PatRow::new([(pat, expr)].to_vec(), 0)].to_vec())
     }
 
     pub fn num_rows(&self) -> usize { self.rows.len() }
@@ -80,6 +79,6 @@ impl<'core, 'row> BorrowedPatRow<'core, 'row> {
     }
 }
 
-/// An element in a `PatRow`: `<scrut.expr> is <pat>`.
+/// An element in a `PatRow`: `<expr> is <pat>`.
 /// This notation is taken from [How to compile pattern matching]
-pub type PatPair<'core> = (Pat<'core>, Scrut<'core>);
+pub type PatPair<'core> = (Pat<'core>, Expr<'core>);
