@@ -9,6 +9,11 @@ impl<'core> PatMatrix<'core> {
     /// Specialize `self` with respect to the constructor `ctor`.  This is the
     /// `S` function in *Compiling pattern matching to good decision trees*.
     pub fn specialize(&self, bump: &'core bumpalo::Bump, ctor: Constructor<'core>) -> Self {
+        assert!(
+            !self.is_unit(),
+            "Cannot specialize `PatMatrix` with no columns"
+        );
+
         let mut rows = Vec::with_capacity(self.num_rows());
         for row in self.rows() {
             assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
