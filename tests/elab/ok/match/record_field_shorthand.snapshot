@@ -27,8 +27,6 @@ span   | source                                   | type
 67..73 | {x, y}                                   | {x: A, y: B}
 metavars:
 ?0 = fun(_: #error, _: #error, _: #error) => _#2
-?1 = fun(_: #error, _: #error, _: #error) => {x: _#2, y: _#2}
-?2 = fun(_: #error, _: #error, _: #error) => {x: _#2, y: _#2}
 """
 
 stderr = """
