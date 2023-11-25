@@ -26,14 +26,14 @@ impl<'core> PatMatrix<'core> {
 
     pub fn num_rows(&self) -> usize { self.rows.len() }
 
-    pub fn num_columns(&self) -> Option<usize> { self.rows.first().map(|row| row.pairs.len()) }
+    pub fn num_columns(&self) -> usize { self.rows.first().map_or(0, |row| row.pairs.len()) }
 
     /// Return true if `self` is the null matrix, `∅` - ie `self` has zero rows
     pub fn is_null(&self) -> bool { self.num_rows() == 0 }
 
     /// Return true if `self` is the unit matrix, `()` - ie `self` has zero
     /// columns and at least one row
-    pub fn is_unit(&self) -> bool { self.num_columns() == Some(0) }
+    pub fn is_unit(&self) -> bool { self.num_rows() > 1 && self.num_columns() == 0 }
 
     /// Iterate over all the pairs in the `index`th column
     pub fn column(&self, index: usize) -> impl ExactSizeIterator<Item = &PatPair<'core>> + '_ {

@@ -215,20 +215,20 @@ impl<'core> PatMatrix<'core> {
     /// the size of the decision tree and potentially skip some tests altogether
     /// (see section 8 of *Compiling pattern matching to good decision trees*)
     pub fn column_to_split_on(&self) -> Option<usize> {
-        assert!(!self.is_null(), "Cannot split null `PatternMatrix`");
+        debug_assert!(!self.is_null(), "Cannot split null `PatternMatrix`");
 
-        (0..self.num_columns().unwrap())
+        (0..self.num_columns())
             .find(|&column| self.column(column).any(|(pat, _)| pat.has_constructors()))
     }
 
     pub fn swap_columns(&mut self, column1: usize, column2: usize) {
         assert!(
-            column1 < self.num_columns().unwrap_or(0),
+            column1 < self.num_columns(),
             "column1 is out of bounds (num_columns = {:?})",
             self.num_columns()
         );
         assert!(
-            column2 < self.num_columns().unwrap_or(0),
+            column2 < self.num_columns(),
             "column2 is out of bounds (num_columns = {:?})",
             self.num_columns()
         );
