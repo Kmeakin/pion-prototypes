@@ -26,7 +26,6 @@
 // matching*
 
 use super::constructors::*;
-use super::decompose::*;
 use super::matrix::PatMatrix;
 use super::*;
 use crate::elab::diagnostics::ElabDiagnostic;
@@ -108,7 +107,6 @@ impl<'core> PatternCompiler<'core> {
         //    - if the guard is false, recurse on the remaining rows
         let row = matrix.row(0);
         if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
-            let self_bump = self.bump;
             let index = matrix.row(0).body;
             let body = &bodies[index];
             self.reachable_rows.push(index);
@@ -124,7 +122,7 @@ impl<'core> PatternCompiler<'core> {
                     let shift_amount = EnvLen::from(let_vars.len());
                     matrix.remove_row(0);
                     let r#else = self.compile_match(matrix, bodies);
-                    let r#else = r#else.shift(self_bump, shift_amount); // TODO: is there a more efficient way?
+                    let r#else = r#else.shift(self.bump, shift_amount); // TODO: is there a more efficient way?
                     let expr = Expr::match_bool(self.bump, guard_expr, *expr, r#else);
                     return let_vars
                         .iter()
@@ -148,22 +146,22 @@ impl<'core> PatternCompiler<'core> {
         let ctors = matrix.column_constructors(0);
         match &ctors {
             Constructors::Empty => {
-                let mut matrix = default_matrix(matrix);
+                let mut matrix = matrix.default();
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Record(fields) => {
-                let mut matrix = specialize_matrix(self.bump, matrix, Constructor::Record(fields));
+                let mut matrix = matrix.specialize(self.bump, Constructor::Record(fields));
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Bools(bools) => {
                 let mut do_branch = |b| match bools[usize::from(b)] {
                     true => {
                         let mut matrix =
-                            specialize_matrix(self.bump, matrix, Constructor::Lit(Lit::Bool(b)));
+                            matrix.specialize(self.bump, Constructor::Lit(Lit::Bool(b)));
                         self.compile_match(&mut matrix, bodies)
                     }
                     false => {
-                        let mut matrix = default_matrix(matrix);
+                        let mut matrix = matrix.default();
                         self.compile_match(&mut matrix, bodies)
                     }
                 };
@@ -176,8 +174,7 @@ impl<'core> PatternCompiler<'core> {
             Constructors::Ints(ints) => {
                 let bump = self.bump;
                 let cases = ints.iter().map(|int| {
-                    let mut matrix =
-                        specialize_matrix(self.bump, matrix, Constructor::Lit(Lit::Int(*int)));
+                    let mut matrix = matrix.specialize(self.bump, Constructor::Lit(Lit::Int(*int)));
                     let expr = self.compile_match(&mut matrix, bodies);
                     (*int, expr)
                 });
@@ -186,7 +183,7 @@ impl<'core> PatternCompiler<'core> {
                 let default = match ctors.is_exhaustive() {
                     true => None,
                     false => {
-                        let mut matrix = default_matrix(matrix);
+                        let mut matrix = matrix.default();
                         let body = self.compile_match(&mut matrix, bodies);
                         Some(body)
                     }
