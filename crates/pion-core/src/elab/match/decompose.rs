@@ -26,25 +26,22 @@ impl<'core> PatMatrix<'core> {
             ) {
                 match pat {
                     Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => {
-                        let mut pairs = Vec::with_capacity(ctor.arity());
-                        pairs.extend(
-                            std::iter::repeat((Pat::Underscore(pat.span()), expr))
-                                .take(ctor.arity()),
-                        );
-                        pairs.extend_from_slice(rest.pairs);
+                        let pairs = std::iter::repeat((Pat::Underscore(pat.span()), expr))
+                            .take(ctor.arity())
+                            .chain(rest.pairs.iter().copied())
+                            .collect();
                         rows.push(OwnedPatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => {
                         rows.push(OwnedPatRow::new(rest.pairs.to_vec(), rest.body));
                     }
                     Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
-                        let mut pairs = Vec::with_capacity(fields.len() + rest.pairs.len());
                         let scrut_expr = bump.alloc(expr);
-                        for (label, pattern) in fields {
-                            let expr = Expr::FieldProj(scrut_expr, *label);
-                            pairs.push((*pattern, expr));
-                        }
-                        pairs.extend_from_slice(rest.pairs);
+                        let pairs = fields
+                            .iter()
+                            .map(|(label, pattern)| (*pattern, Expr::FieldProj(scrut_expr, *label)))
+                            .chain(rest.pairs.iter().copied())
+                            .collect();
                         rows.push(OwnedPatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
