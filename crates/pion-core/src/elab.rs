@@ -433,9 +433,6 @@ impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
 }
 
-pub type ItemMap<'hir, 'core> = Vec<ItemData<'hir, 'core>>;
-pub type ItemData<'hir, 'core> = ElabResult<'hir, 'core, ()>;
-
 // REASON: keep all lifetimes explicit for clarity
 #[allow(clippy::needless_lifetimes)]
 pub fn elab_def<'hir, 'core>(
