@@ -5,12 +5,13 @@ use crate::name::BinderName;
 use crate::syntax::*;
 
 macro_rules! define_prims {
-    ($($name:ident => $str:expr),*,) => {
-        define_prims!($($name => $str),*);
+    ($($name:ident),*,) => {
+        define_prims!($($name),*);
     };
 
-    ($($name:ident => $str:expr),*) => {
+    ($($name:ident),*) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq)]
+        #[allow(non_camel_case_types)]
         pub enum Prim {
             $($name),*
         }
@@ -20,7 +21,7 @@ macro_rules! define_prims {
 
             pub fn name(self) -> &'static str {
                 match self {
-                    $(Self::$name => $str),*
+                    $(Self::$name => stringify!($name)),*
                 }
             }
 
@@ -41,15 +42,15 @@ macro_rules! define_prims {
 }
 
 define_prims! {
-    Type => "Type",
-    Bool => "Bool",
-    Int => "Int",
-    Array => "Array",
+    Type, Bool, Int, Array,
+    add, sub, mul,
+    eq, ne, lt, gt, lte, gte,
 }
 
 impl Prim {
     pub const fn r#type(self) -> Type<'static> {
         const TYPE: &Type = &Type::TYPE;
+        const INT: &Type = &Type::INT;
 
         match self {
             Self::Type | Self::Bool | Self::Int => Type::TYPE,
@@ -63,6 +64,32 @@ impl Prim {
                         Plicity::Explicit,
                         BinderName::User(Symbol::N),
                         &(Expr::INT, Expr::TYPE),
+                    ),
+                ),
+            ),
+            Self::add | Self::sub | Self::mul => Type::FunType(
+                Plicity::Explicit,
+                BinderName::User(Symbol::x),
+                INT,
+                Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType(
+                        Plicity::Explicit,
+                        BinderName::User(Symbol::y),
+                        &(Expr::INT, Expr::INT),
+                    ),
+                ),
+            ),
+            Self::eq | Self::ne | Self::lt | Self::gt | Self::lte | Self::gte => Type::FunType(
+                Plicity::Explicit,
+                BinderName::User(Symbol::x),
+                INT,
+                Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType(
+                        Plicity::Explicit,
+                        BinderName::User(Symbol::y),
+                        &(Expr::INT, Expr::BOOL),
                     ),
                 ),
             ),

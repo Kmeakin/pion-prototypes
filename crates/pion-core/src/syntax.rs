@@ -415,6 +415,10 @@ impl<'core> Value<'core> {
             ],
         )
     }
+
+    pub fn bool(value: bool) -> Self { Self::Lit(Lit::Bool(value)) }
+
+    pub fn int(value: u32) -> Self { Self::Lit(Lit::Int(value)) }
 }
 
 impl<'core> Value<'core> {

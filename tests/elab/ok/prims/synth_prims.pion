@@ -2,3 +2,11 @@ def x1 = Type;
 def x2 = Int;
 def x3 = Bool;
 def x4 = Array;
+
+def x5 = add;
+def x6 = sub;
+def x7 = mul;
+
+def x8 = eq;
+def x9 = lt;
+def x10 = gt;

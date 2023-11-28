@@ -70,10 +70,9 @@ symbols![
     _30, _31, _32,
 
     // prim names
-    Array,
-    Int,
-    Bool,
-    Type
+    Array, Int, Bool, Type,
+    add, sub, mul,
+    eq, ne, lt, gt, lte, gte
 ];
 
 pub type Interner = lasso::ThreadedRodeo<lasso::Spur>;

@@ -4,6 +4,7 @@ use pion_utils::slice_vec::SliceVec;
 
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
 use crate::name::{BinderName, FieldName, LocalName};
+use crate::prim::Prim;
 use crate::syntax::{
     BoolCases, Closure, Elim, Expr, Head, IntCases, Lit, Plicity, SplitCases, Telescope, Value,
     ZonkedExpr,
@@ -66,10 +67,41 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
             Value::Error => Value::Error,
             Value::Stuck(head, mut spine) => {
                 spine.push(Elim::FunApp(plicity, arg));
+                if let Head::Prim(prim) = head {
+                    if let Some(value) = self.apply_prim(prim, spine.as_slice()) {
+                        return value;
+                    }
+                }
                 Value::Stuck(head, spine)
             }
             Value::FunLit(.., body) => self.apply_closure(body, arg),
             _ => panic!("Bad fun app: {fun:?} {arg:?}"),
+        }
+    }
+
+    #[allow(clippy::unused_self)]
+    fn apply_prim(&self, prim: Prim, args: &[Elim<'core>]) -> Option<Value<'core>> {
+        macro_rules! prim_rules {
+            ($($prim:ident($($args:pat),+) => $rhs:expr,)*) => {
+                match (prim, args) {
+                    $(
+                        (Prim::$prim, [$(Elim::FunApp(_, $args)),*]) => Some($rhs),
+                    )*
+                    _ => None,
+                }
+            };
+        }
+
+        prim_rules! {
+            add(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::int(x.wrapping_add(*y)),
+            sub(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::int(x.wrapping_sub(*y)),
+            mul(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::int(x.wrapping_mul(*y)),
+            eq(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x == y),
+            ne(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x != y),
+            lt(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x < y),
+            gt(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x > y),
+            lte(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x <= y),
+            gte(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x >= y),
         }
     }
 
