@@ -57,8 +57,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         (spine.into_iter()).fold(head, |head, elim| match elim {
             Elim::FunApp(plicity, arg) => self.fun_app(plicity, head, arg),
             Elim::FieldProj(name) => self.field_proj(head, name),
-            Elim::MatchBool(cases) => self.match_bool(head, cases.clone()),
-            Elim::MatchInt(cases) => self.match_int(head, cases.clone()),
+            Elim::MatchBool(cases) => self.match_bool(head, cases),
+            Elim::MatchInt(cases) => self.match_int(head, cases),
         })
     }
 

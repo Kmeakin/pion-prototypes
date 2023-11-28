@@ -217,7 +217,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
         };
 
-        let type_expr = self.zonk_env(self.bump).zonk_value(&expected);
+        let type_expr = self.zonk_env(self.bump).zonk_value(expected);
         self.type_map.insert_pat(pat, type_expr);
         Check(core_pat)
     }
