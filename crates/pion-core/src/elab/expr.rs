@@ -455,7 +455,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                                 let Check(r#type) = this.check_expr_is_type(elem);
                                 let type_value = this.eval_env().eval(&r#type);
                                 this.local_env
-                                    .push_param(BinderName::from(name), type_value);
+                                    .push_param(BinderName::Underscore, type_value);
                                 (name, r#type)
                             }))
                     });
