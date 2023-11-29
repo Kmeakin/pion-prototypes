@@ -1,6 +1,11 @@
 use std::fmt::{self, Debug};
 use std::ops::Deref;
 
+use nohash::{IntMap, IntSet};
+
+pub type PtrMap<K, V> = IntMap<Identity<K>, V>;
+pub type PtrSet<T> = IntSet<Identity<T>>;
+
 /// Wrapper type for comparison and hashing by pointer address rather than by
 /// value.
 #[derive(Copy, Clone)]

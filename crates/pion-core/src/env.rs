@@ -237,6 +237,13 @@ impl<T> SliceEnv<T> {
             .zip(self.iter().rev())
             .find_map(|(var, e)| (elem == e).then_some(var))
     }
+
+    pub fn contains(&self, elem: &T) -> bool
+    where
+        T: PartialEq,
+    {
+        self.elems.contains(elem)
+    }
 }
 
 impl<'a, T> IntoIterator for &'a SliceEnv<T> {

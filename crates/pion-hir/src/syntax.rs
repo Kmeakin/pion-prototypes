@@ -14,6 +14,14 @@ pub enum Item<'hir> {
     Def(Def<'hir>),
 }
 
+impl<'hir> Item<'hir> {
+    pub fn name(&self) -> Option<Ident> {
+        match self {
+            Item::Def(def) => Some(def.name),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct Def<'hir> {
     pub name: Ident,
