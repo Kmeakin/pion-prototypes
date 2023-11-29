@@ -11,7 +11,6 @@ pub struct Module<'hir> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Item<'hir> {
-    Error,
     Def(Def<'hir>),
 }
 

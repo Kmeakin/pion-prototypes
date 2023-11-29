@@ -1,6 +1,7 @@
 use pion_lexer::LexedSource;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
+use pion_utils::slice_vec::SliceVec;
 use pion_utils::symbol::Symbol;
 
 mod diagnostics;
@@ -23,11 +24,11 @@ pub fn lower_item<'surface, 'hir>(
     bump: &'hir bumpalo::Bump,
     source: LexedSource,
     item: &'surface surface::Item<'surface>,
-) -> (Item<'hir>, Vec<LowerDiagnostic>) {
+) -> Option<(Item<'hir>, Vec<LowerDiagnostic>)> {
     let mut ctx = Ctx::new(bump, source);
-    let item = ctx.item_to_hir(item);
+    let item = ctx.item_to_hir(item)?;
     let errors = ctx.finish();
-    (item, errors)
+    Some((item, errors))
 }
 
 pub struct Ctx<'source, 'tokens, 'hir> {
@@ -56,16 +57,21 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
         Module { items }
     }
 
-    fn item_to_hir(&mut self, item: &'surface surface::Item<'surface>) -> Item<'hir> {
+    fn item_to_hir(&mut self, item: &'surface surface::Item<'surface>) -> Option<Item<'hir>> {
         match item {
-            surface::Item::Error(_) => Item::Error,
-            surface::Item::Def(def) => Item::Def(self.def_to_hir(def)),
+            surface::Item::Error(_) => None,
+            surface::Item::Def(def) => Some(Item::Def(self.def_to_hir(def))),
         }
     }
 
     fn lower_items(&mut self, items: &'surface [surface::Item<'surface>]) -> &'hir [Item<'hir>] {
-        self.bump
-            .alloc_slice_fill_iter(items.iter().map(|item| self.item_to_hir(item)))
+        let mut hir_items = SliceVec::new(self.bump, items.len());
+        for item in items {
+            if let Some(item) = self.item_to_hir(item) {
+                hir_items.push(item);
+            }
+        }
+        hir_items.into()
     }
 
     fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
