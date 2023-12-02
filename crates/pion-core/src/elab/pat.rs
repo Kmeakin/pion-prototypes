@@ -482,7 +482,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             pat: &Pat<'core>,
             scrut: &Scrut<'core>,
             value: &Value<'core>,
-            toplevel: bool,
             let_vars: &mut Vec<
                 (BinderName, (Expr<'core>, Expr<'core>, Expr<'core>)),
                 &bumpalo::Bump,
@@ -491,13 +490,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let shift_amount = EnvLen::from(let_vars.len());
             let name = pat.name();
             match pat {
-                Pat::Error(..) | Pat::Underscore(..) => {
-                    if toplevel {
-                        let r#type = scrut.r#type.clone();
-                        let value = value.clone();
-                        this.local_env.push_def(name, r#type, value);
-                    }
-                }
+                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {}
                 Pat::Ident(..) => {
                     let r#type = this.quote_env().quote(&scrut.r#type);
                     let init = scrut.expr.shift(this.bump, shift_amount);
@@ -507,23 +500,22 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let value = value.clone();
                     this.local_env.push_def(name, r#type, value);
                 }
-                Pat::Lit(..) => {}
                 Pat::RecordLit(_, fields) => {
                     this.push_record_pat(fields, scrut, value, |this, pat, scrut, value| {
-                        recur(this, pat, scrut, value, false, let_vars);
+                        recur(this, pat, scrut, value, let_vars);
                     });
                 }
                 // We ensured that all alternatives bind the same set of names, so we onyl need to
                 // recurse on the first alternative
                 Pat::Or(.., alts) => {
                     let pat = alts.first().unwrap();
-                    recur(this, pat, scrut, value, false, let_vars);
+                    recur(this, pat, scrut, value, let_vars);
                 }
             }
         }
 
         let mut let_vars = Vec::new_in(self.bump);
-        recur(self, pat, scrut, value, true, &mut let_vars);
+        recur(self, pat, scrut, value, &mut let_vars);
         let_vars.leak()
     }
 
