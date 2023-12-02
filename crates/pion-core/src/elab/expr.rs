@@ -618,6 +618,38 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
         }
     }
+
+    pub fn check_ann_expr(
+        &mut self,
+        expr: &'hir hir::Expr<'hir>,
+        r#type: Option<&'hir hir::Expr<'hir>>,
+        expected: &Type<'core>,
+    ) -> CheckExpr<'core> {
+        match r#type {
+            None => self.check_expr(expr, expected),
+            Some(r#type) => {
+                let span = expr.span();
+                let Synth(expr, r#type) = self.synth_ann_expr(expr, Some(r#type));
+                CheckExpr::new(self.convert_expr(span, expr, r#type, expected))
+            }
+        }
+    }
+
+    pub fn synth_ann_expr(
+        &mut self,
+        expr: &'hir hir::Expr<'hir>,
+        r#type: Option<&'hir hir::Expr<'hir>>,
+    ) -> SynthExpr<'core> {
+        match r#type {
+            None => self.synth_expr(expr),
+            Some(r#type) => {
+                let Check(r#type) = self.check_expr_is_type(r#type);
+                let r#type = self.eval_env().eval(&r#type);
+                let Check(expr) = self.check_expr(expr, &r#type);
+                SynthExpr::new(expr, r#type)
+            }
+        }
+    }
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
@@ -625,6 +657,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         if let Some((index, entry)) = self.local_env.lookup(ident.symbol) {
             return SynthExpr::new(Expr::Local((), index), entry.r#type.clone());
         };
+
+        if let Some((index, entry)) = self.item_env.lookup(ident.symbol) {
+            return SynthExpr::new(Expr::Item((), index), entry.r#type.clone());
+        }
 
         if let Some(prim) = Prim::from_symbol(ident.symbol) {
             return SynthExpr::new(Expr::Prim(prim), prim.r#type());

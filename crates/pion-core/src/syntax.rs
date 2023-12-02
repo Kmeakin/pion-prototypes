@@ -28,13 +28,14 @@ pub struct Def<'core> {
     pub expr: ZonkedExpr<'core>,
 }
 
-pub type ZonkedExpr<'core> = Expr<'core, LocalName>;
+pub type ZonkedExpr<'core> = Expr<'core, LocalName, Symbol>;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Expr<'core, Name = ()> {
+pub enum Expr<'core, LocalName = (), ItemName = ()> {
     Error,
     Lit(Lit),
     Prim(Prim),
-    Local(Name, Index),
+    Local(LocalName, Index),
+    Item(ItemName, Level),
     Meta(Level),
 
     Let(BinderName, &'core (Self, Self, Self)),
@@ -52,7 +53,7 @@ pub enum Expr<'core, Name = ()> {
     MatchInt(&'core (Self, Option<Self>), &'core [(u32, Self)]),
 }
 
-impl<'core, Name> Expr<'core, Name> {
+impl<'core, LocalName, ItemName> Expr<'core, LocalName, ItemName> {
     pub const UNIT_LIT: Self = Self::RecordLit(&[]);
     pub const UNIT_TYPE: Self = Self::RecordType(&[]);
 
@@ -74,7 +75,8 @@ impl<'core, Name> Expr<'core, Name> {
 
     pub fn lets(let_vars: &'core mut [(BinderName, (Self, Self, Self))], body: Self) -> Self
     where
-        Name: PartialEq + std::fmt::Debug,
+        LocalName: PartialEq + std::fmt::Debug,
+        ItemName: PartialEq + std::fmt::Debug,
     {
         let_vars.iter_mut().rev().fold(body, |body, (name, tuple)| {
             debug_assert_eq!(tuple.2, Expr::Error);
@@ -158,7 +160,7 @@ impl<'core, Name> Expr<'core, Name> {
     pub fn binds_local(&self, var: Index) -> bool {
         match self {
             Expr::Local(.., v) => *v == var,
-            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Meta(..) => false,
+            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Item(..) | Expr::Meta(..) => false,
             Expr::Let(_, (r#type, init, body)) => {
                 r#type.binds_local(var) || init.binds_local(var) || body.binds_local(var.next())
             }
@@ -185,14 +187,16 @@ impl<'core, Name> Expr<'core, Name> {
     #[must_use]
     pub fn shift(&self, arena: &'core bumpalo::Bump, amount: EnvLen) -> Self
     where
-        Name: Copy,
+        LocalName: Copy,
+        ItemName: Copy,
     {
         self.shift_inner(arena, Index::new(), amount)
     }
 
     fn shift_inner(&self, bump: &'core bumpalo::Bump, mut min: Index, amount: EnvLen) -> Self
     where
-        Name: Copy,
+        LocalName: Copy,
+        ItemName: Copy,
     {
         // Skip traversing and rebuilding the term if it would make no change. Increases
         // sharing.
@@ -203,9 +207,12 @@ impl<'core, Name> Expr<'core, Name> {
         match self {
             Expr::Local(name, var) if *var >= min => Expr::Local(*name, *var + amount),
 
-            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Local(..) | Expr::Meta(..) => {
-                *self
-            }
+            Expr::Error
+            | Expr::Lit(..)
+            | Expr::Prim(..)
+            | Expr::Local(..)
+            | Expr::Meta(..)
+            | Expr::Item(..) => *self,
 
             Expr::Let(name, (r#type, init, body)) => Expr::r#let(
                 bump,
@@ -370,6 +377,8 @@ impl<'core> Value<'core> {
 
     pub const fn local(level: Level) -> Self { Self::Stuck(Head::Local(level), EcoVec::new()) }
 
+    pub const fn item(level: Level) -> Self { Self::Stuck(Head::Item(level), EcoVec::new()) }
+
     pub const fn meta(level: Level) -> Self { Self::Stuck(Head::Meta(level), EcoVec::new()) }
 
     pub fn fun_type(
@@ -438,6 +447,7 @@ pub enum Head {
     Prim(Prim),
     Local(Level),
     Meta(Level),
+    Item(Level),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

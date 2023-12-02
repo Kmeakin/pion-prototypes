@@ -1,25 +1,26 @@
 exit status: 1
 
 stdout = """
-def bar: fun(x: ?0) -> ?1(x) =
-    fun(x: ?0) =>
-        let a: ?1(x) = #error;
+def bar: fun(x: ?1) -> ?2(x) =
+    fun(x: ?1) =>
+        let a: ?2(x) = #error;
         a;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-244..274 | fun(x) =>\n    let a = x;\n    a         | fun(x: ?0) -> ?1(x)
-258..274 | let a = x;\n    a                        | ?1(x)
-266..267 | x                                        | ?1(x)
-273..274 | a                                        | ?1(x)
+244..274 | fun(x) =>\n    let a = x;\n    a         | fun(x: ?1) -> ?2(x)
+258..274 | let a = x;\n    a                        | ?2(x)
+266..267 | x                                        | ?2(x)
+273..274 | a                                        | ?2(x)
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-248..249 | x                                        | ?0
-262..263 | a                                        | ?1(x)
+248..249 | x                                        | ?1
+262..263 | a                                        | ?2(x)
 metavars:
-?0 = <unsolved>
+?0 = fun(x: ?1) -> ?2(x)
 ?1 = <unsolved>
+?2 = <unsolved>
 """
 
 stderr = """

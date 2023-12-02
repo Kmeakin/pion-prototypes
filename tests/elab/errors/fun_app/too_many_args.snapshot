@@ -9,6 +9,8 @@ span   | source                                   | type
 12..28 | Array(Int, 0, 0)                         | #error
 18..21 | Int                                      | Type
 23..24 | 0                                        | Int
+metavars:
+?0 = #error
 """
 
 stderr = """

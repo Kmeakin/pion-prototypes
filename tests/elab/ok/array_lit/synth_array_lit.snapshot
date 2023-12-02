@@ -9,6 +9,8 @@ span   | source                                   | type
 9..10 | 1                                        | Int
 12..13 | 2                                        | Int
 15..16 | 3                                        | Int
+metavars:
+?0 = Array(Int, 3)
 """
 
 stderr = """

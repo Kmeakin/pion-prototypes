@@ -13,24 +13,28 @@ span   | source                                   | type
 26..32 | A -> _                                   | Type
 31..32 | _                                        | Type
 37..38 | A                                        | Type
-43..67 | fun(A) => fun(a) => a(_)                 | fun(A: Type) -> (fun(_: A) -> ?3(A, _#0)) -> A
-53..67 | fun(a) => a(_)                           | (fun(_: A) -> ?3(A, _#0)) -> A
-63..64 | a                                        | fun(_: A) -> ?3(A, _#0)
+43..67 | fun(A) => fun(a) => a(_)                 | fun(A: Type) -> (fun(_: A) -> ?7(A, _#0)) -> A
+53..67 | fun(a) => a(_)                           | (fun(_: A) -> ?7(A, _#0)) -> A
+63..64 | a                                        | fun(_: A) -> ?7(A, _#0)
 63..67 | a(_)                                     | A
 65..66 | _                                        | A
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-15..16 | A                                        | ?1
+15..16 | A                                        | ?5
 47..48 | A                                        | Type
-57..58 | a                                        | fun(_: A) -> ?3(A, _#0)
+57..58 | a                                        | fun(_: A) -> ?7(A, _#0)
 metavars:
 ?0 = Type
 ?1 = Type
 ?2 = fun(_: #error, _: #error) => Type
 ?3 = <unsolved>
-?4 = fun(_: #error, _: #error) => _#1
-?5 = <unsolved>
+?4 = Type
+?5 = Type
+?6 = fun(_: #error, _: #error) => Type
+?7 = fun(_: #error, _: #error) => ?3(_#1, _#0)
+?8 = fun(_: #error, _: #error) => _#1
+?9 = <unsolved>
 """
 
 stderr = """

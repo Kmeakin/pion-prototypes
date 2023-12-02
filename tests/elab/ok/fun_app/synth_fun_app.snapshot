@@ -4,6 +4,10 @@ stdout = """
 def app0: Bool =
     let f: () -> Bool = fun(_: ()) => false;
     f(());
+def app1: Int =
+    let f: Int -> Int = fun(x: Int) => x;
+    f(1);
+def curried: Int -> Type = Array(Int);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -12,19 +16,6 @@ span   | source                                   | type
 32..37 | false                                    | Bool
 43..44 | f                                        | () -> Bool
 43..46 | f()                                      | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-19..20 | f                                        | ?0
-metavars:
-?0 = () -> Bool
-
-def app1: Int =
-    let f: Int -> Int = fun(x: Int) => x;
-    f(1);
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 64..98 | let f = fun(x: Int) => x;\n    f(1)      | Int
 72..88 | fun(x: Int) => x                         | Int -> Int
 79..82 | Int                                      | Type
@@ -32,21 +23,21 @@ span   | source                                   | type
 94..95 | f                                        | Int -> Int
 94..98 | f(1)                                     | Int
 96..97 | 1                                        | Int
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-68..69 | f                                        | ?0
-76..77 | x                                        | Int
-metavars:
-?0 = Int -> Int
-
-def curried: Int -> Type = Array(Int);
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 115..120 | Array                                    | Type -> Int -> Type
 115..125 | Array(Int)                               | Int -> Type
 121..124 | Int                                      | Type
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+19..20 | f                                        | ?1
+68..69 | f                                        | ?3
+76..77 | x                                        | Int
+metavars:
+?0 = Bool
+?1 = () -> Bool
+?2 = Int
+?3 = Int -> Int
+?4 = Int -> Type
 """
 
 stderr = """

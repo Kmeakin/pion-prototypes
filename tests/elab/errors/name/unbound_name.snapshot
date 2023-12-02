@@ -6,6 +6,8 @@ types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 12..13 | b                                        | #error
+metavars:
+?0 = #error
 """
 
 stderr = """

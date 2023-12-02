@@ -7,6 +7,21 @@ def is_zero_or_one: Int -> Bool =
         1 => true,
         _ => false,
     };
+def is_true_or_false: Bool -> Bool =
+    fun(x: Bool) => match x {
+        true => true,
+        false => true,
+    };
+def is_true_or_false_record: {b: Bool} -> Bool =
+    fun(x: {b: Bool}) => match x.b {
+        true => true,
+        false => true,
+    };
+def is_true_or_false_record2: {b: Bool} -> Bool =
+    fun(x: {b: Bool}) => match x.b {
+        true => true,
+        false => true,
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -18,27 +33,6 @@ span   | source                                   | type
 74..78 | true                                     | Bool
 89..93 | true                                     | Bool
 104..109 | false                                    | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-25..26 | x                                        | Int
-50..51 | 0                                        | Int
-50..55 | 0 | 1                                    | Int
-54..55 | 1                                        | Int
-69..70 | 0                                        | Int
-84..85 | 1                                        | Int
-99..100 | _                                        | Int
-metavars:
-?0 = fun(_: #error) => Bool
-
-def is_true_or_false: Bool -> Bool =
-    fun(x: Bool) => match x {
-        true => true,
-        false => true,
-    };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 138..226 | fun(x: Bool) => ma...n    _ => false,\n} | Bool -> Bool
 145..149 | Bool                                     | Type
 154..226 | match x {\n    tru...n    _ => false,\n} | Bool
@@ -46,26 +40,6 @@ span   | source                                   | type
 184..188 | true                                     | Bool
 203..207 | true                                     | Bool
 218..223 | false                                    | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-142..143 | x                                        | Bool
-168..172 | true                                     | Bool
-168..180 | true | false                             | Bool
-175..180 | false                                    | Bool
-194..199 | false                                    | Bool
-213..214 | _                                        | Bool
-metavars:
-?0 = fun(_: #error) => Bool
-
-def is_true_or_false_record: {b: Bool} -> Bool =
-    fun(x: {b: Bool}) => match x.b {
-        true => true,
-        false => true,
-    };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 259..370 | fun(x: {b : Bool})...n    _ => false,\n} | {b: Bool} -> Bool
 266..276 | {b : Bool}                               | Type
 271..275 | Bool                                     | Type
@@ -74,29 +48,6 @@ span   | source                                   | type
 323..327 | true                                     | Bool
 347..351 | true                                     | Bool
 362..367 | false                                    | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-263..264 | x                                        | {b: Bool}
-295..305 | {b = true}                               | {b: Bool}
-295..319 | {b = true} | {b = false}                 | {b: Bool}
-300..304 | true                                     | Bool
-308..319 | {b = false}                              | {b: Bool}
-313..318 | false                                    | Bool
-333..343 | {b = true}                               | {b: Bool}
-338..342 | true                                     | Bool
-357..358 | _                                        | {b: Bool}
-metavars:
-?0 = fun(_: #error) => Bool
-
-def is_true_or_false_record2: {b: Bool} -> Bool =
-    fun(x: {b: Bool}) => match x.b {
-        true => true,
-        false => true,
-    };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 404..510 | fun(x: {b : Bool})...n    _ => false,\n} | {b: Bool} -> Bool
 411..421 | {b : Bool}                               | Type
 416..420 | Bool                                     | Type
@@ -108,6 +59,28 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+25..26 | x                                        | Int
+50..51 | 0                                        | Int
+50..55 | 0 | 1                                    | Int
+54..55 | 1                                        | Int
+69..70 | 0                                        | Int
+84..85 | 1                                        | Int
+99..100 | _                                        | Int
+142..143 | x                                        | Bool
+168..172 | true                                     | Bool
+168..180 | true | false                             | Bool
+175..180 | false                                    | Bool
+194..199 | false                                    | Bool
+213..214 | _                                        | Bool
+263..264 | x                                        | {b: Bool}
+295..305 | {b = true}                               | {b: Bool}
+295..319 | {b = true} | {b = false}                 | {b: Bool}
+300..304 | true                                     | Bool
+308..319 | {b = false}                              | {b: Bool}
+313..318 | false                                    | Bool
+333..343 | {b = true}                               | {b: Bool}
+338..342 | true                                     | Bool
+357..358 | _                                        | {b: Bool}
 408..409 | x                                        | {b: Bool}
 440..458 | {b = true | false}                       | {b: Bool}
 445..449 | true                                     | Bool
@@ -117,7 +90,14 @@ span   | source                                   | type
 477..482 | false                                    | Bool
 497..498 | _                                        | {b: Bool}
 metavars:
-?0 = fun(_: #error) => Bool
+?0 = Int -> Bool
+?1 = fun(_: #error) => Bool
+?2 = Bool -> Bool
+?3 = fun(_: #error) => Bool
+?4 = {b: Bool} -> Bool
+?5 = fun(_: #error) => Bool
+?6 = {b: Bool} -> Bool
+?7 = fun(_: #error) => Bool
 """
 
 stderr = """

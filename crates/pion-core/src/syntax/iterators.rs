@@ -30,7 +30,12 @@ impl<'core> Subexprs<'core> {
         let mut f = |expr| Self::recurse(expr, f);
 
         match expr {
-            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::Local(..) | Expr::Meta(..) => {}
+            Expr::Error
+            | Expr::Lit(..)
+            | Expr::Prim(..)
+            | Expr::Local(..)
+            | Expr::Meta(..)
+            | Expr::Item(..) => {}
             Expr::Let(.., (r#type, init, body)) => {
                 f(r#type)?;
                 f(init)?;

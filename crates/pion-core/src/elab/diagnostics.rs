@@ -210,6 +210,7 @@ impl ElabDiagnostic {
                     }
                     MetaSource::PatType { span } => (span, "pattern type".into()),
                     MetaSource::MatchType { span } => (span, "type of match expression".into()),
+                    MetaSource::ItemType { span } => (span, "type of item".into()),
                 };
                 CodeSpanDiagnostic::error()
                     .with_message(format!("unable to infer {name}"))

@@ -1,13 +1,14 @@
 exit status: 1
 
 stdout = """
-def error: Array(?0, 0) = [];
+def error: Array(?1, 0) = [];
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-12..14 | []                                       | Array(?0, 0)
+12..14 | []                                       | Array(?1, 0)
 metavars:
-?0 = <unsolved>
+?0 = Array(?1, 0)
+?1 = <unsolved>
 """
 
 stderr = """

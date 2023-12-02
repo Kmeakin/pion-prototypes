@@ -9,27 +9,6 @@ def FstType: Type =
             let a: _#3._0 = _#0._0;
             let b: _#4._1 = _#1._1;
             A;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-14..60 | fun((A, B): (Type,...a, b): (A, B)) -> A | Type
-26..38 | (Type, Type)                             | Type
-27..31 | Type                                     | Type
-33..37 | Type                                     | Type
-48..54 | (A, B)                                   | Type
-49..50 | A                                        | Type
-52..53 | B                                        | Type
-59..60 | A                                        | Type
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-18..24 | (A, B)                                   | (Type, Type)
-19..20 | A                                        | Type
-22..23 | B                                        | Type
-40..46 | (a, b)                                   | (_#2._0, _#3._1)
-41..42 | a                                        | _#2._0
-44..45 | b                                        | _#2._1
-
 def SndType: Type =
     fun(_: (Type, Type)) ->
         let A: Type = _#0._0;
@@ -41,6 +20,14 @@ def SndType: Type =
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+14..60 | fun((A, B): (Type,...a, b): (A, B)) -> A | Type
+26..38 | (Type, Type)                             | Type
+27..31 | Type                                     | Type
+33..37 | Type                                     | Type
+48..54 | (A, B)                                   | Type
+49..50 | A                                        | Type
+52..53 | B                                        | Type
+59..60 | A                                        | Type
 76..122 | fun((A, B): (Type,...a, b): (A, B)) -> B | Type
 88..100 | (Type, Type)                             | Type
 89..93 | Type                                     | Type
@@ -52,12 +39,21 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+18..24 | (A, B)                                   | (Type, Type)
+19..20 | A                                        | Type
+22..23 | B                                        | Type
+40..46 | (a, b)                                   | (_#2._0, _#3._1)
+41..42 | a                                        | _#2._0
+44..45 | b                                        | _#2._1
 80..86 | (A, B)                                   | (Type, Type)
 81..82 | A                                        | Type
 84..85 | B                                        | Type
 102..108 | (a, b)                                   | (_#2._0, _#3._1)
 103..104 | a                                        | _#2._0
 106..107 | b                                        | _#2._1
+metavars:
+?0 = Type
+?1 = Type
 """
 
 stderr = """

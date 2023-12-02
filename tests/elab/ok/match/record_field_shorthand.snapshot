@@ -26,7 +26,8 @@ span   | source                                   | type
 33..34 | p                                        | {x: A, y: B}
 67..73 | {x, y}                                   | {x: A, y: B}
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => _#2
+?0 = fun(A: Type, B: Type) -> {x: A, y: B} -> A
+?1 = fun(_: #error, _: #error, _: #error) => _#2
 """
 
 stderr = """

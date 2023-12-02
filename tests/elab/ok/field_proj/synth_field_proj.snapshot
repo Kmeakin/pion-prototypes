@@ -2,30 +2,26 @@ exit status: 0
 
 stdout = """
 def a: Int = {x = 5}.x;
+def b: Int = {x = 5, y = false}.x;
+def c: Bool = {x = 5, y = false}.y;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 8..13 | {x=5}                                    | {x: Int}
 8..15 | {x=5}.x                                  | Int
 11..12 | 5                                        | Int
-
-def b: Int = {x = 5, y = false}.x;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 25..38 | {x=5,y=false}                            | {x: Int, y: Bool}
 25..40 | {x=5,y=false}.x                          | Int
 28..29 | 5                                        | Int
 32..37 | false                                    | Bool
-
-def c: Bool = {x = 5, y = false}.y;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 50..63 | {x=5,y=false}                            | {x: Int, y: Bool}
 50..65 | {x=5,y=false}.y                          | Bool
 53..54 | 5                                        | Int
 57..62 | false                                    | Bool
+metavars:
+?0 = Int
+?1 = Int
+?2 = Bool
 """
 
 stderr = """

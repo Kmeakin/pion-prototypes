@@ -2,27 +2,23 @@ exit status: 0
 
 stdout = """
 def Singleton: Type = {x: Int};
+def Point: Type = {x: Int, y: Int};
+def Any: Type = {A: Type, a: A};
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 16..24 | {x: Int}                                 | Type
 20..23 | Int                                      | Type
-
-def Point: Type = {x: Int, y: Int};
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 38..54 | {x: Int, y: Int}                         | Type
 42..45 | Int                                      | Type
 50..53 | Int                                      | Type
-
-def Any: Type = {A: Type, a: A};
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 66..81 | {A: Type, a: A}                          | Type
 70..74 | Type                                     | Type
 79..80 | A                                        | Type
+metavars:
+?0 = Type
+?1 = Type
+?2 = Type
 """
 
 stderr = """

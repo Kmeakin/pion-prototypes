@@ -8,6 +8,8 @@ span   | source                                   | type
 12..32 | {x=1,y=false,x=true}                     | {x: Int, y: Bool}
 15..16 | 1                                        | Int
 19..24 | false                                    | Bool
+metavars:
+?0 = {x: Int, y: Bool}
 """
 
 stderr = """

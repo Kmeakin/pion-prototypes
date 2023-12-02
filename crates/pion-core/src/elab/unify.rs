@@ -16,6 +16,7 @@ pub struct UnifyCtx<'core, 'env> {
     local_env: EnvLen,
     /// Solutions for metavariables.
     meta_values: &'env mut SliceEnv<Option<Value<'core>>>,
+    item_values: &'env SliceEnv<Value<'core>>,
 }
 
 /// A partial renaming from a source environment to a target environment.
@@ -106,16 +107,20 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         renaming: &'env mut PartialRenaming,
         local_env: EnvLen,
         meta_values: &'env mut SliceEnv<Option<Value<'core>>>,
+        item_values: &'env SliceEnv<Value<'core>>,
     ) -> Self {
         Self {
             bump: arena,
             renaming,
             local_env,
             meta_values,
+            item_values,
         }
     }
 
-    fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.bump, self.meta_values) }
+    fn elim_env(&self) -> ElimEnv<'core, '_> {
+        ElimEnv::new(self.bump, self.meta_values, self.item_values)
+    }
 
     pub fn equate(&mut self, meta_var: Level, value: Value<'core>) {
         self.meta_values.set_level(meta_var, Some(value));
@@ -494,6 +499,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::Stuck(head, spine) => {
                 let head = match head {
                     Head::Prim(prim) => Expr::Prim(prim),
+                    Head::Item(item) => Expr::Item((), item),
                     Head::Local(source_var) => match self.renaming.get_as_index(source_var) {
                         None => return Err(RenameError::EscapingLocalVar(source_var)),
                         Some(target_var) => Expr::Local((), target_var),

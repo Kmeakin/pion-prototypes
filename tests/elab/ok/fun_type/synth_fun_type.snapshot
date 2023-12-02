@@ -2,28 +2,16 @@ exit status: 0
 
 stdout = """
 def Fun0: Type = () -> Int;
+def Fun1: Type = Int -> Int;
+def IdType: Type = fun(A: Type) -> A -> A;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 11..23 | fun() -> Int                             | Type
 20..23 | Int                                      | Type
-
-def Fun1: Type = Int -> Int;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 36..54 | fun(x: Int) -> Int                       | Type
 43..46 | Int                                      | Type
 51..54 | Int                                      | Type
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-40..41 | x                                        | Int
-
-def IdType: Type = fun(A: Type) -> A -> A;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 69..91 | fun(A: Type) -> A -> A                   | Type
 76..80 | Type                                     | Type
 85..86 | A                                        | Type
@@ -32,7 +20,12 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+40..41 | x                                        | Int
 73..74 | A                                        | Type
+metavars:
+?0 = Type
+?1 = Type
+?2 = Type
 """
 
 stderr = """

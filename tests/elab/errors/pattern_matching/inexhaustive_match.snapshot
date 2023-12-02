@@ -1,42 +1,22 @@
 exit status: 1
 
 stdout = """
-def empty: fun(x: Bool) -> ?0(x) = fun(x: Bool) => #error;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-12..38 | fun(x: Bool) => match x {}               | fun(x: Bool) -> ?0(x)
-19..23 | Bool                                     | Type
-28..38 | match x {}                               | ?0(x)
-34..35 | x                                        | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-16..17 | x                                        | Bool
-metavars:
-?0 = <unsolved>
-
+def empty: fun(x: Bool) -> ?1(x) = fun(x: Bool) => #error;
 def foo: Bool -> Int = fun(x: Bool) => #error;
+def bar: Bool -> Int = fun(x: Bool) => #error;
+def baz: Bool -> Int = fun(x: Bool) => #error;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+12..38 | fun(x: Bool) => match x {}               | fun(x: Bool) -> ?1(x)
+19..23 | Bool                                     | Type
+28..38 | match x {}                               | ?1(x)
+34..35 | x                                        | Bool
 51..94 | fun(x: Bool) => ma...n    false => 1,\n} | Bool -> Int
 58..62 | Bool                                     | Type
 67..94 | match x {\n    false => 1,\n}            | Int
 73..74 | x                                        | Bool
 90..91 | 1                                        | Int
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-55..56 | x                                        | Bool
-81..86 | false                                    | Bool
-metavars:
-?0 = fun(_: #error) => Int
-
-def bar: Bool -> Int = fun(x: Bool) => #error;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 107..220 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
 114..118 | Bool                                     | Type
 123..220 | match x {\n    fal...f it has a guard\n} | Int
@@ -44,19 +24,6 @@ span   | source                                   | type
 146..147 | 1                                        | Int
 158..162 | true                                     | Bool
 166..167 | 2                                        | Int
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-111..112 | x                                        | Bool
-137..142 | false                                    | Bool
-153..154 | _                                        | Bool
-metavars:
-?0 = fun(_: #error) => Int
-
-def baz: Bool -> Int = fun(x: Bool) => #error;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 233..348 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
 240..244 | Bool                                     | Type
 249..348 | match x {\n    fal...f it has a guard\n} | Int
@@ -67,11 +34,24 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+16..17 | x                                        | Bool
+55..56 | x                                        | Bool
+81..86 | false                                    | Bool
+111..112 | x                                        | Bool
+137..142 | false                                    | Bool
+153..154 | _                                        | Bool
 237..238 | x                                        | Bool
 263..268 | false                                    | Bool
 279..283 | true                                     | Bool
 metavars:
-?0 = fun(_: #error) => Int
+?0 = fun(x: Bool) -> ?1(x)
+?1 = <unsolved>
+?2 = Bool -> Int
+?3 = fun(_: #error) => Int
+?4 = Bool -> Int
+?5 = fun(_: #error) => Int
+?6 = Bool -> Int
+?7 = fun(_: #error) => Int
 """
 
 stderr = """
@@ -80,12 +60,6 @@ error: inexhaustive pattern match
   │
 1 │ def empty = fun(x: Bool) => match x {};
   │                                   ^
-
-error: unable to infer type of match expression
-  ┌─ tests/elab/errors/pattern_matching/inexhaustive_match.pion:1:29
-  │
-1 │ def empty = fun(x: Bool) => match x {};
-  │                             ^^^^^^^^^^
 
 error: inexhaustive pattern match
   ┌─ tests/elab/errors/pattern_matching/inexhaustive_match.pion:3:33
@@ -104,6 +78,12 @@ error: inexhaustive pattern match
    │
 12 │ def baz = fun(x: Bool) => match x {
    │                                 ^
+
+error: unable to infer type of match expression
+  ┌─ tests/elab/errors/pattern_matching/inexhaustive_match.pion:1:29
+  │
+1 │ def empty = fun(x: Bool) => match x {};
+  │                             ^^^^^^^^^^
 
 aborting due to 5 previous errors
 """

@@ -12,21 +12,54 @@ def and3: Bool -> Bool -> Bool =
             false => false,
         },
     };
+def or3: Bool -> Bool -> Bool =
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        true => match (x, y)._1 {
+            true => true,
+            false => true,
+        },
+        false => match (x, y)._1 {
+            true => true,
+            false => false,
+        },
+    };
+def or4: Bool -> Bool -> Bool =
+    fun(x: Bool, y: Bool) => match (x, y)._0 {
+        true => true,
+        false => match (x, y)._1 {
+            true => true,
+            false => false,
+        },
+    };
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 11..135 | fun(x, y) => match...false) => false,\n} | Bool -> Bool -> Bool
 24..135 | match (x, y) {\n  ...false) => false,\n} | Bool
-30..36 | (x, y)                                   | (?0, ?1(x))
-31..32 | x                                        | ?0
-34..35 | y                                        | ?1(x)
+30..36 | (x, y)                                   | (?1, ?2(x))
+31..32 | x                                        | ?1
+34..35 | y                                        | ?2(x)
 59..63 | true                                     | Bool
 127..132 | false                                    | Bool
+148..272 | fun(x, y) => match... false) => true,\n} | Bool -> Bool -> Bool
+161..272 | match (x, y) {\n  ... false) => true,\n} | Bool
+167..173 | (x, y)                                   | (?5, ?6(x))
+168..169 | x                                        | ?5
+171..172 | y                                        | ?6(x)
+198..203 | false                                    | Bool
+265..269 | true                                     | Bool
+285..365 | fun(x, y) => match...n    _ => false,\n} | Bool -> Bool -> Bool
+298..365 | match (x, y) {\n  ...n    _ => false,\n} | Bool
+304..310 | (x, y)                                   | (?9, ?10(x))
+305..306 | x                                        | ?9
+308..309 | y                                        | ?10(x)
+342..346 | true                                     | Bool
+357..362 | false                                    | Bool
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-15..16 | x                                        | ?0
-18..19 | y                                        | ?1(x)
+15..16 | x                                        | ?1
+18..19 | y                                        | ?2(x)
 43..55 | (true, true)                             | (Bool, Bool)
 44..48 | true                                     | Bool
 50..54 | true                                     | Bool
@@ -40,37 +73,8 @@ span   | source                                   | type
 109..123 | (false, false)                           | (Bool, Bool)
 110..115 | false                                    | Bool
 117..122 | false                                    | Bool
-metavars:
-?0 = Bool
-?1 = fun(_: #error) => Bool
-?2 = fun(_: #error, _: #error) => Bool
-
-def or3: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) => match (x, y)._0 {
-        true => match (x, y)._1 {
-            true => true,
-            false => true,
-        },
-        false => match (x, y)._1 {
-            true => true,
-            false => false,
-        },
-    };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-148..272 | fun(x, y) => match... false) => true,\n} | Bool -> Bool -> Bool
-161..272 | match (x, y) {\n  ... false) => true,\n} | Bool
-167..173 | (x, y)                                   | (?0, ?1(x))
-168..169 | x                                        | ?0
-171..172 | y                                        | ?1(x)
-198..203 | false                                    | Bool
-265..269 | true                                     | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-152..153 | x                                        | ?0
-155..156 | y                                        | ?1(x)
+152..153 | x                                        | ?5
+155..156 | y                                        | ?6(x)
 180..194 | (false, false)                           | (Bool, Bool)
 181..186 | false                                    | Bool
 188..193 | false                                    | Bool
@@ -84,46 +88,29 @@ span   | source                                   | type
 248..261 | (true, false)                            | (Bool, Bool)
 249..253 | true                                     | Bool
 255..260 | false                                    | Bool
-metavars:
-?0 = Bool
-?1 = fun(_: #error) => Bool
-?2 = fun(_: #error, _: #error) => Bool
-
-def or4: Bool -> Bool -> Bool =
-    fun(x: Bool, y: Bool) => match (x, y)._0 {
-        true => true,
-        false => match (x, y)._1 {
-            true => true,
-            false => false,
-        },
-    };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-285..365 | fun(x, y) => match...n    _ => false,\n} | Bool -> Bool -> Bool
-298..365 | match (x, y) {\n  ...n    _ => false,\n} | Bool
-304..310 | (x, y)                                   | (?0, ?1(x))
-305..306 | x                                        | ?0
-308..309 | y                                        | ?1(x)
-342..346 | true                                     | Bool
-357..362 | false                                    | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-289..290 | x                                        | ?0
-292..293 | y                                        | ?1(x)
-317..326 | (true, _)                                | (Bool, ?1(x))
+289..290 | x                                        | ?9
+292..293 | y                                        | ?10(x)
+317..326 | (true, _)                                | (Bool, ?10(x))
 317..338 | (true, _) | (_, true)                    | (Bool, Bool)
 318..322 | true                                     | Bool
-324..325 | _                                        | ?1(x)
+324..325 | _                                        | ?10(x)
 329..338 | (_, true)                                | (Bool, Bool)
 330..331 | _                                        | Bool
 333..337 | true                                     | Bool
 352..353 | _                                        | (Bool, Bool)
 metavars:
-?0 = Bool
-?1 = fun(_: #error) => Bool
-?2 = fun(_: #error, _: #error) => Bool
+?0 = Bool -> Bool -> Bool
+?1 = Bool
+?2 = fun(_: #error) => Bool
+?3 = fun(_: #error, _: #error) => Bool
+?4 = Bool -> Bool -> Bool
+?5 = Bool
+?6 = fun(_: #error) => Bool
+?7 = fun(_: #error, _: #error) => Bool
+?8 = Bool -> Bool -> Bool
+?9 = Bool
+?10 = fun(_: #error) => Bool
+?11 = fun(_: #error, _: #error) => Bool
 """
 
 stderr = """

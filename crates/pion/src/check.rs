@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use anyhow::bail;
 use bpaf::Parser;
 use camino::Utf8PathBuf;
@@ -77,6 +75,21 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
                 .map(|error| error.to_diagnostic(file_id, &source)),
         );
 
+        let (module, errors) = pion_hir::lower::lower_module(&bump, source, &surface_module);
+        diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
+
+        let result = pion_core::elab::elab_module(&bump, &module);
+        diagnostics.extend(
+            result
+                .diagnostics
+                .iter()
+                .map(|diag| diag.to_diagnostic(file_id)),
+        );
+        if dump_flags.core {
+            pion_core::dump::dump_module(&mut stdout, src32.as_str(), &result)?;
+        }
+
+        #[cfg(FALSE)]
         for surface_item in surface_module.items {
             let Some((hir_item, errors)) = pion_hir::lower::lower_item(&bump, source, surface_item)
             else {

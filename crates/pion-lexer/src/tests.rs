@@ -320,32 +320,62 @@ mod literals {
     use super::*;
 
     #[test]
-    fn dec_int_literal() { check("123456789", expect![[r#"
+    fn dec_int_literal() {
+        check(
+            "123456789",
+            expect![[r#"
         0..9: DecInt("123456789")
-    "#]]); }
+    "#]],
+        );
+    }
 
     #[test]
-    fn dec_int_literal_with_underscores() { check("12345_67__89", expect![[r#"
+    fn dec_int_literal_with_underscores() {
+        check(
+            "12345_67__89",
+            expect![[r#"
         0..12: DecInt("12345_67__89")
-    "#]]); }
+    "#]],
+        );
+    }
 
     #[test]
-    fn bin_int_literal() { check("0b11110000", expect![[r#"
+    fn bin_int_literal() {
+        check(
+            "0b11110000",
+            expect![[r#"
         0..10: BinInt("0b11110000")
-    "#]]); }
+    "#]],
+        );
+    }
 
     #[test]
-    fn bin_int_literal_with_underscores() { check("0B1111_000__0", expect![[r#"
+    fn bin_int_literal_with_underscores() {
+        check(
+            "0B1111_000__0",
+            expect![[r#"
         0..13: BinInt("0B1111_000__0")
-    "#]]); }
+    "#]],
+        );
+    }
 
     #[test]
-    fn hex_int_literal() { check("0x123456789abcdef", expect![[r#"
+    fn hex_int_literal() {
+        check(
+            "0x123456789abcdef",
+            expect![[r#"
         0..17: HexInt("0x123456789abcdef")
-    "#]]); }
+    "#]],
+        );
+    }
 
     #[test]
-    fn hex_int_literal_with_underscores() { check("0X123456789_abcde__f", expect![[r#"
+    fn hex_int_literal_with_underscores() {
+        check(
+            "0X123456789_abcde__f",
+            expect![[r#"
         0..20: HexInt("0X123456789_abcde__f")
-    "#]]); }
+    "#]],
+        );
+    }
 }

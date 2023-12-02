@@ -7,6 +7,8 @@ span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 12..17 | Array                                    | Type -> Int -> Type
 12..23 | Array(@Int)                              | #error
+metavars:
+?0 = #error
 """
 
 stderr = """

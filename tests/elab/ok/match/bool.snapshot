@@ -6,47 +6,11 @@ def not: Bool -> Bool =
         true => false,
         false => true,
     };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-10..69 | fun(x) => match x ...  false => true,\n} | Bool -> Bool
-20..69 | match x {\n    tru...  false => true,\n} | Bool
-26..27 | x                                        | ?0
-42..47 | false                                    | Bool
-62..66 | true                                     | Bool
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-14..15 | x                                        | ?0
-34..38 | true                                     | Bool
-53..58 | false                                    | Bool
-metavars:
-?0 = Bool
-?1 = fun(_: #error) => Bool
-
 def bool-to-int: Bool -> Int =
     fun(x: Bool) => match x {
         true => 1,
         false => 0,
     };
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-90..142 | fun(x) => match x ...n    false => 0,\n} | Bool -> Int
-100..142 | match x {\n    tru...n    false => 0,\n} | Int
-106..107 | x                                        | ?0
-122..123 | 1                                        | Int
-138..139 | 0                                        | Int
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-94..95 | x                                        | ?0
-114..118 | true                                     | Bool
-129..134 | false                                    | Bool
-metavars:
-?0 = Bool
-?1 = fun(_: #error) => Int
-
 def apply: Bool -> (Bool -> Int) -> Int =
     fun(x: Bool, f: Bool -> Int) => match x {
         true => 1,
@@ -57,6 +21,16 @@ def apply: Bool -> (Bool -> Int) -> Int =
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+10..69 | fun(x) => match x ...  false => true,\n} | Bool -> Bool
+20..69 | match x {\n    tru...  false => true,\n} | Bool
+26..27 | x                                        | ?1
+42..47 | false                                    | Bool
+62..66 | true                                     | Bool
+90..142 | fun(x) => match x ...n    false => 0,\n} | Bool -> Int
+100..142 | match x {\n    tru...n    false => 0,\n} | Int
+106..107 | x                                        | ?4
+122..123 | 1                                        | Int
+138..139 | 0                                        | Int
 376..449 | fun(x: Bool, f: Bo...\n    z => f(z),\n} | Bool -> (Bool -> Int) -> Int
 383..387 | Bool                                     | Type
 392..396 | Bool                                     | Type
@@ -71,12 +45,25 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+14..15 | x                                        | ?1
+34..38 | true                                     | Bool
+53..58 | false                                    | Bool
+94..95 | x                                        | ?4
+114..118 | true                                     | Bool
+129..134 | false                                    | Bool
 380..381 | x                                        | Bool
 389..390 | f                                        | Bool -> Int
 422..426 | true                                     | Bool
 437..438 | z                                        | Bool
 metavars:
-?0 = fun(_: #error, _: #error) => Int
+?0 = Bool -> Bool
+?1 = Bool
+?2 = fun(_: #error) => Bool
+?3 = Bool -> Int
+?4 = Bool
+?5 = fun(_: #error) => Int
+?6 = Bool -> (Bool -> Int) -> Int
+?7 = fun(_: #error, _: #error) => Int
 """
 
 stderr = """

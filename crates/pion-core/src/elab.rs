@@ -4,6 +4,7 @@ use std::hash::BuildHasherDefault;
 use nohash::IntMap;
 use pion_utils::identity::Identity;
 use pion_utils::location::ByteSpan;
+use pion_utils::slice_vec::SliceVec;
 use pion_utils::symbol::Symbol;
 
 use self::unify::UnifyCtx;
@@ -19,10 +20,11 @@ mod r#match;
 mod pat;
 mod unify;
 
-mod dependencies;
+pub mod dependencies;
 
 pub struct ElabCtx<'hir, 'core> {
     bump: &'core bumpalo::Bump,
+    item_env: ItemEnv<'core>,
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
     renaming: unify::PartialRenaming,
@@ -35,6 +37,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         Self {
             bump,
             type_map: TypeMap::with_capacity(0, 0),
+            item_env: ItemEnv::default(),
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
             renaming: unify::PartialRenaming::new(),
@@ -48,7 +51,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             self.bump,
             &self.meta_env.values,
             &mut self.local_env.values,
+            &self.item_env.values,
             &mut self.local_env.names,
+            &self.item_env.names,
         );
         let metavars = self.bump.alloc_slice_fill_iter(
             self.meta_env
@@ -107,14 +112,26 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.bump, &self.meta_env.values) }
+    pub fn elim_env(&self) -> ElimEnv<'core, '_> {
+        ElimEnv::new(self.bump, &self.meta_env.values, &self.item_env.values)
+    }
 
     pub fn eval_env(&mut self) -> EvalEnv<'core, '_> {
-        EvalEnv::new(self.bump, &self.meta_env.values, &mut self.local_env.values)
+        EvalEnv::new(
+            self.bump,
+            &self.meta_env.values,
+            &mut self.local_env.values,
+            &self.item_env.values,
+        )
     }
 
     pub fn quote_env(&mut self) -> QuoteEnv<'core, '_> {
-        QuoteEnv::new(self.bump, &self.meta_env.values, self.local_env.len())
+        QuoteEnv::new(
+            self.bump,
+            &self.meta_env.values,
+            &self.item_env.values,
+            self.local_env.len(),
+        )
     }
 
     pub fn zonk_env<'out>(&mut self, out_bump: &'out bumpalo::Bump) -> ZonkEnv<'core, '_, 'out> {
@@ -123,7 +140,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             self.bump,
             &self.meta_env.values,
             &mut self.local_env.values,
+            &self.item_env.values,
             &mut self.local_env.names,
+            &self.item_env.names,
         )
     }
 
@@ -133,6 +152,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             &mut self.renaming,
             self.local_env.len(),
             &mut self.meta_env.values,
+            &self.item_env.values,
         )
     }
 
@@ -163,6 +183,51 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         let doc = pretty_ctx.expr(&expr, pretty::Prec::MAX);
         doc.pretty(80).to_string().into()
     }
+}
+
+#[derive(Default)]
+struct ItemEnv<'core> {
+    names: UniqueEnv<Symbol>,
+    types: UniqueEnv<Type<'core>>,
+    values: SharedEnv<Value<'core>>,
+}
+
+impl<'core> ItemEnv<'core> {
+    fn push(&mut self, name: Symbol, r#type: Type<'core>, value: Value<'core>) {
+        self.names.push(name);
+        self.types.push(r#type);
+        self.values.push(value);
+    }
+
+    fn lookup(&self, name: Symbol) -> Option<(Level, ItemEntry<'_, 'core>)> {
+        let level = self.names.level_of_elem(&name)?;
+        let r#type = self.types.get_level(level)?;
+        let value = self.values.get_level(level)?;
+        Some((
+            level,
+            ItemEntry {
+                name,
+                r#type,
+                value,
+            },
+        ))
+    }
+
+    fn len(&self) -> EnvLen { self.names.len() }
+
+    fn truncate(&mut self, len: EnvLen) {
+        self.names.truncate(len);
+        self.types.truncate(len);
+        self.values.truncate(len);
+    }
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+struct ItemEntry<'env, 'core> {
+    name: Symbol,
+    r#type: &'env Type<'core>,
+    value: &'env Value<'core>,
 }
 
 #[derive(Default)]
@@ -234,8 +299,8 @@ impl<'core> LocalEnv<'core> {
     }
 
     fn lookup(&self, symbol: Symbol) -> Option<(Index, LocalEntry<'_, 'core>)> {
-        let index = self.names.index_of_elem(&BinderName::User(symbol))?;
-        let name = self.names.get_index(index).copied()?;
+        let name = BinderName::User(symbol);
+        let index = self.names.index_of_elem(&name)?;
         let info = self.infos.get_index(index).copied()?;
         let r#type = self.types.get_index(index)?;
         let value = self.values.get_index(index)?;
@@ -350,6 +415,7 @@ pub enum MetaSource {
     ImplicitArg { span: ByteSpan, name: BinderName },
     PatType { span: ByteSpan },
     MatchType { span: ByteSpan },
+    ItemType { span: ByteSpan },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -433,6 +499,86 @@ pub struct Check<T>(pub T);
 
 impl<T> Check<T> {
     pub const fn new(core: T) -> Self { Self(core) }
+}
+
+pub fn elab_module<'hir, 'core>(
+    bump: &'core bumpalo::Bump,
+    module: &pion_hir::syntax::Module<'hir>,
+) -> ElabResult<'hir, 'core, Module<'core>> {
+    let sccs = dependencies::module_sccs(module);
+    let mut ctx = ElabCtx::new(bump);
+    let mut module_items = SliceVec::new(bump, module.items.len());
+
+    for scc in sccs {
+        let initial_len = ctx.item_env.len();
+
+        // check item type annotations
+        let item_types: &[_] = bump.alloc_slice_fill_iter(scc.iter().map(|item| match item {
+            pion_hir::syntax::Item::Def(def) => match def.r#type {
+                Some(r#type) => {
+                    let Check(r#type) = ctx.check_expr_is_type(r#type);
+                    ctx.eval_env().eval(&r#type)
+                }
+                None => ctx.push_unsolved_type(MetaSource::ItemType {
+                    span: def.name.span,
+                }),
+            },
+        }));
+
+        // initialize items
+        for (item, r#type) in scc.iter().zip(item_types) {
+            match item {
+                pion_hir::syntax::Item::Def(def) => {
+                    let name = def.name.symbol;
+                    let value = Value::item(ctx.item_env.len().to_level());
+                    ctx.item_env.push(name, r#type.clone(), value);
+                }
+            }
+        }
+
+        // check items
+        let item_exprs = bump.alloc_slice_fill_iter(scc.iter().zip(item_types).map(
+            |(item, expected)| match item {
+                pion_hir::syntax::Item::Def(def) => {
+                    let Check(expr) = ctx.check_ann_expr(def.expr, def.r#type, expected);
+                    expr
+                }
+            },
+        ));
+
+        // evaluate items
+        let item_values =
+            bump.alloc_slice_fill_iter(item_exprs.iter().map(|expr| ctx.eval_env().eval(expr)));
+
+        // update item env
+        ctx.item_env.truncate(initial_len);
+        for ((item, r#type), value) in scc.iter().zip(item_types).zip(item_values) {
+            match item {
+                pion_hir::syntax::Item::Def(def) => {
+                    ctx.item_env
+                        .push(def.name.symbol, r#type.clone(), value.clone());
+                }
+            }
+        }
+
+        // write back
+        for ((item, r#type), expr) in scc.iter().zip(item_types).zip(item_exprs) {
+            match item {
+                pion_hir::syntax::Item::Def(def) => {
+                    module_items.push(Item::Def(Def {
+                        name: def.name,
+                        r#type: ctx.zonk_env(bump).zonk_value(r#type),
+                        expr: ctx.zonk_env(bump).zonk(expr),
+                    }));
+                }
+            }
+        }
+    }
+
+    let module = Module {
+        items: module_items.into(),
+    };
+    ctx.finish_with(module)
 }
 
 // REASON: keep all lifetimes explicit for clarity

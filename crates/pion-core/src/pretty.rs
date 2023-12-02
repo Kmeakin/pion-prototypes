@@ -30,6 +30,19 @@ pub struct PrettyCtx<'pretty> {
 impl<'pretty> PrettyCtx<'pretty> {
     pub fn new(bump: &'pretty bumpalo::Bump) -> Self { Self { bump } }
 
+    pub fn module(&'pretty self, module: &Module<'_>) -> DocBuilder<'pretty> {
+        self.intersperse(
+            module.items.iter().map(|item| self.item(item)),
+            self.hardline(),
+        )
+    }
+
+    pub fn item(&'pretty self, item: &Item<'_>) -> DocBuilder<'pretty> {
+        match item {
+            Item::Def(def) => self.def(def),
+        }
+    }
+
     pub fn def(&'pretty self, def: &Def<'_>) -> DocBuilder<'pretty> {
         let r#type = self.expr(&def.r#type, Prec::MAX);
         let expr = self.expr(&def.expr, Prec::MAX);
@@ -62,6 +75,7 @@ impl<'pretty> PrettyCtx<'pretty> {
             Expr::Lit(lit) => self.lit(*lit),
             Expr::Prim(prim) => self.prim(*prim),
             Expr::Local(name, var) => self.local_name(*name, *var),
+            Expr::Item(name, _) => self.item_name(*name),
             Expr::Meta(var) => self
                 .text("?")
                 .append(self.text(usize::from(*var).to_string())),
@@ -306,6 +320,10 @@ impl<'pretty> PrettyCtx<'pretty> {
         }
     }
 
+    pub fn item_name(&'pretty self, name: Symbol) -> DocBuilder<'pretty> {
+        self.text(name.as_str())
+    }
+
     pub fn binder_name(&'pretty self, name: BinderName) -> DocBuilder<'pretty> {
         match name {
             BinderName::Underscore => self.text("_"),
@@ -347,6 +365,7 @@ fn expr_prec(expr: &ZonkedExpr<'_>) -> Prec {
         Expr::Lit(_) => Prec::Atom,
         Expr::Prim(_) => Prec::Atom,
         Expr::Local(..) => Prec::Atom,
+        Expr::Item(..) => Prec::Atom,
         Expr::Meta(_) => Prec::Atom,
         Expr::Let(..) => Prec::Let,
         Expr::FunLit(..) => Prec::Fun,

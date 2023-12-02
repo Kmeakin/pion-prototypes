@@ -9,7 +9,12 @@ type DependencyGraph<'hir> = PtrMap<&'hir hir::Item<'hir>, ItemSet<'hir>>;
 
 type Items<'hir> = &'hir [hir::Item<'hir>];
 
-pub fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<'hir> {
+pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<'hir>>> {
+    let graph = module_dependency_graph(module);
+    find_sccs(&graph)
+}
+
+fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<'hir> {
     let items = module.items;
     let mut graph = DependencyGraph::default();
 
@@ -28,9 +33,7 @@ pub fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGr
     graph
 }
 
-pub fn find_sccs<'hir, 'graph>(
-    graph: &'graph DependencyGraph<'hir>,
-) -> Vec<Vec<&'hir hir::Item<'hir>>> {
+fn find_sccs<'hir>(graph: &DependencyGraph<'hir>) -> Vec<Vec<&'hir hir::Item<'hir>>> {
     struct SccSolver<'graph, 'hir> {
         graph: &'graph DependencyGraph<'hir>,
         ids: PtrMap<&'hir hir::Item<'hir>, i32>,
@@ -57,7 +60,7 @@ pub fn find_sccs<'hir, 'graph>(
         }
     }
 
-    fn dfs<'graph, 'hir>(solver: &mut SccSolver<'graph, 'hir>, at: &'hir hir::Item<'hir>) {
+    fn dfs<'hir>(solver: &mut SccSolver<'_, 'hir>, at: &'hir hir::Item<'hir>) {
         let at = Identity(at);
 
         solver.low_link.insert(at, solver.id);

@@ -1,8 +1,24 @@
 use crate::elab::{ElabResult, TypeMap};
 use crate::pretty::{Prec, PrettyCtx};
-use crate::syntax::{Def, ZonkedExpr};
+use crate::syntax::{Def, Module, ZonkedExpr};
 
 // FIXME: print hir nodes that were not assigned types during elaboration
+
+pub fn dump_module(
+    writer: &mut dyn std::io::Write,
+    source: &str,
+    result: &ElabResult<Module>,
+) -> std::io::Result<()> {
+    let bump = bumpalo::Bump::new();
+    let pretty_ctx = PrettyCtx::new(&bump);
+
+    writeln!(writer, "{}", pretty_ctx.module(&result.value).pretty(80))?;
+    dump_expr_types(writer, source, &result.type_map)?;
+    dump_pat_types(writer, source, &result.type_map)?;
+    dump_metavars(writer, result.metavars)?;
+
+    Ok(())
+}
 
 pub fn dump_def(
     writer: &mut dyn std::io::Write,

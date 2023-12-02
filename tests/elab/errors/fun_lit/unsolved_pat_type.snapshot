@@ -1,18 +1,19 @@
 exit status: 1
 
 stdout = """
-def error: ?0 -> ?0 = fun(x: ?0) => x;
+def error: ?1 -> ?1 = fun(x: ?1) => x;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-12..23 | fun(x) => x                              | ?0 -> ?0
-22..23 | x                                        | ?0
+12..23 | fun(x) => x                              | ?1 -> ?1
+22..23 | x                                        | ?1
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-16..17 | x                                        | ?0
+16..17 | x                                        | ?1
 metavars:
-?0 = <unsolved>
+?0 = ?1 -> ?1
+?1 = <unsolved>
 """
 
 stderr = """

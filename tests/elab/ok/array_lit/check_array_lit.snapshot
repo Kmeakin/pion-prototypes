@@ -2,6 +2,8 @@ exit status: 0
 
 stdout = """
 def a: Array(Int, 0) = [];
+def b: Array(Int, 1) = [1];
+def c: Array(Int, 1) = [1];
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -10,26 +12,12 @@ span   | source                                   | type
 13..16 | Int                                      | Type
 18..19 | _                                        | Int
 23..25 | []                                       | Array(Int, 0)
-metavars:
-?0 = Int
-?1 = 0
-?2 = Int
-
-def b: Array(Int, 1) = [1];
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 34..39 | Array                                    | Type -> Int -> Type
 34..47 | Array(Int, 1)                            | Type
 40..43 | Int                                      | Type
 45..46 | 1                                        | Int
 50..53 | [1]                                      | Array(Int, 1)
 51..52 | 1                                        | Int
-
-def c: Array(Int, 1) = [1];
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 62..67 | Array                                    | Type -> Int -> Type
 62..73 | Array(_, 1)                              | Type
 68..69 | _                                        | Type
@@ -37,8 +25,15 @@ span   | source                                   | type
 76..79 | [1]                                      | Array(Int, 1)
 77..78 | 1                                        | Int
 metavars:
-?0 = Type
-?1 = Int
+?0 = Int
+?1 = 0
+?2 = Int
+?3 = 0
+?4 = Int
+?5 = Type
+?6 = Int
+?7 = Type
+?8 = Int
 """
 
 stderr = """

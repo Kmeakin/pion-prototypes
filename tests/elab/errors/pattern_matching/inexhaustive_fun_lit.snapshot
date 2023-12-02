@@ -12,6 +12,8 @@ types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 14..19 | false                                    | Bool
+metavars:
+?0 = Bool -> #error
 """
 
 stderr = """

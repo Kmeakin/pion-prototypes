@@ -2,26 +2,22 @@ exit status: 1
 
 stdout = """
 def error1: #error = #error;
+def error2: #error = #error;
+def error3: #error = #error;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 13..15 | {}                                       | ()
 13..17 | {}.x                                     | #error
-
-def error2: #error = #error;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 32..37 | {z=0}                                    | {z: Int}
 32..39 | {z=0}.x                                  | #error
 35..36 | 0                                        | Int
-
-def error3: #error = #error;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 54..57 | Int                                      | Type
 54..59 | Int.x                                    | #error
+metavars:
+?0 = #error
+?1 = #error
+?2 = #error
 """
 
 stderr = """

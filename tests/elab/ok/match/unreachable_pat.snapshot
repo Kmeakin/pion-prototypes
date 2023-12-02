@@ -24,7 +24,8 @@ span   | source                                   | type
 55..60 | false                                    | Bool
 71..75 | true                                     | Bool
 metavars:
-?0 = fun(_: #error) => Int
+?0 = Bool -> Int
+?1 = fun(_: #error) => Int
 """
 
 stderr = """

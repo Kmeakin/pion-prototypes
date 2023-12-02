@@ -4,6 +4,9 @@ stdout = """
 def app1: Int =
     let f: Int -> Int = fun(x: Int) => x;
     f(1);
+def app2: Bool =
+    let id: fun(@A: Type) -> A -> A = fun(@A: Type, x: A) => x;
+    id(@Bool, false);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -13,20 +16,6 @@ span   | source                                   | type
 38..39 | x                                        | Int
 45..46 | 1                                        | Int
 45..50 | 1.f()                                    | Int
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-19..20 | f                                        | ?0
-27..28 | x                                        | Int
-metavars:
-?0 = Int -> Int
-
-def app2: Bool =
-    let id: fun(@A: Type) -> A -> A = fun(@A: Type, x: A) => x;
-    id(@Bool, false);
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 68..117 | let id = fun(@A: T... x;\n    false.id() | Bool
 77..101 | fun(@A: Type, x: A) => x                 | fun(@A: Type) -> A -> A
 85..89 | Type                                     | Type
@@ -37,12 +26,17 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-72..74 | id                                       | ?0
+19..20 | f                                        | ?1
+27..28 | x                                        | Int
+72..74 | id                                       | ?3
 82..83 | A                                        | Type
 91..92 | x                                        | A
 metavars:
-?0 = fun(@A: Type) -> A -> A
-?1 = Bool
+?0 = Int
+?1 = Int -> Int
+?2 = Bool
+?3 = fun(@A: Type) -> A -> A
+?4 = Bool
 """
 
 stderr = """

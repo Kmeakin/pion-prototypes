@@ -36,8 +36,8 @@ span   | source                                   | type
 129..252 | fun (x, y: Int) =>... (xx, yy) => xx,\n} | Int -> Int -> Int
 140..143 | Int                                      | Type
 148..252 | match (x, y) {\n  ... (xx, yy) => xx,\n} | Int
-154..160 | (x, y)                                   | (?0, Int)
-155..156 | x                                        | ?0
+154..160 | (x, y)                                   | (?1, Int)
+155..156 | x                                        | ?1
 158..159 | y                                        | Int
 177..178 | a                                        | Int
 194..195 | b                                        | Int
@@ -47,7 +47,7 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-134..135 | x                                        | ?0
+134..135 | x                                        | ?1
 137..138 | y                                        | Int
 167..173 | (0, a)                                   | (Int, Int)
 168..169 | 0                                        | Int
@@ -65,8 +65,9 @@ span   | source                                   | type
 236..238 | xx                                       | Int
 240..242 | yy                                       | Int
 metavars:
-?0 = Int
-?1 = fun(_: #error, _: #error) => Int
+?0 = Int -> Int -> Int
+?1 = Int
+?2 = fun(_: #error, _: #error) => Int
 """
 
 stderr = """

@@ -2,16 +2,15 @@ exit status: 0
 
 stdout = """
 def foo: Bool = true;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-10..14 | true                                     | Bool
-
 def bar: Bool = false;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+10..14 | true                                     | Bool
 26..31 | false                                    | Bool
+metavars:
+?0 = Bool
+?1 = Bool
 """
 
 stderr = """

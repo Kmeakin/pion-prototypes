@@ -1,6 +1,7 @@
 use ecow::EcoVec;
 use either::*;
 use pion_utils::slice_vec::SliceVec;
+use pion_utils::symbol::Symbol;
 
 use crate::env::{EnvLen, Level, SharedEnv, SliceEnv, UniqueEnv};
 use crate::name::{BinderName, FieldName, LocalName};
@@ -14,21 +15,27 @@ use crate::syntax::{
 pub struct ElimEnv<'core, 'env> {
     bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
+    item_values: &'env SliceEnv<Value<'core>>,
 }
 
 impl<'core, 'env> ElimEnv<'core, 'env> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
+        item_values: &'env SliceEnv<Value<'core>>,
     ) -> Self {
-        Self { bump, meta_values }
+        Self {
+            bump,
+            meta_values,
+            item_values,
+        }
     }
 
     pub fn eval_env(
         &self,
         local_values: &'env mut SharedEnv<Value<'core>>,
     ) -> EvalEnv<'core, 'env> {
-        EvalEnv::new(self.bump, self.meta_values, local_values)
+        EvalEnv::new(self.bump, self.meta_values, local_values, self.item_values)
     }
 
     fn get_meta(&self, var: Level) -> &'env Option<Value<'core>> {
@@ -216,6 +223,7 @@ pub struct EvalEnv<'core, 'env> {
     bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
     local_values: &'env mut SharedEnv<Value<'core>>,
+    item_values: &'env SliceEnv<Value<'core>>,
 }
 
 impl<'core, 'env> EvalEnv<'core, 'env> {
@@ -223,15 +231,19 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
         bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
         local_values: &'env mut SharedEnv<Value<'core>>,
+        item_values: &'env SliceEnv<Value<'core>>,
     ) -> Self {
         Self {
             bump,
             meta_values,
             local_values,
+            item_values,
         }
     }
 
-    fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.bump, self.meta_values) }
+    fn elim_env(&self) -> ElimEnv<'core, '_> {
+        ElimEnv::new(self.bump, self.meta_values, self.item_values)
+    }
 
     fn get_meta(&self, var: Level) -> &'env Option<Value<'core>> {
         let value = self.meta_values.get_level(var);
@@ -249,6 +261,10 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
             Expr::Local(.., var) => match self.local_values.get_index(*var) {
                 Some(value) => value.clone(),
                 None => panic!("Unbound local variable: {var:?}"),
+            },
+            Expr::Item(.., var) => match self.item_values.get_level(*var) {
+                Some(value) => value.clone(),
+                None => panic!("Unbound item variable: {var:?}"),
             },
             Expr::Meta(var) => match self.get_meta(*var) {
                 Some(value) => value.clone(),
@@ -310,6 +326,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
 pub struct QuoteEnv<'core, 'env> {
     bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
+    item_values: &'env SliceEnv<Value<'core>>,
     local_len: EnvLen,
 }
 
@@ -317,16 +334,20 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     pub fn new(
         bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
+        item_values: &'env SliceEnv<Value<'core>>,
         local_len: EnvLen,
     ) -> Self {
         Self {
             bump,
             meta_values,
+            item_values,
             local_len,
         }
     }
 
-    fn elim_env(&self) -> ElimEnv<'core, 'env> { ElimEnv::new(self.bump, self.meta_values) }
+    fn elim_env(&self) -> ElimEnv<'core, 'env> {
+        ElimEnv::new(self.bump, self.meta_values, self.item_values)
+    }
 
     fn get_meta(&self, var: Level) -> &'env Option<Value<'core>> {
         match self.meta_values.get_level(var) {
@@ -412,6 +433,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
     /// Quote an [elimination head][Head] back into a [expr][Expr].
     fn quote_head(&mut self, head: Head) -> Expr<'core> {
         match head {
+            Head::Item(item) => Expr::Item((), item),
             Head::Prim(prim) => Expr::Prim(prim),
             Head::Local(var) => match self.local_len.level_to_index(var) {
                 Some(var) => Expr::Local((), var),
@@ -467,7 +489,9 @@ pub struct ZonkEnv<'core, 'env, 'out> {
     inner_bump: &'core bumpalo::Bump,
     meta_values: &'env SliceEnv<Option<Value<'core>>>,
     local_values: &'env mut SharedEnv<Value<'core>>,
+    item_values: &'env SliceEnv<Value<'core>>,
     local_names: &'env mut UniqueEnv<BinderName>,
+    item_names: &'env SliceEnv<Symbol>,
 }
 
 impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
@@ -476,26 +500,42 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
         inner_bump: &'core bumpalo::Bump,
         meta_values: &'env SliceEnv<Option<Value<'core>>>,
         local_values: &'env mut SharedEnv<Value<'core>>,
+        item_values: &'env SliceEnv<Value<'core>>,
         local_names: &'env mut UniqueEnv<BinderName>,
+        item_names: &'env SliceEnv<Symbol>,
     ) -> Self {
         Self {
             out_bump,
             inner_bump,
             meta_values,
             local_values,
+            item_values,
             local_names,
+            item_names,
         }
     }
 
     fn quote_env(&mut self) -> QuoteEnv<'core, '_> {
-        QuoteEnv::new(self.inner_bump, self.meta_values, self.local_names.len())
+        QuoteEnv::new(
+            self.inner_bump,
+            self.meta_values,
+            self.item_values,
+            self.local_names.len(),
+        )
     }
 
     fn eval_env(&mut self) -> EvalEnv<'core, '_> {
-        EvalEnv::new(self.inner_bump, self.meta_values, self.local_values)
+        EvalEnv::new(
+            self.inner_bump,
+            self.meta_values,
+            self.local_values,
+            self.item_values,
+        )
     }
 
-    fn elim_env(&self) -> ElimEnv<'core, '_> { ElimEnv::new(self.inner_bump, self.meta_values) }
+    fn elim_env(&self) -> ElimEnv<'core, '_> {
+        ElimEnv::new(self.inner_bump, self.meta_values, self.item_values)
+    }
 
     fn get_meta(&self, var: Level) -> &'env Option<Value<'core>> {
         let value = self.meta_values.get_level(var);
@@ -514,6 +554,10 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
                 Some(BinderName::User(symbol)) => Expr::Local(LocalName::User(*symbol), *var),
                 Some(BinderName::Underscore) => Expr::Local(LocalName::Generated, *var),
                 None => panic!("Unbound local variable: {var:?}"),
+            },
+            Expr::Item((), var) => match self.item_names.get_level(*var) {
+                Some(symbol) => Expr::Item(*symbol, *var),
+                None => panic!("Unbound item variable: {var:?}"),
             },
             // These exprs might be elimination spines with metavariables at
             // their head that need to be unfolded.
@@ -663,6 +707,10 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
                 ),
                 None => panic!("Unbound local variable: {var:?}"),
             },
+            Head::Item(var) => match self.item_names.get_level(var) {
+                Some(symbol) => Expr::Item(*symbol, var),
+                None => panic!("Unbound item variable: {var:?}"),
+            },
             Head::Meta(var) => match self.get_meta(var) {
                 Some(value) => self.zonk_value(value),
                 None => Expr::Meta(var),
@@ -692,7 +740,7 @@ impl<'core, 'env, 'out> ZonkEnv<'core, 'env, 'out> {
     pub fn zonk_meta_var_spines(
         &mut self,
         expr: &Expr<'core>,
-    ) -> Either<Expr<'out, LocalName>, Value<'core>> {
+    ) -> Either<ZonkedExpr<'out>, Value<'core>> {
         match expr {
             Expr::Meta(var) => match self.get_meta(*var) {
                 None => Left(Expr::Meta(*var)),

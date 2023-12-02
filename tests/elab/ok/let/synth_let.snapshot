@@ -13,9 +13,10 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-16..17 | x                                        | ?0
+16..17 | x                                        | ?1
 metavars:
 ?0 = Int
+?1 = Int
 """
 
 stderr = """

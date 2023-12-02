@@ -6,6 +6,24 @@ def fst1: fun(A: Type, B: Type) -> (A, B) -> A =
         let x: A = p._0;
         let y: B = p._1;
         x;
+def fst2: fun(A: Type, B: Type) -> (A, B) -> A =
+    fun(A: Type, B: Type, p: (A, B)) =>
+        let x: A = p._0;
+        x;
+def snd1: fun(A: Type, B: Type) -> (A, B) -> B =
+    fun(A: Type, B: Type, p: (A, B)) =>
+        let x: A = p._0;
+        let y: B = p._1;
+        y;
+def snd2: fun(A: Type, B: Type) -> (A, B) -> B =
+    fun(A: Type, B: Type, p: (A, B)) =>
+        let y: B = p._1;
+        y;
+def swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
+    fun(A: Type, B: Type, p: (A, B)) =>
+        let x: A = p._0;
+        let y: B = p._1;
+        (y, x);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -18,25 +36,6 @@ span   | source                                   | type
 47..75 | match p {\n    (x, y) => x,\n}           | A
 53..54 | p                                        | (A, B)
 71..72 | x                                        | A
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-15..16 | A                                        | Type
-24..25 | B                                        | Type
-33..34 | p                                        | (A, B)
-61..67 | (x, y)                                   | (A, B)
-62..63 | x                                        | A
-65..66 | y                                        | B
-metavars:
-?0 = fun(_: #error, _: #error, _: #error) => _#2
-
-def fst2: fun(A: Type, B: Type) -> (A, B) -> A =
-    fun(A: Type, B: Type, p: (A, B)) =>
-        let x: A = p._0;
-        x;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 89..153 | fun(A: Type, B: Ty...    (x, _) => x,\n} | fun(A: Type, B: Type) -> (A, B) -> A
 96..100 | Type                                     | Type
 105..109 | Type                                     | Type
@@ -46,26 +45,6 @@ span   | source                                   | type
 125..153 | match p {\n    (x, _) => x,\n}           | A
 131..132 | p                                        | (A, B)
 149..150 | x                                        | A
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-93..94 | A                                        | Type
-102..103 | B                                        | Type
-111..112 | p                                        | (A, B)
-139..145 | (x, _)                                   | (A, B)
-140..141 | x                                        | A
-143..144 | _                                        | B
-metavars:
-?0 = fun(_: #error, _: #error, _: #error) => _#2
-
-def snd1: fun(A: Type, B: Type) -> (A, B) -> B =
-    fun(A: Type, B: Type, p: (A, B)) =>
-        let x: A = p._0;
-        let y: B = p._1;
-        y;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 167..231 | fun(A: Type, B: Ty...    (x, y) => y,\n} | fun(A: Type, B: Type) -> (A, B) -> B
 174..178 | Type                                     | Type
 183..187 | Type                                     | Type
@@ -75,25 +54,6 @@ span   | source                                   | type
 203..231 | match p {\n    (x, y) => y,\n}           | B
 209..210 | p                                        | (A, B)
 227..228 | y                                        | B
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-171..172 | A                                        | Type
-180..181 | B                                        | Type
-189..190 | p                                        | (A, B)
-217..223 | (x, y)                                   | (A, B)
-218..219 | x                                        | A
-221..222 | y                                        | B
-metavars:
-?0 = fun(_: #error, _: #error, _: #error) => _#1
-
-def snd2: fun(A: Type, B: Type) -> (A, B) -> B =
-    fun(A: Type, B: Type, p: (A, B)) =>
-        let y: B = p._1;
-        y;
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 245..309 | fun(A: Type, B: Ty...    (_, y) => y,\n} | fun(A: Type, B: Type) -> (A, B) -> B
 252..256 | Type                                     | Type
 261..265 | Type                                     | Type
@@ -103,26 +63,6 @@ span   | source                                   | type
 281..309 | match p {\n    (_, y) => y,\n}           | B
 287..288 | p                                        | (A, B)
 305..306 | y                                        | B
-types of patterns:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
-249..250 | A                                        | Type
-258..259 | B                                        | Type
-267..268 | p                                        | (A, B)
-295..301 | (_, y)                                   | (A, B)
-296..297 | _                                        | A
-299..300 | y                                        | B
-metavars:
-?0 = fun(_: #error, _: #error, _: #error) => _#1
-
-def swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
-    fun(A: Type, B: Type, p: (A, B)) =>
-        let x: A = p._0;
-        let y: B = p._1;
-        (y, x);
-types of expressions:
-span   | source                                   | type
--------|------------------------------------------|-----------------------------
 323..392 | fun(A: Type, B: Ty...x, y) => (y, x),\n} | fun(A: Type, B: Type) -> (A, B) -> (B, A)
 330..334 | Type                                     | Type
 339..343 | Type                                     | Type
@@ -137,6 +77,30 @@ span   | source                                   | type
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
+15..16 | A                                        | Type
+24..25 | B                                        | Type
+33..34 | p                                        | (A, B)
+61..67 | (x, y)                                   | (A, B)
+62..63 | x                                        | A
+65..66 | y                                        | B
+93..94 | A                                        | Type
+102..103 | B                                        | Type
+111..112 | p                                        | (A, B)
+139..145 | (x, _)                                   | (A, B)
+140..141 | x                                        | A
+143..144 | _                                        | B
+171..172 | A                                        | Type
+180..181 | B                                        | Type
+189..190 | p                                        | (A, B)
+217..223 | (x, y)                                   | (A, B)
+218..219 | x                                        | A
+221..222 | y                                        | B
+249..250 | A                                        | Type
+258..259 | B                                        | Type
+267..268 | p                                        | (A, B)
+295..301 | (_, y)                                   | (A, B)
+296..297 | _                                        | A
+299..300 | y                                        | B
 327..328 | A                                        | Type
 336..337 | B                                        | Type
 345..346 | p                                        | (A, B)
@@ -144,7 +108,16 @@ span   | source                                   | type
 374..375 | x                                        | A
 377..378 | y                                        | B
 metavars:
-?0 = fun(_: #error, _: #error, _: #error) => (_#1, _#3)
+?0 = fun(A: Type, B: Type) -> (A, B) -> A
+?1 = fun(_: #error, _: #error, _: #error) => _#2
+?2 = fun(A: Type, B: Type) -> (A, B) -> A
+?3 = fun(_: #error, _: #error, _: #error) => _#2
+?4 = fun(A: Type, B: Type) -> (A, B) -> B
+?5 = fun(_: #error, _: #error, _: #error) => _#1
+?6 = fun(A: Type, B: Type) -> (A, B) -> B
+?7 = fun(_: #error, _: #error, _: #error) => _#1
+?8 = fun(A: Type, B: Type) -> (A, B) -> (B, A)
+?9 = fun(_: #error, _: #error, _: #error) => (_#1, _#3)
 """
 
 stderr = """
