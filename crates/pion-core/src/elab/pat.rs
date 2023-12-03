@@ -1,3 +1,5 @@
+//! Bidirectional elaboration for patterns.
+
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::slice_vec::SliceVec;
 
@@ -18,10 +20,17 @@ impl<'core> CheckPat<'core> {
 }
 
 impl<'hir, 'core> ElabCtx<'hir, 'core> {
+    /// Elaborate a pattern in synthesis mode.
+    /// # Arguments
+    /// - `pat`: The pattern to be elaborated.
+    /// - `idents`: The list of identifiers encountered so far, used to check
+    ///   for duplicate name definitions
+    /// # Returns
+    /// The synthesised pattern.
     pub fn synth_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
-        names: &mut Vec<Ident, &bumpalo::Bump>,
+        idents: &mut Vec<Ident, &bumpalo::Bump>,
     ) -> SynthPat<'core> {
         let span = pat.span();
 
@@ -40,7 +49,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let r#type = self.push_unsolved_type(MetaSource::PatType { span });
                 SynthPat::new(Pat::Underscore(span), r#type)
             }
-            hir::Pat::Ident(_, ident) => self.synth_ident_pat(*ident, names),
+            hir::Pat::Ident(_, ident) => self.synth_ident_pat(*ident, idents),
             hir::Pat::TupleLit(_, elems) => {
                 let mut type_fields = SliceVec::new(self.bump, elems.len());
                 let mut pat_fields = SliceVec::new(self.bump, elems.len());
@@ -48,7 +57,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let mut offset = EnvLen::new();
                 for (index, elem) in elems.iter().enumerate() {
                     let name = FieldName::tuple(index);
-                    let Synth(elem_pat, elem_type) = self.synth_pat(elem, names);
+                    let Synth(elem_pat, elem_type) = self.synth_pat(elem, idents);
                     pat_fields.push((name, elem_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&elem_type, offset)));
                     offset.push();
@@ -80,8 +89,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     }
 
                     let Synth(field_pat, field_type) = match field.pat.as_ref() {
-                        Some(pat) => self.synth_pat(pat, names),
-                        None => self.synth_ident_pat(field.name, names),
+                        Some(pat) => self.synth_pat(pat, idents),
+                        None => self.synth_ident_pat(field.name, idents),
                     };
                     pat_fields.push((name, field_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&field_type, offset)));
@@ -95,18 +104,18 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             }
             hir::Pat::Or(_, pats) => {
                 let mut core_pats = SliceVec::new(self.bump, pats.len());
-                let initial_names_len = names.len();
+                let initial_names_len = idents.len();
 
                 let (first_pat, rest_pats) = pats.split_first().unwrap();
-                let Synth(first_pat, first_type) = self.synth_pat(first_pat, names);
+                let Synth(first_pat, first_type) = self.synth_pat(first_pat, idents);
                 core_pats.push(first_pat);
-                let mut first_pat_names = names.split_off(initial_names_len);
+                let mut first_pat_names = idents.split_off(initial_names_len);
                 first_pat_names.sort_unstable_by_key(|ident| ident.symbol);
 
                 for pat in rest_pats {
-                    let Check(pat) = self.check_pat(pat, &first_type, names);
+                    let Check(pat) = self.check_pat(pat, &first_type, idents);
                     core_pats.push(pat);
-                    let mut pat_names = names.split_off(initial_names_len);
+                    let mut pat_names = idents.split_off(initial_names_len);
                     pat_names.sort_unstable_by_key(|ident| ident.symbol);
 
                     // FIXME: check all alternatives also bind each name to the same type
@@ -127,6 +136,14 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         Synth(core_pat, r#type)
     }
 
+    /// Elaborate a pattern in checking mode.
+    /// # Arguments
+    /// - `pat`: The pattern to be elaborated.
+    /// - `expected`: The type to check against.
+    /// - `idents`: The list of identifiers encountered so far, used to check
+    ///   for duplicate name definitions
+    /// # Returns
+    /// The checked pattern.
     pub fn check_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
@@ -222,6 +239,15 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         Check(core_pat)
     }
 
+    /// Elaborate a pattern in synthesis mode, then try to convert it to the
+    /// expected type. This is the base case for `check_pat`.
+    /// # Arguments
+    /// - `pat`: The pattern to be elaborated.
+    /// - `expected`: The type to check against.
+    /// - `idents`: The list of identifiers encountered so far, used to check
+    ///   for duplicate name definitions
+    /// # Returns
+    /// The checked pattern.
     fn synth_and_convert_pat(
         &mut self,
         pat: &'hir hir::Pat<'hir>,
@@ -314,6 +340,16 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         (pat, Scrut::new(expr, expected.clone()))
     }
 
+    /// Convert a pattern from one type to another type, attempting unification
+    /// if necessary.
+    /// # Arguments
+    /// - `pat`: the pattern being converted
+    /// - `from`: the type being converted from
+    /// - `to`: the type being converted to
+    /// # Returns
+    /// The pattern, with any appropriate implicit conversions applied.
+    /// NOTE: So far we do no have any implicit conversions, so `pat` is simply
+    /// returned as-is, but this may change in the future.
     fn convert_pat(&mut self, pat: Pat<'core>, from: &Type<'core>, to: &Type<'core>) -> Pat<'core> {
         match self.unifiy_ctx().unify(from, to) {
             Ok(()) => pat,
@@ -332,6 +368,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         }
     }
 
+    /// Report an error if `ident` occurs in `idents`.
     fn check_duplicate_local(
         &mut self,
         idents: &mut Vec<Ident, &bumpalo::Bump>,
@@ -374,7 +411,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             let shift_amount = EnvLen::from(let_vars.len());
             let name = pat.name();
             match pat {
-                Pat::Ident(..) | Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                Pat::Ident(..) => {
                     if toplevel {
                         let r#type = scrut.r#type.clone();
                         this.local_env.push_param(name, r#type);
@@ -386,6 +423,12 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         let r#type = scrut.r#type.clone();
                         let value = value.clone();
                         this.local_env.push_def(name, r#type, value);
+                    }
+                }
+                Pat::Error(..) | Pat::Underscore(..) | Pat::Lit(..) => {
+                    if toplevel {
+                        let r#type = scrut.r#type.clone();
+                        this.local_env.push_param(name, r#type);
                     }
                 }
                 Pat::RecordLit(_, fields) => {
@@ -505,7 +548,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         recur(this, pat, scrut, value, let_vars);
                     });
                 }
-                // We ensured that all alternatives bind the same set of names, so we onyl need to
+                // We ensured that all alternatives bind the same set of names, so we only need to
                 // recurse on the first alternative
                 Pat::Or(.., alts) => {
                     let pat = alts.first().unwrap();

@@ -1,3 +1,5 @@
+//! Bidirectional elaboration for expressions.
+
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;

@@ -6,7 +6,7 @@ use crate::name::FieldName;
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {
-    /// Allocator for storing [renamed][Context::rename] exprs.
+    /// Allocator for storing [renamed][Self::rename] exprs.
     bump: &'core bumpalo::Bump,
     /// A renaming that is used when solving metavariables using pattern
     /// unification. We store it in the parent context, re-initialising it on

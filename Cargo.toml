@@ -9,6 +9,9 @@ version = "0.1.0"
 [workspace.lints.rust]
 unused_qualifications = { level = "warn", priority = 100 }
 
+[workspace.lints.rustdoc]
+all = { level = "warn", priority = 0 }
+
 [workspace.lints.clippy]
 all      = { level = "warn", priority = 0 }
 nursery  = { level = "warn", priority = 0 }

@@ -11,7 +11,7 @@ use std::ops::Deref;
 
 /// A helpful type for allocating elements to a slice up to a maximum length.
 /// This can be helpful if we have initialization code that might be difficult
-/// to implement using [`bumpalo::Bump::talloc_slice_fill_iter`], for example:
+/// to implement using [`bumpalo::Bump::alloc_slice_fill_iter`], for example:
 ///
 /// - when pushing to multiple slices at once
 /// - when element initialization code has the possibility of failure
@@ -53,7 +53,7 @@ impl<'alloc, Elem> SliceVec<'alloc, Elem> {
     /// # Panics
     ///
     /// If the pushing the element would exceed the maximum slice length
-    /// supplied in [`SliceBuilder::new`].
+    /// supplied in [`SliceVec::new`].
     pub fn push(&mut self, elem: Elem) {
         assert!(
             !self.is_full(),
