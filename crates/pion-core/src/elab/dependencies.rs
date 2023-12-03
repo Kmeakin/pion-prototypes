@@ -1,13 +1,13 @@
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::identity::{Identity, PtrMap, PtrSet};
-use pion_utils::symbol::Symbol;
+use pion_utils::symbol::{Symbol, SymbolMap};
 
 use crate::env::UniqueEnv;
 
 type ItemSet<'hir> = PtrSet<&'hir hir::Item<'hir>>;
 type DependencyGraph<'hir> = PtrMap<&'hir hir::Item<'hir>, ItemSet<'hir>>;
 
-type Items<'hir> = &'hir [hir::Item<'hir>];
+type ItemEnv<'hir> = SymbolMap<&'hir hir::Item<'hir>>;
 
 pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<'hir>>> {
     let graph = module_dependency_graph(module);
@@ -15,7 +15,11 @@ pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<
 }
 
 fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<'hir> {
-    let items = module.items;
+    let items: ItemEnv = module
+        .items
+        .iter()
+        .filter_map(|item| Some((item.name()?.symbol, item)))
+        .collect();
     let mut graph = DependencyGraph::default();
 
     for item in module.items {
@@ -24,7 +28,7 @@ fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<
 
         match item {
             hir::Item::Def(def) => {
-                def_dependencies(def, &mut local_env, items, &mut required_items);
+                def_dependencies(def, &mut local_env, &items, &mut required_items);
                 graph.insert(Identity(item), required_items);
             }
         }
@@ -112,7 +116,7 @@ fn find_sccs<'hir>(graph: &DependencyGraph<'hir>) -> Vec<Vec<&'hir hir::Item<'hi
 fn def_dependencies<'hir>(
     def: &hir::Def,
     local_env: &mut UniqueEnv<Symbol>,
-    items: Items<'hir>,
+    items: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
     let hir::Def { r#type, expr, .. } = def;
@@ -125,17 +129,14 @@ fn def_dependencies<'hir>(
 fn expr_dependencies<'hir>(
     expr: &hir::Expr,
     local_env: &mut UniqueEnv<Symbol>,
-    items: Items<'hir>,
+    items: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
     match expr {
         hir::Expr::Error(..) | hir::Expr::Lit(..) | hir::Expr::Underscore(..) => {}
         hir::Expr::Ident(.., ident) => {
             if !local_env.contains(&ident.symbol) {
-                if let Some(item) = items
-                    .iter()
-                    .find(|item| item.name().map(|ident| ident.symbol) == Some(ident.symbol))
-                {
+                if let Some(item) = items.get(&ident.symbol) {
                     required_items.insert(Identity(item));
                 }
             }
@@ -229,7 +230,7 @@ fn expr_dependencies<'hir>(
 fn ident_expr_dependencies<'hir>(
     ident: Ident,
     local_env: &mut UniqueEnv<Symbol>,
-    items: Items<'hir>,
+    items: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
     expr_dependencies(
