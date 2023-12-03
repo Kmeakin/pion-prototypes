@@ -5,7 +5,7 @@ use nohash::IntMap;
 use pion_utils::identity::{Identity, PtrMap};
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
-use pion_utils::symbol::Symbol;
+use pion_utils::symbol::{Symbol, SymbolMap};
 
 use self::unify::UnifyCtx;
 use crate::env::{EnvLen, Index, Level, SharedEnv, UniqueEnv};
@@ -187,20 +187,22 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
 #[derive(Default)]
 struct ItemEnv<'core> {
+    name_to_level: SymbolMap<Level>,
     names: UniqueEnv<Symbol>,
     types: UniqueEnv<Type<'core>>,
-    values: SharedEnv<Value<'core>>,
+    values: UniqueEnv<Value<'core>>,
 }
 
 impl<'core> ItemEnv<'core> {
     fn push(&mut self, name: Symbol, r#type: Type<'core>, value: Value<'core>) {
+        self.name_to_level.insert(name, self.names.len().to_level());
         self.names.push(name);
         self.types.push(r#type);
         self.values.push(value);
     }
 
     fn lookup(&self, name: Symbol) -> Option<(Level, ItemEntry<'_, 'core>)> {
-        let level = self.names.level_of_elem(&name)?;
+        let level = *self.name_to_level.get(&name)?;
         let r#type = self.types.get_level(level)?;
         let value = self.values.get_level(level)?;
         Some((
@@ -213,13 +215,13 @@ impl<'core> ItemEnv<'core> {
         ))
     }
 
-    fn len(&self) -> EnvLen { self.names.len() }
-
-    fn truncate(&mut self, len: EnvLen) {
-        self.names.truncate(len);
-        self.types.truncate(len);
-        self.values.truncate(len);
+    fn set(&mut self, name: Symbol, r#type: Type<'core>, value: Value<'core>) {
+        let level = self.name_to_level[&name];
+        self.types.set_level(level, r#type);
+        self.values.set_level(level, value);
     }
+
+    fn len(&self) -> EnvLen { self.names.len() }
 }
 
 #[derive(Debug)]
@@ -510,8 +512,6 @@ pub fn elab_module<'hir, 'core>(
     let mut module_items = SliceVec::new(bump, module.items.len());
 
     for scc in sccs {
-        let initial_len = ctx.item_env.len();
-
         // check item type annotations
         let item_types: &[_] = bump.alloc_slice_fill_iter(scc.iter().map(|item| match item {
             pion_hir::syntax::Item::Def(def) => match def.r#type {
@@ -551,12 +551,11 @@ pub fn elab_module<'hir, 'core>(
             bump.alloc_slice_fill_iter(item_exprs.iter().map(|expr| ctx.eval_env().eval(expr)));
 
         // update item env
-        ctx.item_env.truncate(initial_len);
         for ((item, r#type), value) in scc.iter().zip(item_types).zip(item_values) {
             match item {
                 pion_hir::syntax::Item::Def(def) => {
                     ctx.item_env
-                        .push(def.name.symbol, r#type.clone(), value.clone());
+                        .set(def.name.symbol, r#type.clone(), value.clone());
                 }
             }
         }
