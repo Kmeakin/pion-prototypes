@@ -75,6 +75,10 @@ pub enum ElabDiagnostic {
     UnreachablePat {
         pat_span: ByteSpan,
     },
+    OrPatAltNameMismatch {
+        first_span: ByteSpan,
+        alt_span: ByteSpan,
+    },
 }
 impl ElabDiagnostic {
     pub fn to_diagnostic(&self, file_id: FileId) -> CodeSpanDiagnostic<FileId> {
@@ -260,6 +264,12 @@ impl ElabDiagnostic {
             Self::UnreachablePat { pat_span } => CodeSpanDiagnostic::warning()
                 .with_message("unreachable pattern")
                 .with_labels(vec![primary(*pat_span)]),
+            Self::OrPatAltNameMismatch {
+                first_span,
+                alt_span,
+            } => CodeSpanDiagnostic::error()
+                .with_message("set of names bound in or pattern alternatives do not match")
+                .with_labels(vec![primary(*alt_span), secondary(*first_span)]),
         }
     }
 }

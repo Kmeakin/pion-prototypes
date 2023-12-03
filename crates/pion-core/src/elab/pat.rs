@@ -114,16 +114,23 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 for pat in rest_pats {
                     let Check(pat) = self.check_pat(pat, &first_type, idents);
-                    core_pats.push(pat);
                     let mut pat_names = idents.split_off(initial_names_len);
                     pat_names.sort_unstable_by_key(|ident| ident.symbol);
 
                     // FIXME: check all alternatives also bind each name to the same type
-                    if !pion_utils::slice_eq_by_key(&pat_names, &first_pat_names, |ident| {
+                    if pion_utils::slice_eq_by_key(&pat_names, &first_pat_names, |ident| {
                         ident.symbol
                     }) {
-                        todo!("or-pattern alternatives must define the same set of names")
+                        core_pats.push(pat);
+                        continue;
                     }
+
+                    self.emit_diagnostic(ElabDiagnostic::OrPatAltNameMismatch {
+                        first_span: first_pat.span(),
+                        alt_span: pat.span(),
+                    });
+
+                    core_pats.push(Pat::Error(pat.span()));
                 }
 
                 let pat = Pat::Or(span, core_pats.into());
@@ -217,16 +224,23 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 for pat in rest_pats {
                     let Check(pat) = self.check_pat(pat, expected, idents);
-                    core_pats.push(pat);
                     let mut pat_idents = idents.split_off(initial_idents_len);
                     pat_idents.sort_unstable_by_key(|ident| ident.symbol);
 
                     // FIXME: check all alternatives also bind each name to the same type
-                    if !pion_utils::slice_eq_by_key(&pat_idents, &first_pat_idents, |ident| {
+                    if pion_utils::slice_eq_by_key(&pat_idents, &first_pat_idents, |ident| {
                         ident.symbol
                     }) {
-                        todo!("or-pattern alternatives must define the same set of names")
+                        core_pats.push(pat);
+                        continue;
                     }
+
+                    self.emit_diagnostic(ElabDiagnostic::OrPatAltNameMismatch {
+                        first_span: first_pat.span(),
+                        alt_span: pat.span(),
+                    });
+
+                    core_pats.push(Pat::Error(pat.span()));
                 }
 
                 let pat = Pat::Or(span, core_pats.into());

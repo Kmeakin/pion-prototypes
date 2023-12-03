@@ -108,7 +108,7 @@ impl<'core> PatternCompiler<'core> {
         //    - if the guard is true, continue to the RHS
         //    - if the guard is false, recurse on the remaining rows
         let row = matrix.row(0);
-        if row.pairs.iter().all(|(pat, _)| pat.is_wildcard()) {
+        if row.pairs.iter().all(|(pat, _)| pat.is_wildcard_deep()) {
             let index = matrix.row(0).body;
             let body = &bodies[index];
             self.reachable_rows[index] = true;

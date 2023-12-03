@@ -318,6 +318,14 @@ impl<'core> Pat<'core> {
         )
     }
 
+    pub fn is_wildcard_deep(&self) -> bool {
+        match self {
+            Pat::Error(..) | Pat::Underscore(..) | Pat::Ident(..) => true,
+            Pat::Lit(..) | Pat::RecordLit(..) => false,
+            Pat::Or(.., pats) => pats.iter().all(Self::is_wildcard_deep),
+        }
+    }
+
     pub fn is_error(&self) -> bool { matches!(self, Self::Error(..)) }
 }
 
