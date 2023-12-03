@@ -2,7 +2,7 @@ use std::fmt;
 use std::hash::BuildHasherDefault;
 
 use nohash::IntMap;
-use pion_utils::identity::Identity;
+use pion_utils::identity::{Identity, PtrMap};
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
 use pion_utils::symbol::Symbol;
@@ -420,8 +420,8 @@ pub enum MetaSource {
 
 #[derive(Debug, Clone, Default)]
 pub struct TypeMap<'hir, 'core> {
-    pub exprs: IntMap<Identity<&'hir pion_hir::syntax::Expr<'hir>>, ZonkedExpr<'core>>,
-    pub pats: IntMap<Identity<&'hir pion_hir::syntax::Pat<'hir>>, ZonkedExpr<'core>>,
+    pub exprs: PtrMap<&'hir pion_hir::syntax::Expr<'hir>, ZonkedExpr<'core>>,
+    pub pats: PtrMap<&'hir pion_hir::syntax::Pat<'hir>, ZonkedExpr<'core>>,
 }
 
 impl<'hir, 'core> TypeMap<'hir, 'core> {
