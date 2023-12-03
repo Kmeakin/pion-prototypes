@@ -1,0 +1,5 @@
+def factorial: Int -> Int
+= fun(x) => match x {
+    0 | 1 => 1,
+    _ => mul(x, factorial(sub(x, 1))),
+};

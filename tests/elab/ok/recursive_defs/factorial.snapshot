@@ -1,0 +1,41 @@
+exit status: 0
+
+stdout = """
+def factorial: Int -> Int =
+    fun(x: Int) => match x {
+        0 => 1,
+        1 => 1,
+        _ => mul(x, factorial(sub(x, 1))),
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..18 | Int                                      | Type
+15..25 | Int -> Int                               | Type
+22..25 | Int                                      | Type
+28..104 | fun(x) => match x ...ial(sub(x, 1))),\n} | Int -> Int
+38..104 | match x {\n    0 |...ial(sub(x, 1))),\n} | Int
+44..45 | x                                        | Int
+61..62 | 1                                        | Int
+73..76 | mul                                      | Int -> Int -> Int
+73..101 | mul(x, factorial(sub(x, 1)))             | Int
+77..78 | x                                        | Int
+80..89 | factorial                                | Int -> Int
+80..100 | factorial(sub(x, 1))                     | Int
+90..93 | sub                                      | Int -> Int -> Int
+90..99 | sub(x, 1)                                | Int
+94..95 | x                                        | Int
+97..98 | 1                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+32..33 | x                                        | Int
+52..53 | 0                                        | Int
+52..57 | 0 | 1                                    | Int
+56..57 | 1                                        | Int
+68..69 | _                                        | Int
+"""
+
+stderr = """
+
+"""
