@@ -34,6 +34,7 @@ pub fn lower_item<'surface, 'hir>(
 pub struct Ctx<'source, 'tokens, 'hir> {
     bump: &'hir bumpalo::Bump,
     source: LexedSource<'source, 'tokens>,
+    item_env: Vec<Ident>,
     diagnostics: Vec<LowerDiagnostic>,
 }
 
@@ -43,6 +44,7 @@ impl<'source, 'tokens, 'hir> Ctx<'source, 'tokens, 'hir> {
         Self {
             bump,
             source,
+            item_env: Vec::new(),
             diagnostics: Vec::new(),
         }
     }
@@ -60,7 +62,7 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn item_to_hir(&mut self, item: &'surface surface::Item<'surface>) -> Option<Item<'hir>> {
         match item {
             surface::Item::Error(_) => None,
-            surface::Item::Def(def) => Some(Item::Def(self.def_to_hir(def))),
+            surface::Item::Def(def) => Some(Item::Def(self.def_to_hir(def)?)),
         }
     }
 
@@ -74,14 +76,31 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
         hir_items.into()
     }
 
-    fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Def<'hir> {
+    fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Option<Def<'hir>> {
+        let surface_name = self.ident_to_hir(def.name);
+
+        match self
+            .item_env
+            .iter()
+            .find(|ident| ident.symbol == surface_name.symbol)
+        {
+            None => self.item_env.push(surface_name),
+            Some(first_item) => {
+                self.diagnostics.push(LowerDiagnostic::DuplicateItem {
+                    first_item: *first_item,
+                    duplicate_item: surface_name,
+                });
+                return None;
+            }
+        }
+
         let r#type = def.r#type.as_ref().map(|r#type| self.lower_expr(r#type));
         let expr = self.lower_expr(&def.expr);
-        Def {
-            name: self.ident_to_hir(def.name),
+        Some(Def {
+            name: surface_name,
             r#type,
             expr,
-        }
+        })
     }
 
     fn ident_to_hir(&self, ident: surface::Ident) -> Ident {
