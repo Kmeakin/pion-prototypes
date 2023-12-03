@@ -1,8 +1,10 @@
+use std::collections::hash_map::Entry;
+
 use pion_lexer::LexedSource;
 use pion_surface::syntax::{self as surface};
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
-use pion_utils::symbol::Symbol;
+use pion_utils::symbol::{Symbol, SymbolMap};
 
 mod diagnostics;
 pub use diagnostics::LowerDiagnostic;
@@ -34,7 +36,7 @@ pub fn lower_item<'surface, 'hir>(
 pub struct Ctx<'source, 'tokens, 'hir> {
     bump: &'hir bumpalo::Bump,
     source: LexedSource<'source, 'tokens>,
-    item_env: Vec<Ident>,
+    item_names: SymbolMap<ByteSpan>,
     diagnostics: Vec<LowerDiagnostic>,
 }
 
@@ -44,7 +46,7 @@ impl<'source, 'tokens, 'hir> Ctx<'source, 'tokens, 'hir> {
         Self {
             bump,
             source,
-            item_env: Vec::new(),
+            item_names: SymbolMap::default(),
             diagnostics: Vec::new(),
         }
     }
@@ -67,6 +69,7 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     }
 
     fn lower_items(&mut self, items: &'surface [surface::Item<'surface>]) -> &'hir [Item<'hir>] {
+        self.item_names.reserve(items.len());
         let mut hir_items = SliceVec::new(self.bump, items.len());
         for item in items {
             if let Some(item) = self.item_to_hir(item) {
@@ -79,18 +82,17 @@ impl<'source, 'tokens, 'surface, 'hir> Ctx<'source, 'tokens, 'hir> {
     fn def_to_hir(&mut self, def: &'surface surface::Def<'surface>) -> Option<Def<'hir>> {
         let surface_name = self.ident_to_hir(def.name);
 
-        match self
-            .item_env
-            .iter()
-            .find(|ident| ident.symbol == surface_name.symbol)
-        {
-            None => self.item_env.push(surface_name),
-            Some(first_item) => {
+        match self.item_names.entry(surface_name.symbol) {
+            Entry::Occupied(entry) => {
                 self.diagnostics.push(LowerDiagnostic::DuplicateItem {
-                    first_item: *first_item,
-                    duplicate_item: surface_name,
+                    name: surface_name.symbol,
+                    first_span: *entry.get(),
+                    duplicate_span: surface_name.span,
                 });
                 return None;
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(surface_name.span);
             }
         }
 

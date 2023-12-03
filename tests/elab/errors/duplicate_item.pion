@@ -1,0 +1,4 @@
+def a = false;
+def b = true;
+def a = 0;
+def b = 0;

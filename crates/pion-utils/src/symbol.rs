@@ -2,7 +2,13 @@ use std::fmt;
 use std::num::NonZeroU32;
 
 use lasso::Key;
+use nohash::{IntMap, IntSet};
 use once_cell::sync::Lazy;
+
+pub type SymbolMap<V> = IntMap<Symbol, V>;
+pub type SymbolSet = IntSet<Symbol>;
+
+impl nohash::IsEnabled for Symbol {}
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(NonZeroU32);
