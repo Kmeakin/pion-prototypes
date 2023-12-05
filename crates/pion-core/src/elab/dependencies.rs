@@ -5,12 +5,11 @@ use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::identity::{Identity, PtrMap, PtrSet};
 use pion_utils::symbol::{Symbol, SymbolMap};
 
-use crate::env::UniqueEnv;
-
 type ItemSet<'hir> = PtrSet<&'hir hir::Item<'hir>>;
 type DependencyGraph<'hir> = PtrMap<&'hir hir::Item<'hir>, ItemSet<'hir>>;
 
 type ItemEnv<'hir> = SymbolMap<&'hir hir::Item<'hir>>;
+type LocalEnv = Vec<Symbol>;
 
 pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<'hir>>> {
     let graph = module_dependency_graph(module);
@@ -18,7 +17,7 @@ pub fn module_sccs<'hir>(module: &hir::Module<'hir>) -> Vec<Vec<&'hir hir::Item<
 }
 
 fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<'hir> {
-    let items: ItemEnv = module
+    let item_env: ItemEnv = module
         .items
         .iter()
         .filter_map(|item| Some((item.name()?.symbol, item)))
@@ -26,12 +25,12 @@ fn module_dependency_graph<'hir>(module: &hir::Module<'hir>) -> DependencyGraph<
     let mut graph = DependencyGraph::default();
 
     for item in module.items {
-        let mut local_env = UniqueEnv::new();
+        let mut local_env = LocalEnv::default();
         let mut required_items = ItemSet::default();
 
         match item {
             hir::Item::Def(def) => {
-                def_dependencies(def, &mut local_env, &items, &mut required_items);
+                def_dependencies(def, &mut local_env, &item_env, &mut required_items);
                 graph.insert(Identity(item), required_items);
             }
         }
@@ -118,46 +117,42 @@ fn find_sccs<'hir>(graph: &DependencyGraph<'hir>) -> Vec<Vec<&'hir hir::Item<'hi
 
 fn def_dependencies<'hir>(
     def: &hir::Def,
-    local_env: &mut UniqueEnv<Symbol>,
-    items: &ItemEnv<'hir>,
+    local_env: &mut LocalEnv,
+    item_env: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
     let hir::Def { r#type, expr, .. } = def;
     if let Some(r#type) = r#type {
-        expr_dependencies(r#type, local_env, items, required_items);
+        expr_dependencies(r#type, local_env, item_env, required_items);
     }
-    expr_dependencies(expr, local_env, items, required_items);
+    expr_dependencies(expr, local_env, item_env, required_items);
 }
 
 fn expr_dependencies<'hir>(
     expr: &hir::Expr,
-    local_env: &mut UniqueEnv<Symbol>,
-    items: &ItemEnv<'hir>,
+    local_env: &mut LocalEnv,
+    item_env: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
     expr.subexprs().try_for_each(|expr| {
         match expr {
             hir::Expr::Ident(.., ident) => {
-                if !local_env.contains(&ident.symbol) {
-                    if let Some(item) = items.get(&ident.symbol) {
-                        required_items.insert(Identity(item));
-                    }
-                }
+                ident_expr_dependencies(*ident, local_env, item_env, required_items);
             }
             hir::Expr::Let(.., (pat, r#type, init, body)) => {
                 if let Some(r#type) = r#type {
-                    expr_dependencies(r#type, local_env, items, required_items);
+                    expr_dependencies(r#type, local_env, item_env, required_items);
                 }
-                expr_dependencies(init, local_env, items, required_items);
+                expr_dependencies(init, local_env, item_env, required_items);
                 let len = local_env.len();
                 push_pat_names(pat, local_env);
-                expr_dependencies(body, local_env, items, required_items);
+                expr_dependencies(body, local_env, item_env, required_items);
                 local_env.truncate(len);
             }
             hir::Expr::RecordType(.., fields) => {
                 let len = local_env.len();
                 for field in *fields {
-                    expr_dependencies(&field.r#type, local_env, items, required_items);
+                    expr_dependencies(&field.r#type, local_env, item_env, required_items);
                     local_env.push(field.name.symbol);
                 }
                 local_env.truncate(len);
@@ -167,36 +162,38 @@ fn expr_dependencies<'hir>(
                 for param in *params {
                     push_pat_names(&param.pat, local_env);
                     if let Some(r#type) = param.r#type {
-                        expr_dependencies(&r#type, local_env, items, required_items);
+                        expr_dependencies(&r#type, local_env, item_env, required_items);
                     }
                 }
-                expr_dependencies(body, local_env, items, required_items);
+                expr_dependencies(body, local_env, item_env, required_items);
                 local_env.truncate(len);
             }
             hir::Expr::RecordLit(.., fields) => {
                 fields.iter().for_each(|field| match field.expr.as_ref() {
-                    Some(expr) => expr_dependencies(expr, local_env, items, required_items),
-                    None => ident_expr_dependencies(field.name, local_env, items, required_items),
+                    Some(expr) => expr_dependencies(expr, local_env, item_env, required_items),
+                    None => {
+                        ident_expr_dependencies(field.name, local_env, item_env, required_items);
+                    }
                 });
             }
             hir::Expr::MethodCall(.., target, method, args) => {
-                expr_dependencies(target, local_env, items, required_items);
-                ident_expr_dependencies(*method, local_env, items, required_items);
+                expr_dependencies(target, local_env, item_env, required_items);
+                ident_expr_dependencies(*method, local_env, item_env, required_items);
                 args.iter().for_each(|arg| {
-                    expr_dependencies(&arg.expr, local_env, items, required_items);
+                    expr_dependencies(&arg.expr, local_env, item_env, required_items);
                 });
             }
             hir::Expr::Match(.., scrut, cases) => {
-                expr_dependencies(scrut, local_env, items, required_items);
+                expr_dependencies(scrut, local_env, item_env, required_items);
                 for case in *cases {
                     let hir::MatchCase { pat, guard, expr } = case;
 
                     let len = local_env.len();
                     push_pat_names(pat, local_env);
                     if let Some(guard) = guard {
-                        expr_dependencies(guard, local_env, items, required_items);
+                        expr_dependencies(guard, local_env, item_env, required_items);
                     }
-                    expr_dependencies(expr, local_env, items, required_items);
+                    expr_dependencies(expr, local_env, item_env, required_items);
                     local_env.truncate(len);
                 }
             }
@@ -208,19 +205,18 @@ fn expr_dependencies<'hir>(
 
 fn ident_expr_dependencies<'hir>(
     ident: Ident,
-    local_env: &mut UniqueEnv<Symbol>,
-    items: &ItemEnv<'hir>,
+    local_env: &LocalEnv,
+    item_env: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
-    expr_dependencies(
-        &hir::Expr::Ident(ident.span, ident),
-        local_env,
-        items,
-        required_items,
-    );
+    if !local_env.contains(&ident.symbol) {
+        if let Some(item) = item_env.get(&ident.symbol) {
+            required_items.insert(Identity(item));
+        }
+    }
 }
 
-fn push_pat_names(pat: &hir::Pat, local_env: &mut UniqueEnv<Symbol>) {
+fn push_pat_names(pat: &hir::Pat, local_env: &mut LocalEnv) {
     match pat {
         hir::Pat::Error(_) | hir::Pat::Lit(..) | hir::Pat::Underscore(_) => {}
         hir::Pat::Ident(.., ident) => local_env.push(ident.symbol),
