@@ -185,7 +185,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 self.solve(left_meta_var, &left_spine, &right_value)
             }
 
-            (left, right) if left.is_error() || right.is_error() => Ok(()),
+            (Value::Error, _) | (_, Value::Error) => Ok(()),
 
             _ => Err(UnifyError::Mismatch),
         }
@@ -211,13 +211,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         left_fields: &[(FieldName, Value<'core>)],
         right_fields: &[(FieldName, Value<'core>)],
     ) -> Result<(), UnifyError> {
-        if left_fields.len() != right_fields.len() {
-            return Err(UnifyError::Mismatch);
-        }
-
-        let left_names = left_fields.iter().map(|(name, _)| *name);
-        let right_names = right_fields.iter().map(|(name, _)| *name);
-        if left_names.ne(right_names) {
+        if !pion_utils::slice_eq_by_key(left_fields, right_fields, |(name, _)| *name) {
             return Err(UnifyError::Mismatch);
         }
 
@@ -305,11 +299,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         mut left_telescope: Telescope<'core>,
         mut right_telescope: Telescope<'core>,
     ) -> Result<(), UnifyError> {
-        if left_telescope.len() != right_telescope.len() {
-            return Err(UnifyError::Mismatch);
-        }
-
-        if (left_telescope.field_names()).ne(right_telescope.field_names()) {
+        if !pion_utils::slice_eq_by_key(
+            left_telescope.fields,
+            right_telescope.fields,
+            |(name, _)| *name,
+        ) {
             return Err(UnifyError::Mismatch);
         }
 
