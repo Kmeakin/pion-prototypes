@@ -103,21 +103,11 @@ impl<P> PatRow<P> {
     pub fn new(pairs: P, body: usize) -> Self { Self { pairs, body } }
 }
 
-pub type OwnedPatRow<'core> = PatRow<Vec<PatPair<'core>>>;
-
-impl<'core> OwnedPatRow<'core> {
-    pub fn as_ref(&self) -> BorrowedPatRow<'core, '_> {
-        PatRow::new(self.pairs.as_ref(), self.body)
-    }
-}
-
 pub type BorrowedPatRow<'core, 'row> = PatRow<&'row [PatPair<'core>]>;
 
 pub type BorrowedMutPatRow<'core, 'row> = PatRow<&'row mut [PatPair<'core>]>;
 
 impl<'core, 'row> BorrowedPatRow<'core, 'row> {
-    pub fn to_owned(self) -> OwnedPatRow<'core> { OwnedPatRow::new(self.pairs.to_vec(), self.body) }
-
     pub fn split_first(&self) -> Option<(&PatPair<'core>, Self)> {
         let (first, rest) = self.pairs.split_first()?;
         Some((first, Self::new(rest, self.body)))
