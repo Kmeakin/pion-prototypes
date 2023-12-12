@@ -29,10 +29,12 @@ impl<'core> PatMatrix<'core> {
     pub fn num_rows(&self) -> usize { self.body_indices.len() }
 
     pub fn num_columns(&self) -> usize {
-        debug_assert_eq!(
-            self.num_columns,
-            self.pairs.len().checked_div(self.num_rows()).unwrap_or(0),
-        );
+        let expected_num_columns = match (self.pairs.len(), self.body_indices.len()) {
+            (0, _) => self.num_columns,
+            (_, 0) => 0,
+            (x, y) => x / y,
+        };
+        debug_assert_eq!(self.num_columns, expected_num_columns);
         self.num_columns
     }
 
@@ -61,24 +63,34 @@ impl<'core> PatMatrix<'core> {
     }
 
     pub fn rows(&self) -> impl Iterator<Item = BorrowedPatRow<'core, '_>> {
-        self.body_indices.iter().enumerate().map(|(row, body)| {
-            let start = row * self.num_columns();
-            let end = start + self.num_columns();
-            let pairs = &self.pairs[start..end];
-            BorrowedPatRow::new(pairs, *body)
-        })
+        let cols = self.num_columns();
+        let chunks = if cols == 0 {
+            [].chunks_exact(1)
+        } else {
+            self.pairs.chunks_exact(cols)
+        };
+
+        chunks
+            .zip(self.body_indices.iter())
+            .map(|(pairs, body)| PatRow::new(pairs, *body))
     }
 
     pub fn rows_mut(&mut self) -> impl Iterator<Item = BorrowedMutPatRow<'core, '_>> {
         let cols = self.num_columns();
+        let chunks = if cols == 0 {
+            [].chunks_exact_mut(1)
+        } else {
+            self.pairs.chunks_exact_mut(cols)
+        };
 
-        self.pairs
-            .chunks_exact_mut(cols)
+        chunks
             .zip(self.body_indices.iter())
-            .map(|(pairs, body)| BorrowedMutPatRow::new(pairs, *body))
+            .map(|(pairs, body)| PatRow::new(pairs, *body))
     }
 
     pub fn push_row<'row>(&mut self, row: BorrowedPatRow<'core, 'row>) {
+        debug_assert_eq!(row.pairs.len(), self.num_columns());
+
         self.pairs.extend_from_slice(row.pairs);
         self.body_indices.push(row.body);
     }

@@ -68,18 +68,18 @@ impl<'core> PatMatrix<'core> {
         let mut matrix = PatMatrix::with_capacity(self.num_rows(), self.num_columns() - 1);
         for row in self.rows() {
             assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
-            let ((pat, _), row) = row.split_first().unwrap();
-            recur(*pat, row, &mut matrix);
+            let ((pat, _), rest) = row.split_first().unwrap();
+            recur(*pat, rest, &mut matrix);
 
             fn recur<'core>(
                 pat: Pat<'core>,
-                row: BorrowedPatRow<'core, '_>,
+                rest: BorrowedPatRow<'core, '_>,
                 matrix: &mut PatMatrix<'core>,
             ) {
                 match pat {
-                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => matrix.push_row(row),
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => matrix.push_row(rest),
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
-                    Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, row, matrix)),
+                    Pat::Or(.., alts) => alts.iter().for_each(|pat| recur(*pat, rest, matrix)),
                 }
             }
         }

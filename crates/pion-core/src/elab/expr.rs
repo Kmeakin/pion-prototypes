@@ -1016,7 +1016,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
         let scrut_span = scrut.span();
-        let mut matrix = PatMatrix::with_capacity(cases.len(), 1);
+        let mut matrix = PatMatrix::with_capacity(cases.len(), usize::from(!cases.is_empty()));
         let mut bodies = Vec::with_capacity_in(cases.len(), self.bump);
 
         let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);
