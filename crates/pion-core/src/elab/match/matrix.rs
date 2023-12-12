@@ -4,23 +4,23 @@ use crate::syntax::*;
 
 #[derive(Debug, Clone)]
 pub struct PatMatrix<'core> {
-    pub(super) pairs: Vec<PatPair<'core>>,
+    pub(super) pairs: Vec<PatPair<'core>, &'core bumpalo::Bump>,
     pub(super) body_indices: SmallVec<[usize; 4]>,
     pub(super) num_columns: usize,
 }
 
 impl<'core> PatMatrix<'core> {
-    pub fn with_capacity(rows: usize, cols: usize) -> Self {
+    pub fn with_capacity(bump: &'core bumpalo::Bump, rows: usize, cols: usize) -> Self {
         Self {
-            pairs: Vec::with_capacity(rows * cols),
+            pairs: Vec::with_capacity_in(rows * cols, bump),
             body_indices: SmallVec::with_capacity(rows),
             num_columns: cols,
         }
     }
 
-    pub fn singleton(expr: Expr<'core>, pat: Pat<'core>) -> Self {
+    pub fn singleton(bump: &'core bumpalo::Bump, expr: Expr<'core>, pat: Pat<'core>) -> Self {
         Self {
-            pairs: vec![(pat, expr)],
+            pairs: [(pat, expr)].to_vec_in(bump),
             body_indices: smallvec![0],
             num_columns: 1,
         }

@@ -144,7 +144,7 @@ impl<'core> PatternCompiler<'core> {
         let ctors = matrix.column_constructors(0);
         match &ctors {
             Constructors::Empty => {
-                let mut matrix = matrix.default();
+                let mut matrix = matrix.default(self.bump);
                 return self.compile_match(&mut matrix, bodies);
             }
             Constructors::Record(fields) => {
@@ -159,7 +159,7 @@ impl<'core> PatternCompiler<'core> {
                         self.compile_match(&mut matrix, bodies)
                     }
                     false => {
-                        let mut matrix = matrix.default();
+                        let mut matrix = matrix.default(self.bump);
                         self.compile_match(&mut matrix, bodies)
                     }
                 };
@@ -181,7 +181,7 @@ impl<'core> PatternCompiler<'core> {
                 let default = match ctors.is_exhaustive() {
                     true => None,
                     false => {
-                        let mut matrix = matrix.default();
+                        let mut matrix = matrix.default(self.bump);
                         let body = self.compile_match(&mut matrix, bodies);
                         Some(body)
                     }

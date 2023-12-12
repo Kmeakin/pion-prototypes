@@ -713,7 +713,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             (body_expr, body_type)
         };
 
-        let mut matrix = PatMatrix::singleton(scrut.expr, pat);
+        let mut matrix = PatMatrix::singleton(self.bump, scrut.expr, pat);
         let expr = self.compile_match(
             &mut matrix,
             &[Body::Success { expr: body_expr }],
@@ -824,7 +824,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         let scrut_span = param.pat.span();
         let codomain_expr = self.with_param(name, scrut.r#type.clone(), |this| {
-            let mut matrix = PatMatrix::singleton(scrut.expr, pat);
+            let mut matrix = PatMatrix::singleton(self.bump, scrut.expr, pat);
             this.compile_match(
                 &mut matrix,
                 &[Body::Success {
@@ -894,7 +894,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
         let scrut_span = param.pat.span();
         let (body_expr, body_type) = self.with_param(name, scrut.r#type.clone(), |this| {
-            let mut matrix = PatMatrix::singleton(scrut.expr, pat);
+            let mut matrix = PatMatrix::singleton(self.bump, scrut.expr, pat);
             let body_expr = this.compile_match(
                 &mut (matrix.clone()),
                 &[Body::Success { expr: body_expr }],
@@ -973,7 +973,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let scrut_span = param.pat.span();
                 let body_expr = self.with_param(name, scrut.r#type.clone(), |this| {
-                    let mut matrix = PatMatrix::singleton(scrut.expr, pat);
+                    let mut matrix = PatMatrix::singleton(self.bump, scrut.expr, pat);
                     this.compile_match(
                         &mut matrix,
                         &[Body::Success { expr: body_expr }],
@@ -1016,7 +1016,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         expected: &Type<'core>,
     ) -> CheckExpr<'core> {
         let scrut_span = scrut.span();
-        let mut matrix = PatMatrix::with_capacity(cases.len(), usize::from(!cases.is_empty()));
+        let mut matrix =
+            PatMatrix::with_capacity(self.bump, cases.len(), usize::from(!cases.is_empty()));
         let mut bodies = Vec::with_capacity_in(cases.len(), self.bump);
 
         let (scrut_expr, scrut_type) = self.synth_and_insert_implicit_apps(scrut);

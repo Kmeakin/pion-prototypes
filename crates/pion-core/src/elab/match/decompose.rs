@@ -14,7 +14,7 @@ impl<'core> PatMatrix<'core> {
         );
 
         let mut matrix =
-            PatMatrix::with_capacity(self.num_rows(), self.num_columns() + ctor.arity() - 1);
+            PatMatrix::with_capacity(bump, self.num_rows(), self.num_columns() + ctor.arity() - 1);
         for row in self.rows() {
             assert!(!row.pairs.is_empty(), "Cannot specialize empty `PatRow`");
             let ((pat, expr), rest) = row.split_first().unwrap();
@@ -57,13 +57,13 @@ impl<'core> PatMatrix<'core> {
     /// Discard the first column, and all rows starting with a constructed
     /// pattern, of `matrix`. This is the `D` function in *Compiling pattern
     /// matching to good decision trees*.
-    pub fn default(&self) -> Self {
+    pub fn default(&self, bump: &'core bumpalo::Bump) -> Self {
         assert!(
             !self.is_unit(),
             "Cannot default `PatMatrix` with no columns"
         );
 
-        let mut matrix = PatMatrix::with_capacity(self.num_rows(), self.num_columns() - 1);
+        let mut matrix = PatMatrix::with_capacity(bump, self.num_rows(), self.num_columns() - 1);
         for row in self.rows() {
             assert!(!row.pairs.is_empty(), "Cannot default empty `PatRow`");
             let ((pat, _), rest) = row.split_first().unwrap();
