@@ -89,10 +89,17 @@ impl<'core> PatMatrix<'core> {
     }
 
     pub fn push_row<'row>(&mut self, row: BorrowedPatRow<'core, 'row>) {
-        debug_assert_eq!(row.pairs.len(), self.num_columns());
+        self.extend_row(PatRow::new(row.pairs.iter().copied(), row.body));
+    }
 
-        self.pairs.extend_from_slice(row.pairs);
+    pub fn extend_row<I: IntoIterator<Item = PatPair<'core>>>(&mut self, row: PatRow<I>) {
+        let len_before = self.pairs.len();
+
+        self.pairs.extend(row.pairs);
         self.body_indices.push(row.body);
+
+        let pairs_pushed = self.pairs.len() - len_before;
+        debug_assert_eq!(pairs_pushed, self.num_columns());
     }
 
     pub fn remove_row(&mut self, row: usize) {

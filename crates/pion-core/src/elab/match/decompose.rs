@@ -33,18 +33,16 @@ impl<'core> PatMatrix<'core> {
                         let pairs = std::iter::repeat((Pat::Underscore(pat.span()), expr))
                             .take(ctor.arity())
                             .chain(rest.pairs.iter().copied());
-                        matrix.pairs.extend(pairs);
-                        matrix.body_indices.push(rest.body);
+                        matrix.extend_row(PatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(_, lit) if ctor == Constructor::Lit(lit) => matrix.push_row(rest),
                     Pat::RecordLit(_, fields) if ctor == Constructor::Record(fields) => {
                         let scrut_expr = bump.alloc(expr);
                         let pairs = fields
                             .iter()
-                            .map(|(label, pattern)| (*pattern, Expr::FieldProj(scrut_expr, *label)))
+                            .map(|(label, pat)| (*pat, Expr::FieldProj(scrut_expr, *label)))
                             .chain(rest.pairs.iter().copied());
-                        matrix.pairs.extend(pairs);
-                        matrix.body_indices.push(rest.body);
+                        matrix.extend_row(PatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
                     Pat::Or(.., pats) => pats
