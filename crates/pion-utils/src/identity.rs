@@ -25,7 +25,7 @@ impl<T: Deref + Debug> Debug for Identity<T> {
 }
 
 impl<T: Deref> PartialEq for Identity<T> {
-    fn eq(&self, other: &Self) -> bool { self.address() == other.address() }
+    fn eq(&self, other: &Self) -> bool { std::ptr::eq(self.address(), other.address()) }
 }
 
 impl<T: Deref> Eq for Identity<T> {}
