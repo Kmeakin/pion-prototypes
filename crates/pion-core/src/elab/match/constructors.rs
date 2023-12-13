@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use internal_iterator::{InternalIterator, IntoInternalIterator, IteratorExt};
 use pion_utils::slice_eq_by_key;
+use smallvec::{smallvec, SmallVec};
 
 use super::matrix::PatMatrix;
 use super::*;
@@ -43,7 +44,7 @@ pub enum Constructors<'core> {
     Empty,
     Record(&'core [(FieldName, Pat<'core>)]),
     Bools([bool; 2]),
-    Ints(Vec<u32>),
+    Ints(SmallVec<[u32; 4]>),
 }
 
 impl<'core> Constructors<'core> {
@@ -160,7 +161,7 @@ impl<'core> PatMatrix<'core> {
                 },
                 Constructor::Lit(Lit::Int(x)) => match ctors {
                     Constructors::Empty => {
-                        ctors = Constructors::Ints(vec![x]);
+                        ctors = Constructors::Ints(smallvec![x]);
                         ControlFlow::Continue(())
                     }
                     Constructors::Ints(ref mut ints) => {
