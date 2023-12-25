@@ -6,10 +6,10 @@ def foo = fun(x: Bool) => match x {
 
 def bar = fun(x: Bool) => match x {
     false => 1,
-    _ if true => 2, // wildcard is not inexhaustive if it has a guard
+    _ if true => 2, // wildcard is not exhaustive if it has a guard
 };
 
 def baz = fun(x: Bool) => match x {
     false => 1,
-    true if true => 2, // literal is not inexhaustive if it has a guard
+    true if true => 2, // literal is not exhaustive if it has a guard
 };

@@ -17,20 +17,20 @@ span   | source                                   | type
 67..94 | match x {\n    false => 1,\n}            | Int
 73..74 | x                                        | Bool
 90..91 | 1                                        | Int
-107..220 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
+107..218 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
 114..118 | Bool                                     | Type
-123..220 | match x {\n    fal...f it has a guard\n} | Int
+123..218 | match x {\n    fal...f it has a guard\n} | Int
 129..130 | x                                        | Bool
 146..147 | 1                                        | Int
 158..162 | true                                     | Bool
 166..167 | 2                                        | Int
-233..348 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
-240..244 | Bool                                     | Type
-249..348 | match x {\n    fal...f it has a guard\n} | Int
-255..256 | x                                        | Bool
-272..273 | 1                                        | Int
-287..291 | true                                     | Bool
-295..296 | 2                                        | Int
+231..344 | fun(x: Bool) => ma...f it has a guard\n} | Bool -> Int
+238..242 | Bool                                     | Type
+247..344 | match x {\n    fal...f it has a guard\n} | Int
+253..254 | x                                        | Bool
+270..271 | 1                                        | Int
+285..289 | true                                     | Bool
+293..294 | 2                                        | Int
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -40,9 +40,9 @@ span   | source                                   | type
 111..112 | x                                        | Bool
 137..142 | false                                    | Bool
 153..154 | _                                        | Bool
-237..238 | x                                        | Bool
-263..268 | false                                    | Bool
-279..283 | true                                     | Bool
+235..236 | x                                        | Bool
+261..266 | false                                    | Bool
+277..281 | true                                     | Bool
 metavars:
 ?0 = fun(x: Bool) -> ?1(x)
 ?1 = <unsolved>
