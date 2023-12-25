@@ -143,10 +143,7 @@ impl<'core> PatternCompiler<'core> {
 
         let ctors = matrix.column_constructors(0);
         match &ctors {
-            Constructors::Empty => {
-                let mut matrix = matrix.default(self.bump);
-                return self.compile_match(&mut matrix, bodies);
-            }
+            Constructors::Empty => unreachable!(),
             Constructors::Record(fields) => {
                 let mut matrix = matrix.specialize(self.bump, Constructor::Record(fields));
                 return self.compile_match(&mut matrix, bodies);
