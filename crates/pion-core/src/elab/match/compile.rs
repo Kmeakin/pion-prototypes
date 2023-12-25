@@ -165,8 +165,7 @@ impl<'core> PatternCompiler<'core> {
                 let false_branch = do_branch(false);
                 return Expr::match_bool(self.bump, *scrut, true_branch, false_branch);
             }
-
-            Constructors::Ints(ints) => {
+            Constructors::Ints(ref ints) => {
                 let bump = self.bump;
                 let cases = ints.iter().map(|int| {
                     let mut matrix = matrix.specialize(self.bump, Constructor::Lit(Lit::Int(*int)));

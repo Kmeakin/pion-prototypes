@@ -56,14 +56,6 @@ impl<'core> Constructors<'core> {
             Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
         }
     }
-
-    pub fn deduped(mut self) -> Self {
-        if let Constructors::Ints(ref mut ints) = self {
-            ints.sort_unstable();
-            ints.dedup();
-        }
-        self
-    }
 }
 
 impl<'inner, 'core> IntoInternalIterator for &'inner Constructors<'core> {
@@ -159,13 +151,16 @@ impl<'core> PatMatrix<'core> {
                     }
                     Constructors::Record(_) | Constructors::Ints(_) => unreachable!(),
                 },
-                Constructor::Lit(Lit::Int(x)) => match ctors {
+                Constructor::Lit(Lit::Int(elem)) => match ctors {
                     Constructors::Empty => {
-                        ctors = Constructors::Ints(smallvec![x]);
+                        ctors = Constructors::Ints(smallvec![elem]);
                         ControlFlow::Continue(())
                     }
                     Constructors::Ints(ref mut ints) => {
-                        ints.push(x);
+                        match ints.binary_search(&elem) {
+                            Ok(_) => {}
+                            Err(index) => ints.insert(index, elem),
+                        }
                         ControlFlow::Continue(())
                     }
                     Constructors::Record(_) | Constructors::Bools(_) => unreachable!(),
@@ -180,6 +175,6 @@ impl<'core> PatMatrix<'core> {
                     }
                 },
             });
-        ctors.deduped()
+        ctors
     }
 }
