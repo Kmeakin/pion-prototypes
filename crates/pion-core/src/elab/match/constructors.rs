@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use internal_iterator::{InternalIterator, IntoInternalIterator, IteratorExt};
+use internal_iterator::InternalIterator;
 use pion_utils::slice_eq_by_key;
 use smallvec::{smallvec, SmallVec};
 
@@ -54,42 +54,6 @@ impl<'core> Constructors<'core> {
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools[0] & bools[1],
             Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
-        }
-    }
-}
-
-impl<'inner, 'core> IntoInternalIterator for &'inner Constructors<'core> {
-    type Item = Constructor<'core>;
-    type IntoIter = ConstructorsIter<'core, 'inner>;
-    fn into_internal_iter(self) -> Self::IntoIter { ConstructorsIter { inner: self } }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConstructorsIter<'core, 'inner> {
-    inner: &'inner Constructors<'core>,
-}
-
-impl<'core, 'inner> InternalIterator for ConstructorsIter<'core, 'inner> {
-    type Item = Constructor<'core>;
-    fn try_for_each<R, F>(self, mut on_ctor: F) -> ControlFlow<R>
-    where
-        F: FnMut(Self::Item) -> ControlFlow<R>,
-    {
-        match self.inner {
-            Constructors::Empty => ControlFlow::Continue(()),
-            Constructors::Record(fields) => on_ctor(Constructor::Record(fields)),
-            Constructors::Bools(bools) => {
-                if bools[0] {
-                    on_ctor(Constructor::Lit(Lit::Bool(false)))?;
-                }
-                if bools[1] {
-                    on_ctor(Constructor::Lit(Lit::Bool(true)))?;
-                }
-                ControlFlow::Continue(())
-            }
-            Constructors::Ints(ints) => ints
-                .iter()
-                .try_for_each(|int| on_ctor(Constructor::Lit(Lit::Int(*int)))),
         }
     }
 }
