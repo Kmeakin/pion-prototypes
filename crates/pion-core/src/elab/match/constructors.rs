@@ -132,49 +132,60 @@ impl<'core> Pat<'core> {
 impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
     pub fn column_constructors(&self, index: usize) -> Constructors<'core> {
-        let mut ctors = Constructors::Empty;
-        self.column(index)
-            .into_internal()
-            .flat_map(|(pat, _)| pat.constructors())
-            .try_for_each(|ctor| match ctor {
-                Constructor::Lit(Lit::Bool(b)) => match ctors {
-                    Constructors::Empty => {
-                        ctors = Constructors::Bools([!b, b]);
-                        ControlFlow::Continue(())
+        #![allow(clippy::items_after_statements)]
+
+        let mut column = self.column(index).map(|(pat, _)| *pat);
+        return empty(&mut column);
+
+        fn empty<'core>(column: &mut dyn Iterator<Item = Pat<'core>>) -> Constructors<'core> {
+            match column.next() {
+                None => Constructors::Empty,
+                Some(pat) => match pat {
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => empty(column),
+                    Pat::RecordLit(.., fields) => Constructors::Record(fields),
+                    Pat::Lit(.., Lit::Bool(value)) => bools(column, value),
+                    Pat::Lit(.., Lit::Int(value)) => ints(column, smallvec![value]),
+                    Pat::Or(.., alts) => empty(&mut alts.iter().copied().chain(column)),
+                },
+            }
+        }
+
+        fn bools<'core>(
+            column: &mut dyn Iterator<Item = Pat<'core>>,
+            value: bool,
+        ) -> Constructors<'core> {
+            match column.next() {
+                None => Constructors::Bools([!value, value]),
+                Some(pat) => match pat {
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => bools(column, value),
+                    Pat::Lit(.., Lit::Bool(other_value)) if other_value == value => {
+                        bools(column, value)
                     }
-                    Constructors::Bools(ref mut bools) => {
-                        bools[usize::from(b)] = true;
-                        if bools[0] & bools[1] {
-                            return ControlFlow::Break(());
+                    Pat::Lit(.., Lit::Bool(_)) => Constructors::Bools([true, true]),
+                    Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
+                    Pat::Or(.., alts) => bools(&mut alts.iter().copied().chain(column), value),
+                },
+            }
+        }
+
+        fn ints<'core>(
+            column: &mut dyn Iterator<Item = Pat<'core>>,
+            mut values: SmallVec<[u32; 4]>,
+        ) -> Constructors<'core> {
+            match column.next() {
+                None => Constructors::Ints(values),
+                Some(pat) => match pat {
+                    Pat::Error(_) | Pat::Underscore(_) | Pat::Ident(..) => ints(column, values),
+                    Pat::Lit(.., Lit::Int(value)) => {
+                        if let Err(index) = values.binary_search(&value) {
+                            values.insert(index, value);
                         }
-                        ControlFlow::Continue(())
+                        ints(column, values)
                     }
-                    Constructors::Record(_) | Constructors::Ints(_) => unreachable!(),
+                    Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
+                    Pat::Or(.., alts) => ints(&mut alts.iter().copied().chain(column), values),
                 },
-                Constructor::Lit(Lit::Int(elem)) => match ctors {
-                    Constructors::Empty => {
-                        ctors = Constructors::Ints(smallvec![elem]);
-                        ControlFlow::Continue(())
-                    }
-                    Constructors::Ints(ref mut ints) => {
-                        match ints.binary_search(&elem) {
-                            Ok(_) => {}
-                            Err(index) => ints.insert(index, elem),
-                        }
-                        ControlFlow::Continue(())
-                    }
-                    Constructors::Record(_) | Constructors::Bools(_) => unreachable!(),
-                },
-                Constructor::Record(fields) => match ctors {
-                    Constructors::Empty => {
-                        ctors = Constructors::Record(fields);
-                        ControlFlow::Break(())
-                    }
-                    Constructors::Bools(..) | Constructors::Ints(..) | Constructors::Record(..) => {
-                        unreachable!()
-                    }
-                },
-            });
-        ctors
+            }
+        }
     }
 }
