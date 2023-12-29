@@ -4,8 +4,6 @@ const CRATE_DIR: &str = env!("CARGO_MANIFEST_DIR");
 const PION_EXE: &str = env!("CARGO_BIN_EXE_pion");
 
 #[test]
-// REASON: more readable
-#[allow(clippy::items_after_statements)]
 fn elab() {
     let workspace_dir = PathBuf::from(CRATE_DIR);
     let workspace_dir = workspace_dir.ancestors().nth(2).unwrap();

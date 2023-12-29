@@ -96,8 +96,6 @@ impl<'core> Pat<'core> {
 impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
     pub fn column_constructors(&self, index: usize) -> Constructors<'core> {
-        #![allow(clippy::items_after_statements)]
-
         let mut column = self.column(index).map(|(pat, _)| *pat);
         return empty(&mut column);
 

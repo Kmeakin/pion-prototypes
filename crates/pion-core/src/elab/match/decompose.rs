@@ -1,5 +1,3 @@
-#![allow(clippy::items_after_statements)]
-
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;
 use super::*;
