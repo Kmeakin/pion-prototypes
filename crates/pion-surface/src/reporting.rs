@@ -1,120 +1,40 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_lexer::token::TokenKind;
-use pion_utils::location::{BytePos, ByteSpan};
+use pion_utils::location::ByteSpan;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum SyntaxError {
-    InvalidToken(ByteSpan),
-    UnrecognizedEof {
-        span: ByteSpan,
-        expected_tokens: Box<[String]>,
+#[derive(Debug, Copy, Clone)]
+pub struct SyntaxError {
+    span: ByteSpan,
+    kind: ErrorKind,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum ErrorKind {
+    Custom {
+        msg: &'static str,
     },
-    UnrecognizedToken {
-        span: ByteSpan,
-        found_token: &'static str,
-        expected_tokens: Box<[String]>,
-    },
-    ExtraToken {
-        span: ByteSpan,
-        found_token: &'static str,
+    Expected {
+        expected: TokenKind,
+        got: Option<TokenKind>,
     },
 }
 
-pub type LalrpopParseError<'src> =
-    lalrpop_util::ParseError<BytePos, TokenKind, std::convert::Infallible>;
-pub type LalrpopErrorRecovery<'src> =
-    lalrpop_util::ErrorRecovery<BytePos, TokenKind, std::convert::Infallible>;
-
 impl SyntaxError {
-    pub const fn span(&self) -> ByteSpan {
-        match self {
-            Self::InvalidToken(span, ..)
-            | Self::UnrecognizedEof { span, .. }
-            | Self::UnrecognizedToken { span, .. }
-            | Self::ExtraToken { span, .. } => *span,
-        }
-    }
+    pub fn new(span: ByteSpan, kind: ErrorKind) -> Self { Self { span, kind } }
 
-    pub fn from_recovery(recovery: LalrpopErrorRecovery) -> Self {
-        // TODO: make use of use `error.dropped_tokens` in error reporting?
-        Self::from_lalrpop(recovery.error)
-    }
-
-    pub fn from_lalrpop(err: LalrpopParseError) -> Self {
-        match err {
-            LalrpopParseError::User { error } => match error {},
-            LalrpopParseError::InvalidToken { location } => {
-                Self::InvalidToken(ByteSpan::new(location, location))
-            }
-            LalrpopParseError::UnrecognizedEof { location, expected } => {
-                let range = ByteSpan::new(location, location);
-                Self::UnrecognizedEof {
-                    span: range,
-                    expected_tokens: expected.into_boxed_slice(),
-                }
-            }
-            LalrpopParseError::UnrecognizedToken { token, expected } => {
-                let (start, token, end) = token;
-                let range = ByteSpan::new(start, end);
-                let found_token = token.description();
-                Self::UnrecognizedToken {
-                    span: range,
-                    found_token,
-                    expected_tokens: expected.into_boxed_slice(),
-                }
-            }
-            LalrpopParseError::ExtraToken { token } => {
-                let (start, token, end) = token;
-                let range = ByteSpan::new(start, end);
-                let found_token = token.description();
-                Self::ExtraToken {
-                    span: range,
-                    found_token,
-                }
-            }
-        }
-    }
+    pub const fn span(&self) -> ByteSpan { self.span }
 
     pub fn to_diagnostic<F: Clone>(&self, file_id: F) -> Diagnostic<F> {
         let primary_label = |span: &ByteSpan| Label::primary(file_id.clone(), *span);
 
-        match self {
-            Self::InvalidToken(range) => Diagnostic::error()
-                .with_message("syntax error: invalid token")
-                .with_labels(vec![primary_label(range)]),
-            Self::UnrecognizedEof {
-                span,
-                expected_tokens: expected,
-            } => Diagnostic::error()
-                .with_message("syntax error: unexpected error of file")
-                .with_labels(vec![primary_label(span)])
-                .with_notes(format_expected(expected).map_or(Vec::new(), |message| vec![message])),
-            Self::UnrecognizedToken {
-                span,
-                found_token,
-                expected_tokens: expected,
-            } => Diagnostic::error()
-                .with_message(format!("syntax error: unexpected token {found_token}"))
-                .with_labels(vec![primary_label(span)])
-                .with_notes(format_expected(expected).map_or(Vec::new(), |message| vec![message])),
-            Self::ExtraToken { span, found_token } => Diagnostic::error()
-                .with_message(format!("syntax_error: extra token {found_token}"))
+        let Self { span, kind } = self;
+        match kind {
+            ErrorKind::Custom { msg } => Diagnostic::error()
+                .with_message(format!("syntax error: {msg}"))
                 .with_labels(vec![primary_label(span)]),
-        }
-    }
-}
-
-fn format_expected(expected: &[String]) -> Option<String> {
-    match expected {
-        [] => None,
-        [first] => Some(format!("expected {first}")),
-        [first, rest @ .., last] => {
-            let mut out = format!("expected one of {first}");
-            for expected in rest {
-                out.push_str(&format!(", {expected}"));
-            }
-            out.push_str(&format!(" or {last}"));
-            Some(out)
+            ErrorKind::Expected { expected, got } => Diagnostic::error()
+                .with_message(format!("syntax error: expected {expected:?}, got {got:?}"))
+                .with_labels(vec![primary_label(span)]),
         }
     }
 }

@@ -154,28 +154,71 @@ impl<'hir> Ctx<'hir> {
 
                 Expr::Match(span, scrut, hir_cases.into())
             }
-            surface::Expr::UnitRecordExpr(_) => Expr::TupleLit(span, &[]),
-            surface::Expr::RecordTypeExpr(e) => {
-                let mut hir_fields = SliceVec::new(self.bump, e.fields().count());
+            surface::Expr::RecordExpr(e) => {
+                let len = e.fields().count();
+                let mut surface_fields = e.fields();
 
-                for field in e.fields() {
-                    let name = self.ident(field.ident_token());
-                    let r#type = self.expr_to_hir_opt(field.expr());
-                    hir_fields.push(TypeField { name, r#type });
+                match surface_fields.next() {
+                    None => return Expr::TupleLit(span, &[]),
+                    Some(field) => {
+                        let name = self.ident(field.ident_token());
+                        match (field.eq_token().is_some(), field.colon_token().is_some()) {
+                            (true, true) => unreachable!(),
+
+                            (false, true) => {
+                                let mut type_fields = SliceVec::new(self.bump, len);
+                                let r#type = self.expr_to_hir_opt(field.expr());
+                                type_fields.push(TypeField { name, r#type });
+
+                                for field in surface_fields {
+                                    let name = self.ident(field.ident_token());
+                                    match (
+                                        field.eq_token().is_some(),
+                                        field.colon_token().is_some(),
+                                    ) {
+                                        (true, true) => unreachable!(),
+                                        (false, true) => {
+                                            let r#type = self.expr_to_hir_opt(field.expr());
+                                            type_fields.push(TypeField { name, r#type });
+                                        }
+                                        (_, false) => todo!("mismatch"),
+                                    }
+                                }
+
+                                Expr::RecordType(span, type_fields.into())
+                            }
+
+                            (eq, false) => {
+                                let mut expr_fields = SliceVec::new(self.bump, len);
+                                let expr = if eq {
+                                    Some(self.expr_to_hir_opt(field.expr()))
+                                } else {
+                                    None
+                                };
+                                expr_fields.push(ExprField { name, expr });
+                                for field in surface_fields {
+                                    let name = self.ident(field.ident_token());
+                                    match (
+                                        field.eq_token().is_some(),
+                                        field.colon_token().is_some(),
+                                    ) {
+                                        (true, true) => unreachable!(),
+                                        (false, true) => todo!("mismatch"),
+                                        (eq, false) => {
+                                            let expr = if eq {
+                                                Some(self.expr_to_hir_opt(field.expr()))
+                                            } else {
+                                                None
+                                            };
+                                            expr_fields.push(ExprField { name, expr });
+                                        }
+                                    }
+                                }
+                                Expr::RecordLit(span, expr_fields.into())
+                            }
+                        }
+                    }
                 }
-
-                Expr::RecordType(span, hir_fields.into())
-            }
-            surface::Expr::RecordLitExpr(e) => {
-                let mut hir_fields = SliceVec::new(self.bump, e.fields().count());
-
-                for field in e.fields() {
-                    let name = self.ident(field.ident_token());
-                    let expr = field.expr().map(|expr| self.expr_to_hir(expr));
-                    hir_fields.push(ExprField { name, expr });
-                }
-
-                Expr::RecordLit(span, hir_fields.into())
             }
             surface::Expr::IfExpr(e) => {
                 let surface_scrut = e.scrut();

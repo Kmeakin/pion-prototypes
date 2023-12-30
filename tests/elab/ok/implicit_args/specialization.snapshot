@@ -20,8 +20,8 @@ span   | source                                   | type
 29..33 | Type                                     | Type
 38..39 | A                                        | Type
 44..45 | a                                        | A
-51..70 | (id : Bool -> Bool)                      | Bool -> Bool
 52..54 | id                                       | Bool -> Bool
+52..69 | id : Bool -> Bool                        | Bool -> Bool
 57..61 | Bool                                     | Type
 57..69 | Bool -> Bool                             | Type
 65..69 | Bool                                     | Type
@@ -36,8 +36,8 @@ span   | source                                   | type
 136..137 | A                                        | Type
 140..154 | fun(a, b) => a                           | fun(@A: Type, @B: Type) -> A -> B -> A
 153..154 | a                                        | A
-160..190 | (always : Bool -> Int -> Bool)           | Bool -> Int -> Bool
 161..167 | always                                   | Bool -> Int -> Bool
+161..189 | always : Bool -> Int -> Bool             | Bool -> Int -> Bool
 170..174 | Bool                                     | Type
 170..189 | Bool -> Int -> Bool                      | Type
 178..181 | Int                                      | Type
@@ -54,8 +54,8 @@ span   | source                                   | type
 261..262 | f                                        | A -> B
 261..265 | f(a)                                     | B
 263..264 | a                                        | A
-271..311 | (apply : ((Bool -> Int) -> Bool -> Int)) | (Bool -> Int) -> Bool -> Int
 272..277 | apply                                    | (Bool -> Int) -> Bool -> Int
+272..310 | apply : ((Bool -> Int) -> Bool -> Int)   | (Bool -> Int) -> Bool -> Int
 281..309 | (Bool -> Int) -> Bool -> Int             | Type
 282..286 | Bool                                     | Type
 282..293 | Bool -> Int                              | Type

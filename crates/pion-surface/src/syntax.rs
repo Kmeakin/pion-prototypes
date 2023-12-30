@@ -34,13 +34,8 @@ pub enum NodeKind {
     MatchCase,
     MatchGuard,
 
-    UnitRecordExpr,
-
-    RecordLitExpr,
+    RecordExpr,
     RecordExprField,
-
-    RecordTypeExpr,
-    RecordTypeField,
 
     IfExpr,
     ThenExpr,
@@ -263,9 +258,7 @@ ast_enum!(
         TupleLitExpr,
         ArrayLitExpr,
         MatchExpr,
-        UnitRecordExpr,
-        RecordTypeExpr,
-        RecordLitExpr,
+        RecordExpr,
         IfExpr,
         LetExpr,
         FunLitExpr,
@@ -314,16 +307,7 @@ impl MatchExpr {
     pub fn cases(&self) -> AstChildren<MatchCase> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
-impl UnitRecordExpr {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-impl RecordTypeExpr {
-    pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
-    pub fn fields(&self) -> AstChildren<RecordTypeField> { support::children(&self.syntax) }
-    pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
-}
-impl RecordLitExpr {
+impl RecordExpr {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     pub fn fields(&self) -> AstChildren<RecordExprField> { support::children(&self.syntax) }
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
@@ -385,17 +369,11 @@ impl MethodCallExpr {
     pub fn arg_list(&self) -> Option<FunArgList> { support::child(&self.syntax) }
 }
 
-ast_node!(RecordTypeField);
-impl RecordTypeField {
-    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
-    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-}
-
 ast_node!(RecordExprField);
 impl RecordExprField {
     pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
 }
 

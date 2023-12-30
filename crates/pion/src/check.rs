@@ -80,33 +80,6 @@ pub fn run(args: CheckArgs, dump_flags: DumpFlags) -> anyhow::Result<()> {
         if dump_flags.core {
             pion_core::dump::dump_module(&mut stdout, src32.as_str(), &result)?;
         }
-
-        #[cfg(FALSE)]
-        for surface_item in surface_module.items {
-            let Some((hir_item, errors)) = pion_hir::lower::lower_item(&bump, source, surface_item)
-            else {
-                continue;
-            };
-            diagnostics.extend(errors.iter().map(|diag| diag.to_diagnostic(file_id)));
-
-            match hir_item {
-                pion_hir::syntax::Item::Def(def) => {
-                    let result = pion_core::elab::elab_def(&bump, &def);
-
-                    if dump_flags.core {
-                        pion_core::dump::dump_def(&mut stdout, src32.as_str(), &result)?;
-                        writeln!(&mut stdout)?;
-                    }
-
-                    diagnostics.extend(
-                        result
-                            .diagnostics
-                            .iter()
-                            .map(|diag| diag.to_diagnostic(file_id)),
-                    );
-                }
-            }
-        }
     }
 
     if !args.quiet {

@@ -12,8 +12,7 @@ mod expr {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value)]
     fn check_expr(src: &str, expected: Expect) {
-        let str32 = src.try_into().unwrap();
-        let (root, errors) = parse_expr(str32);
+        let (root, errors) = parse_expr(src);
         let node = root.syntax();
 
         let mut output = String::new();
@@ -31,7 +30,7 @@ mod expr {
                 Node(Root)@0..0
                   Node(Error)@0..0
 
-                errors = [UnrecognizedEof { span: 0..0, expected_tokens: ["\"(\"", "\"BinInt\"", "\"DecInt\"", "\"HexInt\"", "\"Ident\"", "\"[\"", "\"_\"", "\"false\"", "\"fun\"", "\"if\"", "\"let\"", "\"match\"", "\"true\"", "\"{\""] }]
+                errors = [SyntaxError { span: 0..0, kind: Custom { msg: "expected expression" } }]
             "#]],
         );
     }
@@ -431,7 +430,7 @@ mod expr {
             "{}",
             expect![[r#"
                 Node(Root)@0..2
-                  Node(UnitRecordExpr)@0..2
+                  Node(RecordExpr)@0..2
                     Token(LCurly)@0..1 "{"
                     Token(RCurly)@1..2 "}"
 
@@ -442,7 +441,7 @@ mod expr {
             "{,}",
             expect![[r#"
                 Node(Root)@0..3
-                  Node(UnitRecordExpr)@0..3
+                  Node(RecordExpr)@0..3
                     Token(LCurly)@0..1 "{"
                     Token(Comma)@1..2 ","
                     Token(RCurly)@2..3 "}"
@@ -458,7 +457,7 @@ mod expr {
             "{x}",
             expect![[r#"
                 Node(Root)@0..3
-                  Node(RecordLitExpr)@0..3
+                  Node(RecordExpr)@0..3
                     Token(LCurly)@0..1 "{"
                     Node(RecordExprField)@1..2
                       Token(Ident)@1..2 "x"
@@ -471,7 +470,7 @@ mod expr {
             "{x=y}",
             expect![[r#"
                 Node(Root)@0..5
-                  Node(RecordLitExpr)@0..5
+                  Node(RecordExpr)@0..5
                     Token(LCurly)@0..1 "{"
                     Node(RecordExprField)@1..4
                       Token(Ident)@1..2 "x"
@@ -487,7 +486,7 @@ mod expr {
             "{x=1,y=2}",
             expect![[r#"
                 Node(Root)@0..9
-                  Node(RecordLitExpr)@0..9
+                  Node(RecordExpr)@0..9
                     Token(LCurly)@0..1 "{"
                     Node(RecordExprField)@1..4
                       Token(Ident)@1..2 "x"
@@ -515,9 +514,9 @@ mod expr {
             "{x:y}",
             expect![[r#"
                 Node(Root)@0..5
-                  Node(RecordTypeExpr)@0..5
+                  Node(RecordExpr)@0..5
                     Token(LCurly)@0..1 "{"
-                    Node(RecordTypeField)@1..4
+                    Node(RecordExprField)@1..4
                       Token(Ident)@1..2 "x"
                       Token(Colon)@2..3 ":"
                       Node(IdentExpr)@3..4
@@ -531,16 +530,16 @@ mod expr {
             "{x:1,y:2}",
             expect![[r#"
                 Node(Root)@0..9
-                  Node(RecordTypeExpr)@0..9
+                  Node(RecordExpr)@0..9
                     Token(LCurly)@0..1 "{"
-                    Node(RecordTypeField)@1..4
+                    Node(RecordExprField)@1..4
                       Token(Ident)@1..2 "x"
                       Token(Colon)@2..3 ":"
                       Node(LitExpr)@3..4
                         Node(IntLit)@3..4
                           Token(DecInt)@3..4 "1"
                     Token(Comma)@4..5 ","
-                    Node(RecordTypeField)@5..8
+                    Node(RecordExprField)@5..8
                       Token(Ident)@5..6 "y"
                       Token(Colon)@6..7 ":"
                       Node(LitExpr)@7..8
@@ -1148,8 +1147,7 @@ mod pat {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value)]
     fn check_pat(src: &str, expected: Expect) {
-        let str32 = src.try_into().unwrap();
-        let (root, errors) = parse_pat(str32);
+        let (root, errors) = parse_pat(src);
         let node = root.syntax();
 
         let mut output = String::new();
@@ -1168,19 +1166,11 @@ mod pat {
                   Node(Error)@0..0
 
                 errors = [
-                    UnrecognizedEof {
+                    SyntaxError {
                         span: 0..0,
-                        expected_tokens: [
-                            "\"(\"",
-                            "\"BinInt\"",
-                            "\"DecInt\"",
-                            "\"HexInt\"",
-                            "\"Ident\"",
-                            "\"_\"",
-                            "\"false\"",
-                            "\"true\"",
-                            "\"{\"",
-                        ],
+                        kind: Custom {
+                            msg: "expected pattern",
+                        },
                     },
                 ]
             "#]],
@@ -1308,6 +1298,52 @@ mod pat {
             "#]],
         );
     }
+
+    #[test]
+    fn or_pat() {
+        check_pat(
+            "a | b",
+            expect![[r#"
+                Node(Root)@0..5
+                  Node(OrPat)@0..5
+                    Node(IdentPat)@0..1
+                      Token(Ident)@0..1 "a"
+                    Token(Whitespace)@1..2 " "
+                    Token(Pipe)@2..3 "|"
+                    Token(Whitespace)@3..4 " "
+                    Node(IdentPat)@4..5
+                      Token(Ident)@4..5 "b"
+
+                errors = []
+            "#]],
+        );
+        check_pat(
+            "a | b | c | d",
+            expect![[r#"
+                Node(Root)@0..13
+                  Node(OrPat)@0..13
+                    Node(IdentPat)@0..1
+                      Token(Ident)@0..1 "a"
+                    Token(Whitespace)@1..2 " "
+                    Token(Pipe)@2..3 "|"
+                    Token(Whitespace)@3..4 " "
+                    Node(IdentPat)@4..5
+                      Token(Ident)@4..5 "b"
+                    Token(Whitespace)@5..6 " "
+                    Token(Pipe)@6..7 "|"
+                    Token(Whitespace)@7..8 " "
+                    Node(IdentPat)@8..9
+                      Token(Ident)@8..9 "c"
+                    Token(Whitespace)@9..10 " "
+                    Token(Pipe)@10..11 "|"
+                    Token(Whitespace)@11..12 " "
+                    Node(IdentPat)@12..13
+                      Token(Ident)@12..13 "d"
+
+                errors = []
+            "#]],
+        );
+    }
 }
 
 mod toplevel {
@@ -1316,8 +1352,7 @@ mod toplevel {
     #[track_caller]
     #[allow(clippy::needless_pass_by_value)]
     fn check_module(src: &str, expected: Expect) {
-        let str32 = src.try_into().unwrap();
-        let (root, errors) = parse_module(str32);
+        let (root, errors) = parse_module(src);
         let node = root.syntax();
 
         let mut output = String::new();

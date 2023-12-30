@@ -61,7 +61,7 @@ macro_rules! T {
     [true] => {$crate::token::TokenKind::KwTrue};
 
     ['('] => {$crate::token::TokenKind::LParen};
-    [')'] => {$crate::token::TokenKind::LParen};
+    [')'] => {$crate::token::TokenKind::RParen};
     ['['] => {$crate::token::TokenKind::LSquare};
     [']'] => {$crate::token::TokenKind::RSquare};
     ['{'] => {$crate::token::TokenKind::LCurly};
@@ -76,6 +76,7 @@ macro_rules! T {
     [=] => {$crate::token::TokenKind::Eq};
     [->] => {$crate::token::TokenKind::ThinArrow};
     [=>] => {$crate::token::TokenKind::FatArrow};
+    [|] => {$crate::token::TokenKind::Pipe};
 
     [ident] => {$crate::token::TokenKind::Ident};
     [dec_int] => {$crate::token::TokenKind::DecInt};

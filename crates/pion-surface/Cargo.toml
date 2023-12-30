@@ -13,11 +13,7 @@ pion-utils = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
-lalrpop-util       = { version = "0.20.0", default-features = false }
 rowan              = { version = "0.15.13" }
-
-[build-dependencies]
-lalrpop = { version = "0.20.0", default-features = false } # disable regex support
 
 [dev-dependencies]
 expect-test = { version = "1.4.1" }
