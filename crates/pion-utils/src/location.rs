@@ -1,8 +1,6 @@
 use std::fmt;
 use std::ops::{Add, Index, Range};
 
-use string32::{Str32 as str32, String32};
-
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct BytePos(u32);
 
@@ -67,16 +65,6 @@ impl Index<ByteSpan> for str {
 impl Index<ByteSpan> for String {
     type Output = str;
     fn index(&self, span: ByteSpan) -> &Self::Output { &self[Range::<usize>::from(span)] }
-}
-
-impl Index<ByteSpan> for str32 {
-    type Output = Self;
-    fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
-}
-
-impl Index<ByteSpan> for String32 {
-    type Output = str32;
-    fn index(&self, span: ByteSpan) -> &Self::Output { self.as_str()[span].try_into().unwrap() }
 }
 
 impl ByteSpan {

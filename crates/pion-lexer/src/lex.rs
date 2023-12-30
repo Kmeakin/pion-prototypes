@@ -5,8 +5,8 @@ use pion_utils::location::{BytePos, ByteSpan};
 use crate::token::{Token, TokenKind};
 use crate::LexError;
 
-pub fn lex(src: &string32::Str32, tokens: &mut Vec<Token>, errors: &mut Vec<LexError>) {
-    let mut ctx = Ctx::new(src.as_str(), tokens, errors);
+pub fn lex(src: &str, tokens: &mut Vec<Token>, errors: &mut Vec<LexError>) {
+    let mut ctx = Ctx::new(src, tokens, errors);
     ctx.lex();
 }
 

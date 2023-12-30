@@ -1,29 +1,27 @@
 use std::fmt::Write;
 
 use expect_test::{expect, Expect};
-use string32::String32;
 
 use super::*;
 
 #[track_caller]
 #[allow(clippy::needless_pass_by_value)]
 fn check(src: &str, expected: Expect) {
-    let string32 = String32::try_from(src).unwrap();
     let mut tokens = Vec::new();
     let mut errors = Vec::new();
-    lex(&string32, &mut tokens, &mut errors);
+    lex(src, &mut tokens, &mut errors);
     let mut output = String::with_capacity(src.len());
 
     for token in tokens {
         let kind = token.kind();
         let span = token.span();
-        let text: &str = &string32.as_str()[span];
+        let text = &src[span];
         writeln!(&mut output, "{span}: {kind:?}({text:?})").unwrap();
     }
 
     for error in errors {
         let span = error.span();
-        let text: &str = &string32.as_str()[span];
+        let text = &src[span];
         writeln!(&mut output, "{error:?}({text:?})",).unwrap();
     }
 

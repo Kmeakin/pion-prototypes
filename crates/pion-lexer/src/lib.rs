@@ -24,13 +24,13 @@ impl LexError {
 
 #[derive(Copy, Clone)]
 pub struct LexedSource<'source, 'tokens> {
-    source: &'source string32::Str32,
+    source: &'source str,
     tokens: &'tokens [Token],
 }
 
 impl<'source, 'tokens> LexedSource<'source, 'tokens> {
     pub fn new(
-        source: &'source string32::Str32,
+        source: &'source str,
         tokens: &'tokens mut Vec<Token>,
         errors: &'tokens mut Vec<LexError>,
     ) -> Self {

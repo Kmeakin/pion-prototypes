@@ -4,7 +4,6 @@ use anyhow::{anyhow, bail};
 use camino::{self, Utf8Path, Utf8PathBuf};
 use codespan_reporting::files as codespan_files;
 use fxhash::FxHashMap;
-use string32::{Str32 as str32, String32};
 
 use crate::location::BytePos;
 
@@ -30,7 +29,7 @@ pub struct SourceFile {
     /// path (absolute)
     pub path: Utf8PathBuf,
     /// contents
-    pub contents: String32,
+    pub contents: String,
     pub line_index: LineIndex,
 }
 
@@ -40,9 +39,9 @@ pub struct LineIndex {
 }
 
 impl LineIndex {
-    pub fn of_text(text: impl AsRef<str32>) -> Self {
+    pub fn of_text(text: impl AsRef<str>) -> Self {
         Self {
-            line_starts: codespan_reporting::files::line_starts(text.as_ref().as_str())
+            line_starts: codespan_reporting::files::line_starts(text.as_ref())
                 .map(BytePos::truncate_usize)
                 .collect(),
         }
@@ -50,7 +49,7 @@ impl LineIndex {
 }
 
 impl SourceFile {
-    pub fn new(path: Utf8PathBuf, contents: String32) -> Self {
+    pub fn new(path: Utf8PathBuf, contents: String) -> Self {
         let line_index = LineIndex::of_text(&contents);
         Self {
             path,
@@ -80,9 +79,6 @@ impl SourceFile {
 
         drop(file);
 
-        let contents = String32::try_from(contents)
-            .map_err(|_| anyhow!("pion source files must be 4GB or less"))?;
-
         Ok(Self::new(path, contents))
     }
 
@@ -96,7 +92,7 @@ impl SourceFile {
                 .get(line_index)
                 .copied()
                 .expect("failed despite previous check")),
-            std::cmp::Ordering::Equal => Ok(self.contents.len().into()),
+            std::cmp::Ordering::Equal => Ok(BytePos::truncate_usize(self.contents.len())),
             std::cmp::Ordering::Greater => Err(codespan_files::Error::LineTooLarge {
                 given: line_index,
                 max: self.line_index.line_starts.len() - 1,
@@ -145,7 +141,7 @@ impl SourceMap {
 impl<'a> codespan_files::Files<'a> for SourceFile {
     type FileId = ();
     type Name = &'a Utf8Path;
-    type Source = &'a str32;
+    type Source = &'a str;
 
     fn name(&'a self, (): Self::FileId) -> Result<Self::Name, codespan_files::Error> {
         Ok(&self.path)
@@ -182,7 +178,7 @@ impl<'a> codespan_files::Files<'a> for SourceFile {
 impl<'a> codespan_files::Files<'a> for SourceMap {
     type FileId = FileId;
     type Name = &'a Utf8Path;
-    type Source = &'a str32;
+    type Source = &'a str;
 
     fn name(&'a self, file_id: Self::FileId) -> Result<Self::Name, codespan_files::Error> {
         Ok(&self.try_get(file_id)?.path)

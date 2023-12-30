@@ -640,12 +640,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mediumvec"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8b8e083db7e75cc22d421c241d2a927d8a6d7bcf24f0cf0fbdcd73027e5028e"
-
-[[package]]
 name = "memchr"
 version = "2.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -789,7 +783,6 @@ dependencies = [
  "pion-utils",
  "pretty",
  "smallvec",
- "string32",
 ]
 
 [[package]]
@@ -828,7 +821,6 @@ dependencies = [
  "expect-test",
  "memchr",
  "pion-utils",
- "string32",
 ]
 
 [[package]]
@@ -842,7 +834,6 @@ dependencies = [
  "lalrpop-util",
  "pion-lexer",
  "pion-utils",
- "string32",
 ]
 
 [[package]]
@@ -857,7 +848,6 @@ dependencies = [
  "lasso",
  "nohash",
  "once_cell",
- "string32",
 ]
 
 [[package]]
@@ -1075,16 +1065,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "string32"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca2a74f13f7291014deb91c50eebf5f55f02ed416d6548505b399317f530247"
-dependencies = [
- "mediumvec",
- "usize_cast",
-]
-
-[[package]]
 name = "string_cache"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1237,12 +1217,6 @@ dependencies = [
  "percent-encoding",
  "serde",
 ]
-
-[[package]]
-name = "usize_cast"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "810f3a98a85147e3ad2a1331aa6dac66490e802d65fa0ab283c383058e3f9751"
 
 [[package]]
 name = "utf8parse"
