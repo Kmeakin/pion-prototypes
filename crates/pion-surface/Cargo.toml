@@ -11,7 +11,6 @@ workspace = true
 pion-lexer = { path = "../pion-lexer" }
 pion-utils = { path = "../pion-utils" }
 
-bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
 
 [dev-dependencies]

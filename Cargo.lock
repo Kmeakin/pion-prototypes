@@ -600,7 +600,6 @@ dependencies = [
 name = "pion-surface"
 version = "0.1.0"
 dependencies = [
- "bumpalo",
  "codespan-reporting",
  "expect-test",
  "pion-lexer",
