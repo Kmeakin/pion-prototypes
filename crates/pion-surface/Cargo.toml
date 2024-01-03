@@ -13,7 +13,6 @@ pion-utils = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }
-rowan              = { version = "0.15.13" }
 
 [dev-dependencies]
 expect-test = { version = "1.4.1" }

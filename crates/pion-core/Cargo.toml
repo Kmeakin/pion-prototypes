@@ -9,7 +9,6 @@ workspace = true
 
 [dependencies]
 pion-hir     = { path = "../pion-hir" }
-pion-surface = { path = "../pion-surface" }
 pion-utils   = { path = "../pion-utils" }
 
 bumpalo            = { workspace = true }

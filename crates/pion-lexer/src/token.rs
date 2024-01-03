@@ -92,7 +92,7 @@ impl TokenKind {
         )
     }
 
-    pub fn description(&self) -> &'static str {
+    pub fn description(self) -> &'static str {
         match self {
             Self::Error => "error",
             Self::BlockComment => "block comment",
@@ -134,8 +134,8 @@ impl TokenKind {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Token {
-    kind: TokenKind,
-    span: ByteSpan,
+    pub kind: TokenKind,
+    pub span: ByteSpan,
 }
 
 impl Token {

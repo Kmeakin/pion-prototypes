@@ -3,6 +3,7 @@ use lsp_types::notification::{DidChangeTextDocument, DidOpenTextDocument, Notifi
 use lsp_types::{
     DidChangeTextDocumentParams, DidOpenTextDocumentParams, DocumentSymbol, SymbolKind,
 };
+use pion_surface::syntax::CstNode;
 use pion_utils::source::SourceFile;
 
 use crate::{convert, diagnostics, Server};
@@ -20,7 +21,8 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
             let file = SourceFile::read(path)?;
 
             let mut symbols = Vec::new();
-            let (root, _) = pion_surface::parse_module(&file.contents);
+            let (tree, _) = pion_surface::parse_module(&file.contents);
+            let root: pion_surface::syntax::Root = CstNode::cast(tree.root()).unwrap();
             let module = root.module().unwrap();
 
             for item in module.items() {
@@ -31,8 +33,7 @@ pub fn handle_request(server: &Server, request: Request) -> anyhow::Result<()> {
                         };
 
                         let name = ident_token.text();
-                        let range =
-                            convert::bytespan_to_lsp(ident_token.text_range().into(), &file)?;
+                        let range = convert::bytespan_to_lsp(ident_token.span(), &file)?;
                         let selection_range = range;
 
                         #[allow(deprecated)]

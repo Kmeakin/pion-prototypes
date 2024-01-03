@@ -9,6 +9,24 @@ impl Add<u32> for BytePos {
     fn add(self, rhs: u32) -> Self::Output { Self(self.0 + rhs) }
 }
 
+impl PartialEq<u32> for BytePos {
+    fn eq(&self, other: &u32) -> bool { self.0 == *other }
+}
+
+impl PartialOrd<u32> for BytePos {
+    fn partial_cmp(&self, other: &u32) -> Option<std::cmp::Ordering> { self.0.partial_cmp(other) }
+}
+
+impl PartialOrd<usize> for BytePos {
+    fn partial_cmp(&self, other: &usize) -> Option<std::cmp::Ordering> {
+        self.partial_cmp(&Self::truncate_usize(*other))
+    }
+}
+
+impl PartialEq<usize> for BytePos {
+    fn eq(&self, other: &usize) -> bool { *self == Self::truncate_usize(*other) }
+}
+
 #[allow(clippy::cast_possible_truncation)]
 // REASON: truncations are made explicit by the methods
 impl BytePos {
@@ -87,6 +105,9 @@ impl ByteSpan {
             BytePos::truncate_u64(range.end),
         )
     }
+
+    pub const fn len(&self) -> u32 { self.end.0 - self.start.0 }
+    pub const fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl From<ByteSpan> for Range<usize> {

@@ -1,148 +1,176 @@
-#[cfg(debug_assertions)]
-use std::cell::Cell;
-
 use pion_lexer::token::{Token, TokenKind};
+use pion_utils::location::ByteSpan;
 
-pub mod grammar;
-
-use crate::event::Event;
-use crate::reporting::ErrorKind;
+use crate::reporting::SyntaxError;
 use crate::syntax::NodeKind;
+use crate::tree::ParseEvent;
 
 #[derive(Debug, Copy, Clone)]
-struct MarkOpened {
-    index: usize,
-}
-
-#[derive(Debug, Copy, Clone)]
-struct MarkClosed {
-    index: usize,
+pub struct OpenNode {
+    pos: usize,
 }
 
 pub struct Parser<'tokens> {
     tokens: &'tokens [Token],
-    pos: usize,
-    events: Vec<Event>,
-    errors: Vec<ErrorKind>,
+    span: ByteSpan,
+
+    events: Vec<ParseEvent>,
+    errors: Vec<SyntaxError>,
+
     #[cfg(debug_assertions)]
-    fuel: Cell<u8>,
+    fuel: u8,
 }
 
-// Constructors
+/// Construction and destruction
 impl<'tokens> Parser<'tokens> {
     pub fn new(tokens: &'tokens [Token]) -> Self {
         Self {
             tokens,
-            pos: 0,
+            span: ByteSpan::default(),
+
             events: Vec::new(),
             errors: Vec::new(),
+
             #[cfg(debug_assertions)]
-            fuel: Cell::new(u8::MAX),
+            fuel: u8::MAX,
         }
     }
 
-    pub fn finish(self) -> (Vec<Event>, Vec<ErrorKind>) { (self.events, self.errors) }
-}
-
-// Creating nodes
-impl<'tokens> Parser<'tokens> {
-    fn start(&mut self) -> MarkOpened {
-        let mark = MarkOpened {
-            index: self.events.len(),
-        };
-        self.events.push(Event::Tombstone);
-        mark
-    }
-
-    fn close(&mut self, m: MarkOpened, kind: NodeKind) -> MarkClosed {
-        self.events[m.index] = Event::StartNode(kind);
-        self.events.push(Event::EndNode);
-        MarkClosed { index: m.index }
-    }
-
-    fn start_before(&mut self, m: MarkClosed) -> MarkOpened {
-        let mark = MarkOpened { index: m.index };
-        self.events.insert(m.index, Event::Tombstone);
-        mark
-    }
-}
-
-// Reporting errors
-impl<'tokens> Parser<'tokens> {
-    fn error(&mut self, kind: ErrorKind) {
-        self.events.push(Event::Error);
-        self.errors.push(kind);
-    }
-
-    fn advance_with_error(&mut self, msg: &'static str) {
-        self.advance();
-        self.error(ErrorKind::Custom { msg });
-    }
-
-    fn expect(&mut self, kind: TokenKind) -> bool {
-        if self.advance_if_at(kind) {
-            return true;
-        }
-
-        self.error(ErrorKind::Expected {
-            expected: kind,
-            got: self.peek(),
+    pub fn finish(mut self) -> (Vec<ParseEvent>, Vec<SyntaxError>) {
+        self.events.push(ParseEvent::Node {
+            kind: NodeKind::Root,
+            num_descendents: self.events.len() as u32,
         });
-        false
+        (self.events, self.errors)
     }
 }
 
-// Inspecting tokens
+/// Inspecting token stream
 impl<'tokens> Parser<'tokens> {
-    fn nth(&self, n: usize) -> Option<TokenKind> {
+    pub fn peek(&mut self) -> Option<TokenKind> {
         #[cfg(debug_assertions)]
         {
-            assert_ne!(self.fuel.get(), 0, "parser is stuck");
-            self.fuel.set(self.fuel.get() - 1);
+            assert_ne!(self.fuel, 0, "Parser stuck");
+            self.fuel -= 1;
         }
-        self.tokens.get(self.pos + n).map(Token::kind)
+
+        loop {
+            match self.tokens.split_first() {
+                Some((token, tokens)) if token.kind.is_trivia() => {
+                    self.push_token(*token);
+                    self.tokens = tokens;
+                }
+                Some((token, _)) => return Some(token.kind),
+                None => return None,
+            }
+        }
     }
 
-    fn peek(&self) -> Option<TokenKind> { self.nth(0) }
+    pub fn at(&mut self, kind: TokenKind) -> bool { self.peek() == Some(kind) }
 
-    fn at(&self, kind: TokenKind) -> bool { self.peek() == Some(kind) }
-
-    fn at_eof(&self) -> bool { self.pos == self.tokens.len() }
+    pub fn at_eof(&mut self) -> bool { self.peek().is_none() }
 }
 
 // Advancing through tokens
 impl<'tokens> Parser<'tokens> {
-    fn do_token(&mut self, kind: TokenKind) {
+    pub fn advance(&mut self) -> Option<TokenKind> {
         #[cfg(debug_assertions)]
-        self.fuel.set(u8::MAX);
-        self.events.push(Event::Token(kind));
-        self.pos += 1;
-    }
+        {
+            self.fuel = u8::MAX;
+        }
 
-    fn advance(&mut self) -> bool {
-        match self.peek() {
-            None => false,
-            Some(kind) => {
-                self.do_token(kind);
-                true
+        match self.tokens.split_first() {
+            None => None,
+            Some((token, tokens)) => {
+                debug_assert!(!token.kind.is_trivia());
+                self.tokens = tokens;
+                self.span = token.span;
+                self.push_token(*token);
+                Some(token.kind)
             }
         }
     }
 
-    fn advance_if(&mut self, mut f: impl FnMut(TokenKind) -> bool) -> bool {
-        match self.peek() {
-            Some(kind) if f(kind) => {
-                self.do_token(kind);
-                true
-            }
-            _ => false,
+    pub fn advance_if_at(&mut self, kind: TokenKind) -> bool {
+        if self.at(kind) {
+            self.advance();
+            true
+        } else {
+            false
         }
     }
 
-    fn advance_if_at(&mut self, kind: TokenKind) -> bool { self.advance_if(|k| k == kind) }
+    pub fn assert_advance(&mut self, kind: TokenKind) {
+        let got = self.advance();
+        debug_assert_eq!(got, Some(kind));
+    }
 
-    fn assert_advance(&mut self, kind: TokenKind) {
-        debug_assert_eq!(self.peek(), Some(kind));
-        self.do_token(kind);
+    pub fn expect(&mut self, expected: TokenKind) -> bool {
+        match self.peek() {
+            Some(got) if got == expected => {
+                self.advance();
+                true
+            }
+            got => {
+                self.errors.push(SyntaxError::Expected {
+                    span: self.span,
+                    expected,
+                    got,
+                });
+                false
+            }
+        }
+    }
+
+    pub fn advance_with_error(&mut self, msg: &'static str) {
+        self.advance();
+        self.errors.push(SyntaxError::Custom {
+            span: self.span,
+            msg,
+        });
+    }
+}
+
+/// Emitting events
+impl<'tokens> Parser<'tokens> {
+    pub fn start_node(&mut self) -> OpenNode {
+        OpenNode {
+            pos: self.events.len(),
+        }
+    }
+
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn end_node(&mut self, kind: NodeKind, start: OpenNode) {
+        let mut start = start.pos;
+        let mut end = self.events.len();
+
+        // shrink the node if it would cover leading or trailing trivia
+        for event in &self.events[start..end] {
+            match event {
+                ParseEvent::Token { kind, .. } if kind.is_trivia() => start += 1,
+                _ => break,
+            }
+        }
+
+        for event in self.events[start..end].iter().rev() {
+            match event {
+                ParseEvent::Token { kind, .. } if kind.is_trivia() => end -= 1,
+                _ => break,
+            }
+        }
+
+        debug_assert!(start <= end);
+        let event = ParseEvent::Node {
+            kind,
+            num_descendents: (end - start) as u32,
+        };
+        self.events.insert(end, event);
+    }
+
+    fn push_token(&mut self, token: Token) {
+        self.events.push(ParseEvent::Token {
+            kind: token.kind(),
+            span_len: token.span().len(),
+        });
     }
 }

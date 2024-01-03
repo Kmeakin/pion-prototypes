@@ -2,17 +2,18 @@ mod diagnostics;
 
 use std::collections::hash_map::Entry;
 
-pub use diagnostics::LowerDiagnostic;
-use pion_surface::syntax::{self as surface, AstChildren, AstNode, SyntaxToken};
+use pion_surface::syntax::{self as surface, CstNode};
+use pion_surface::tree::SyntaxToken;
 use pion_utils::location::ByteSpan;
 use pion_utils::slice_vec::SliceVec;
 use pion_utils::symbol::{Symbol, SymbolMap};
 
+use self::diagnostics::LowerDiagnostic;
 use crate::syntax::*;
 
 pub fn lower_module<'hir>(
     bump: &'hir bumpalo::Bump,
-    module: &surface::Module,
+    module: surface::Module,
 ) -> (Module<'hir>, Vec<LowerDiagnostic>) {
     let mut ctx = Ctx::new(bump);
     let module = ctx.module_to_hir(module);
@@ -22,7 +23,7 @@ pub fn lower_module<'hir>(
 
 pub fn lower_item<'hir>(
     bump: &'hir bumpalo::Bump,
-    item: &surface::Item,
+    item: surface::Item,
 ) -> Option<(Item<'hir>, Vec<LowerDiagnostic>)> {
     let mut ctx = Ctx::new(bump);
     let item = ctx.item_to_hir(item)?;
@@ -50,13 +51,13 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Modules and items
-impl<'hir> Ctx<'hir> {
-    fn module_to_hir(&mut self, module: &surface::Module) -> Module<'hir> {
+impl<'tree, 'hir> Ctx<'hir> {
+    fn module_to_hir(&mut self, module: surface::Module<'tree>) -> Module<'hir> {
         self.item_names.reserve(module.items().count());
         let mut items = SliceVec::new(self.bump, module.items().count());
 
         for item in module.items() {
-            if let Some(item) = self.item_to_hir(&item) {
+            if let Some(item) = self.item_to_hir(item) {
                 items.push(item);
             }
         }
@@ -66,13 +67,13 @@ impl<'hir> Ctx<'hir> {
         }
     }
 
-    fn item_to_hir(&mut self, item: &surface::Item) -> Option<Item<'hir>> {
+    fn item_to_hir(&mut self, item: surface::Item<'tree>) -> Option<Item<'hir>> {
         match item {
             surface::Item::DefItem(def) => Some(Item::Def(self.def_to_hir(def)?)),
         }
     }
 
-    fn def_to_hir(&mut self, def: &surface::DefItem) -> Option<Def<'hir>> {
+    fn def_to_hir(&mut self, def: surface::DefItem<'tree>) -> Option<Def<'hir>> {
         let name = self.ident(def.ident_token());
 
         match self.item_names.entry(name.symbol) {
@@ -99,31 +100,34 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Expressions
-impl<'hir> Ctx<'hir> {
-    pub fn lower_expr(&mut self, expr: surface::Expr) -> &'hir Expr<'hir> {
+impl<'tree, 'hir> Ctx<'hir> {
+    pub fn lower_expr(&mut self, expr: surface::Expr<'tree>) -> &'hir Expr<'hir> {
         let hir = self.expr_to_hir(expr);
         let hir = self.bump.alloc(hir);
         hir
     }
 
-    fn lower_expr_opt(&mut self, expr: Option<surface::Expr>) -> &'hir Expr<'hir> {
+    fn lower_expr_opt(&mut self, expr: Option<surface::Expr<'tree>>) -> &'hir Expr<'hir> {
         match expr {
             Some(expr) => self.lower_expr(expr),
             None => self.bump.alloc(Expr::Error(ByteSpan::default())), // FIXME
         }
     }
 
-    fn lower_exprs(&mut self, exprs: AstChildren<surface::Expr>) -> &'hir [Expr<'hir>] {
-        let mut hir_exprs = SliceVec::new(self.bump, exprs.clone().count());
+    fn lower_exprs(
+        &mut self,
+        exprs: impl Iterator<Item = surface::Expr<'tree>>,
+    ) -> &'hir [Expr<'hir>] {
+        let mut hir_exprs = Vec::new_in(self.bump);
 
         for expr in exprs {
             hir_exprs.push(self.expr_to_hir(expr));
         }
-        hir_exprs.into()
+        hir_exprs.leak()
     }
 
-    fn expr_to_hir(&mut self, expr: surface::Expr) -> Expr<'hir> {
-        let span: ByteSpan = expr.syntax().text_range().into();
+    fn expr_to_hir(&mut self, expr: surface::Expr<'tree>) -> Expr<'hir> {
+        let span: ByteSpan = expr.syntax().span();
 
         match expr {
             surface::Expr::LitExpr(e) => e.lit().map_or(Expr::Error(span), |lit| {
@@ -134,7 +138,7 @@ impl<'hir> Ctx<'hir> {
             surface::Expr::ParenExpr(e) => self.expr_to_hir_opt(e.expr()),
             surface::Expr::AnnExpr(e) => {
                 let expr = self.expr_to_hir_opt(e.expr());
-                let r#type = self.expr_to_hir_opt(e.type_ann().and_then(|ty| ty.expr()));
+                let r#type = self.expr_to_hir_opt(e.type_ann().and_then(surface::TypeAnn::expr));
                 Expr::Ann(span, self.bump.alloc((expr, r#type)))
             }
             surface::Expr::TupleLitExpr(e) => Expr::TupleLit(span, self.lower_exprs(e.exprs())),
@@ -222,8 +226,8 @@ impl<'hir> Ctx<'hir> {
             }
             surface::Expr::IfExpr(e) => {
                 let surface_scrut = e.scrut();
-                let surface_then = e.then_expr().and_then(|e| e.expr());
-                let surface_else = e.else_expr().and_then(|e| e.expr());
+                let surface_then = e.then_expr().and_then(surface::ThenExpr::expr);
+                let surface_else = e.else_expr().and_then(surface::ElseExpr::expr);
 
                 let hir_scrut = self.expr_to_hir_opt(surface_scrut);
                 let hir_then = self.expr_to_hir_opt(surface_then);
@@ -234,7 +238,7 @@ impl<'hir> Ctx<'hir> {
             surface::Expr::LetExpr(e) => {
                 let pat = self.pat_to_hir_opt(e.pat());
                 let r#type = e.type_ann().map(|ty| self.expr_to_hir_opt(ty.expr()));
-                let init = self.expr_to_hir_opt(e.init().and_then(|init| init.expr()));
+                let init = self.expr_to_hir_opt(e.init().and_then(surface::LetInit::expr));
                 let body = self.expr_to_hir_opt(e.body());
 
                 Expr::Let(span, self.bump.alloc((pat, r#type, init, body)))
@@ -297,7 +301,7 @@ impl<'hir> Ctx<'hir> {
             }
             surface::Expr::FunArrowExpr(e) => {
                 let surface_lhs = e.lhs();
-                let surface_rhs = e.rhs().and_then(|e| e.expr());
+                let surface_rhs = e.rhs().and_then(surface::RetType::expr);
 
                 let lhs = self.expr_to_hir_opt(surface_lhs);
                 let rhs = self.expr_to_hir_opt(surface_rhs);
@@ -359,7 +363,7 @@ impl<'hir> Ctx<'hir> {
         }
     }
 
-    fn expr_to_hir_opt(&mut self, expr: Option<surface::Expr>) -> Expr<'hir> {
+    fn expr_to_hir_opt(&mut self, expr: Option<surface::Expr<'tree>>) -> Expr<'hir> {
         match expr {
             Some(expr) => self.expr_to_hir(expr),
             None => Expr::Error(ByteSpan::default()), // FIXME
@@ -368,18 +372,18 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Patterns
-impl<'hir> Ctx<'hir> {
-    fn lower_pats(&mut self, pats: AstChildren<surface::Pat>) -> &'hir [Pat<'hir>] {
-        let mut hir_pats = SliceVec::new(self.bump, pats.clone().count());
+impl<'tree, 'hir> Ctx<'hir> {
+    fn lower_pats(&mut self, pats: impl Iterator<Item = surface::Pat<'tree>>) -> &'hir [Pat<'hir>] {
+        let mut hir_pats = Vec::new_in(self.bump);
 
         for pat in pats {
             hir_pats.push(self.pat_to_hir(pat));
         }
-        hir_pats.into()
+        hir_pats.leak()
     }
 
-    fn pat_to_hir(&mut self, pat: surface::Pat) -> Pat<'hir> {
-        let span: ByteSpan = pat.syntax().text_range().into();
+    fn pat_to_hir(&mut self, pat: surface::Pat<'tree>) -> Pat<'hir> {
+        let span: ByteSpan = pat.syntax().span();
 
         match pat {
             surface::Pat::LitPat(e) => e
@@ -406,7 +410,7 @@ impl<'hir> Ctx<'hir> {
         }
     }
 
-    fn pat_to_hir_opt(&mut self, pat: Option<surface::Pat>) -> Pat<'hir> {
+    fn pat_to_hir_opt(&mut self, pat: Option<surface::Pat<'tree>>) -> Pat<'hir> {
         match pat {
             Some(pat) => self.pat_to_hir(pat),
             None => Pat::Error(ByteSpan::default()), // FIXME
@@ -415,14 +419,14 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Identifiers
-impl<'hir> Ctx<'hir> {
-    fn ident(&mut self, ident_token: Option<SyntaxToken>) -> Ident {
+impl<'tree, 'hir> Ctx<'hir> {
+    fn ident(&mut self, ident_token: Option<SyntaxToken<'tree>>) -> Ident {
         match ident_token {
             None => todo!(),
             Some(ident_token) => {
                 let symbol = Symbol::intern(ident_token.text());
                 Ident {
-                    span: ident_token.text_range().into(),
+                    span: ident_token.span(),
                     symbol,
                 }
             }
@@ -431,8 +435,8 @@ impl<'hir> Ctx<'hir> {
 }
 
 // Literals
-impl<'hir> Ctx<'hir> {
-    fn lit_to_hir(&mut self, lit: surface::Lit) -> Lit {
+impl<'tree, 'hir> Ctx<'hir> {
+    fn lit_to_hir(&mut self, lit: surface::Lit<'tree>) -> Lit {
         match lit {
             surface::Lit::BoolLit(lit) => {
                 if lit.true_token().is_some() {
@@ -445,13 +449,13 @@ impl<'hir> Ctx<'hir> {
             }
             surface::Lit::IntLit(lit) => {
                 if let Some(tok) = lit.dec_int_token() {
-                    return Lit::Int(self.parse_int(tok.text_range().into(), tok.text(), 10));
+                    return Lit::Int(self.parse_int(tok.span(), tok.text(), 10));
                 }
                 if let Some(tok) = lit.hex_int_token() {
-                    return Lit::Int(self.parse_int(tok.text_range().into(), tok.text(), 16));
+                    return Lit::Int(self.parse_int(tok.span(), tok.text(), 16));
                 }
                 if let Some(tok) = lit.bin_int_token() {
-                    return Lit::Int(self.parse_int(tok.text_range().into(), tok.text(), 2));
+                    return Lit::Int(self.parse_int(tok.span(), tok.text(), 2));
                 }
                 unreachable!()
             }

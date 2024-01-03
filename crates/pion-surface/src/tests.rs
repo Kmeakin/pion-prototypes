@@ -1,4 +1,5 @@
 #![allow(clippy::needless_raw_string_hashes)]
+#![allow(clippy::needless_pass_by_value)]
 
 use std::fmt::Write;
 
@@ -10,13 +11,11 @@ mod expr {
     use super::*;
 
     #[track_caller]
-    #[allow(clippy::needless_pass_by_value)]
     fn check_expr(src: &str, expected: Expect) {
-        let (root, errors) = parse_expr(src);
-        let node = root.syntax();
+        let (tree, errors) = parse_expr(src);
 
         let mut output = String::new();
-        writeln!(output, "{node:#?}").unwrap();
+        writeln!(output, "{tree:?}").unwrap();
         writeln!(output, "errors = {errors:?}").unwrap();
 
         expected.assert_eq(&output);
@@ -27,10 +26,10 @@ mod expr {
         check_expr(
             "",
             expect![[r#"
-                Node(Root)@0..0
-                  Node(Error)@0..0
+                Root
+                  Error
 
-                errors = [SyntaxError { span: 0..0, kind: Custom { msg: "expected expression" } }]
+                errors = [Custom { span: 0..0, msg: "expected expression" }]
             "#]],
         );
     }
@@ -40,9 +39,9 @@ mod expr {
         check_expr(
             "_",
             expect![[r#"
-                Node(Root)@0..1
-                  Node(UnderscoreExpr)@0..1
-                    Token(Underscore)@0..1 "_"
+                Root
+                  UnderscoreExpr
+                    0..1 Underscore "_"
 
                 errors = []
             "#]],
@@ -52,11 +51,11 @@ mod expr {
     #[test]
     fn ident_expr() {
         check_expr(
-            "_",
+            "x",
             expect![[r#"
-                Node(Root)@0..1
-                  Node(UnderscoreExpr)@0..1
-                    Token(Underscore)@0..1 "_"
+                Root
+                  IdentExpr
+                    0..1 Ident "x"
 
                 errors = []
             "#]],
@@ -68,10 +67,10 @@ mod expr {
         check_expr(
             "true",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(LitExpr)@0..4
-                    Node(BoolLit)@0..4
-                      Token(KwTrue)@0..4 "true"
+                Root
+                  LitExpr
+                    BoolLit
+                      0..4 KwTrue "true"
 
                 errors = []
             "#]],
@@ -79,10 +78,10 @@ mod expr {
         check_expr(
             "false",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(LitExpr)@0..5
-                    Node(BoolLit)@0..5
-                      Token(KwFalse)@0..5 "false"
+                Root
+                  LitExpr
+                    BoolLit
+                      0..5 KwFalse "false"
 
                 errors = []
             "#]],
@@ -94,10 +93,10 @@ mod expr {
         check_expr(
             "[]",
             expect![[r#"
-                Node(Root)@0..2
-                  Node(ArrayLitExpr)@0..2
-                    Token(LSquare)@0..1 "["
-                    Token(RSquare)@1..2 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 RSquare "]"
 
                 errors = []
             "#]],
@@ -105,12 +104,12 @@ mod expr {
         check_expr(
             "[_]",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(ArrayLitExpr)@0..3
-                    Token(LSquare)@0..1 "["
-                    Node(UnderscoreExpr)@1..2
-                      Token(Underscore)@1..2 "_"
-                    Token(RSquare)@2..3 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    UnderscoreExpr
+                      1..2 Underscore "_"
+                    2..3 RSquare "]"
 
                 errors = []
             "#]],
@@ -118,17 +117,17 @@ mod expr {
         check_expr(
             "[_, true]",
             expect![[r#"
-                Node(Root)@0..9
-                  Node(ArrayLitExpr)@0..9
-                    Token(LSquare)@0..1 "["
-                    Node(UnderscoreExpr)@1..2
-                      Token(Underscore)@1..2 "_"
-                    Token(Comma)@2..3 ","
-                    Token(Whitespace)@3..4 " "
-                    Node(LitExpr)@4..8
-                      Node(BoolLit)@4..8
-                        Token(KwTrue)@4..8 "true"
-                    Token(RSquare)@8..9 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    UnderscoreExpr
+                      1..2 Underscore "_"
+                    2..3 Comma ","
+                    3..4 Whitespace " "
+                    LitExpr
+                      BoolLit
+                        4..8 KwTrue "true"
+                    8..9 RSquare "]"
 
                 errors = []
             "#]],
@@ -140,11 +139,11 @@ mod expr {
         check_expr(
             "[,]",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(ArrayLitExpr)@0..3
-                    Token(LSquare)@0..1 "["
-                    Token(Comma)@1..2 ","
-                    Token(RSquare)@2..3 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 Comma ","
+                    2..3 RSquare "]"
 
                 errors = []
             "#]],
@@ -152,12 +151,12 @@ mod expr {
         check_expr(
             "[,,]",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(ArrayLitExpr)@0..4
-                    Token(LSquare)@0..1 "["
-                    Token(Comma)@1..2 ","
-                    Token(Comma)@2..3 ","
-                    Token(RSquare)@3..4 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 Comma ","
+                    2..3 Comma ","
+                    3..4 RSquare "]"
 
                 errors = []
             "#]],
@@ -165,13 +164,13 @@ mod expr {
         check_expr(
             "[,_]",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(ArrayLitExpr)@0..4
-                    Token(LSquare)@0..1 "["
-                    Token(Comma)@1..2 ","
-                    Node(UnderscoreExpr)@2..3
-                      Token(Underscore)@2..3 "_"
-                    Token(RSquare)@3..4 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 Comma ","
+                    UnderscoreExpr
+                      2..3 Underscore "_"
+                    3..4 RSquare "]"
 
                 errors = []
             "#]],
@@ -179,14 +178,14 @@ mod expr {
         check_expr(
             "[,_,]",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(ArrayLitExpr)@0..5
-                    Token(LSquare)@0..1 "["
-                    Token(Comma)@1..2 ","
-                    Node(UnderscoreExpr)@2..3
-                      Token(Underscore)@2..3 "_"
-                    Token(Comma)@3..4 ","
-                    Token(RSquare)@4..5 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 Comma ","
+                    UnderscoreExpr
+                      2..3 Underscore "_"
+                    3..4 Comma ","
+                    4..5 RSquare "]"
 
                 errors = []
             "#]],
@@ -194,20 +193,20 @@ mod expr {
         check_expr(
             "[,,_,,_,,]",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(ArrayLitExpr)@0..10
-                    Token(LSquare)@0..1 "["
-                    Token(Comma)@1..2 ","
-                    Token(Comma)@2..3 ","
-                    Node(UnderscoreExpr)@3..4
-                      Token(Underscore)@3..4 "_"
-                    Token(Comma)@4..5 ","
-                    Token(Comma)@5..6 ","
-                    Node(UnderscoreExpr)@6..7
-                      Token(Underscore)@6..7 "_"
-                    Token(Comma)@7..8 ","
-                    Token(Comma)@8..9 ","
-                    Token(RSquare)@9..10 "]"
+                Root
+                  ArrayLitExpr
+                    0..1 LSquare "["
+                    1..2 Comma ","
+                    2..3 Comma ","
+                    UnderscoreExpr
+                      3..4 Underscore "_"
+                    4..5 Comma ","
+                    5..6 Comma ","
+                    UnderscoreExpr
+                      6..7 Underscore "_"
+                    7..8 Comma ","
+                    8..9 Comma ","
+                    9..10 RSquare "]"
 
                 errors = []
             "#]],
@@ -219,10 +218,10 @@ mod expr {
         check_expr(
             "()",
             expect![[r#"
-                Node(Root)@0..2
-                  Node(TupleLitExpr)@0..2
-                    Token(LParen)@0..1 "("
-                    Token(RParen)@1..2 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 RParen ")"
 
                 errors = []
             "#]],
@@ -230,13 +229,13 @@ mod expr {
         check_expr(
             "(true)",
             expect![[r#"
-                Node(Root)@0..6
-                  Node(ParenExpr)@0..6
-                    Token(LParen)@0..1 "("
-                    Node(LitExpr)@1..5
-                      Node(BoolLit)@1..5
-                        Token(KwTrue)@1..5 "true"
-                    Token(RParen)@5..6 ")"
+                Root
+                  ParenExpr
+                    0..1 LParen "("
+                    LitExpr
+                      BoolLit
+                        1..5 KwTrue "true"
+                    5..6 RParen ")"
 
                 errors = []
             "#]],
@@ -244,14 +243,14 @@ mod expr {
         check_expr(
             "(true,)",
             expect![[r#"
-                Node(Root)@0..7
-                  Node(TupleLitExpr)@0..7
-                    Token(LParen)@0..1 "("
-                    Node(LitExpr)@1..5
-                      Node(BoolLit)@1..5
-                        Token(KwTrue)@1..5 "true"
-                    Token(Comma)@5..6 ","
-                    Token(RParen)@6..7 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    LitExpr
+                      BoolLit
+                        1..5 KwTrue "true"
+                    5..6 Comma ","
+                    6..7 RParen ")"
 
                 errors = []
             "#]],
@@ -259,17 +258,17 @@ mod expr {
         check_expr(
             "(true,false)",
             expect![[r#"
-                Node(Root)@0..12
-                  Node(TupleLitExpr)@0..12
-                    Token(LParen)@0..1 "("
-                    Node(LitExpr)@1..5
-                      Node(BoolLit)@1..5
-                        Token(KwTrue)@1..5 "true"
-                    Token(Comma)@5..6 ","
-                    Node(LitExpr)@6..11
-                      Node(BoolLit)@6..11
-                        Token(KwFalse)@6..11 "false"
-                    Token(RParen)@11..12 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    LitExpr
+                      BoolLit
+                        1..5 KwTrue "true"
+                    5..6 Comma ","
+                    LitExpr
+                      BoolLit
+                        6..11 KwFalse "false"
+                    11..12 RParen ")"
 
                 errors = []
             "#]],
@@ -281,11 +280,11 @@ mod expr {
         check_expr(
             "(,)",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(TupleLitExpr)@0..3
-                    Token(LParen)@0..1 "("
-                    Token(Comma)@1..2 ","
-                    Token(RParen)@2..3 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 Comma ","
+                    2..3 RParen ")"
 
                 errors = []
             "#]],
@@ -293,12 +292,12 @@ mod expr {
         check_expr(
             "(,,)",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(TupleLitExpr)@0..4
-                    Token(LParen)@0..1 "("
-                    Token(Comma)@1..2 ","
-                    Token(Comma)@2..3 ","
-                    Token(RParen)@3..4 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 Comma ","
+                    2..3 Comma ","
+                    3..4 RParen ")"
 
                 errors = []
             "#]],
@@ -306,13 +305,13 @@ mod expr {
         check_expr(
             "(,_)",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(TupleLitExpr)@0..4
-                    Token(LParen)@0..1 "("
-                    Token(Comma)@1..2 ","
-                    Node(UnderscoreExpr)@2..3
-                      Token(Underscore)@2..3 "_"
-                    Token(RParen)@3..4 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 Comma ","
+                    UnderscoreExpr
+                      2..3 Underscore "_"
+                    3..4 RParen ")"
 
                 errors = []
             "#]],
@@ -320,14 +319,14 @@ mod expr {
         check_expr(
             "(,_,)",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(TupleLitExpr)@0..5
-                    Token(LParen)@0..1 "("
-                    Token(Comma)@1..2 ","
-                    Node(UnderscoreExpr)@2..3
-                      Token(Underscore)@2..3 "_"
-                    Token(Comma)@3..4 ","
-                    Token(RParen)@4..5 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 Comma ","
+                    UnderscoreExpr
+                      2..3 Underscore "_"
+                    3..4 Comma ","
+                    4..5 RParen ")"
 
                 errors = []
             "#]],
@@ -335,20 +334,20 @@ mod expr {
         check_expr(
             "(,,_,,_,,)",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(TupleLitExpr)@0..10
-                    Token(LParen)@0..1 "("
-                    Token(Comma)@1..2 ","
-                    Token(Comma)@2..3 ","
-                    Node(UnderscoreExpr)@3..4
-                      Token(Underscore)@3..4 "_"
-                    Token(Comma)@4..5 ","
-                    Token(Comma)@5..6 ","
-                    Node(UnderscoreExpr)@6..7
-                      Token(Underscore)@6..7 "_"
-                    Token(Comma)@7..8 ","
-                    Token(Comma)@8..9 ","
-                    Token(RParen)@9..10 ")"
+                Root
+                  TupleLitExpr
+                    0..1 LParen "("
+                    1..2 Comma ","
+                    2..3 Comma ","
+                    UnderscoreExpr
+                      3..4 Underscore "_"
+                    4..5 Comma ","
+                    5..6 Comma ","
+                    UnderscoreExpr
+                      6..7 Underscore "_"
+                    7..8 Comma ","
+                    8..9 Comma ","
+                    9..10 RParen ")"
 
                 errors = []
             "#]],
@@ -360,15 +359,15 @@ mod expr {
         check_expr(
             "match x {}",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(MatchExpr)@0..10
-                    Token(KwMatch)@0..5 "match"
-                    Token(Whitespace)@5..6 " "
-                    Node(IdentExpr)@6..7
-                      Token(Ident)@6..7 "x"
-                    Token(Whitespace)@7..8 " "
-                    Token(LCurly)@8..9 "{"
-                    Token(RCurly)@9..10 "}"
+                Root
+                  MatchExpr
+                    0..5 KwMatch "match"
+                    5..6 Whitespace " "
+                    IdentExpr
+                      6..7 Ident "x"
+                    7..8 Whitespace " "
+                    8..9 LCurly "{"
+                    9..10 RCurly "}"
 
                 errors = []
             "#]],
@@ -379,45 +378,45 @@ mod expr {
             _ if false => 2,
         }",
             expect![[r#"
-                Node(Root)@0..68
-                  Node(MatchExpr)@0..68
-                    Token(KwMatch)@0..5 "match"
-                    Token(Whitespace)@5..6 " "
-                    Node(IdentExpr)@6..7
-                      Token(Ident)@6..7 "x"
-                    Token(Whitespace)@7..8 " "
-                    Token(LCurly)@8..9 "{"
-                    Token(Whitespace)@9..22 "\n            "
-                    Node(MatchCase)@22..28
-                      Node(UnderscorePat)@22..23
-                        Token(Underscore)@22..23 "_"
-                      Token(Whitespace)@23..24 " "
-                      Token(FatArrow)@24..26 "=>"
-                      Token(Whitespace)@26..27 " "
-                      Node(LitExpr)@27..28
-                        Node(IntLit)@27..28
-                          Token(DecInt)@27..28 "1"
-                    Token(Comma)@28..29 ","
-                    Token(Whitespace)@29..42 "\n            "
-                    Node(MatchCase)@42..57
-                      Node(UnderscorePat)@42..43
-                        Token(Underscore)@42..43 "_"
-                      Token(Whitespace)@43..44 " "
-                      Node(MatchGuard)@44..52
-                        Token(KwIf)@44..46 "if"
-                        Token(Whitespace)@46..47 " "
-                        Node(LitExpr)@47..52
-                          Node(BoolLit)@47..52
-                            Token(KwFalse)@47..52 "false"
-                      Token(Whitespace)@52..53 " "
-                      Token(FatArrow)@53..55 "=>"
-                      Token(Whitespace)@55..56 " "
-                      Node(LitExpr)@56..57
-                        Node(IntLit)@56..57
-                          Token(DecInt)@56..57 "2"
-                    Token(Comma)@57..58 ","
-                    Token(Whitespace)@58..67 "\n        "
-                    Token(RCurly)@67..68 "}"
+                Root
+                  MatchExpr
+                    0..5 KwMatch "match"
+                    5..6 Whitespace " "
+                    IdentExpr
+                      6..7 Ident "x"
+                    7..8 Whitespace " "
+                    8..9 LCurly "{"
+                    9..22 Whitespace "\n            "
+                    MatchCase
+                      UnderscorePat
+                        22..23 Underscore "_"
+                      23..24 Whitespace " "
+                      24..26 FatArrow "=>"
+                      26..27 Whitespace " "
+                      LitExpr
+                        IntLit
+                          27..28 DecInt "1"
+                    28..29 Comma ","
+                    29..42 Whitespace "\n            "
+                    MatchCase
+                      UnderscorePat
+                        42..43 Underscore "_"
+                      43..44 Whitespace " "
+                      MatchGuard
+                        44..46 KwIf "if"
+                        46..47 Whitespace " "
+                        LitExpr
+                          BoolLit
+                            47..52 KwFalse "false"
+                      52..53 Whitespace " "
+                      53..55 FatArrow "=>"
+                      55..56 Whitespace " "
+                      LitExpr
+                        IntLit
+                          56..57 DecInt "2"
+                    57..58 Comma ","
+                    58..67 Whitespace "\n        "
+                    67..68 RCurly "}"
 
                 errors = []
             "#]],
@@ -429,10 +428,10 @@ mod expr {
         check_expr(
             "{}",
             expect![[r#"
-                Node(Root)@0..2
-                  Node(RecordExpr)@0..2
-                    Token(LCurly)@0..1 "{"
-                    Token(RCurly)@1..2 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    1..2 RCurly "}"
 
                 errors = []
             "#]],
@@ -440,11 +439,11 @@ mod expr {
         check_expr(
             "{,}",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(RecordExpr)@0..3
-                    Token(LCurly)@0..1 "{"
-                    Token(Comma)@1..2 ","
-                    Token(RCurly)@2..3 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    1..2 Comma ","
+                    2..3 RCurly "}"
 
                 errors = []
             "#]],
@@ -456,12 +455,12 @@ mod expr {
         check_expr(
             "{x}",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(RecordExpr)@0..3
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordExprField)@1..2
-                      Token(Ident)@1..2 "x"
-                    Token(RCurly)@2..3 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    RecordExprField
+                      1..2 Ident "x"
+                    2..3 RCurly "}"
 
                 errors = []
             "#]],
@@ -469,15 +468,15 @@ mod expr {
         check_expr(
             "{x=y}",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(RecordExpr)@0..5
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordExprField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Eq)@2..3 "="
-                      Node(IdentExpr)@3..4
-                        Token(Ident)@3..4 "y"
-                    Token(RCurly)@4..5 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    RecordExprField
+                      1..2 Ident "x"
+                      2..3 Eq "="
+                      IdentExpr
+                        3..4 Ident "y"
+                    4..5 RCurly "}"
 
                 errors = []
             "#]],
@@ -485,23 +484,23 @@ mod expr {
         check_expr(
             "{x=1,y=2}",
             expect![[r#"
-                Node(Root)@0..9
-                  Node(RecordExpr)@0..9
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordExprField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Eq)@2..3 "="
-                      Node(LitExpr)@3..4
-                        Node(IntLit)@3..4
-                          Token(DecInt)@3..4 "1"
-                    Token(Comma)@4..5 ","
-                    Node(RecordExprField)@5..8
-                      Token(Ident)@5..6 "y"
-                      Token(Eq)@6..7 "="
-                      Node(LitExpr)@7..8
-                        Node(IntLit)@7..8
-                          Token(DecInt)@7..8 "2"
-                    Token(RCurly)@8..9 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    RecordExprField
+                      1..2 Ident "x"
+                      2..3 Eq "="
+                      LitExpr
+                        IntLit
+                          3..4 DecInt "1"
+                    4..5 Comma ","
+                    RecordExprField
+                      5..6 Ident "y"
+                      6..7 Eq "="
+                      LitExpr
+                        IntLit
+                          7..8 DecInt "2"
+                    8..9 RCurly "}"
 
                 errors = []
             "#]],
@@ -513,15 +512,15 @@ mod expr {
         check_expr(
             "{x:y}",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(RecordExpr)@0..5
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordExprField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Colon)@2..3 ":"
-                      Node(IdentExpr)@3..4
-                        Token(Ident)@3..4 "y"
-                    Token(RCurly)@4..5 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    RecordExprField
+                      1..2 Ident "x"
+                      2..3 Colon ":"
+                      IdentExpr
+                        3..4 Ident "y"
+                    4..5 RCurly "}"
 
                 errors = []
             "#]],
@@ -529,23 +528,23 @@ mod expr {
         check_expr(
             "{x:1,y:2}",
             expect![[r#"
-                Node(Root)@0..9
-                  Node(RecordExpr)@0..9
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordExprField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Colon)@2..3 ":"
-                      Node(LitExpr)@3..4
-                        Node(IntLit)@3..4
-                          Token(DecInt)@3..4 "1"
-                    Token(Comma)@4..5 ","
-                    Node(RecordExprField)@5..8
-                      Token(Ident)@5..6 "y"
-                      Token(Colon)@6..7 ":"
-                      Node(LitExpr)@7..8
-                        Node(IntLit)@7..8
-                          Token(DecInt)@7..8 "2"
-                    Token(RCurly)@8..9 "}"
+                Root
+                  RecordExpr
+                    0..1 LCurly "{"
+                    RecordExprField
+                      1..2 Ident "x"
+                      2..3 Colon ":"
+                      LitExpr
+                        IntLit
+                          3..4 DecInt "1"
+                    4..5 Comma ","
+                    RecordExprField
+                      5..6 Ident "y"
+                      6..7 Colon ":"
+                      LitExpr
+                        IntLit
+                          7..8 DecInt "2"
+                    8..9 RCurly "}"
 
                 errors = []
             "#]],
@@ -557,23 +556,23 @@ mod expr {
         check_expr(
             "let x = 5; x",
             expect![[r#"
-                Node(Root)@0..12
-                  Node(LetExpr)@0..12
-                    Token(KwLet)@0..3 "let"
-                    Token(Whitespace)@3..4 " "
-                    Node(IdentPat)@4..5
-                      Token(Ident)@4..5 "x"
-                    Token(Whitespace)@5..6 " "
-                    Node(LetInit)@6..9
-                      Token(Eq)@6..7 "="
-                      Token(Whitespace)@7..8 " "
-                      Node(LitExpr)@8..9
-                        Node(IntLit)@8..9
-                          Token(DecInt)@8..9 "5"
-                    Token(Semicolon)@9..10 ";"
-                    Token(Whitespace)@10..11 " "
-                    Node(IdentExpr)@11..12
-                      Token(Ident)@11..12 "x"
+                Root
+                  LetExpr
+                    0..3 KwLet "let"
+                    3..4 Whitespace " "
+                    IdentPat
+                      4..5 Ident "x"
+                    5..6 Whitespace " "
+                    LetInit
+                      6..7 Eq "="
+                      7..8 Whitespace " "
+                      LitExpr
+                        IntLit
+                          8..9 DecInt "5"
+                    9..10 Semicolon ";"
+                    10..11 Whitespace " "
+                    IdentExpr
+                      11..12 Ident "x"
 
                 errors = []
             "#]],
@@ -581,28 +580,28 @@ mod expr {
         check_expr(
             "let x: Int = 5; x",
             expect![[r#"
-                Node(Root)@0..17
-                  Node(LetExpr)@0..17
-                    Token(KwLet)@0..3 "let"
-                    Token(Whitespace)@3..4 " "
-                    Node(IdentPat)@4..5
-                      Token(Ident)@4..5 "x"
-                    Node(TypeAnn)@5..10
-                      Token(Colon)@5..6 ":"
-                      Token(Whitespace)@6..7 " "
-                      Node(IdentExpr)@7..10
-                        Token(Ident)@7..10 "Int"
-                    Token(Whitespace)@10..11 " "
-                    Node(LetInit)@11..14
-                      Token(Eq)@11..12 "="
-                      Token(Whitespace)@12..13 " "
-                      Node(LitExpr)@13..14
-                        Node(IntLit)@13..14
-                          Token(DecInt)@13..14 "5"
-                    Token(Semicolon)@14..15 ";"
-                    Token(Whitespace)@15..16 " "
-                    Node(IdentExpr)@16..17
-                      Token(Ident)@16..17 "x"
+                Root
+                  LetExpr
+                    0..3 KwLet "let"
+                    3..4 Whitespace " "
+                    IdentPat
+                      4..5 Ident "x"
+                    TypeAnn
+                      5..6 Colon ":"
+                      6..7 Whitespace " "
+                      IdentExpr
+                        7..10 Ident "Int"
+                    10..11 Whitespace " "
+                    LetInit
+                      11..12 Eq "="
+                      12..13 Whitespace " "
+                      LitExpr
+                        IntLit
+                          13..14 DecInt "5"
+                    14..15 Semicolon ";"
+                    15..16 Whitespace " "
+                    IdentExpr
+                      16..17 Ident "x"
 
                 errors = []
             "#]],
@@ -614,12 +613,12 @@ mod expr {
         check_expr(
             "a.b",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(FieldProjExpr)@0..3
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "a"
-                    Token(Dot)@1..2 "."
-                    Token(Ident)@2..3 "b"
+                Root
+                  FieldProjExpr
+                    IdentExpr
+                      0..1 Ident "a"
+                    1..2 Dot "."
+                    2..3 Ident "b"
 
                 errors = []
             "#]],
@@ -627,15 +626,15 @@ mod expr {
         check_expr(
             "a.b.c",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(FieldProjExpr)@0..5
-                    Node(FieldProjExpr)@0..3
-                      Node(IdentExpr)@0..1
-                        Token(Ident)@0..1 "a"
-                      Token(Dot)@1..2 "."
-                      Token(Ident)@2..3 "b"
-                    Token(Dot)@3..4 "."
-                    Token(Ident)@4..5 "c"
+                Root
+                  FieldProjExpr
+                    FieldProjExpr
+                      IdentExpr
+                        0..1 Ident "a"
+                      1..2 Dot "."
+                      2..3 Ident "b"
+                    3..4 Dot "."
+                    4..5 Ident "c"
 
                 errors = []
             "#]],
@@ -647,13 +646,13 @@ mod expr {
         check_expr(
             "f()",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(FunCallExpr)@0..3
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "f"
-                    Node(FunArgList)@1..3
-                      Token(LParen)@1..2 "("
-                      Token(RParen)@2..3 ")"
+                Root
+                  FunCallExpr
+                    IdentExpr
+                      0..1 Ident "f"
+                    FunArgList
+                      1..2 LParen "("
+                      2..3 RParen ")"
 
                 errors = []
             "#]],
@@ -661,27 +660,27 @@ mod expr {
         check_expr(
             "f(1,2,3)",
             expect![[r#"
-                Node(Root)@0..8
-                  Node(FunCallExpr)@0..8
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "f"
-                    Node(FunArgList)@1..8
-                      Token(LParen)@1..2 "("
-                      Node(FunArg)@2..3
-                        Node(LitExpr)@2..3
-                          Node(IntLit)@2..3
-                            Token(DecInt)@2..3 "1"
-                      Token(Comma)@3..4 ","
-                      Node(FunArg)@4..5
-                        Node(LitExpr)@4..5
-                          Node(IntLit)@4..5
-                            Token(DecInt)@4..5 "2"
-                      Token(Comma)@5..6 ","
-                      Node(FunArg)@6..7
-                        Node(LitExpr)@6..7
-                          Node(IntLit)@6..7
-                            Token(DecInt)@6..7 "3"
-                      Token(RParen)@7..8 ")"
+                Root
+                  FunCallExpr
+                    IdentExpr
+                      0..1 Ident "f"
+                    FunArgList
+                      1..2 LParen "("
+                      FunArg
+                        LitExpr
+                          IntLit
+                            2..3 DecInt "1"
+                      3..4 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            4..5 DecInt "2"
+                      5..6 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            6..7 DecInt "3"
+                      7..8 RParen ")"
 
                 errors = []
             "#]],
@@ -689,45 +688,45 @@ mod expr {
         check_expr(
             "f(1,2,3)(4,5,6)",
             expect![[r#"
-                Node(Root)@0..15
-                  Node(FunCallExpr)@0..15
-                    Node(FunCallExpr)@0..8
-                      Node(IdentExpr)@0..1
-                        Token(Ident)@0..1 "f"
-                      Node(FunArgList)@1..8
-                        Token(LParen)@1..2 "("
-                        Node(FunArg)@2..3
-                          Node(LitExpr)@2..3
-                            Node(IntLit)@2..3
-                              Token(DecInt)@2..3 "1"
-                        Token(Comma)@3..4 ","
-                        Node(FunArg)@4..5
-                          Node(LitExpr)@4..5
-                            Node(IntLit)@4..5
-                              Token(DecInt)@4..5 "2"
-                        Token(Comma)@5..6 ","
-                        Node(FunArg)@6..7
-                          Node(LitExpr)@6..7
-                            Node(IntLit)@6..7
-                              Token(DecInt)@6..7 "3"
-                        Token(RParen)@7..8 ")"
-                    Node(FunArgList)@8..15
-                      Token(LParen)@8..9 "("
-                      Node(FunArg)@9..10
-                        Node(LitExpr)@9..10
-                          Node(IntLit)@9..10
-                            Token(DecInt)@9..10 "4"
-                      Token(Comma)@10..11 ","
-                      Node(FunArg)@11..12
-                        Node(LitExpr)@11..12
-                          Node(IntLit)@11..12
-                            Token(DecInt)@11..12 "5"
-                      Token(Comma)@12..13 ","
-                      Node(FunArg)@13..14
-                        Node(LitExpr)@13..14
-                          Node(IntLit)@13..14
-                            Token(DecInt)@13..14 "6"
-                      Token(RParen)@14..15 ")"
+                Root
+                  FunCallExpr
+                    FunCallExpr
+                      IdentExpr
+                        0..1 Ident "f"
+                      FunArgList
+                        1..2 LParen "("
+                        FunArg
+                          LitExpr
+                            IntLit
+                              2..3 DecInt "1"
+                        3..4 Comma ","
+                        FunArg
+                          LitExpr
+                            IntLit
+                              4..5 DecInt "2"
+                        5..6 Comma ","
+                        FunArg
+                          LitExpr
+                            IntLit
+                              6..7 DecInt "3"
+                        7..8 RParen ")"
+                    FunArgList
+                      8..9 LParen "("
+                      FunArg
+                        LitExpr
+                          IntLit
+                            9..10 DecInt "4"
+                      10..11 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            11..12 DecInt "5"
+                      12..13 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            13..14 DecInt "6"
+                      14..15 RParen ")"
 
                 errors = []
             "#]],
@@ -739,15 +738,15 @@ mod expr {
         check_expr(
             "x.f()",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(MethodCallExpr)@0..5
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "x"
-                    Token(Dot)@1..2 "."
-                    Token(Ident)@2..3 "f"
-                    Node(FunArgList)@3..5
-                      Token(LParen)@3..4 "("
-                      Token(RParen)@4..5 ")"
+                Root
+                  MethodCallExpr
+                    IdentExpr
+                      0..1 Ident "x"
+                    1..2 Dot "."
+                    2..3 Ident "f"
+                    FunArgList
+                      3..4 LParen "("
+                      4..5 RParen ")"
 
                 errors = []
             "#]],
@@ -755,29 +754,29 @@ mod expr {
         check_expr(
             "x.f(1,2,3)",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(MethodCallExpr)@0..10
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "x"
-                    Token(Dot)@1..2 "."
-                    Token(Ident)@2..3 "f"
-                    Node(FunArgList)@3..10
-                      Token(LParen)@3..4 "("
-                      Node(FunArg)@4..5
-                        Node(LitExpr)@4..5
-                          Node(IntLit)@4..5
-                            Token(DecInt)@4..5 "1"
-                      Token(Comma)@5..6 ","
-                      Node(FunArg)@6..7
-                        Node(LitExpr)@6..7
-                          Node(IntLit)@6..7
-                            Token(DecInt)@6..7 "2"
-                      Token(Comma)@7..8 ","
-                      Node(FunArg)@8..9
-                        Node(LitExpr)@8..9
-                          Node(IntLit)@8..9
-                            Token(DecInt)@8..9 "3"
-                      Token(RParen)@9..10 ")"
+                Root
+                  MethodCallExpr
+                    IdentExpr
+                      0..1 Ident "x"
+                    1..2 Dot "."
+                    2..3 Ident "f"
+                    FunArgList
+                      3..4 LParen "("
+                      FunArg
+                        LitExpr
+                          IntLit
+                            4..5 DecInt "1"
+                      5..6 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            6..7 DecInt "2"
+                      7..8 Comma ","
+                      FunArg
+                        LitExpr
+                          IntLit
+                            8..9 DecInt "3"
+                      9..10 RParen ")"
 
                 errors = []
             "#]],
@@ -785,63 +784,63 @@ mod expr {
         check_expr(
             "x.y.f(1,2,3)(false).g(4,5,6).z",
             expect![[r#"
-                Node(Root)@0..30
-                  Node(FieldProjExpr)@0..30
-                    Node(MethodCallExpr)@0..28
-                      Node(FunCallExpr)@0..19
-                        Node(MethodCallExpr)@0..12
-                          Node(FieldProjExpr)@0..3
-                            Node(IdentExpr)@0..1
-                              Token(Ident)@0..1 "x"
-                            Token(Dot)@1..2 "."
-                            Token(Ident)@2..3 "y"
-                          Token(Dot)@3..4 "."
-                          Token(Ident)@4..5 "f"
-                          Node(FunArgList)@5..12
-                            Token(LParen)@5..6 "("
-                            Node(FunArg)@6..7
-                              Node(LitExpr)@6..7
-                                Node(IntLit)@6..7
-                                  Token(DecInt)@6..7 "1"
-                            Token(Comma)@7..8 ","
-                            Node(FunArg)@8..9
-                              Node(LitExpr)@8..9
-                                Node(IntLit)@8..9
-                                  Token(DecInt)@8..9 "2"
-                            Token(Comma)@9..10 ","
-                            Node(FunArg)@10..11
-                              Node(LitExpr)@10..11
-                                Node(IntLit)@10..11
-                                  Token(DecInt)@10..11 "3"
-                            Token(RParen)@11..12 ")"
-                        Node(FunArgList)@12..19
-                          Token(LParen)@12..13 "("
-                          Node(FunArg)@13..18
-                            Node(LitExpr)@13..18
-                              Node(BoolLit)@13..18
-                                Token(KwFalse)@13..18 "false"
-                          Token(RParen)@18..19 ")"
-                      Token(Dot)@19..20 "."
-                      Token(Ident)@20..21 "g"
-                      Node(FunArgList)@21..28
-                        Token(LParen)@21..22 "("
-                        Node(FunArg)@22..23
-                          Node(LitExpr)@22..23
-                            Node(IntLit)@22..23
-                              Token(DecInt)@22..23 "4"
-                        Token(Comma)@23..24 ","
-                        Node(FunArg)@24..25
-                          Node(LitExpr)@24..25
-                            Node(IntLit)@24..25
-                              Token(DecInt)@24..25 "5"
-                        Token(Comma)@25..26 ","
-                        Node(FunArg)@26..27
-                          Node(LitExpr)@26..27
-                            Node(IntLit)@26..27
-                              Token(DecInt)@26..27 "6"
-                        Token(RParen)@27..28 ")"
-                    Token(Dot)@28..29 "."
-                    Token(Ident)@29..30 "z"
+                Root
+                  FieldProjExpr
+                    MethodCallExpr
+                      FunCallExpr
+                        MethodCallExpr
+                          FieldProjExpr
+                            IdentExpr
+                              0..1 Ident "x"
+                            1..2 Dot "."
+                            2..3 Ident "y"
+                          3..4 Dot "."
+                          4..5 Ident "f"
+                          FunArgList
+                            5..6 LParen "("
+                            FunArg
+                              LitExpr
+                                IntLit
+                                  6..7 DecInt "1"
+                            7..8 Comma ","
+                            FunArg
+                              LitExpr
+                                IntLit
+                                  8..9 DecInt "2"
+                            9..10 Comma ","
+                            FunArg
+                              LitExpr
+                                IntLit
+                                  10..11 DecInt "3"
+                            11..12 RParen ")"
+                        FunArgList
+                          12..13 LParen "("
+                          FunArg
+                            LitExpr
+                              BoolLit
+                                13..18 KwFalse "false"
+                          18..19 RParen ")"
+                      19..20 Dot "."
+                      20..21 Ident "g"
+                      FunArgList
+                        21..22 LParen "("
+                        FunArg
+                          LitExpr
+                            IntLit
+                              22..23 DecInt "4"
+                        23..24 Comma ","
+                        FunArg
+                          LitExpr
+                            IntLit
+                              24..25 DecInt "5"
+                        25..26 Comma ","
+                        FunArg
+                          LitExpr
+                            IntLit
+                              26..27 DecInt "6"
+                        27..28 RParen ")"
+                    28..29 Dot "."
+                    29..30 Ident "z"
 
                 errors = []
             "#]],
@@ -853,18 +852,18 @@ mod expr {
         check_expr(
             "fun() => 1",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(FunLitExpr)@0..10
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..5
-                      Token(LParen)@3..4 "("
-                      Token(RParen)@4..5 ")"
-                    Token(Whitespace)@5..6 " "
-                    Token(FatArrow)@6..8 "=>"
-                    Token(Whitespace)@8..9 " "
-                    Node(LitExpr)@9..10
-                      Node(IntLit)@9..10
-                        Token(DecInt)@9..10 "1"
+                Root
+                  FunLitExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      4..5 RParen ")"
+                    5..6 Whitespace " "
+                    6..8 FatArrow "=>"
+                    8..9 Whitespace " "
+                    LitExpr
+                      IntLit
+                        9..10 DecInt "1"
 
                 errors = []
             "#]],
@@ -872,21 +871,21 @@ mod expr {
         check_expr(
             "fun(x) => 1",
             expect![[r#"
-                Node(Root)@0..11
-                  Node(FunLitExpr)@0..11
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..6
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..5
-                        Node(IdentPat)@4..5
-                          Token(Ident)@4..5 "x"
-                      Token(RParen)@5..6 ")"
-                    Token(Whitespace)@6..7 " "
-                    Token(FatArrow)@7..9 "=>"
-                    Token(Whitespace)@9..10 " "
-                    Node(LitExpr)@10..11
-                      Node(IntLit)@10..11
-                        Token(DecInt)@10..11 "1"
+                Root
+                  FunLitExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        IdentPat
+                          4..5 Ident "x"
+                      5..6 RParen ")"
+                    6..7 Whitespace " "
+                    7..9 FatArrow "=>"
+                    9..10 Whitespace " "
+                    LitExpr
+                      IntLit
+                        10..11 DecInt "1"
 
                 errors = []
             "#]],
@@ -894,31 +893,31 @@ mod expr {
         check_expr(
             "fun(x, y: Int) => 1",
             expect![[r#"
-                Node(Root)@0..19
-                  Node(FunLitExpr)@0..19
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..14
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..5
-                        Node(IdentPat)@4..5
-                          Token(Ident)@4..5 "x"
-                      Token(Comma)@5..6 ","
-                      Token(Whitespace)@6..7 " "
-                      Node(FunParam)@7..13
-                        Node(IdentPat)@7..8
-                          Token(Ident)@7..8 "y"
-                        Node(TypeAnn)@8..13
-                          Token(Colon)@8..9 ":"
-                          Token(Whitespace)@9..10 " "
-                          Node(IdentExpr)@10..13
-                            Token(Ident)@10..13 "Int"
-                      Token(RParen)@13..14 ")"
-                    Token(Whitespace)@14..15 " "
-                    Token(FatArrow)@15..17 "=>"
-                    Token(Whitespace)@17..18 " "
-                    Node(LitExpr)@18..19
-                      Node(IntLit)@18..19
-                        Token(DecInt)@18..19 "1"
+                Root
+                  FunLitExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        IdentPat
+                          4..5 Ident "x"
+                      5..6 Comma ","
+                      6..7 Whitespace " "
+                      FunParam
+                        IdentPat
+                          7..8 Ident "y"
+                        TypeAnn
+                          8..9 Colon ":"
+                          9..10 Whitespace " "
+                          IdentExpr
+                            10..13 Ident "Int"
+                      13..14 RParen ")"
+                    14..15 Whitespace " "
+                    15..17 FatArrow "=>"
+                    17..18 Whitespace " "
+                    LitExpr
+                      IntLit
+                        18..19 DecInt "1"
 
                 errors = []
             "#]],
@@ -926,32 +925,32 @@ mod expr {
         check_expr(
             "fun(@x, y: Int) => 1",
             expect![[r#"
-                Node(Root)@0..20
-                  Node(FunLitExpr)@0..20
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..15
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..6
-                        Token(At)@4..5 "@"
-                        Node(IdentPat)@5..6
-                          Token(Ident)@5..6 "x"
-                      Token(Comma)@6..7 ","
-                      Token(Whitespace)@7..8 " "
-                      Node(FunParam)@8..14
-                        Node(IdentPat)@8..9
-                          Token(Ident)@8..9 "y"
-                        Node(TypeAnn)@9..14
-                          Token(Colon)@9..10 ":"
-                          Token(Whitespace)@10..11 " "
-                          Node(IdentExpr)@11..14
-                            Token(Ident)@11..14 "Int"
-                      Token(RParen)@14..15 ")"
-                    Token(Whitespace)@15..16 " "
-                    Token(FatArrow)@16..18 "=>"
-                    Token(Whitespace)@18..19 " "
-                    Node(LitExpr)@19..20
-                      Node(IntLit)@19..20
-                        Token(DecInt)@19..20 "1"
+                Root
+                  FunLitExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        4..5 At "@"
+                        IdentPat
+                          5..6 Ident "x"
+                      6..7 Comma ","
+                      7..8 Whitespace " "
+                      FunParam
+                        IdentPat
+                          8..9 Ident "y"
+                        TypeAnn
+                          9..10 Colon ":"
+                          10..11 Whitespace " "
+                          IdentExpr
+                            11..14 Ident "Int"
+                      14..15 RParen ")"
+                    15..16 Whitespace " "
+                    16..18 FatArrow "=>"
+                    18..19 Whitespace " "
+                    LitExpr
+                      IntLit
+                        19..20 DecInt "1"
 
                 errors = []
             "#]],
@@ -963,18 +962,18 @@ mod expr {
         check_expr(
             "fun() -> 1",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(FunTypeExpr)@0..10
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..5
-                      Token(LParen)@3..4 "("
-                      Token(RParen)@4..5 ")"
-                    Token(Whitespace)@5..6 " "
-                    Token(ThinArrow)@6..8 "->"
-                    Token(Whitespace)@8..9 " "
-                    Node(LitExpr)@9..10
-                      Node(IntLit)@9..10
-                        Token(DecInt)@9..10 "1"
+                Root
+                  FunTypeExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      4..5 RParen ")"
+                    5..6 Whitespace " "
+                    6..8 ThinArrow "->"
+                    8..9 Whitespace " "
+                    LitExpr
+                      IntLit
+                        9..10 DecInt "1"
 
                 errors = []
             "#]],
@@ -982,21 +981,21 @@ mod expr {
         check_expr(
             "fun(x) -> 1",
             expect![[r#"
-                Node(Root)@0..11
-                  Node(FunTypeExpr)@0..11
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..6
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..5
-                        Node(IdentPat)@4..5
-                          Token(Ident)@4..5 "x"
-                      Token(RParen)@5..6 ")"
-                    Token(Whitespace)@6..7 " "
-                    Token(ThinArrow)@7..9 "->"
-                    Token(Whitespace)@9..10 " "
-                    Node(LitExpr)@10..11
-                      Node(IntLit)@10..11
-                        Token(DecInt)@10..11 "1"
+                Root
+                  FunTypeExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        IdentPat
+                          4..5 Ident "x"
+                      5..6 RParen ")"
+                    6..7 Whitespace " "
+                    7..9 ThinArrow "->"
+                    9..10 Whitespace " "
+                    LitExpr
+                      IntLit
+                        10..11 DecInt "1"
 
                 errors = []
             "#]],
@@ -1004,31 +1003,31 @@ mod expr {
         check_expr(
             "fun(x, y: Int) -> 1",
             expect![[r#"
-                Node(Root)@0..19
-                  Node(FunTypeExpr)@0..19
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..14
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..5
-                        Node(IdentPat)@4..5
-                          Token(Ident)@4..5 "x"
-                      Token(Comma)@5..6 ","
-                      Token(Whitespace)@6..7 " "
-                      Node(FunParam)@7..13
-                        Node(IdentPat)@7..8
-                          Token(Ident)@7..8 "y"
-                        Node(TypeAnn)@8..13
-                          Token(Colon)@8..9 ":"
-                          Token(Whitespace)@9..10 " "
-                          Node(IdentExpr)@10..13
-                            Token(Ident)@10..13 "Int"
-                      Token(RParen)@13..14 ")"
-                    Token(Whitespace)@14..15 " "
-                    Token(ThinArrow)@15..17 "->"
-                    Token(Whitespace)@17..18 " "
-                    Node(LitExpr)@18..19
-                      Node(IntLit)@18..19
-                        Token(DecInt)@18..19 "1"
+                Root
+                  FunTypeExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        IdentPat
+                          4..5 Ident "x"
+                      5..6 Comma ","
+                      6..7 Whitespace " "
+                      FunParam
+                        IdentPat
+                          7..8 Ident "y"
+                        TypeAnn
+                          8..9 Colon ":"
+                          9..10 Whitespace " "
+                          IdentExpr
+                            10..13 Ident "Int"
+                      13..14 RParen ")"
+                    14..15 Whitespace " "
+                    15..17 ThinArrow "->"
+                    17..18 Whitespace " "
+                    LitExpr
+                      IntLit
+                        18..19 DecInt "1"
 
                 errors = []
             "#]],
@@ -1036,32 +1035,32 @@ mod expr {
         check_expr(
             "fun(@x, y: Int) -> 1",
             expect![[r#"
-                Node(Root)@0..20
-                  Node(FunTypeExpr)@0..20
-                    Token(KwFun)@0..3 "fun"
-                    Node(FunParamList)@3..15
-                      Token(LParen)@3..4 "("
-                      Node(FunParam)@4..6
-                        Token(At)@4..5 "@"
-                        Node(IdentPat)@5..6
-                          Token(Ident)@5..6 "x"
-                      Token(Comma)@6..7 ","
-                      Token(Whitespace)@7..8 " "
-                      Node(FunParam)@8..14
-                        Node(IdentPat)@8..9
-                          Token(Ident)@8..9 "y"
-                        Node(TypeAnn)@9..14
-                          Token(Colon)@9..10 ":"
-                          Token(Whitespace)@10..11 " "
-                          Node(IdentExpr)@11..14
-                            Token(Ident)@11..14 "Int"
-                      Token(RParen)@14..15 ")"
-                    Token(Whitespace)@15..16 " "
-                    Token(ThinArrow)@16..18 "->"
-                    Token(Whitespace)@18..19 " "
-                    Node(LitExpr)@19..20
-                      Node(IntLit)@19..20
-                        Token(DecInt)@19..20 "1"
+                Root
+                  FunTypeExpr
+                    0..3 KwFun "fun"
+                    FunParamList
+                      3..4 LParen "("
+                      FunParam
+                        4..5 At "@"
+                        IdentPat
+                          5..6 Ident "x"
+                      6..7 Comma ","
+                      7..8 Whitespace " "
+                      FunParam
+                        IdentPat
+                          8..9 Ident "y"
+                        TypeAnn
+                          9..10 Colon ":"
+                          10..11 Whitespace " "
+                          IdentExpr
+                            11..14 Ident "Int"
+                      14..15 RParen ")"
+                    15..16 Whitespace " "
+                    16..18 ThinArrow "->"
+                    18..19 Whitespace " "
+                    LitExpr
+                      IntLit
+                        19..20 DecInt "1"
 
                 errors = []
             "#]],
@@ -1073,16 +1072,16 @@ mod expr {
         check_expr(
             "Int -> Bool",
             expect![[r#"
-                Node(Root)@0..11
-                  Node(FunArrowExpr)@0..11
-                    Node(IdentExpr)@0..3
-                      Token(Ident)@0..3 "Int"
-                    Token(Whitespace)@3..4 " "
-                    Node(RetType)@4..11
-                      Token(ThinArrow)@4..6 "->"
-                      Token(Whitespace)@6..7 " "
-                      Node(IdentExpr)@7..11
-                        Token(Ident)@7..11 "Bool"
+                Root
+                  FunArrowExpr
+                    IdentExpr
+                      0..3 Ident "Int"
+                    3..4 Whitespace " "
+                    RetType
+                      4..6 ThinArrow "->"
+                      6..7 Whitespace " "
+                      IdentExpr
+                        7..11 Ident "Bool"
 
                 errors = []
             "#]],
@@ -1090,23 +1089,23 @@ mod expr {
         check_expr(
             "A -> B -> C",
             expect![[r#"
-                Node(Root)@0..11
-                  Node(FunArrowExpr)@0..11
-                    Node(IdentExpr)@0..1
-                      Token(Ident)@0..1 "A"
-                    Token(Whitespace)@1..2 " "
-                    Node(RetType)@2..11
-                      Token(ThinArrow)@2..4 "->"
-                      Token(Whitespace)@4..5 " "
-                      Node(FunArrowExpr)@5..11
-                        Node(IdentExpr)@5..6
-                          Token(Ident)@5..6 "B"
-                        Token(Whitespace)@6..7 " "
-                        Node(RetType)@7..11
-                          Token(ThinArrow)@7..9 "->"
-                          Token(Whitespace)@9..10 " "
-                          Node(IdentExpr)@10..11
-                            Token(Ident)@10..11 "C"
+                Root
+                  FunArrowExpr
+                    IdentExpr
+                      0..1 Ident "A"
+                    1..2 Whitespace " "
+                    RetType
+                      2..4 ThinArrow "->"
+                      4..5 Whitespace " "
+                      FunArrowExpr
+                        IdentExpr
+                          5..6 Ident "B"
+                        6..7 Whitespace " "
+                        RetType
+                          7..9 ThinArrow "->"
+                          9..10 Whitespace " "
+                          IdentExpr
+                            10..11 Ident "C"
 
                 errors = []
             "#]],
@@ -1114,26 +1113,26 @@ mod expr {
         check_expr(
             "(A -> B) -> C",
             expect![[r#"
-                Node(Root)@0..13
-                  Node(FunArrowExpr)@0..13
-                    Node(ParenExpr)@0..8
-                      Token(LParen)@0..1 "("
-                      Node(FunArrowExpr)@1..7
-                        Node(IdentExpr)@1..2
-                          Token(Ident)@1..2 "A"
-                        Token(Whitespace)@2..3 " "
-                        Node(RetType)@3..7
-                          Token(ThinArrow)@3..5 "->"
-                          Token(Whitespace)@5..6 " "
-                          Node(IdentExpr)@6..7
-                            Token(Ident)@6..7 "B"
-                      Token(RParen)@7..8 ")"
-                    Token(Whitespace)@8..9 " "
-                    Node(RetType)@9..13
-                      Token(ThinArrow)@9..11 "->"
-                      Token(Whitespace)@11..12 " "
-                      Node(IdentExpr)@12..13
-                        Token(Ident)@12..13 "C"
+                Root
+                  FunArrowExpr
+                    ParenExpr
+                      0..1 LParen "("
+                      FunArrowExpr
+                        IdentExpr
+                          1..2 Ident "A"
+                        2..3 Whitespace " "
+                        RetType
+                          3..5 ThinArrow "->"
+                          5..6 Whitespace " "
+                          IdentExpr
+                            6..7 Ident "B"
+                      7..8 RParen ")"
+                    8..9 Whitespace " "
+                    RetType
+                      9..11 ThinArrow "->"
+                      11..12 Whitespace " "
+                      IdentExpr
+                        12..13 Ident "C"
 
                 errors = []
             "#]],
@@ -1145,36 +1144,13 @@ mod pat {
     use super::*;
 
     #[track_caller]
-    #[allow(clippy::needless_pass_by_value)]
     fn check_pat(src: &str, expected: Expect) {
-        let (root, errors) = parse_pat(src);
-        let node = root.syntax();
-
+        let (tree, errors) = parse_pat(src);
         let mut output = String::new();
-        writeln!(output, "{node:#?}").unwrap();
+        writeln!(output, "{tree:?}").unwrap();
         writeln!(output, "errors = {errors:#?}").unwrap();
 
         expected.assert_eq(&output);
-    }
-
-    #[test]
-    fn empty_pat() {
-        check_pat(
-            "",
-            expect![[r#"
-                Node(Root)@0..0
-                  Node(Error)@0..0
-
-                errors = [
-                    SyntaxError {
-                        span: 0..0,
-                        kind: Custom {
-                            msg: "expected pattern",
-                        },
-                    },
-                ]
-            "#]],
-        );
     }
 
     #[test]
@@ -1182,9 +1158,9 @@ mod pat {
         check_pat(
             "_",
             expect![[r#"
-                Node(Root)@0..1
-                  Node(UnderscorePat)@0..1
-                    Token(Underscore)@0..1 "_"
+                Root
+                  UnderscorePat
+                    0..1 Underscore "_"
 
                 errors = []
             "#]],
@@ -1194,11 +1170,11 @@ mod pat {
     #[test]
     fn ident_pat() {
         check_pat(
-            "_",
+            "x",
             expect![[r#"
-                Node(Root)@0..1
-                  Node(UnderscorePat)@0..1
-                    Token(Underscore)@0..1 "_"
+                Root
+                  IdentPat
+                    0..1 Ident "x"
 
                 errors = []
             "#]],
@@ -1210,10 +1186,10 @@ mod pat {
         check_pat(
             "true",
             expect![[r#"
-                Node(Root)@0..4
-                  Node(LitPat)@0..4
-                    Node(BoolLit)@0..4
-                      Token(KwTrue)@0..4 "true"
+                Root
+                  LitPat
+                    BoolLit
+                      0..4 KwTrue "true"
 
                 errors = []
             "#]],
@@ -1221,10 +1197,10 @@ mod pat {
         check_pat(
             "false",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(LitPat)@0..5
-                    Node(BoolLit)@0..5
-                      Token(KwFalse)@0..5 "false"
+                Root
+                  LitPat
+                    BoolLit
+                      0..5 KwFalse "false"
 
                 errors = []
             "#]],
@@ -1236,10 +1212,10 @@ mod pat {
         check_pat(
             "{}",
             expect![[r#"
-                Node(Root)@0..2
-                  Node(RecordLitPat)@0..2
-                    Token(LCurly)@0..1 "{"
-                    Token(RCurly)@1..2 "}"
+                Root
+                  RecordLitPat
+                    0..1 LCurly "{"
+                    1..2 RCurly "}"
 
                 errors = []
             "#]],
@@ -1247,12 +1223,12 @@ mod pat {
         check_pat(
             "{x}",
             expect![[r#"
-                Node(Root)@0..3
-                  Node(RecordLitPat)@0..3
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordPatField)@1..2
-                      Token(Ident)@1..2 "x"
-                    Token(RCurly)@2..3 "}"
+                Root
+                  RecordLitPat
+                    0..1 LCurly "{"
+                    RecordPatField
+                      1..2 Ident "x"
+                    2..3 RCurly "}"
 
                 errors = []
             "#]],
@@ -1260,15 +1236,15 @@ mod pat {
         check_pat(
             "{x=y}",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(RecordLitPat)@0..5
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordPatField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Eq)@2..3 "="
-                      Node(IdentPat)@3..4
-                        Token(Ident)@3..4 "y"
-                    Token(RCurly)@4..5 "}"
+                Root
+                  RecordLitPat
+                    0..1 LCurly "{"
+                    RecordPatField
+                      1..2 Ident "x"
+                      2..3 Eq "="
+                      IdentPat
+                        3..4 Ident "y"
+                    4..5 RCurly "}"
 
                 errors = []
             "#]],
@@ -1276,23 +1252,23 @@ mod pat {
         check_pat(
             "{x=1,y=2}",
             expect![[r#"
-                Node(Root)@0..9
-                  Node(RecordLitPat)@0..9
-                    Token(LCurly)@0..1 "{"
-                    Node(RecordPatField)@1..4
-                      Token(Ident)@1..2 "x"
-                      Token(Eq)@2..3 "="
-                      Node(LitPat)@3..4
-                        Node(IntLit)@3..4
-                          Token(DecInt)@3..4 "1"
-                    Token(Comma)@4..5 ","
-                    Node(RecordPatField)@5..8
-                      Token(Ident)@5..6 "y"
-                      Token(Eq)@6..7 "="
-                      Node(LitPat)@7..8
-                        Node(IntLit)@7..8
-                          Token(DecInt)@7..8 "2"
-                    Token(RCurly)@8..9 "}"
+                Root
+                  RecordLitPat
+                    0..1 LCurly "{"
+                    RecordPatField
+                      1..2 Ident "x"
+                      2..3 Eq "="
+                      LitPat
+                        IntLit
+                          3..4 DecInt "1"
+                    4..5 Comma ","
+                    RecordPatField
+                      5..6 Ident "y"
+                      6..7 Eq "="
+                      LitPat
+                        IntLit
+                          7..8 DecInt "2"
+                    8..9 RCurly "}"
 
                 errors = []
             "#]],
@@ -1304,15 +1280,15 @@ mod pat {
         check_pat(
             "a | b",
             expect![[r#"
-                Node(Root)@0..5
-                  Node(OrPat)@0..5
-                    Node(IdentPat)@0..1
-                      Token(Ident)@0..1 "a"
-                    Token(Whitespace)@1..2 " "
-                    Token(Pipe)@2..3 "|"
-                    Token(Whitespace)@3..4 " "
-                    Node(IdentPat)@4..5
-                      Token(Ident)@4..5 "b"
+                Root
+                  OrPat
+                    IdentPat
+                      0..1 Ident "a"
+                    1..2 Whitespace " "
+                    2..3 Pipe "|"
+                    3..4 Whitespace " "
+                    IdentPat
+                      4..5 Ident "b"
 
                 errors = []
             "#]],
@@ -1320,25 +1296,25 @@ mod pat {
         check_pat(
             "a | b | c | d",
             expect![[r#"
-                Node(Root)@0..13
-                  Node(OrPat)@0..13
-                    Node(IdentPat)@0..1
-                      Token(Ident)@0..1 "a"
-                    Token(Whitespace)@1..2 " "
-                    Token(Pipe)@2..3 "|"
-                    Token(Whitespace)@3..4 " "
-                    Node(IdentPat)@4..5
-                      Token(Ident)@4..5 "b"
-                    Token(Whitespace)@5..6 " "
-                    Token(Pipe)@6..7 "|"
-                    Token(Whitespace)@7..8 " "
-                    Node(IdentPat)@8..9
-                      Token(Ident)@8..9 "c"
-                    Token(Whitespace)@9..10 " "
-                    Token(Pipe)@10..11 "|"
-                    Token(Whitespace)@11..12 " "
-                    Node(IdentPat)@12..13
-                      Token(Ident)@12..13 "d"
+                Root
+                  OrPat
+                    IdentPat
+                      0..1 Ident "a"
+                    1..2 Whitespace " "
+                    2..3 Pipe "|"
+                    3..4 Whitespace " "
+                    IdentPat
+                      4..5 Ident "b"
+                    5..6 Whitespace " "
+                    6..7 Pipe "|"
+                    7..8 Whitespace " "
+                    IdentPat
+                      8..9 Ident "c"
+                    9..10 Whitespace " "
+                    10..11 Pipe "|"
+                    11..12 Whitespace " "
+                    IdentPat
+                      12..13 Ident "d"
 
                 errors = []
             "#]],
@@ -1350,13 +1326,10 @@ mod toplevel {
     use super::*;
 
     #[track_caller]
-    #[allow(clippy::needless_pass_by_value)]
     fn check_module(src: &str, expected: Expect) {
-        let (root, errors) = parse_module(src);
-        let node = root.syntax();
-
+        let (tree, errors) = parse_module(src);
         let mut output = String::new();
-        writeln!(output, "{node:#?}").unwrap();
+        writeln!(output, "{tree:?}").unwrap();
         writeln!(output, "errors = {errors:?}").unwrap();
 
         expected.assert_eq(&output);
@@ -1367,8 +1340,8 @@ mod toplevel {
         check_module(
             "",
             expect![[r#"
-                Node(Root)@0..0
-                  Node(Module)@0..0
+                Root
+                  Module
 
                 errors = []
             "#]],
@@ -1378,21 +1351,34 @@ mod toplevel {
     #[test]
     fn def() {
         check_module(
-            "def x = 5;",
+            "def x = let y = 5; x;",
             expect![[r#"
-                Node(Root)@0..10
-                  Node(Module)@0..10
-                    Node(DefItem)@0..10
-                      Token(KwDef)@0..3 "def"
-                      Token(Whitespace)@3..4 " "
-                      Token(Ident)@4..5 "x"
-                      Token(Whitespace)@5..6 " "
-                      Token(Eq)@6..7 "="
-                      Token(Whitespace)@7..8 " "
-                      Node(LitExpr)@8..9
-                        Node(IntLit)@8..9
-                          Token(DecInt)@8..9 "5"
-                      Token(Semicolon)@9..10 ";"
+                Root
+                  Module
+                    DefItem
+                      0..3 KwDef "def"
+                      3..4 Whitespace " "
+                      4..5 Ident "x"
+                      5..6 Whitespace " "
+                      6..7 Eq "="
+                      7..8 Whitespace " "
+                      LetExpr
+                        8..11 KwLet "let"
+                        11..12 Whitespace " "
+                        IdentPat
+                          12..13 Ident "y"
+                        13..14 Whitespace " "
+                        LetInit
+                          14..15 Eq "="
+                          15..16 Whitespace " "
+                          LitExpr
+                            IntLit
+                              16..17 DecInt "5"
+                        17..18 Semicolon ";"
+                        18..19 Whitespace " "
+                        IdentExpr
+                          19..20 Ident "x"
+                      20..21 Semicolon ";"
 
                 errors = []
             "#]],
@@ -1400,24 +1386,24 @@ mod toplevel {
         check_module(
             "def x: Int = 5;",
             expect![[r#"
-                Node(Root)@0..15
-                  Node(Module)@0..15
-                    Node(DefItem)@0..15
-                      Token(KwDef)@0..3 "def"
-                      Token(Whitespace)@3..4 " "
-                      Token(Ident)@4..5 "x"
-                      Node(TypeAnn)@5..10
-                        Token(Colon)@5..6 ":"
-                        Token(Whitespace)@6..7 " "
-                        Node(IdentExpr)@7..10
-                          Token(Ident)@7..10 "Int"
-                      Token(Whitespace)@10..11 " "
-                      Token(Eq)@11..12 "="
-                      Token(Whitespace)@12..13 " "
-                      Node(LitExpr)@13..14
-                        Node(IntLit)@13..14
-                          Token(DecInt)@13..14 "5"
-                      Token(Semicolon)@14..15 ";"
+                Root
+                  Module
+                    DefItem
+                      0..3 KwDef "def"
+                      3..4 Whitespace " "
+                      4..5 Ident "x"
+                      TypeAnn
+                        5..6 Colon ":"
+                        6..7 Whitespace " "
+                        IdentExpr
+                          7..10 Ident "Int"
+                      10..11 Whitespace " "
+                      11..12 Eq "="
+                      12..13 Whitespace " "
+                      LitExpr
+                        IntLit
+                          13..14 DecInt "5"
+                      14..15 Semicolon ";"
 
                 errors = []
             "#]],
