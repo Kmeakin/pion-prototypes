@@ -34,10 +34,6 @@ impl BytePos {
 
     pub fn truncate_usize(value: usize) -> Self { Self(u32::truncate_from(value)) }
 
-    pub fn truncate_u64(value: u64) -> Self { Self(u32::truncate_from(value)) }
-
-    pub fn extend_u64(self) -> u64 { u64::zext_from(self.0) }
-
     pub fn extend_usize(self) -> usize { usize::zext_from(self.0) }
 }
 
@@ -47,10 +43,6 @@ impl From<u32> for BytePos {
 
 impl From<BytePos> for u32 {
     fn from(pos: BytePos) -> Self { pos.0 }
-}
-
-impl From<BytePos> for u64 {
-    fn from(pos: BytePos) -> Self { pos.extend_u64() }
 }
 
 impl From<BytePos> for usize {
@@ -96,13 +88,6 @@ impl ByteSpan {
         Self::new(
             BytePos::truncate_usize(range.start),
             BytePos::truncate_usize(range.end),
-        )
-    }
-
-    pub fn truncate_u64(range: Range<u64>) -> Self {
-        Self::new(
-            BytePos::truncate_u64(range.start),
-            BytePos::truncate_u64(range.end),
         )
     }
 
