@@ -11,24 +11,6 @@ impl Add<u32> for BytePos {
     fn add(self, rhs: u32) -> Self::Output { Self(self.0 + rhs) }
 }
 
-impl PartialEq<u32> for BytePos {
-    fn eq(&self, other: &u32) -> bool { self.0 == *other }
-}
-
-impl PartialOrd<u32> for BytePos {
-    fn partial_cmp(&self, other: &u32) -> Option<std::cmp::Ordering> { self.0.partial_cmp(other) }
-}
-
-impl PartialOrd<usize> for BytePos {
-    fn partial_cmp(&self, other: &usize) -> Option<std::cmp::Ordering> {
-        self.partial_cmp(&Self::truncate_usize(*other))
-    }
-}
-
-impl PartialEq<usize> for BytePos {
-    fn eq(&self, other: &usize) -> bool { *self == Self::truncate_usize(*other) }
-}
-
 impl BytePos {
     pub fn new(value: u32) -> Self { Self(value) }
 
@@ -47,10 +29,6 @@ impl From<BytePos> for u32 {
 
 impl From<BytePos> for usize {
     fn from(pos: BytePos) -> Self { pos.extend_usize() }
-}
-
-impl From<text_size::TextSize> for BytePos {
-    fn from(size: text_size::TextSize) -> Self { Self(u32::from(size)) }
 }
 
 impl fmt::Debug for BytePos {
@@ -105,12 +83,6 @@ impl From<ByteSpan> for Range<u32> {
 
 impl From<Range<u32>> for ByteSpan {
     fn from(range: Range<u32>) -> Self { Self::new(range.start.into(), range.end.into()) }
-}
-
-impl From<text_size::TextRange> for ByteSpan {
-    fn from(range: text_size::TextRange) -> Self {
-        Self::new(range.start().into(), range.end().into())
-    }
 }
 
 impl fmt::Debug for ByteSpan {
