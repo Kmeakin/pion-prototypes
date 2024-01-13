@@ -17,6 +17,9 @@ all      = { level = "warn", priority = 0 }
 nursery  = { level = "warn", priority = 0 }
 pedantic = { level = "warn", priority = 0 }
 
+# Use methods from `pion_utils::numeric_conversion` instead
+as_conversions = { level = "deny", priority = 100 }
+
 items_after_statements  = { level = "allow", priority = 100 }
 match_bool              = { level = "allow", priority = 100 }
 missing_const_for_fn    = { level = "allow", priority = 100 }

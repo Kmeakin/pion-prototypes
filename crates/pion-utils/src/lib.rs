@@ -1,5 +1,8 @@
+#![feature(maybe_uninit_slice)]
+
 pub mod identity;
 pub mod location;
+pub mod numeric_conversions;
 pub mod slice_vec;
 pub mod source;
 pub mod symbol;

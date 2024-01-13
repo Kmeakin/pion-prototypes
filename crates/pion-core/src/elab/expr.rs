@@ -2,6 +2,7 @@
 
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::location::ByteSpan;
+use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
@@ -86,10 +87,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let exprs = exprs.into();
 
                 let expr = Expr::ArrayLit(exprs);
-                #[allow(clippy::cast_possible_truncation)]
-                // REASON: files cannot be more than 4GiB in size, so array literals will always
-                // have less than `u32::MAX` elements
-                let r#type = Type::array_type(elem_type, exprs.len() as u32);
+                let r#type = Type::array_type(elem_type, u32::truncate_from(exprs.len()));
                 SynthExpr::new(expr, r#type)
             }
             hir::Expr::TupleLit(_, elems) => {
@@ -98,7 +96,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let mut offset = EnvLen::new();
                 for (index, elem) in elems.iter().enumerate() {
-                    let name = FieldName::tuple(index);
+                    let name = FieldName::tuple(u32::truncate_from(index));
                     let Synth(elem_expr, elem_type) = self.synth_expr(elem);
                     expr_fields.push((name, elem_expr));
                     type_fields.push((name, self.quote_env().quote_offset(&elem_type, offset)));
@@ -410,12 +408,9 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 let Value::Lit(Lit::Int(expected_len)) = expected_len else {
                     return self.synth_and_convert_expr(expr, expected);
                 };
-                if elems.len() != *expected_len as usize {
-                    #[allow(clippy::cast_possible_truncation)]
-                    // REASON: files cannot be more than 4GiB in size, so array literals will always
-                    // have less than `u32::MAX` elements
-                    let actual_len = elems.len() as u32;
 
+                let actual_len = u32::truncate_from(elems.len());
+                if actual_len != *expected_len {
                     self.emit_diagnostic(ElabDiagnostic::ArrayLenMismatch {
                         span: expr.span(),
                         expected_len: *expected_len,
@@ -453,7 +448,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     let type_fields = self.with_scope(|this| {
                         this.bump
                             .alloc_slice_fill_iter(elems.iter().enumerate().map(|(index, elem)| {
-                                let name = FieldName::tuple(index);
+                                let name = FieldName::tuple(u32::truncate_from(index));
                                 let Check(r#type) = this.check_expr_is_type(elem);
                                 let type_value = this.eval_env().eval(&r#type);
                                 this.local_env

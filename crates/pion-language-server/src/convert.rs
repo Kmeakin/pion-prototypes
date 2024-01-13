@@ -3,6 +3,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::diagnostic::LabelStyle;
 use codespan_reporting::files::Files;
 use pion_utils::location::ByteSpan;
+use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::source::{FileId, SourceFile};
 
 pub fn path_to_url(path: &Utf8Path) -> anyhow::Result<lsp_types::Url> {
@@ -21,9 +22,6 @@ pub fn bytespan_to_lsp(span: ByteSpan, file: &SourceFile) -> anyhow::Result<lsp_
     range_to_lsp(span.into(), file)
 }
 
-#[allow(clippy::cast_possible_truncation)]
-// REASON: files cannot be more than 4GiB in size, so locations will always fit
-// in a `u32`
 pub fn range_to_lsp(
     range: std::ops::Range<usize>,
     file: &SourceFile,
@@ -33,12 +31,12 @@ pub fn range_to_lsp(
 
     Ok(lsp_types::Range {
         start: lsp_types::Position {
-            line: (start.line_number - 1) as u32,
-            character: start.column_number as u32,
+            line: u32::truncate_from(start.line_number - 1),
+            character: u32::truncate_from(start.column_number),
         },
         end: lsp_types::Position {
-            line: (end.line_number - 1) as u32,
-            character: end.column_number as u32,
+            line: u32::truncate_from(end.line_number - 1),
+            character: u32::truncate_from(end.column_number),
         },
     })
 }

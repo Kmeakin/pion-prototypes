@@ -1,6 +1,8 @@
 use std::fmt;
 use std::ops::{Add, Index, Range};
 
+use crate::numeric_conversions::{TruncateFrom, ZeroExtendFrom};
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct BytePos(u32);
 
@@ -27,18 +29,16 @@ impl PartialEq<usize> for BytePos {
     fn eq(&self, other: &usize) -> bool { *self == Self::truncate_usize(*other) }
 }
 
-#[allow(clippy::cast_possible_truncation)]
-// REASON: truncations are made explicit by the methods
 impl BytePos {
     pub fn new(value: u32) -> Self { Self(value) }
 
-    pub const fn truncate_usize(value: usize) -> Self { Self(value as u32) }
+    pub fn truncate_usize(value: usize) -> Self { Self(u32::truncate_from(value)) }
 
-    pub const fn truncate_u64(value: u64) -> Self { Self(value as u32) }
+    pub fn truncate_u64(value: u64) -> Self { Self(u32::truncate_from(value)) }
 
-    pub const fn extend_u64(self) -> u64 { self.0 as u64 }
+    pub fn extend_u64(self) -> u64 { u64::zext_from(self.0) }
 
-    pub const fn extend_usize(self) -> usize { self.0 as usize }
+    pub fn extend_usize(self) -> usize { usize::zext_from(self.0) }
 }
 
 impl From<u32> for BytePos {
@@ -92,14 +92,14 @@ impl Index<ByteSpan> for String {
 impl ByteSpan {
     pub const fn new(start: BytePos, end: BytePos) -> Self { Self { start, end } }
 
-    pub const fn truncate_usize(range: Range<usize>) -> Self {
+    pub fn truncate_usize(range: Range<usize>) -> Self {
         Self::new(
             BytePos::truncate_usize(range.start),
             BytePos::truncate_usize(range.end),
         )
     }
 
-    pub const fn truncate_u64(range: Range<u64>) -> Self {
+    pub fn truncate_u64(range: Range<u64>) -> Self {
         Self::new(
             BytePos::truncate_u64(range.start),
             BytePos::truncate_u64(range.end),

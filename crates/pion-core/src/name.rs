@@ -1,5 +1,6 @@
 use std::fmt;
 
+use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::symbol::Symbol;
 
 /// Names for local variable *binders* - ie
@@ -47,7 +48,7 @@ pub enum FieldName {
     User(Symbol),
 }
 impl FieldName {
-    pub fn tuple(index: usize) -> Self { Self::User(Symbol::tuple_index(index)) }
+    pub fn tuple(index: u32) -> Self { Self::User(Symbol::tuple_index(index)) }
 }
 
 impl fmt::Display for FieldName {
@@ -63,6 +64,6 @@ impl FieldName {
         field_names
             .into_iter()
             .enumerate()
-            .all(|(idx, name)| name == Self::tuple(idx))
+            .all(|(idx, name)| name == Self::tuple(u32::truncate_from(idx)))
     }
 }

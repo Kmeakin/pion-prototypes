@@ -1,6 +1,7 @@
 //! Bidirectional elaboration for patterns.
 
 use pion_hir::syntax::{self as hir, Ident};
+use pion_utils::numeric_conversions::TruncateFrom;
 use pion_utils::slice_vec::SliceVec;
 
 use super::diagnostics::ElabDiagnostic;
@@ -56,7 +57,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
 
                 let mut offset = EnvLen::new();
                 for (index, elem) in elems.iter().enumerate() {
-                    let name = FieldName::tuple(index);
+                    let name = FieldName::tuple(u32::truncate_from(index));
                     let Synth(elem_pat, elem_type) = self.synth_pat(elem, idents);
                     pat_fields.push((name, elem_pat));
                     type_fields.push((name, self.quote_env().quote_offset(&elem_type, offset)));

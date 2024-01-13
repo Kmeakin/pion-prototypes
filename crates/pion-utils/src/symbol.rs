@@ -5,6 +5,8 @@ use lasso::Key;
 use nohash::{IntMap, IntSet};
 use once_cell::sync::Lazy;
 
+use crate::numeric_conversions::ZeroExtendFrom;
+
 pub type SymbolMap<V> = IntMap<Symbol, V>;
 pub type SymbolSet = IntSet<Symbol>;
 
@@ -14,30 +16,12 @@ impl nohash::IsEnabled for Symbol {}
 pub struct Symbol(NonZeroU32);
 
 impl Symbol {
-    #[allow(clippy::cast_possible_truncation)]
     const fn from_u32(index: u32) -> Self {
         debug_assert!(index < u32::MAX);
         unsafe { Self(NonZeroU32::new_unchecked(index + 1)) }
     }
 
     const fn as_u32(self) -> u32 { self.0.get() - 1 }
-}
-
-impl From<u32> for Symbol {
-    fn from(value: u32) -> Self { Self::from_u32(value) }
-}
-
-impl From<usize> for Symbol {
-    #[allow(clippy::cast_possible_truncation)]
-    fn from(value: usize) -> Self { Self::from_u32(value as u32) }
-}
-
-impl From<Symbol> for u32 {
-    fn from(symbol: Symbol) -> Self { symbol.as_u32() }
-}
-
-impl From<Symbol> for usize {
-    fn from(symbol: Symbol) -> Self { symbol.as_u32() as Self }
 }
 
 macro_rules! symbols {
@@ -89,17 +73,14 @@ impl From<lasso::Spur> for Symbol {
     fn from(spur: lasso::Spur) -> Self { Self(spur.into_inner()) }
 }
 
-#[allow(clippy::fallible_impl_from)]
-impl From<Symbol> for lasso::Spur {
-    fn from(sym: Symbol) -> Self { Self::try_from_usize(usize::from(sym)).unwrap() }
-}
-
 impl Symbol {
     pub fn intern(sym: impl AsRef<str>) -> Self { (INTERNER.get_or_intern(sym)).into() }
 
     pub fn get(sym: impl AsRef<str>) -> Option<Self> { INTERNER.get(sym).map(Self::from) }
 
-    pub fn as_str(self) -> &'static str { INTERNER.resolve(&lasso::Spur::from(self)) }
+    pub fn as_str(self) -> &'static str {
+        INTERNER.resolve(&lasso::Spur::try_from_usize(usize::zext_from(self.as_u32())).unwrap())
+    }
 
     pub fn is_keyword(self) -> bool {
         matches!(
@@ -116,10 +97,8 @@ impl Symbol {
         )
     }
 
-    pub fn tuple_index(index: usize) -> Self {
+    pub fn tuple_index(index: u32) -> Self {
         if index <= 32 {
-            #[allow(clippy::cast_possible_truncation)]
-            let index = index as u32;
             Self::from_u32(Self::_0.as_u32() + index)
         } else {
             Self::intern(format!("_{index}"))

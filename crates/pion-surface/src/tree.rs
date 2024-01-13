@@ -3,6 +3,7 @@ use std::ops::Range;
 
 use pion_lexer::token::TokenKind;
 use pion_utils::location::ByteSpan;
+use pion_utils::numeric_conversions::{TruncateFrom, ZeroExtendFrom};
 
 use crate::syntax::NodeKind;
 
@@ -84,16 +85,13 @@ impl<Node, Token> NodeOrToken<Node, Token> {
 }
 
 impl SyntaxTree {
-    #[allow(clippy::cast_possible_truncation)]
-    #[allow(clippy::cast_possible_wrap)]
-    #[allow(clippy::cast_sign_loss)]
     pub(crate) fn from_events(text: String, events: &[ParseEvent]) -> Self {
         let Some(root) = events.last() else {
             unreachable!()
         };
 
         let mut data = Vec::with_capacity(events.len());
-        let mut stack = vec![(root, 0, events.len() as u32 - 1)];
+        let mut stack = vec![(root, 0, u32::truncate_from(events.len() - 1))];
         let mut span_start = 0;
 
         while let Some((event, parent_index, self_index)) = stack.pop() {
@@ -119,11 +117,14 @@ impl SyntaxTree {
 
             // Has children, so we descend. We append the children in RPO here as
             // well because they will get reversed when popped off the stack.
+            #[allow(clippy::as_conversions)]
+            #[allow(clippy::cast_possible_wrap)]
+            #[allow(clippy::cast_sign_loss)]
             if let ParseEvent::Node {
                 num_descendents, ..
             } = event
             {
-                let parent_index: u32 = data.len().saturating_sub(1) as u32;
+                let parent_index: u32 = u32::truncate_from(data.len().saturating_sub(1));
                 let len: i32 = *num_descendents as i32 + 1;
                 let start_index: i32 = self_index as i32 - len;
                 let end_index: i32 = self_index as i32 - 1;
@@ -169,6 +170,8 @@ impl SyntaxTree {
             }
         }
     }
+
+    fn get_data(&self, index: u32) -> Option<&TreeDatum> { self.data.get(usize::zext_from(index)) }
 }
 
 impl<'tree> SyntaxToken<'tree> {
@@ -176,7 +179,7 @@ impl<'tree> SyntaxToken<'tree> {
     pub fn span(&self) -> ByteSpan { self.span }
     pub fn text(&self) -> &'tree str { &self.tree.text[self.span()] }
     pub fn parent(&self) -> SyntaxNode<'tree> {
-        match self.tree.data.get(self.parent_index as usize) {
+        match self.tree.get_data(self.parent_index) {
             None | Some(TreeDatum::Token { .. }) => unreachable!(),
             Some(TreeDatum::Node {
                 kind,
@@ -200,12 +203,12 @@ impl<'tree> SyntaxToken<'tree> {
         if !self
             .parent()
             .descendants_range()
-            .contains(&(self.self_index as usize - 1))
+            .contains(&(self.self_index - 1))
         {
             return None;
         }
 
-        match self.tree.data.get(self.self_index as usize - 1) {
+        match self.tree.get_data(self.self_index - 1) {
             None => unreachable!(),
             Some(TreeDatum::Token { kind, span }) => Some(SyntaxElement::Token(SyntaxToken {
                 tree: self.tree,
@@ -236,12 +239,12 @@ impl<'tree> SyntaxToken<'tree> {
         if !self
             .parent()
             .descendants_range()
-            .contains(&(self.self_index as usize + 1))
+            .contains(&(self.self_index + 1))
         {
             return None;
         }
 
-        match self.tree.data.get(self.self_index as usize + 1) {
+        match self.tree.get_data(self.self_index + 1) {
             None => unreachable!(),
             Some(TreeDatum::Token { kind, span }) => Some(SyntaxElement::Token(SyntaxToken {
                 tree: self.tree,
@@ -298,7 +301,7 @@ impl<'tree> SyntaxNode<'tree> {
         if self.self_index == 0 {
             None
         } else {
-            match self.tree.data.get(self.parent_index as usize) {
+            match self.tree.get_data(self.parent_index) {
                 None | Some(TreeDatum::Token { .. }) => unreachable!(),
                 Some(TreeDatum::Node {
                     kind,
@@ -319,9 +322,9 @@ impl<'tree> SyntaxNode<'tree> {
         std::iter::successors(self.parent(), SyntaxNode::parent)
     }
 
-    fn descendants_range(&self) -> Range<usize> {
-        let start = self.self_index as usize + 1;
-        let len = self.num_descendents as usize;
+    fn descendants_range(&self) -> Range<u32> {
+        let start = self.self_index + 1;
+        let len = self.num_descendents;
         (start)..(start + len)
     }
 
@@ -331,33 +334,30 @@ impl<'tree> SyntaxNode<'tree> {
            + DoubleEndedIterator<Item = SyntaxElement<'tree>> {
         let range = self.descendants_range();
         let mut parent_index = self.self_index;
-        self.tree.data[range.clone()]
+        self.tree.data[Range::<usize>::zext_from(range.clone())]
             .iter()
             .zip(range)
-            .map(move |(datum, self_index)| {
-                let self_index = self_index as u32;
-                match datum {
-                    TreeDatum::Token { kind, span } => SyntaxElement::Token(SyntaxToken {
+            .map(move |(datum, self_index)| match datum {
+                TreeDatum::Token { kind, span } => SyntaxElement::Token(SyntaxToken {
+                    tree: self.tree,
+                    kind: *kind,
+                    span: *span,
+                    self_index,
+                    parent_index,
+                }),
+                TreeDatum::Node {
+                    kind,
+                    num_descendents,
+                    parent_index: parent,
+                } => {
+                    parent_index = *parent;
+                    SyntaxElement::Node(SyntaxNode {
                         tree: self.tree,
                         kind: *kind,
-                        span: *span,
                         self_index,
                         parent_index,
-                    }),
-                    TreeDatum::Node {
-                        kind,
-                        num_descendents,
-                        parent_index: parent,
-                    } => {
-                        parent_index = *parent;
-                        SyntaxElement::Node(SyntaxNode {
-                            tree: self.tree,
-                            kind: *kind,
-                            self_index,
-                            parent_index,
-                            num_descendents: *num_descendents,
-                        })
-                    }
+                        num_descendents: *num_descendents,
+                    })
                 }
             })
     }
@@ -375,8 +375,8 @@ impl<'tree> SyntaxNode<'tree> {
         let mut index = start;
         std::iter::from_fn(move || {
             if index < end {
-                let datum = self.tree.data.get(index);
-                let self_index = index as u32;
+                let datum = self.tree.get_data(index);
+                let self_index = index;
                 match datum {
                     None => unreachable!(),
                     Some(TreeDatum::Token { kind, span }) => {
@@ -395,7 +395,7 @@ impl<'tree> SyntaxNode<'tree> {
                         parent_index: parent,
                     }) => {
                         debug_assert_eq!(parent_index, *parent);
-                        index += *num_descendents as usize + 1;
+                        index += *num_descendents + 1;
                         Some(SyntaxElement::Node(SyntaxNode {
                             tree: self.tree,
                             kind: *kind,

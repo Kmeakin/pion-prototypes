@@ -6,6 +6,7 @@ use codespan_reporting::files as codespan_files;
 use fxhash::FxHashMap;
 
 use crate::location::BytePos;
+use crate::numeric_conversions::ZeroExtendFrom;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(u32);
@@ -15,7 +16,7 @@ impl From<FileId> for u32 {
 }
 
 impl From<FileId> for usize {
-    fn from(val: FileId) -> Self { val.0 as Self }
+    fn from(val: FileId) -> Self { Self::zext_from(val.0) }
 }
 
 #[derive(Default)]

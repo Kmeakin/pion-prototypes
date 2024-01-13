@@ -77,7 +77,7 @@ impl<'a, Elem> Deref for SliceVec<'a, Elem> {
         // - `self.next_index` is only incremented in `SliceBuilder::push`, and in that
         //   case we make sure `self.elems[self.next_index]` has been initialized before
         //   hand.
-        unsafe { slice_assume_init_ref(&self.elems[..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.elems[..self.len]) }
     }
 }
 
@@ -91,29 +91,6 @@ impl<'a, Elem> From<SliceVec<'a, Elem>> for &'a [Elem] {
         // - `self.next_index` is only incremented in `SliceBuilder::push`, and in that
         //   case we make sure `self.elems[self.next_index]` has been initialized before
         //   hand.
-        unsafe { slice_assume_init_ref(&slice.elems[..slice.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&slice.elems[..slice.len]) }
     }
-}
-
-// NOTE: This is the same implementation as
-// `MaybeUninit::slice_assume_init_ref`, which is currently unstable (see https://github.com/rust-lang/rust/issues/63569).
-/// Assuming all the elements are initialized, get a slice to them.
-///
-/// # Safety
-///
-/// It is up to the caller to guarantee that the `MaybeUninit<T>` elements
-/// really are in an initialized state.
-/// Calling this when the content is not yet fully initialized causes undefined
-/// behavior.
-///
-/// See [`assume_init_ref`] for more details and examples.
-///
-/// [`assume_init_ref`]: MaybeUninit::assume_init_ref
-pub unsafe fn slice_assume_init_ref<T>(slice: &[MaybeUninit<T>]) -> &[T] {
-    // SAFETY: casting slice to a `*const [T]` is safe since the caller guarantees
-    // that `slice` is initialized, and`MaybeUninit` is guaranteed to have the
-    // same layout as `T`. The pointer obtained is valid since it refers to
-    // memory owned by `slice` which is a reference and thus guaranteed to be
-    // valid for reads.
-    &*(slice as *const [MaybeUninit<T>] as *const [T])
 }

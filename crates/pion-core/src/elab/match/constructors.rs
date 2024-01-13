@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use internal_iterator::InternalIterator;
+use pion_utils::numeric_conversions::ZeroExtendFrom;
 use pion_utils::slice_eq_by_key;
 use smallvec::{smallvec, SmallVec};
 
@@ -53,7 +54,7 @@ impl<'core> Constructors<'core> {
             Constructors::Empty => false,
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools[0] & bools[1],
-            Constructors::Ints(ints) => ints.len() as u128 >= u128::from(u32::MAX),
+            Constructors::Ints(ints) => u128::zext_from(ints.len()) >= u128::zext_from(u32::MAX),
         }
     }
 }

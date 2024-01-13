@@ -257,7 +257,10 @@ impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { &*(slice as *const [T] as *mut SliceEnv<T>) }
+        #[allow(clippy::as_conversions)]
+        unsafe {
+            &*(slice as *const [T] as *mut SliceEnv<T>)
+        }
     }
 }
 
@@ -265,6 +268,9 @@ impl<'a, T> From<&'a mut [T]> for &'a mut SliceEnv<T> {
     fn from(slice: &'a mut [T]) -> &'a mut SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { &mut *(slice as *mut [T] as *mut SliceEnv<T>) }
+        #[allow(clippy::as_conversions)]
+        unsafe {
+            &mut *(slice as *mut [T] as *mut SliceEnv<T>)
+        }
     }
 }

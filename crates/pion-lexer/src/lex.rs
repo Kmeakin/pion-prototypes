@@ -1,6 +1,5 @@
-#![allow(clippy::cast_possible_truncation)]
-
 use pion_utils::location::{BytePos, ByteSpan};
+use pion_utils::numeric_conversions::TruncateFrom;
 
 use crate::token::{Token, TokenKind};
 use crate::LexError;
@@ -11,7 +10,7 @@ pub fn lex(src: &str, tokens: &mut Vec<Token>, errors: &mut Vec<LexError>) {
 }
 
 struct Ctx<'i, 'vec> {
-    pos: u32,
+    pos: usize,
     source: &'i str,
     tokens: &'vec mut Vec<Token>,
     errors: &'vec mut Vec<LexError>,
@@ -32,23 +31,24 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
     }
 
     fn remainder(&self) -> &'source [u8] {
-        unsafe { self.source.as_bytes().get_unchecked(self.pos as usize..) }
+        unsafe { self.source.as_bytes().get_unchecked(self.pos..) }
     }
 
     fn next_byte(&mut self) -> Option<(BytePos, u8)> {
         match self.remainder().iter().next() {
             None => None,
             Some(c) => {
-                let ret = (BytePos::new(self.pos), *c);
+                let ret = (BytePos::truncate_usize(self.pos), *c);
                 self.pos += 1;
                 Some(ret)
             }
         }
     }
 
-    fn advance_bytes(&mut self, len: u32) { self.pos += len; }
+    fn advance_bytes(&mut self, len: usize) { self.pos += len; }
 
-    fn emit_token(&mut self, start: BytePos, len: u32, kind: TokenKind) {
+    fn emit_token(&mut self, start: BytePos, len: usize, kind: TokenKind) {
+        let len = u32::truncate_from(len);
         self.tokens
             .push(Token::new(kind, ByteSpan::new(start, start + len)));
     }
@@ -72,8 +72,8 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
         self.tokens.push(Token::new(kind, span));
     }
 
-    fn emit_unknown(&mut self, start: BytePos, len: u32) {
-        let span = ByteSpan::new(start, start + len);
+    fn emit_unknown(&mut self, start: BytePos, len: usize) {
+        let span = ByteSpan::new(start, start + u32::truncate_from(len));
         self.tokens.push(Token::new(TokenKind::Error, span));
         self.errors.push(LexError::UnknownChar { span });
     }
@@ -111,26 +111,26 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
                         None => {
                             return self.emit_token(
                                 start,
-                                remainder.len() as u32 + 2,
+                                remainder.len() + 2,
                                 TokenKind::LineComment,
                             )
                         }
                         Some(len) => {
-                            self.advance_bytes(len as u32 + 1);
-                            self.emit_token(start, len as u32 + 3, TokenKind::LineComment);
+                            self.advance_bytes(len + 1);
+                            self.emit_token(start, len + 3, TokenKind::LineComment);
                         }
                     }
                 }
                 Some((_, b'*')) => {
-                    let mut len = 2_u32;
+                    let mut len = 2_usize;
                     let mut nesting = 1_u32;
                     loop {
                         match memchr::memchr(b'/', self.remainder()) {
                             // unclosed block comment
                             None => {
-                                len += self.remainder().len() as u32;
+                                len += self.remainder().len();
                                 self.errors.push(LexError::BlockComment {
-                                    span: ByteSpan::new(start, start + len),
+                                    span: ByteSpan::new(start, start + u32::truncate_from(len)),
                                 });
                                 return self.emit_token(start, len, TokenKind::BlockComment);
                             }
@@ -139,7 +139,7 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
                                 if self.remainder().get(pos.saturating_sub(1)).copied()
                                     == Some(b'*') =>
                             {
-                                let pos = pos as u32 + 1;
+                                let pos = pos + 1;
                                 self.advance_bytes(pos);
                                 len += pos;
                                 nesting -= 1;
@@ -150,14 +150,14 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
                             }
                             // opening
                             Some(pos) if self.remainder().get(pos + 1).copied() == Some(b'*') => {
-                                let pos = pos as u32 + 2;
+                                let pos = pos + 2;
                                 self.advance_bytes(pos);
                                 len += pos;
                                 nesting += 1;
                             }
                             // lone '/'
                             Some(pos) => {
-                                let pos = pos as u32 + 1;
+                                let pos = pos + 1;
                                 self.advance_bytes(pos);
                                 len += pos;
                             }
@@ -203,7 +203,7 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
 
             // integer literals
             b'0'..=b'9' => {
-                let mut len = 1_u32;
+                let mut len = 1_usize;
                 let mut kind = TokenKind::DecInt;
                 match self.next_byte() {
                     None => return self.emit_token(start, len, kind),
@@ -235,7 +235,7 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
 
             // identifiers
             b'r' => {
-                let mut len = 1_u32;
+                let mut len = 1_usize;
                 let mut kind = TokenKind::Ident;
                 match self.next_byte() {
                     None => return self.emit_token(start, len, kind),
@@ -291,7 +291,7 @@ fn is_ident_continue(c: u8) -> bool {
 }
 
 #[allow(clippy::useless_let_if_seq)]
-fn len_utf8_branchless(c: u8) -> u32 {
+fn len_utf8_branchless(c: u8) -> usize {
     let mut ret = 1;
     if (c & 0b1100_0000) == 0b1100_0000 {
         ret = 2;
@@ -307,8 +307,8 @@ fn len_utf8_branchless(c: u8) -> u32 {
 
 #[test]
 fn test_len_utf8_branchless() {
-    fn check(c: char, len: u32) {
-        assert_eq!(c.len_utf8() as u32, len);
+    fn check(c: char, len: usize) {
+        assert_eq!(c.len_utf8(), len);
         let mut dst = [0; 4];
         let bytes = c.encode_utf8(&mut dst);
         let first_byte = bytes.as_bytes()[0];

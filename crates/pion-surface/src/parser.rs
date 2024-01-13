@@ -1,5 +1,6 @@
 use pion_lexer::token::{Token, TokenKind};
 use pion_utils::location::ByteSpan;
+use pion_utils::numeric_conversions::TruncateFrom;
 
 use crate::reporting::SyntaxError;
 use crate::syntax::NodeKind;
@@ -39,7 +40,7 @@ impl<'tokens> Parser<'tokens> {
     pub fn finish(mut self) -> (Vec<ParseEvent>, Vec<SyntaxError>) {
         self.events.push(ParseEvent::Node {
             kind: NodeKind::Root,
-            num_descendents: self.events.len() as u32,
+            num_descendents: u32::truncate_from(self.events.len()),
         });
         (self.events, self.errors)
     }
@@ -139,7 +140,6 @@ impl<'tokens> Parser<'tokens> {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     pub fn end_node(&mut self, kind: NodeKind, start: OpenNode) {
         let mut start = start.pos;
         let mut end = self.events.len();
@@ -162,7 +162,7 @@ impl<'tokens> Parser<'tokens> {
         debug_assert!(start <= end);
         let event = ParseEvent::Node {
             kind,
-            num_descendents: (end - start) as u32,
+            num_descendents: u32::truncate_from(end - start),
         };
         self.events.insert(end, event);
     }
