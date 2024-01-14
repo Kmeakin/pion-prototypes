@@ -1,5 +1,3 @@
-#![feature(iter_map_windows)]
-
 use parser::Parser;
 use reporting::SyntaxError;
 use tree::SyntaxTree;
