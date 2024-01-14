@@ -19,14 +19,8 @@ impl fmt::Debug for SyntaxTree {
 
 #[derive(Debug, Copy, Clone)]
 pub enum ParseEvent {
-    Token {
-        kind: TokenKind,
-        span_len: u32,
-    },
-    Node {
-        kind: NodeKind,
-        num_descendents: u32,
-    },
+    Token { kind: TokenKind, span_len: u32 },
+    Node { kind: NodeKind, len: u32 },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -39,7 +33,7 @@ enum TreeDatum {
         kind: NodeKind,
         parent_index: u32,
         /// Number of descendents, including self
-        num_descendents: u32,
+        len: u32,
     },
 }
 
@@ -59,7 +53,7 @@ pub struct SyntaxNode<'tree> {
     self_index: u32,
     parent_index: u32,
     /// Number of descendents, including self
-    num_descendents: u32,
+    len: u32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -106,13 +100,10 @@ impl SyntaxTree {
                     span_start += span_len;
                     token
                 }
-                ParseEvent::Node {
-                    kind,
-                    num_descendents,
-                } => TreeDatum::Node {
+                ParseEvent::Node { kind, len } => TreeDatum::Node {
                     kind: *kind,
                     parent_index,
-                    num_descendents: *num_descendents,
+                    len: *len,
                 },
             };
             data.push(datum);
@@ -122,13 +113,9 @@ impl SyntaxTree {
             #[allow(clippy::as_conversions)]
             #[allow(clippy::cast_possible_wrap)]
             #[allow(clippy::cast_sign_loss)]
-            if let ParseEvent::Node {
-                num_descendents, ..
-            } = event
-            {
+            if let ParseEvent::Node { len, .. } = event {
                 let parent_index: u32 = u32::truncate_from(data.len().saturating_sub(1));
-                let len: i32 = *num_descendents as i32;
-                let start_index: i32 = self_index as i32 - len;
+                let start_index: i32 = self_index as i32 - (*len as i32);
                 let end_index: i32 = self_index as i32 - 1;
                 let mut self_index: i32 = end_index;
 
@@ -137,12 +124,7 @@ impl SyntaxTree {
                     stack.push((event, parent_index, self_index as u32));
                     match event {
                         ParseEvent::Token { .. } => self_index -= 1,
-                        ParseEvent::Node {
-                            num_descendents, ..
-                        } => {
-                            let len = *num_descendents as i32;
-                            self_index -= len;
-                        }
+                        ParseEvent::Node { len, .. } => self_index -= *len as i32,
                     }
                 }
             }
@@ -157,7 +139,7 @@ impl SyntaxTree {
             None | Some(TreeDatum::Token { .. }) => unreachable!(),
             Some(TreeDatum::Node {
                 kind,
-                num_descendents,
+                len,
                 parent_index,
             }) => {
                 debug_assert_eq!(*kind, NodeKind::Root);
@@ -167,7 +149,7 @@ impl SyntaxTree {
                     kind: NodeKind::Root,
                     self_index: 0,
                     parent_index: 0,
-                    num_descendents: *num_descendents,
+                    len: *len,
                 }
             }
         }
@@ -186,13 +168,13 @@ impl<'tree> SyntaxToken<'tree> {
             Some(TreeDatum::Node {
                 kind,
                 parent_index,
-                num_descendents,
+                len,
             }) => SyntaxNode {
                 tree: self.tree,
                 kind: *kind,
                 self_index: self.parent_index,
                 parent_index: *parent_index,
-                num_descendents: *num_descendents,
+                len: *len,
             },
         }
     }
@@ -222,7 +204,7 @@ impl<'tree> SyntaxToken<'tree> {
             Some(TreeDatum::Node {
                 kind,
                 parent_index,
-                num_descendents,
+                len,
             }) => {
                 debug_assert_eq!(*parent_index, self.parent_index);
                 Some(SyntaxElement::Node(SyntaxNode {
@@ -230,7 +212,7 @@ impl<'tree> SyntaxToken<'tree> {
                     kind: *kind,
                     self_index: self.self_index - 1,
                     parent_index: *parent_index,
-                    num_descendents: *num_descendents,
+                    len: *len,
                 }))
             }
         }
@@ -258,7 +240,7 @@ impl<'tree> SyntaxToken<'tree> {
             Some(TreeDatum::Node {
                 kind,
                 parent_index,
-                num_descendents,
+                len,
             }) => {
                 debug_assert_eq!(*parent_index, self.parent_index);
                 Some(SyntaxElement::Node(SyntaxNode {
@@ -266,7 +248,7 @@ impl<'tree> SyntaxToken<'tree> {
                     kind: *kind,
                     self_index: self.self_index - 1,
                     parent_index: *parent_index,
-                    num_descendents: *num_descendents,
+                    len: *len,
                 }))
             }
         }
@@ -308,13 +290,13 @@ impl<'tree> SyntaxNode<'tree> {
                 Some(TreeDatum::Node {
                     kind,
                     parent_index,
-                    num_descendents,
+                    len,
                 }) => Some(SyntaxNode {
                     tree: self.tree,
                     kind: *kind,
                     self_index: self.parent_index,
                     parent_index: *parent_index,
-                    num_descendents: *num_descendents,
+                    len: *len,
                 }),
             }
         }
@@ -326,7 +308,7 @@ impl<'tree> SyntaxNode<'tree> {
 
     fn descendants_range(&self) -> Range<u32> {
         let start = self.self_index + 1;
-        let len = self.num_descendents - 1;
+        let len = self.len - 1;
         (start)..(start + len)
     }
 
@@ -349,7 +331,7 @@ impl<'tree> SyntaxNode<'tree> {
                 }),
                 TreeDatum::Node {
                     kind,
-                    num_descendents,
+                    len,
                     parent_index: parent,
                 } => {
                     parent_index = *parent;
@@ -358,7 +340,7 @@ impl<'tree> SyntaxNode<'tree> {
                         kind: *kind,
                         self_index,
                         parent_index,
-                        num_descendents: *num_descendents,
+                        len: *len,
                     })
                 }
             })
@@ -393,17 +375,17 @@ impl<'tree> SyntaxNode<'tree> {
                     }
                     Some(TreeDatum::Node {
                         kind,
-                        num_descendents,
+                        len,
                         parent_index: parent,
                     }) => {
                         debug_assert_eq!(parent_index, *parent);
-                        index += *num_descendents;
+                        index += *len;
                         Some(SyntaxElement::Node(SyntaxNode {
                             tree: self.tree,
                             kind: *kind,
                             self_index,
                             parent_index,
-                            num_descendents: *num_descendents,
+                            len: *len,
                         }))
                     }
                 }
@@ -469,14 +451,14 @@ mod tests {
         kind: NodeKind,
         self_index: u32,
         parent_index: u32,
-        num_descendents: u32,
+        len: u32,
         span: ByteSpan,
         text: &str,
     ) {
         assert_eq!(node.kind(), kind);
         assert_eq!(node.self_index, self_index);
         assert_eq!(node.parent_index, parent_index);
-        assert_eq!(node.num_descendents, num_descendents);
+        assert_eq!(node.len, len);
         assert_eq!(node.span(), span);
         assert_eq!(node.text(), text);
     }
