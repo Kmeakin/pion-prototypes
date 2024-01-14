@@ -38,6 +38,7 @@ enum TreeDatum {
     Node {
         kind: NodeKind,
         parent_index: u32,
+        /// Number of descendents, including self
         num_descendents: u32,
     },
 }
@@ -57,6 +58,7 @@ pub struct SyntaxNode<'tree> {
     kind: NodeKind,
     self_index: u32,
     parent_index: u32,
+    /// Number of descendents, including self
     num_descendents: u32,
 }
 
@@ -125,7 +127,7 @@ impl SyntaxTree {
             } = event
             {
                 let parent_index: u32 = u32::truncate_from(data.len().saturating_sub(1));
-                let len: i32 = *num_descendents as i32 + 1;
+                let len: i32 = *num_descendents as i32;
                 let start_index: i32 = self_index as i32 - len;
                 let end_index: i32 = self_index as i32 - 1;
                 let mut self_index: i32 = end_index;
@@ -138,7 +140,7 @@ impl SyntaxTree {
                         ParseEvent::Node {
                             num_descendents, ..
                         } => {
-                            let len = *num_descendents as i32 + 1;
+                            let len = *num_descendents as i32;
                             self_index -= len;
                         }
                     }
@@ -324,7 +326,7 @@ impl<'tree> SyntaxNode<'tree> {
 
     fn descendants_range(&self) -> Range<u32> {
         let start = self.self_index + 1;
-        let len = self.num_descendents;
+        let len = self.num_descendents - 1;
         (start)..(start + len)
     }
 
@@ -395,7 +397,7 @@ impl<'tree> SyntaxNode<'tree> {
                         parent_index: parent,
                     }) => {
                         debug_assert_eq!(parent_index, *parent);
-                        index += *num_descendents + 1;
+                        index += *num_descendents;
                         Some(SyntaxElement::Node(SyntaxNode {
                             tree: self.tree,
                             kind: *kind,
@@ -490,7 +492,7 @@ mod tests {
             NodeKind::Root,
             0,
             0,
-            9,
+            10,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -506,7 +508,7 @@ mod tests {
             NodeKind::ArrayLitExpr,
             1,
             0,
-            8,
+            9,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -528,7 +530,7 @@ mod tests {
             NodeKind::IdentExpr,
             3,
             1,
-            1,
+            2,
             ByteSpan::from(1..2),
             "a",
         );
@@ -566,16 +568,12 @@ mod tests {
             .expect("expected elem")
             .into_node()
             .expect("expected node");
-        assert_eq!(elem.kind(), NodeKind::IdentExpr);
-        assert_eq!(elem.self_index, 7);
-        assert_eq!(elem.parent_index, 1);
-        assert_eq!(elem.num_descendents, 1);
         check_node(
             &elem,
             NodeKind::IdentExpr,
             7,
             1,
-            1,
+            2,
             ByteSpan::from(4..5),
             "b",
         );
@@ -609,7 +607,7 @@ mod tests {
             NodeKind::Root,
             0,
             0,
-            9,
+            10,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -626,7 +624,7 @@ mod tests {
             NodeKind::ArrayLitExpr,
             1,
             0,
-            8,
+            9,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -651,7 +649,7 @@ mod tests {
                 NodeKind::IdentExpr,
                 3,
                 1,
-                1,
+                2,
                 ByteSpan::from(1..2),
                 "a",
             );
@@ -687,7 +685,7 @@ mod tests {
                 NodeKind::IdentExpr,
                 7,
                 1,
-                1,
+                2,
                 ByteSpan::from(4..5),
                 "b",
             );
@@ -716,7 +714,7 @@ mod tests {
             NodeKind::Root,
             0,
             0,
-            9,
+            10,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -736,7 +734,7 @@ mod tests {
             NodeKind::ArrayLitExpr,
             1,
             0,
-            8,
+            9,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -747,7 +745,7 @@ mod tests {
             NodeKind::Root,
             0,
             0,
-            9,
+            10,
             ByteSpan::from(0..6),
             "[a, b]",
         );
@@ -765,7 +763,7 @@ mod tests {
             NodeKind::ArrayLitExpr,
             1,
             0,
-            8,
+            9,
             ByteSpan::from(0..6),
             "[a, b]",
         );
