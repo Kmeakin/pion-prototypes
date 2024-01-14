@@ -1,3 +1,5 @@
+#![feature(iter_advance_by)]
+
 use parser::Parser;
 use reporting::SyntaxError;
 use tree::SyntaxTree;

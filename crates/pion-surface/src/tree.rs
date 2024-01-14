@@ -354,44 +354,16 @@ impl<'tree> SyntaxNode<'tree> {
     pub fn last_token(&self) -> Option<SyntaxToken<'tree>> { self.tokens().next_back() }
 
     pub fn children(self) -> impl Iterator<Item = SyntaxElement<'tree>> {
-        let parent_index = self.self_index;
-        let Range { start, end } = self.descendants_range();
-        let mut index = start;
+        let mut descendents = self.descendants();
         std::iter::from_fn(move || {
-            if index < end {
-                let datum = self.tree.get_data(index);
-                let self_index = index;
-                match datum {
-                    None => unreachable!(),
-                    Some(TreeDatum::Token { kind, span }) => {
-                        index += 1;
-                        Some(SyntaxElement::Token(SyntaxToken {
-                            tree: self.tree,
-                            kind: *kind,
-                            span: *span,
-                            self_index,
-                            parent_index,
-                        }))
-                    }
-                    Some(TreeDatum::Node {
-                        kind,
-                        len,
-                        parent_index: parent,
-                    }) => {
-                        debug_assert_eq!(parent_index, *parent);
-                        index += *len;
-                        Some(SyntaxElement::Node(SyntaxNode {
-                            tree: self.tree,
-                            kind: *kind,
-                            self_index,
-                            parent_index,
-                            len: *len,
-                        }))
-                    }
-                }
-            } else {
-                None
+            let descendent = descendents.next()?;
+            match descendent {
+                NodeOrToken::Token(_) => {}
+                NodeOrToken::Node(node) => descendents
+                    .advance_by(usize::zext_from(node.len - 1))
+                    .unwrap(),
             }
+            Some(descendent)
         })
     }
 
