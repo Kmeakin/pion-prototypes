@@ -1,6 +1,6 @@
 use pion_utils::symbol::Symbol;
 
-use crate::env::SharedEnv;
+use crate::env::{Index, SharedEnv};
 use crate::name::BinderName;
 use crate::syntax::*;
 
@@ -45,12 +45,19 @@ define_prims! {
     Type, Bool, Int, Array,
     add, sub, mul,
     eq, ne, lt, gt, lte, gte,
+    Eq, refl, subst,
 }
 
 impl Prim {
+    #[allow(clippy::use_self)]
     pub const fn r#type(self) -> Type<'static> {
         const TYPE: &Type = &Type::TYPE;
         const INT: &Type = &Type::INT;
+
+        const VAR0: Expr = Expr::Local((), Index::new());
+        const VAR1: Expr = Expr::Local((), Index::new().next());
+        const VAR2: Expr = Expr::Local((), Index::new().next().next());
+        const VAR3: Expr = Expr::Local((), Index::new().next().next().next());
 
         match self {
             Self::Type | Self::Bool | Self::Int => Type::TYPE,
@@ -58,40 +65,145 @@ impl Prim {
                 Plicity::Explicit,
                 BinderName::User(Symbol::A),
                 TYPE,
-                Closure::new(
-                    SharedEnv::new(),
-                    &Expr::FunType(
-                        Plicity::Explicit,
-                        BinderName::User(Symbol::N),
-                        &(Expr::INT, Expr::TYPE),
-                    ),
-                ),
+                Closure::empty(&Expr::FunType(
+                    Plicity::Explicit,
+                    BinderName::User(Symbol::N),
+                    &(Expr::INT, Expr::TYPE),
+                )),
             ),
             Self::add | Self::sub | Self::mul => Type::FunType(
                 Plicity::Explicit,
                 BinderName::User(Symbol::x),
                 INT,
-                Closure::new(
-                    SharedEnv::new(),
-                    &Expr::FunType(
-                        Plicity::Explicit,
-                        BinderName::User(Symbol::y),
-                        &(Expr::INT, Expr::INT),
-                    ),
-                ),
+                Closure::empty(&Expr::FunType(
+                    Plicity::Explicit,
+                    BinderName::User(Symbol::y),
+                    &(Expr::INT, Expr::INT),
+                )),
             ),
             Self::eq | Self::ne | Self::lt | Self::gt | Self::lte | Self::gte => Type::FunType(
                 Plicity::Explicit,
                 BinderName::User(Symbol::x),
                 INT,
-                Closure::new(
-                    SharedEnv::new(),
-                    &Expr::FunType(
-                        Plicity::Explicit,
-                        BinderName::User(Symbol::y),
-                        &(Expr::INT, Expr::BOOL),
+                Closure::empty(&Expr::FunType(
+                    Plicity::Explicit,
+                    BinderName::User(Symbol::y),
+                    &(Expr::INT, Expr::BOOL),
+                )),
+            ),
+            // Eq: fun(@A: Type, x: A, y: A) -> Type
+            Self::Eq => Type::FunType(
+                Plicity::Implicit,
+                BinderName::User(Symbol::A),
+                TYPE,
+                Closure::empty(&Expr::FunType(
+                    Plicity::Explicit,
+                    BinderName::User(Symbol::x),
+                    &(
+                        VAR0,
+                        Expr::FunType(
+                            Plicity::Explicit,
+                            BinderName::User(Symbol::y),
+                            &(VAR1, Expr::TYPE),
+                        ),
                     ),
-                ),
+                )),
+            ),
+            // refl: fun(@A: Type, @x: A) -> Eq(@A, x, x)
+            Self::refl => Type::FunType(
+                Plicity::Implicit,
+                BinderName::User(Symbol::A),
+                TYPE,
+                Closure::empty(&Expr::FunType(
+                    Plicity::Implicit,
+                    BinderName::User(Symbol::x),
+                    &(
+                        VAR0,
+                        Expr::FunApp(
+                            Plicity::Explicit,
+                            &(
+                                Expr::FunApp(
+                                    Plicity::Explicit,
+                                    &(
+                                        Expr::FunApp(
+                                            Plicity::Implicit,
+                                            &(Expr::Prim(Prim::Eq), VAR1),
+                                        ),
+                                        VAR0,
+                                    ),
+                                ),
+                                VAR0,
+                            ),
+                        ),
+                    ),
+                )),
+            ),
+            // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, h1: Eq(@A, x, y), h2: p(x)) -> p(y)
+            Self::subst => Type::FunType(
+                Plicity::Implicit,
+                BinderName::User(Symbol::A),
+                TYPE,
+                Closure::empty(&Expr::FunType(
+                    Plicity::Implicit,
+                    BinderName::User(Symbol::x),
+                    &(
+                        VAR0,
+                        Expr::FunType(
+                            Plicity::Implicit,
+                            BinderName::User(Symbol::y),
+                            &(
+                                VAR1,
+                                Expr::FunType(
+                                    Plicity::Implicit,
+                                    BinderName::User(Symbol::p),
+                                    &(
+                                        Expr::FunType(
+                                            Plicity::Explicit,
+                                            BinderName::Underscore,
+                                            &(VAR2, Expr::TYPE),
+                                        ),
+                                        Expr::FunType(
+                                            Plicity::Explicit,
+                                            BinderName::User(Symbol::h1),
+                                            &(
+                                                Expr::FunApp(
+                                                    Plicity::Explicit,
+                                                    &(
+                                                        Expr::FunApp(
+                                                            Plicity::Explicit,
+                                                            &(
+                                                                Expr::FunApp(
+                                                                    Plicity::Implicit,
+                                                                    &(Expr::Prim(Prim::Eq), VAR3),
+                                                                ),
+                                                                VAR2,
+                                                            ),
+                                                        ),
+                                                        VAR1,
+                                                    ),
+                                                ),
+                                                Expr::FunType(
+                                                    Plicity::Explicit,
+                                                    BinderName::User(Symbol::h2),
+                                                    &(
+                                                        Expr::FunApp(
+                                                            Plicity::Explicit,
+                                                            &(VAR1, VAR3),
+                                                        ),
+                                                        Expr::FunApp(
+                                                            Plicity::Explicit,
+                                                            &(VAR2, VAR3),
+                                                        ),
+                                                    ),
+                                                ),
+                                            ),
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                )),
             ),
         }
     }

@@ -11,6 +11,10 @@ def x7: Int -> Int -> Int = mul;
 def x8: Int -> Int -> Bool = eq;
 def x9: Int -> Int -> Bool = lt;
 def x10: Int -> Int -> Bool = gt;
+def x11: fun(@A: Type) -> A -> A -> Type = Eq;
+def x12: fun(@A: Type, @x: A) -> Eq(@A, x, x) = refl;
+def x13: fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) ->
+    p(x) -> p(y) = subst;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -24,6 +28,9 @@ span   | source                                   | type
 113..115 | eq                                       | Int -> Int -> Bool
 126..128 | lt                                       | Int -> Int -> Bool
 140..142 | gt                                       | Int -> Int -> Bool
+155..157 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+169..173 | refl                                     | fun(@A: Type, @x: A) -> Eq(@A, x, x)
+185..190 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
 metavars:
 ?0 = Type
 ?1 = Type
@@ -35,6 +42,9 @@ metavars:
 ?7 = Int -> Int -> Bool
 ?8 = Int -> Int -> Bool
 ?9 = Int -> Int -> Bool
+?10 = fun(@A: Type) -> A -> A -> Type
+?11 = fun(@A: Type, @x: A) -> Eq(@A, x, x)
+?12 = fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
 """
 
 stderr = """

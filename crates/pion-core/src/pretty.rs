@@ -127,16 +127,21 @@ impl<'pretty> PrettyCtx<'pretty> {
                             params.push(param);
                             codomain = cont;
                         }
+                        Expr::FunType(Plicity::Implicit, name, (domain, cont)) => {
+                            let param = self.fun_param(Plicity::Implicit, *name, domain);
+                            params.push(param);
+                            codomain = cont;
+                        }
                         // Use arrow sugar if the parameter is not referenced in the body type.
                         Expr::FunType(Plicity::Explicit, _, (domain, codomain))
                             if params.is_empty() =>
                         {
-                            let domain = self.expr(domain, Prec::Proj);
+                            let domain = self.expr(domain, Prec::App);
                             let codomain = self.blocklike_expr(codomain, Prec::MAX);
                             break domain.append(" ->").append(codomain);
                         }
                         Expr::FunType(Plicity::Explicit, _, (domain, codomain)) => {
-                            let domain = self.blocklike_expr(domain, Prec::Proj);
+                            let domain = self.blocklike_expr(domain, Prec::App);
                             let codomain = self.blocklike_expr(codomain, Prec::MAX);
                             break domain.append(" ->").append(codomain);
                         }

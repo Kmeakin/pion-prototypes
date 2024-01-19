@@ -70,13 +70,13 @@ impl Add<EnvLen> for Index {
 }
 
 impl Index {
-    pub fn new() -> Self { Self(0) }
+    pub const fn new() -> Self { Self(0) }
 
     pub fn iter() -> impl Iterator<Item = Self> { (0..).map(Self) }
 
     pub fn iter_from(self) -> impl Iterator<Item = Self> { (self.0..).map(Self) }
 
-    pub fn next(self) -> Self { Self(self.0 + 1) }
+    pub const fn next(self) -> Self { Self(self.0 + 1) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]

@@ -476,6 +476,8 @@ impl<'core> Closure<'core> {
     pub const fn new(local_values: SharedEnv<Value<'core>>, expr: &'core Expr<'core>) -> Self {
         Self { local_values, expr }
     }
+
+    pub const fn empty(expr: &'core Expr<'core>) -> Self { Self::new(SharedEnv::new(), expr) }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

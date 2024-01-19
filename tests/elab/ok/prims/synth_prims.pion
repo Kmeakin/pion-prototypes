@@ -10,3 +10,7 @@ def x7 = mul;
 def x8 = eq;
 def x9 = lt;
 def x10 = gt;
+
+def x11 = Eq;
+def x12 = refl;
+def x13 = subst;

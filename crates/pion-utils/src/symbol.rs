@@ -53,6 +53,8 @@ symbols![
     a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
     A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
 
+    h1, h2,
+
     // tuple labels, upto 32
      _0,  _1,  _2,  _3,  _4,  _5,  _6,  _7,  _8,  _9,
     _10, _11, _12, _13, _14, _15, _16, _17, _18, _19,
@@ -62,7 +64,8 @@ symbols![
     // prim names
     Array, Int, Bool, Type,
     add, sub, mul,
-    eq, ne, lt, gt, lte, gte
+    eq, ne, lt, gt, lte, gte,
+    Eq, refl, subst
 ];
 
 pub type Interner = lasso::ThreadedRodeo<lasso::Spur>;

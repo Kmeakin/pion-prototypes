@@ -28,7 +28,7 @@ span   | source                                   | type
 117..118 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
 117..134 | f(_, fun(a) => a)                        | Type
 119..120 | _                                        | Type
-122..133 | fun(a) => a                              | (?5(Wrap, f)) -> Wrap(?5(Wrap, f))
+122..133 | fun(a) => a                              | ?5(Wrap, f) -> Wrap(?5(Wrap, f))
 132..133 | a                                        | Wrap(?5(Wrap, f))
 types of patterns:
 span   | source                                   | type
