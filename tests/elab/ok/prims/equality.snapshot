@@ -4,7 +4,7 @@ stdout = """
 def sym: fun(@A: Type, x: A, y: A) -> Eq(@A, x, y) -> Eq(@A, y, x) =
     fun(@A: Type, x: A, y: A, x_eq_y: Eq(@A, x, y)) =>
         let p: A -> Type = fun(a: A) => Eq(@A, a, x);
-        let p_x: Eq(@A, x, x) = refl(@A, @x);
+        let p_x: Eq(@A, x, x) = refl(@A, x);
         let goal: Eq(@A, y, x) = subst(@A, @x, @y, @p, x_eq_y, p_x);
         goal;
 def trans: fun(@A: Type, x: A, y: A, z: A) -> Eq(@A, x, y) ->
@@ -18,132 +18,130 @@ def trans: fun(@A: Type, x: A, y: A, z: A) -> Eq(@A, x, y) ->
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-195..244 | fun(@A: Type, x: A...q(x, y) -> Eq(y, x) | Type
-203..207 | Type                                     | Type
-212..213 | A                                        | Type
-218..219 | A                                        | Type
-224..226 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-224..232 | Eq(x, y)                                 | Type
-224..244 | Eq(x, y) -> Eq(y, x)                     | Type
-227..228 | x                                        | A
-230..231 | y                                        | A
-236..238 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-236..244 | Eq(y, x)                                 | Type
-239..240 | y                                        | A
-242..243 | x                                        | A
-254..452 | fun(x, y, x_eq_y)\...;\n            goal | fun(@A: Type, x: A, y: A) -> Eq(@A, x, y) -> Eq(@A, y, x)
-296..452 | let p = fun(a) => ...;\n            goal | Eq(@A, y, x)
-304..326 | fun(a) => Eq(@A, a, x)                   | A -> Type
-314..316 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-314..326 | Eq(@A, a, x)                             | Type
-318..319 | A                                        | Type
-321..322 | a                                        | A
-324..325 | x                                        | A
-340..452 | let p_x:  p(x) = r...;\n            goal | Eq(@A, y, x)
-350..351 | p                                        | A -> Type
-350..354 | p(x)                                     | Type
-352..353 | x                                        | A
-357..361 | refl                                     | fun(@A: Type, @x: A) -> Eq(@A, x, x)
-357..369 | refl(@A, @x)                             | Eq(@A, x, x)
-363..364 | A                                        | Type
-367..368 | x                                        | A
-383..452 | let goal: p(y) = s...;\n            goal | Eq(@A, y, x)
-393..394 | p                                        | A -> Type
-393..397 | p(y)                                     | Type
-395..396 | y                                        | A
-400..405 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
-400..434 | subst(@A, @x, @y, @p, x_eq_y, p_x)       | Eq(@A, y, x)
-407..408 | A                                        | Type
-411..412 | x                                        | A
-415..416 | y                                        | A
-419..420 | p                                        | A -> Type
-422..428 | x_eq_y                                   | Eq(@A, x, y)
-430..433 | p_x                                      | Eq(@A, x, x)
-448..452 | goal                                     | Eq(@A, y, x)
-479..546 | fun(@A: Type, x: A...q(y, z) -> Eq(x, z) | Type
-487..491 | Type                                     | Type
+194..243 | fun(@A: Type, x: A...q(x, y) -> Eq(y, x) | Type
+202..206 | Type                                     | Type
+211..212 | A                                        | Type
+217..218 | A                                        | Type
+223..225 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+223..231 | Eq(x, y)                                 | Type
+223..243 | Eq(x, y) -> Eq(y, x)                     | Type
+226..227 | x                                        | A
+229..230 | y                                        | A
+235..237 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+235..243 | Eq(y, x)                                 | Type
+238..239 | y                                        | A
+241..242 | x                                        | A
+253..446 | fun(x, y, x_eq_y)\...;\n            goal | fun(@A: Type, x: A, y: A) -> Eq(@A, x, y) -> Eq(@A, y, x)
+295..446 | let p = fun(a) => ...;\n            goal | Eq(@A, y, x)
+303..325 | fun(a) => Eq(@A, a, x)                   | A -> Type
+313..315 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+313..325 | Eq(@A, a, x)                             | Type
+317..318 | A                                        | Type
+320..321 | a                                        | A
+323..324 | x                                        | A
+339..446 | let p_x:  p(x) = r...;\n            goal | Eq(@A, y, x)
+349..350 | p                                        | A -> Type
+349..353 | p(x)                                     | Type
+351..352 | x                                        | A
+356..360 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+356..363 | refl(x)                                  | Eq(@A, x, x)
+361..362 | x                                        | A
+377..446 | let goal: p(y) = s...;\n            goal | Eq(@A, y, x)
+387..388 | p                                        | A -> Type
+387..391 | p(y)                                     | Type
+389..390 | y                                        | A
+394..399 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
+394..428 | subst(@A, @x, @y, @p, x_eq_y, p_x)       | Eq(@A, y, x)
+401..402 | A                                        | Type
+405..406 | x                                        | A
+409..410 | y                                        | A
+413..414 | p                                        | A -> Type
+416..422 | x_eq_y                                   | Eq(@A, x, y)
+424..427 | p_x                                      | Eq(@A, x, x)
+442..446 | goal                                     | Eq(@A, y, x)
+473..540 | fun(@A: Type, x: A...q(y, z) -> Eq(x, z) | Type
+481..485 | Type                                     | Type
+490..491 | A                                        | Type
 496..497 | A                                        | Type
 502..503 | A                                        | Type
-508..509 | A                                        | Type
-514..516 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-514..522 | Eq(x, y)                                 | Type
-514..546 | Eq(x, y) -> Eq(y, z) -> Eq(x, z)         | Type
-517..518 | x                                        | A
-520..521 | y                                        | A
-526..528 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-526..534 | Eq(y, z)                                 | Type
-526..546 | Eq(y, z) -> Eq(x, z)                     | Type
-529..530 | y                                        | A
-532..533 | z                                        | A
-538..540 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-538..546 | Eq(x, z)                                 | Type
-541..542 | x                                        | A
-544..545 | z                                        | A
-558..825 | fun(x, y, z, x_eq_...;\n            goal | fun(@A: Type, x: A, y: A, z: A) -> Eq(@A, x, y) -> Eq(@A, y, z) -> Eq(@A, x, z)
-612..825 | let y_eq_x: Eq(@A,...;\n            goal | Eq(@A, x, z)
-624..626 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-624..636 | Eq(@A, y, x)                             | Type
-628..629 | A                                        | Type
-631..632 | y                                        | A
-634..635 | x                                        | A
-639..642 | sym                                      | fun(@A: Type, x: A, y: A) -> Eq(@A, x, y) -> Eq(@A, y, x)
-639..660 | sym(@A, x, y, x_eq_y)                    | Eq(@A, y, x)
-644..645 | A                                        | Type
-647..648 | x                                        | A
-650..651 | y                                        | A
-653..659 | x_eq_y                                   | Eq(@A, x, y)
-675..825 | let p = fun(a) => ...;\n            goal | Eq(@A, x, z)
-683..705 | fun(a) => Eq(@A, a, z)                   | A -> Type
-693..695 | Eq                                       | fun(@A: Type) -> A -> A -> Type
-693..705 | Eq(@A, a, z)                             | Type
-697..698 | A                                        | Type
-700..701 | a                                        | A
-703..704 | z                                        | A
-719..825 | let p_y:  p(y) = y...;\n            goal | Eq(@A, x, z)
-729..730 | p                                        | A -> Type
-729..733 | p(y)                                     | Type
-731..732 | y                                        | A
-736..742 | y_eq_z                                   | Eq(@A, y, z)
-756..825 | let goal: p(x) = s...;\n            goal | Eq(@A, x, z)
-766..767 | p                                        | A -> Type
-766..770 | p(x)                                     | Type
-768..769 | x                                        | A
-773..778 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
-773..807 | subst(@A, @y, @x, @p, y_eq_x, p_y)       | Eq(@A, x, z)
-780..781 | A                                        | Type
-784..785 | y                                        | A
-788..789 | x                                        | A
-792..793 | p                                        | A -> Type
-795..801 | y_eq_x                                   | Eq(@A, y, x)
-803..806 | p_y                                      | Eq(@A, y, z)
-821..825 | goal                                     | Eq(@A, x, z)
+508..510 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+508..516 | Eq(x, y)                                 | Type
+508..540 | Eq(x, y) -> Eq(y, z) -> Eq(x, z)         | Type
+511..512 | x                                        | A
+514..515 | y                                        | A
+520..522 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+520..528 | Eq(y, z)                                 | Type
+520..540 | Eq(y, z) -> Eq(x, z)                     | Type
+523..524 | y                                        | A
+526..527 | z                                        | A
+532..534 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+532..540 | Eq(x, z)                                 | Type
+535..536 | x                                        | A
+538..539 | z                                        | A
+552..815 | fun(x, y, z, x_eq_...;\n            goal | fun(@A: Type, x: A, y: A, z: A) -> Eq(@A, x, y) -> Eq(@A, y, z) -> Eq(@A, x, z)
+606..815 | let y_eq_x: Eq(@A,...;\n            goal | Eq(@A, x, z)
+618..620 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+618..630 | Eq(@A, y, x)                             | Type
+622..623 | A                                        | Type
+625..626 | y                                        | A
+628..629 | x                                        | A
+633..636 | sym                                      | fun(@A: Type, x: A, y: A) -> Eq(@A, x, y) -> Eq(@A, y, x)
+633..650 | sym(x, y, x_eq_y)                        | Eq(@A, y, x)
+637..638 | x                                        | A
+640..641 | y                                        | A
+643..649 | x_eq_y                                   | Eq(@A, x, y)
+665..815 | let p = fun(a) => ...;\n            goal | Eq(@A, x, z)
+673..695 | fun(a) => Eq(@A, a, z)                   | A -> Type
+683..685 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+683..695 | Eq(@A, a, z)                             | Type
+687..688 | A                                        | Type
+690..691 | a                                        | A
+693..694 | z                                        | A
+709..815 | let p_y:  p(y) = y...;\n            goal | Eq(@A, x, z)
+719..720 | p                                        | A -> Type
+719..723 | p(y)                                     | Type
+721..722 | y                                        | A
+726..732 | y_eq_z                                   | Eq(@A, y, z)
+746..815 | let goal: p(x) = s...;\n            goal | Eq(@A, x, z)
+756..757 | p                                        | A -> Type
+756..760 | p(x)                                     | Type
+758..759 | x                                        | A
+763..768 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
+763..797 | subst(@A, @y, @x, @p, y_eq_x, p_y)       | Eq(@A, x, z)
+770..771 | A                                        | Type
+774..775 | y                                        | A
+778..779 | x                                        | A
+782..783 | p                                        | A -> Type
+785..791 | y_eq_x                                   | Eq(@A, y, x)
+793..796 | p_y                                      | Eq(@A, y, z)
+811..815 | goal                                     | Eq(@A, x, z)
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
-200..201 | A                                        | Type
-209..210 | x                                        | A
-215..216 | y                                        | A
-258..259 | x                                        | A
-261..262 | y                                        | A
-264..270 | x_eq_y                                   | Eq(@A, x, y)
-300..301 | p                                        | ?4(A, x, y, x_eq_y)
-308..309 | a                                        | ?5(A, x, y, x_eq_y)
-344..347 | p_x                                      | Eq(@A, x, x)
-387..391 | goal                                     | Eq(@A, y, x)
-484..485 | A                                        | Type
-493..494 | x                                        | A
-499..500 | y                                        | A
-505..506 | z                                        | A
-562..563 | x                                        | A
-565..566 | y                                        | A
-568..569 | z                                        | A
-571..577 | x_eq_y                                   | Eq(@A, x, y)
-579..585 | y_eq_z                                   | Eq(@A, y, z)
-616..622 | y_eq_x                                   | Eq(@A, y, x)
-679..680 | p                                        | ?12(A, x, y, z, x_eq_y, y_eq_z)
-687..688 | a                                        | ?13(A, x, y, z, x_eq_y, y_eq_z)
-723..726 | p_y                                      | Eq(@A, y, z)
-760..764 | goal                                     | Eq(@A, x, z)
+199..200 | A                                        | Type
+208..209 | x                                        | A
+214..215 | y                                        | A
+257..258 | x                                        | A
+260..261 | y                                        | A
+263..269 | x_eq_y                                   | Eq(@A, x, y)
+299..300 | p                                        | ?4(A, x, y, x_eq_y)
+307..308 | a                                        | ?5(A, x, y, x_eq_y)
+343..346 | p_x                                      | Eq(@A, x, x)
+381..385 | goal                                     | Eq(@A, y, x)
+478..479 | A                                        | Type
+487..488 | x                                        | A
+493..494 | y                                        | A
+499..500 | z                                        | A
+556..557 | x                                        | A
+559..560 | y                                        | A
+562..563 | z                                        | A
+565..571 | x_eq_y                                   | Eq(@A, x, y)
+573..579 | y_eq_z                                   | Eq(@A, y, z)
+610..616 | y_eq_x                                   | Eq(@A, y, x)
+669..670 | p                                        | ?14(A, x, y, z, x_eq_y, y_eq_z)
+677..678 | a                                        | ?15(A, x, y, z, x_eq_y, y_eq_z)
+713..716 | p_y                                      | Eq(@A, y, z)
+750..754 | goal                                     | Eq(@A, x, z)
 metavars:
 ?0 = fun(_: #error, _: #error, _: #error) => _#2
 ?1 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
@@ -152,14 +150,16 @@ metavars:
 ?4 = fun(_: #error, _: #error, _: #error, _: #error) => _#3 -> Type
 ?5 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
 ?6 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
-?7 = fun(_: #error, _: #error, _: #error, _: #error, _: #error) => _#4
-?8 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
-?9 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
-?10 = fun(_: #error, _: #error, _: #error, _: #error, _: #error) => _#4
-?11 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
-?12 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
-    _#5 -> Type
+?7 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
+?8 = fun(_: #error, _: #error, _: #error, _: #error, _: #error) => _#4
+?9 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
+?10 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
+?11 = fun(_: #error, _: #error, _: #error, _: #error, _: #error) => _#4
+?12 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
 ?13 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
+?14 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
+    _#5 -> Type
+?15 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#5
 """
 
 stderr = """

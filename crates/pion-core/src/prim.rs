@@ -109,13 +109,13 @@ impl Prim {
                     ),
                 )),
             ),
-            // refl: fun(@A: Type, @x: A) -> Eq(@A, x, x)
+            // refl: fun(@A: Type, x: A) -> Eq(@A, x, x)
             Self::refl => Type::FunType(
                 Plicity::Implicit,
                 BinderName::User(Symbol::A),
                 TYPE,
                 Closure::empty(&Expr::FunType(
-                    Plicity::Implicit,
+                    Plicity::Explicit,
                     BinderName::User(Symbol::x),
                     &(
                         VAR0,
