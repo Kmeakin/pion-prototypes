@@ -1,0 +1,23 @@
+// Eq:    fun(@A: Type, x: A, y: A) -> Type
+// refl:  fun(@A: Type, @x: A) -> Eq(@A, x, x)
+// subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
+
+def sym: fun(@A: Type, x: A, y: A) -> Eq(x, y) -> Eq(y, x)
+       = fun(x, y, x_eq_y)
+         =>
+            let p = fun(a) => Eq(@A, a, x);
+            let p_x:  p(x) = refl(@A, @x);
+            let goal: p(y) = subst(@A, @x, @y, @p, x_eq_y, p_x);
+            goal
+            ;
+
+def trans: fun(@A: Type, x: A, y: A, z: A) -> Eq(x, y) -> Eq(y, z) -> Eq(x, z)
+         = fun(x, y, z, x_eq_y, y_eq_z)
+          =>
+            let y_eq_x: Eq(@A, y, x) = sym(@A, x, y, x_eq_y);
+
+            let p = fun(a) => Eq(@A, a, z);
+            let p_y:  p(y) = y_eq_z;
+            let goal: p(x) = subst(@A, @y, @x, @p, y_eq_x, p_y);
+            goal
+            ;

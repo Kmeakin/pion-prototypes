@@ -164,7 +164,7 @@ impl Prim {
                                         ),
                                         Expr::FunType(
                                             Plicity::Explicit,
-                                            BinderName::User(Symbol::h1),
+                                            BinderName::User(Symbol::x_eq_y),
                                             &(
                                                 Expr::FunApp(
                                                     Plicity::Explicit,
@@ -184,7 +184,7 @@ impl Prim {
                                                 ),
                                                 Expr::FunType(
                                                     Plicity::Explicit,
-                                                    BinderName::User(Symbol::h2),
+                                                    BinderName::User(Symbol::p_x),
                                                     &(
                                                         Expr::FunApp(
                                                             Plicity::Explicit,
