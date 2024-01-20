@@ -26,6 +26,14 @@ def cong: fun(@A: Type, @B: Type, a: A, b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a),
         goal
         ;
 
+def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) -> Eq(f, g) -> Eq(f(a), g(a))
+    = fun(a, f, g, f_eq_g) =>
+        let p = fun(x : A -> B) => Eq(@B, f(a), x(a));
+        let p_f: p(f) = refl(_);
+        let goal = subst(@(A -> B), @f, @g, @p, f_eq_g, p_f);
+        goal
+        ;
+
 def not: Bool -> Bool = fun(x) =>
     match x {
         true => false,
@@ -36,8 +44,10 @@ def not_false_eq_true: Eq(not(false), true) = refl(_);
 def not_true_eq_false: Eq(not(true), false) = refl(_);
 
 // TODO
+/*
 def prove_bool: fun(p: Bool -> Type, p_true: p(true), p_false: p(false)) -> fun(b: Bool) -> p(b)
     = fun(p, p_true, p_false) => fun(b) => match b {
         true => p_true,
         false => p_false,
     };
+*/
