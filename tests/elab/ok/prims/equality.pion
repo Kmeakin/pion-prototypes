@@ -2,22 +2,20 @@
 // refl:  fun(@A: Type, x: A) -> Eq(@A, x, x)
 // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
 
-def sym: fun(@A: Type, x: A, y: A) -> Eq(x, y) -> Eq(y, x)
-       = fun(x, y, x_eq_y)
+def sym: fun(@A: Type, a: A, b: A) -> Eq(a, b) -> Eq(b, a)
+       = fun(a, b, a_eq_b)
          =>
-            let p = fun(a) => Eq(@A, a, x);
-            let p_x:  p(x) = refl(x);
-            let goal: p(y) = subst(@A, @x, @y, @p, x_eq_y, p_x);
+            let p = fun(x) => Eq(@A, x, a);
+            let p_a:  p(a) = refl(a);
+            let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
             goal
             ;
 
-def trans: fun(@A: Type, x: A, y: A, z: A) -> Eq(x, y) -> Eq(y, z) -> Eq(x, z)
-         = fun(x, y, z, x_eq_y, y_eq_z)
+def trans: fun(@A: Type, a: A, b: A, c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c)
+         = fun(a, b, c, a_eq_b, b_eq_c)
           =>
-            let y_eq_x: Eq(@A, y, x) = sym(x, y, x_eq_y);
-
-            let p = fun(a) => Eq(@A, a, z);
-            let p_y:  p(y) = y_eq_z;
-            let goal: p(x) = subst(@A, @y, @x, @p, y_eq_x, p_y);
+            let p = fun(x) => Eq(@A, a, x);
+            let p_b: p(b) = a_eq_b;
+            let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
             goal
             ;
