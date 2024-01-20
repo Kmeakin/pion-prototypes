@@ -19,3 +19,12 @@ def trans: fun(@A: Type, a: A, b: A, c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c)
             let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
             goal
             ;
+
+def cong: fun(@A: Type, @B: Type, a: A, b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a), f(b))
+         = fun(a, b, f, a_eq_b)
+          =>
+            let p = fun(x) => Eq(@B, f(a), f(x));
+            let p_a:  p(a) = refl(f(a));
+            let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
+            goal
+            ;
