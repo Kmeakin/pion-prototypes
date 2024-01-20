@@ -61,6 +61,9 @@ impl<'core, LocalName, ItemName> Expr<'core, LocalName, ItemName> {
     pub const BOOL: Self = Self::Prim(Prim::Bool);
     pub const INT: Self = Self::Prim(Prim::Int);
 
+    pub const TRUE: Self = Self::Lit(Lit::Bool(true));
+    pub const FALSE: Self = Self::Lit(Lit::Bool(false));
+
     pub fn is_error(&self) -> bool { matches!(self, Self::Error) }
 
     pub fn r#let(

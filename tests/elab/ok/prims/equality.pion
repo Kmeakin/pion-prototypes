@@ -34,8 +34,8 @@ def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) -> Eq(f, g) ->
         goal
         ;
 
-def not: Bool -> Bool = fun(x) =>
-    match x {
+def not: Bool -> Bool
+    = fun(x) => match x {
         true => false,
         false => true,
     };
@@ -43,11 +43,10 @@ def not: Bool -> Bool = fun(x) =>
 def not_false_eq_true: Eq(not(false), true) = refl(_);
 def not_true_eq_false: Eq(not(true), false) = refl(_);
 
-// TODO
-/*
-def prove_bool: fun(p: Bool -> Type, p_true: p(true), p_false: p(false)) -> fun(b: Bool) -> p(b)
-    = fun(p, p_true, p_false) => fun(b) => match b {
-        true => p_true,
-        false => p_false,
-    };
-*/
+def not_self_inverse: fun(b: Bool) -> Eq(not(not(b)), b)
+    = fun(b) =>
+        let p = fun(a) => Eq(not(not(a)), a);
+        let p_true = refl(_);
+        let p_false = refl(_);
+        bool_rec(b, p, p_true, p_false)
+        ;

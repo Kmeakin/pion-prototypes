@@ -15,6 +15,8 @@ def x11: fun(@A: Type) -> A -> A -> Type = Eq;
 def x12: fun(@A: Type, x: A) -> Eq(@A, x, x) = refl;
 def x13: fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) ->
     p(x) -> p(y) = subst;
+def x14: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b) =
+    bool_rec;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -31,6 +33,7 @@ span   | source                                   | type
 155..157 | Eq                                       | fun(@A: Type) -> A -> A -> Type
 169..173 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 185..190 | subst                                    | fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
+203..211 | bool_rec                                 | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 metavars:
 ?0 = Type
 ?1 = Type
@@ -45,6 +48,7 @@ metavars:
 ?10 = fun(@A: Type) -> A -> A -> Type
 ?11 = fun(@A: Type, x: A) -> Eq(@A, x, x)
 ?12 = fun(@A: Type, @x: A, @y: A, @p: A -> Type) -> Eq(@A, x, y) -> p(x) -> p(y)
+?13 = fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 """
 
 stderr = """
