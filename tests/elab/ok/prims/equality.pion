@@ -3,28 +3,41 @@
 // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
 
 def sym: fun(@A: Type, a: A, b: A) -> Eq(a, b) -> Eq(b, a)
-       = fun(a, b, a_eq_b)
-         =>
-            let p = fun(x) => Eq(@A, x, a);
-            let p_a:  p(a) = refl(a);
-            let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
-            goal
-            ;
+    = fun(a, b, a_eq_b) =>
+        let p = fun(x) => Eq(@A, x, a);
+        let p_a:  p(a) = refl(a);
+        let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
+        goal
+        ;
 
 def trans: fun(@A: Type, a: A, b: A, c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c)
-         = fun(a, b, c, a_eq_b, b_eq_c)
-          =>
-            let p = fun(x) => Eq(@A, a, x);
-            let p_b: p(b) = a_eq_b;
-            let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
-            goal
-            ;
+    = fun(a, b, c, a_eq_b, b_eq_c) =>
+        let p = fun(x) => Eq(@A, a, x);
+        let p_b: p(b) = a_eq_b;
+        let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
+        goal
+        ;
 
 def cong: fun(@A: Type, @B: Type, a: A, b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a), f(b))
-         = fun(a, b, f, a_eq_b)
-          =>
-            let p = fun(x) => Eq(@B, f(a), f(x));
-            let p_a:  p(a) = refl(f(a));
-            let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
-            goal
-            ;
+    = fun(a, b, f, a_eq_b) =>
+        let p = fun(x) => Eq(@B, f(a), f(x));
+        let p_a:  p(a) = refl(f(a));
+        let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
+        goal
+        ;
+
+def not: Bool -> Bool = fun(x) =>
+    match x {
+        true => false,
+        false => true,
+    };
+
+def not_false_eq_true: Eq(not(false), true) = refl(_);
+def not_true_eq_false: Eq(not(true), false) = refl(_);
+
+// TODO
+def prove_bool: fun(p: Bool -> Type, p_true: p(true), p_false: p(false)) -> fun(b: Bool) -> p(b)
+    = fun(p, p_true, p_false) => fun(b) => match b {
+        true => p_true,
+        false => p_false,
+    };
