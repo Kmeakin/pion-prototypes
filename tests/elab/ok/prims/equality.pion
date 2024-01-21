@@ -57,3 +57,29 @@ def not_self_inverse: fun(b: Bool) -> Eq(not(not(b)), b)
         let p_false = refl(_);
         bool_rec(b, p, p_true, p_false)
         ;
+
+def and_left_identity: fun(a: Bool) -> Eq(@Bool, and(true, a), a)
+    = fun(a) =>
+        let p = fun(x) => Eq(and(true, x), x);
+        let p_true = refl(_);
+        let p_false = refl(_);
+        bool_rec(a, p, p_true, p_false)
+        ;
+
+def and_right_identity: fun(a: Bool) -> Eq(@Bool, and(a, true), a)
+    = fun(a) =>
+        let p = fun(x) => Eq(and(x, true), x);
+        let p_true = refl(_);
+        let p_false = refl(_);
+        bool_rec(a, p, p_true, p_false)
+        ;
+
+def and_self: fun(a: Bool) -> Eq(@Bool, and(a, a), a)
+    = fun(a) =>
+        let p = fun(x) => Eq(and(x, x), x);
+        bool_rec(a, p, refl(_), refl(_));
+
+def and_not_self: fun(a: Bool) -> Eq(@Bool, and(a, not(a)), false)
+    = fun(a) =>
+        let p = fun(x) => Eq(and(x, not(x)), false);
+        bool_rec(a, p, refl(_), refl(_));
