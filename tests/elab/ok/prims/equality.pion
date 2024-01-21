@@ -1,6 +1,7 @@
 // Eq:    fun(@A: Type, x: A, y: A) -> Type
 // refl:  fun(@A: Type, x: A) -> Eq(@A, x, x)
 // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
+// bool_rec: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 
 def sym: fun(@A: Type, a: A, b: A) -> Eq(a, b) -> Eq(b, a)
     = fun(a, b, a_eq_b) =>
@@ -35,10 +36,16 @@ def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) -> Eq(f, g) ->
         ;
 
 def not: Bool -> Bool
-    = fun(x) => match x {
-        true => false,
-        false => true,
-    };
+    = fun(b) => bool_rec(b, fun(_) => Bool, false, true);
+
+def and: Bool -> Bool -> Bool
+    = fun(a, b) => bool_rec(a, fun(_) => Bool, b, false);
+
+def or: Bool -> Bool -> Bool
+    = fun(a, b) => bool_rec(a, fun(_) => Bool, true, b);
+
+def xor: Bool -> Bool -> Bool
+    = fun(a, b) => bool_rec(a, fun(_) => Bool, not(b), b);
 
 def not_false_eq_true: Eq(not(false), true) = refl(_);
 def not_true_eq_false: Eq(not(true), false) = refl(_);
