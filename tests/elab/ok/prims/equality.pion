@@ -3,24 +3,24 @@
 // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
 // bool_rec: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 
-def sym: fun(@A: Type, a: A, b: A) -> Eq(a, b) -> Eq(b, a)
-    = fun(a, b, a_eq_b) =>
+def sym: fun(@A: Type, @a: A, @b: A) -> Eq(a, b) -> Eq(b, a)
+    = fun(a_eq_b) =>
         let p = fun(x) => Eq(@A, x, a);
         let p_a:  p(a) = refl(a);
         let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
         goal
         ;
 
-def trans: fun(@A: Type, a: A, b: A, c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c)
-    = fun(a, b, c, a_eq_b, b_eq_c) =>
+def trans: fun(@A: Type, @a: A, @b: A, @c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c)
+    = fun(a_eq_b, b_eq_c) =>
         let p = fun(x) => Eq(@A, a, x);
         let p_b: p(b) = a_eq_b;
         let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
         goal
         ;
 
-def cong: fun(@A: Type, @B: Type, a: A, b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a), f(b))
-    = fun(a, b, f, a_eq_b) =>
+def cong: fun(@A: Type, @B: Type, @a: A, @b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a), f(b))
+    = fun(f, a_eq_b) =>
         let p = fun(x) => Eq(@B, f(a), f(x));
         let p_a:  p(a) = refl(f(a));
         let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
@@ -74,7 +74,7 @@ def and_right_identity: fun(a: Bool) -> Eq(@Bool, and(a, true), a)
         bool_rec(a, p, p_true, p_false)
         ;
 
-def and_left_false: fun(a: Bool) -> Eq(@Bool, and(false, a), false)
+def and_left_absorb: fun(a: Bool) -> Eq(@Bool, and(false, a), false)
     = fun(a) =>
         let p = fun(x) => Eq(and(false, x), false);
         let p_true = refl(_);
@@ -82,10 +82,24 @@ def and_left_false: fun(a: Bool) -> Eq(@Bool, and(false, a), false)
         bool_rec(a, p, p_true, p_false)
         ;
 
-def and_right_false: fun(a: Bool) -> Eq(@Bool, and(a, false), false)
+def and_right_absorb: fun(a: Bool) -> Eq(@Bool, and(a, false), false)
     = fun(a) =>
         let p = fun(x) => Eq(and(x, false), false);
         let p_true = refl(_);
         let p_false = refl(_);
         bool_rec(a, p, p_true, p_false)
         ;
+
+/*
+def and_commutative: fun(a: Bool, b: Bool) -> Eq(@Bool, and(a, b), and(b, a))
+    = fun(a, b) =>
+        let p = fun(x) => Eq(and(x, b), and(b, x));
+        let p_true: Eq(@Bool, and(true, b), and(b, true)) =
+            let x = and_left_identity(b);
+            let y = and_right_identity(b);
+            trans(x, y);
+
+        let p_false = refl(_);
+        bool_rec(a, p, refl(_), refl(_))
+        ;
+*/
