@@ -6,6 +6,7 @@
   "engines": {
     "vscode": "^1.79.0"
   },
+	"activationEvents": ["onLanguage:pion"],
   "keywords": ["pion"],
   "categories": ["Programming Languages"],
   "main": "./out/extension",
