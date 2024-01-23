@@ -1,7 +1,7 @@
 exit status: 1
 
 stdout = """
-def error: Array(?0, 2) = #error;
+def error: Array(Int, 2) = [1];
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -9,10 +9,11 @@ span   | source                                   | type
 11..22 | Array(_, 2)                              | Type
 17..18 | _                                        | Type
 20..21 | 2                                        | Int
-25..28 | [1]                                      | Array(?1, 2)
+25..28 | [1]                                      | Array(Int, 2)
+26..27 | 1                                        | Int
 metavars:
-?0 = <unsolved>
-?1 = ?0
+?0 = Int
+?1 = Int
 """
 
 stderr = """
@@ -24,11 +25,5 @@ error: incorrect length of array literal
   │
   = help: the array is expected to have 2 elements, but has 1 elements
 
-error: unable to infer expression to solve hole
-  ┌─ tests/elab/errors/array_lit/array_len_mismatch.pion:1:18
-  │
-1 │ def error: Array(_, 2) = [1];
-  │                  ^
-
-aborting due to 2 previous errors
+aborting due to 1 previous error
 """

@@ -423,7 +423,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                         expected_len: *expected_len,
                         actual_len,
                     });
-                    return CheckExpr::ERROR;
                 }
 
                 let elem_exprs = self.bump.alloc_slice_fill_iter(elems.iter().map(|elem| {
