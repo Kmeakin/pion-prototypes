@@ -90,16 +90,15 @@ def and_right_absorb: fun(a: Bool) -> Eq(@Bool, and(a, false), false)
         bool_rec(a, p, p_true, p_false)
         ;
 
-/*
 def and_commutative: fun(a: Bool, b: Bool) -> Eq(@Bool, and(a, b), and(b, a))
     = fun(a, b) =>
         let p = fun(x) => Eq(and(x, b), and(b, x));
         let p_true: Eq(@Bool, and(true, b), and(b, true)) =
             let x = and_left_identity(b);
             let y = and_right_identity(b);
-            trans(x, y);
-
-        let p_false = refl(_);
-        bool_rec(a, p, refl(_), refl(_))
-        ;
-*/
+            trans(x, sym(y)); // true && b == true == b && true
+        let p_false: Eq(@Bool, and(false, b), and(b, false)) =
+            let x = and_left_absorb(b);
+            let y = and_right_absorb(b);
+            trans(x, sym(y)); // false && b == false == b && false
+        bool_rec(a, p, p_true, p_false) ;
