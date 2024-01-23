@@ -74,12 +74,18 @@ def and_right_identity: fun(a: Bool) -> Eq(@Bool, and(a, true), a)
         bool_rec(a, p, p_true, p_false)
         ;
 
-def and_self: fun(a: Bool) -> Eq(@Bool, and(a, a), a)
+def and_left_false: fun(a: Bool) -> Eq(@Bool, and(false, a), false)
     = fun(a) =>
-        let p = fun(x) => Eq(and(x, x), x);
-        bool_rec(a, p, refl(_), refl(_));
+        let p = fun(x) => Eq(and(false, x), false);
+        let p_true = refl(_);
+        let p_false = refl(_);
+        bool_rec(a, p, p_true, p_false)
+        ;
 
-def and_not_self: fun(a: Bool) -> Eq(@Bool, and(a, not(a)), false)
+def and_right_false: fun(a: Bool) -> Eq(@Bool, and(a, false), false)
     = fun(a) =>
-        let p = fun(x) => Eq(and(x, not(x)), false);
-        bool_rec(a, p, refl(_), refl(_));
+        let p = fun(x) => Eq(and(x, false), false);
+        let p_true = refl(_);
+        let p_false = refl(_);
+        bool_rec(a, p, p_true, p_false)
+        ;
