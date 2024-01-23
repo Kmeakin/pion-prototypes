@@ -332,7 +332,7 @@ span   | source                                   | type
 1748..1752 | true                                     | Bool
 1756..1760 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 1756..1763 | refl(_)                                  | Eq(@Bool, true, true)
-1761..1762 | _                                        | ?33
+1761..1762 | _                                        | ?32
 1788..1790 | Eq                                       | fun(@A: Type) -> A -> A -> Type
 1788..1808 | Eq(not(true), false)                     | Type
 1791..1794 | not                                      | Bool -> Bool
@@ -341,7 +341,7 @@ span   | source                                   | type
 1802..1807 | false                                    | Bool
 1811..1815 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 1811..1818 | refl(_)                                  | Eq(@Bool, false, false)
-1816..1817 | _                                        | ?38
+1816..1817 | _                                        | ?36
 1843..1877 | fun(b: Bool) -> Eq(not(not(b)), b)       | Type
 1850..1854 | Bool                                     | Type
 1859..1861 | Eq                                       | fun(@A: Type) -> A -> A -> Type
@@ -365,12 +365,12 @@ span   | source                                   | type
 1936..1937 | a                                        | Bool
 1948..2040 | let p_true = refl(...p, p_true, p_false) | Eq(@Bool, bool_rec(bool_rec(b, fun(_: Bool) => Bool, false, true), fun(_: Bool) => Bool, false, true), b)
 1961..1965 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-1961..1968 | refl(_)                                  | Eq(@?47(b), ?49(b), ?49(b))
-1966..1967 | _                                        | ?47(b)
+1961..1968 | refl(_)                                  | Eq(@?44(b), ?45(b), ?45(b))
+1966..1967 | _                                        | ?44(b)
 1978..2040 | let p_false = refl...p, p_true, p_false) | Eq(@Bool, bool_rec(bool_rec(b, fun(_: Bool) => Bool, false, true), fun(_: Bool) => Bool, false, true), b)
 1992..1996 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-1992..1999 | refl(_)                                  | Eq(@?51(b), ?53(b), ?53(b))
-1997..1998 | _                                        | ?51(b)
+1992..1999 | refl(_)                                  | Eq(@?47(b), ?48(b), ?48(b))
+1997..1998 | _                                        | ?47(b)
 2009..2017 | bool_rec                                 | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 2009..2040 | bool_rec(b, p, p_true, p_false)          | Eq(@Bool, bool_rec(bool_rec(b, fun(_: Bool) => Bool, false, true), fun(_: Bool) => Bool, false, true), b)
 2018..2019 | b                                        | Bool
@@ -399,12 +399,12 @@ span   | source                                   | type
 2177..2178 | x                                        | Bool
 2189..2281 | let p_true = refl(...p, p_true, p_false) | Eq(@Bool, a, a)
 2202..2206 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-2202..2209 | refl(_)                                  | Eq(@?58(a), ?60(a), ?60(a))
-2207..2208 | _                                        | ?58(a)
+2202..2209 | refl(_)                                  | Eq(@?53(a), ?54(a), ?54(a))
+2207..2208 | _                                        | ?53(a)
 2219..2281 | let p_false = refl...p, p_true, p_false) | Eq(@Bool, a, a)
 2233..2237 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-2233..2240 | refl(_)                                  | Eq(@?62(a), ?64(a), ?64(a))
-2238..2239 | _                                        | ?62(a)
+2233..2240 | refl(_)                                  | Eq(@?56(a), ?57(a), ?57(a))
+2238..2239 | _                                        | ?56(a)
 2250..2258 | bool_rec                                 | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 2250..2281 | bool_rec(a, p, p_true, p_false)          | Eq(@Bool, a, a)
 2259..2260 | a                                        | Bool
@@ -433,12 +433,12 @@ span   | source                                   | type
 2419..2420 | x                                        | Bool
 2431..2523 | let p_true = refl(...p, p_true, p_false) | Eq(@Bool, bool_rec(a, fun(_: Bool) => Bool, true, false), a)
 2444..2448 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-2444..2451 | refl(_)                                  | Eq(@?69(a), ?71(a), ?71(a))
-2449..2450 | _                                        | ?69(a)
+2444..2451 | refl(_)                                  | Eq(@?62(a), ?63(a), ?63(a))
+2449..2450 | _                                        | ?62(a)
 2461..2523 | let p_false = refl...p, p_true, p_false) | Eq(@Bool, bool_rec(a, fun(_: Bool) => Bool, true, false), a)
 2475..2479 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
-2475..2482 | refl(_)                                  | Eq(@?73(a), ?75(a), ?75(a))
-2480..2481 | _                                        | ?73(a)
+2475..2482 | refl(_)                                  | Eq(@?65(a), ?66(a), ?66(a))
+2480..2481 | _                                        | ?65(a)
 2492..2500 | bool_rec                                 | fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
 2492..2523 | bool_rec(a, p, p_true, p_false)          | Eq(@Bool, bool_rec(a, fun(_: Bool) => Bool, true, false), a)
 2501..2502 | a                                        | Bool
@@ -471,10 +471,10 @@ span   | source                                   | type
 2669..2670 | p                                        | Bool -> Type
 2672..2676 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 2672..2679 | refl(_)                                  | Eq(@Bool, true, true)
-2677..2678 | _                                        | ?79(a)
+2677..2678 | _                                        | ?70(a)
 2681..2685 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 2681..2688 | refl(_)                                  | Eq(@Bool, false, false)
-2686..2687 | _                                        | ?82(a)
+2686..2687 | _                                        | ?72(a)
 2710..2758 | fun(a: Bool) -> Eq...(a, not(a)), false) | Type
 2717..2721 | Bool                                     | Type
 2726..2728 | Eq                                       | fun(@A: Type) -> A -> A -> Type
@@ -505,10 +505,10 @@ span   | source                                   | type
 2848..2849 | p                                        | Bool -> Type
 2851..2855 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 2851..2858 | refl(_)                                  | Eq(@Bool, false, false)
-2856..2857 | _                                        | ?88(a)
+2856..2857 | _                                        | ?77(a)
 2860..2864 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 2860..2867 | refl(_)                                  | Eq(@Bool, false, false)
-2865..2866 | _                                        | ?91(a)
+2865..2866 | _                                        | ?79(a)
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -560,7 +560,7 @@ span   | source                                   | type
 1201..1202 | p                                        | ?26(A, B, a, f, g, f_eq_g)
 1209..1210 | x                                        | A -> B
 1256..1259 | p_f                                      | Eq(@B, f(a), f(a))
-1289..1293 | goal                                     | ?30(A, B, a, f, g, f_eq_g)
+1289..1293 | goal                                     | ?29(A, B, a, f, g, f_eq_g)
 1395..1396 | b                                        | Bool
 1417..1418 | _                                        | Bool
 1484..1485 | a                                        | Bool
@@ -574,30 +574,30 @@ span   | source                                   | type
 1685..1686 | _                                        | Bool
 1847..1848 | b                                        | Bool
 1888..1889 | b                                        | Bool
-1906..1907 | p                                        | ?43(b)
-1914..1915 | a                                        | ?44(b)
-1952..1958 | p_true                                   | ?46(b)
-1982..1989 | p_false                                  | ?50(b)
+1906..1907 | p                                        | ?40(b)
+1914..1915 | a                                        | ?41(b)
+1952..1958 | p_true                                   | ?43(b)
+1982..1989 | p_false                                  | ?46(b)
 2079..2080 | a                                        | Bool
 2128..2129 | a                                        | Bool
-2146..2147 | p                                        | ?54(a)
-2154..2155 | x                                        | ?55(a)
-2193..2199 | p_true                                   | ?57(a)
-2223..2230 | p_false                                  | ?61(a)
+2146..2147 | p                                        | ?49(a)
+2154..2155 | x                                        | ?50(a)
+2193..2199 | p_true                                   | ?52(a)
+2223..2230 | p_false                                  | ?55(a)
 2321..2322 | a                                        | Bool
 2370..2371 | a                                        | Bool
-2388..2389 | p                                        | ?65(a)
-2396..2397 | x                                        | ?66(a)
-2435..2441 | p_true                                   | ?68(a)
-2465..2472 | p_false                                  | ?72(a)
+2388..2389 | p                                        | ?58(a)
+2396..2397 | x                                        | ?59(a)
+2435..2441 | p_true                                   | ?61(a)
+2465..2472 | p_false                                  | ?64(a)
 2553..2554 | a                                        | Bool
 2599..2600 | a                                        | Bool
-2617..2618 | p                                        | ?76(a)
-2625..2626 | x                                        | ?77(a)
+2617..2618 | p                                        | ?67(a)
+2625..2626 | x                                        | ?68(a)
 2714..2715 | a                                        | Bool
 2769..2770 | a                                        | Bool
-2787..2788 | p                                        | ?85(a)
-2795..2796 | x                                        | ?86(a)
+2787..2788 | p                                        | ?74(a)
+2795..2796 | x                                        | ?75(a)
 metavars:
 ?0 = fun(_: #error, _: #error, _: #error) => _#2
 ?1 = fun(_: #error, _: #error, _: #error, _: #error) => _#3
@@ -630,74 +630,61 @@ metavars:
 ?26 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
     (_#5 -> _#5) -> Type
 ?27 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#4
-?28 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) => _#4
-?29 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
+?28 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
     _#2(_#3)
-?30 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
+?29 = fun(_: #error, _: #error, _: #error, _: #error, _: #error, _: #error) =>
     Eq(@_#4, _#2(_#3), _#1(_#3))
+?30 = Bool
 ?31 = Bool
 ?32 = Bool
-?33 = Bool
+?33 = true
 ?34 = Bool
-?35 = true
+?35 = Bool
 ?36 = Bool
-?37 = Bool
-?38 = Bool
-?39 = Bool
-?40 = false
+?37 = false
+?38 = fun(_: #error) => Bool
+?39 = fun(_: #error) => Bool
+?40 = fun(_: #error) => Bool -> Type
 ?41 = fun(_: #error) => Bool
-?42 = fun(_: #error) => Bool
-?43 = fun(_: #error) => Bool -> Type
+?42 = fun(_: #error, _: #error) => Bool
+?43 = fun(_: #error) => Eq(@Bool, true, true)
 ?44 = fun(_: #error) => Bool
-?45 = fun(_: #error, _: #error) => Bool
-?46 = fun(_: #error) => Eq(@Bool, true, true)
+?45 = fun(_: #error) => true
+?46 = fun(_: #error) => Eq(@Bool, false, false)
 ?47 = fun(_: #error) => Bool
-?48 = fun(_: #error) => Bool
-?49 = fun(_: #error) => true
-?50 = fun(_: #error) => Eq(@Bool, false, false)
-?51 = fun(_: #error) => Bool
-?52 = fun(_: #error) => Bool
-?53 = fun(_: #error) => false
-?54 = fun(_: #error) => Bool -> Type
-?55 = fun(_: #error) => Bool
-?56 = fun(_: #error, _: #error) => Bool
-?57 = fun(_: #error) => Eq(@Bool, true, true)
-?58 = fun(_: #error) => Bool
+?48 = fun(_: #error) => false
+?49 = fun(_: #error) => Bool -> Type
+?50 = fun(_: #error) => Bool
+?51 = fun(_: #error, _: #error) => Bool
+?52 = fun(_: #error) => Eq(@Bool, true, true)
+?53 = fun(_: #error) => Bool
+?54 = fun(_: #error) => true
+?55 = fun(_: #error) => Eq(@Bool, false, false)
+?56 = fun(_: #error) => Bool
+?57 = fun(_: #error) => false
+?58 = fun(_: #error) => Bool -> Type
 ?59 = fun(_: #error) => Bool
-?60 = fun(_: #error) => true
-?61 = fun(_: #error) => Eq(@Bool, false, false)
+?60 = fun(_: #error, _: #error) => Bool
+?61 = fun(_: #error) => Eq(@Bool, true, true)
 ?62 = fun(_: #error) => Bool
-?63 = fun(_: #error) => Bool
-?64 = fun(_: #error) => false
-?65 = fun(_: #error) => Bool -> Type
-?66 = fun(_: #error) => Bool
-?67 = fun(_: #error, _: #error) => Bool
-?68 = fun(_: #error) => Eq(@Bool, true, true)
-?69 = fun(_: #error) => Bool
+?63 = fun(_: #error) => true
+?64 = fun(_: #error) => Eq(@Bool, false, false)
+?65 = fun(_: #error) => Bool
+?66 = fun(_: #error) => false
+?67 = fun(_: #error) => Bool -> Type
+?68 = fun(_: #error) => Bool
+?69 = fun(_: #error, _: #error) => Bool
 ?70 = fun(_: #error) => Bool
 ?71 = fun(_: #error) => true
-?72 = fun(_: #error) => Eq(@Bool, false, false)
-?73 = fun(_: #error) => Bool
-?74 = fun(_: #error) => Bool
-?75 = fun(_: #error) => false
-?76 = fun(_: #error) => Bool -> Type
+?72 = fun(_: #error) => Bool
+?73 = fun(_: #error) => false
+?74 = fun(_: #error) => Bool -> Type
+?75 = fun(_: #error) => Bool
+?76 = fun(_: #error, _: #error) => Bool
 ?77 = fun(_: #error) => Bool
-?78 = fun(_: #error, _: #error) => Bool
+?78 = fun(_: #error) => false
 ?79 = fun(_: #error) => Bool
-?80 = fun(_: #error) => Bool
-?81 = fun(_: #error) => true
-?82 = fun(_: #error) => Bool
-?83 = fun(_: #error) => Bool
-?84 = fun(_: #error) => false
-?85 = fun(_: #error) => Bool -> Type
-?86 = fun(_: #error) => Bool
-?87 = fun(_: #error, _: #error) => Bool
-?88 = fun(_: #error) => Bool
-?89 = fun(_: #error) => Bool
-?90 = fun(_: #error) => false
-?91 = fun(_: #error) => Bool
-?92 = fun(_: #error) => Bool
-?93 = fun(_: #error) => false
+?80 = fun(_: #error) => false
 """
 
 stderr = """

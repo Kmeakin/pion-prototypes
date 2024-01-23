@@ -390,6 +390,13 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
         match expr {
             hir::Expr::Error(..) => CheckExpr::ERROR,
 
+            hir::Expr::Underscore(..) => {
+                let span = expr.span();
+                let expr_source = MetaSource::UnderscoreExpr { span };
+                let expr = self.push_unsolved_expr(expr_source, expected.clone());
+                CheckExpr::new(expr)
+            }
+
             hir::Expr::Let(_, (pat, r#type, init, body)) => {
                 let (expr, ()) = self.elab_let(pat, r#type.as_ref(), init, body, |this, body| {
                     let Check(body_expr) = this.check_expr(body, expected);
@@ -561,7 +568,6 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
             // new expression variants are added
             hir::Expr::Lit(..)
-            | hir::Expr::Underscore(..)
             | hir::Expr::Ident(..)
             | hir::Expr::Ann(..)
             | hir::Expr::RecordType(..)

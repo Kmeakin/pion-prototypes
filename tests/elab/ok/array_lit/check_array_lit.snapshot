@@ -25,15 +25,11 @@ span   | source                                   | type
 76..79 | [1]                                      | Array(Int, 1)
 77..78 | 1                                        | Int
 metavars:
-?0 = Int
+?0 = 0
 ?1 = 0
 ?2 = Int
-?3 = 0
+?3 = Int
 ?4 = Int
-?5 = Type
-?6 = Int
-?7 = Type
-?8 = Int
 """
 
 stderr = """

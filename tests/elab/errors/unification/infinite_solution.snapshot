@@ -4,7 +4,7 @@ stdout = """
 def error: fun(Wrap: Type -> Type) ->
     (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type =
     fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) =>
-        f(?5(Wrap, f), fun(a: ?5(Wrap, f)) => #error);
+        f(?2(Wrap, f), fun(a: ?2(Wrap, f)) => #error);
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -28,24 +28,21 @@ span   | source                                   | type
 117..118 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
 117..134 | f(_, fun(a) => a)                        | Type
 119..120 | _                                        | Type
-122..133 | fun(a) => a                              | ?5(Wrap, f) -> Wrap(?5(Wrap, f))
-132..133 | a                                        | Wrap(?5(Wrap, f))
+122..133 | fun(a) => a                              | ?2(Wrap, f) -> Wrap(?2(Wrap, f))
+132..133 | a                                        | Wrap(?2(Wrap, f))
 types of patterns:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
 15..19 | Wrap                                     | Type -> Type
 42..43 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
-49..50 | A                                        | ?3(Wrap)
+49..50 | A                                        | ?1(Wrap)
 98..102 | Wrap                                     | Type -> Type
 111..112 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
-126..127 | a                                        | ?5(Wrap, f)
+126..127 | a                                        | ?2(Wrap, f)
 metavars:
 ?0 = fun(_: #error) => Type
 ?1 = fun(_: #error) => Type
-?2 = fun(_: #error) => Type
-?3 = fun(_: #error) => Type
-?4 = fun(_: #error, _: #error) => Type
-?5 = <unsolved>
+?2 = <unsolved>
 """
 
 stderr = """

@@ -1,7 +1,7 @@
 exit status: 1
 
 stdout = """
-def error: Array(?1, 2) = #error;
+def error: Array(?0, 2) = #error;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -9,12 +9,10 @@ span   | source                                   | type
 11..22 | Array(_, 2)                              | Type
 17..18 | _                                        | Type
 20..21 | 2                                        | Int
-25..28 | [1]                                      | Array(?3, 2)
+25..28 | [1]                                      | Array(?1, 2)
 metavars:
-?0 = Type
-?1 = <unsolved>
-?2 = Type
-?3 = ?1
+?0 = <unsolved>
+?1 = ?0
 """
 
 stderr = """
