@@ -1,6 +1,6 @@
 use pion_utils::symbol::Symbol;
 
-use crate::env::{Index, SharedEnv};
+use crate::env::Index;
 use crate::name::BinderName;
 use crate::syntax::*;
 
