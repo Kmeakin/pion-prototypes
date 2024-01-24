@@ -230,7 +230,9 @@ impl ElabDiagnostic {
                     .with_message("type mismatch")
                     .with_labels(vec![primary(*span)])
                     .with_notes(vec![format!(
-                        "help: expected `{expected}`, found `{found}`"
+                        "help:
+expected `{expected}`
+found    `{found}`"
                     )]),
                 unify::UnifyError::Spine(error) => {
                     let message = match error {
