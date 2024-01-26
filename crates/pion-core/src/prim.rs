@@ -208,38 +208,43 @@ impl Prim {
                     ),
                 )),
             ),
-            // bool_rec: fun(b: Bool, p: Bool -> Type) -> p(true) -> p(false) -> p(b)
-            Self::bool_rec => Type::FunType(
-                Plicity::Explicit,
-                BinderName::User(Symbol::b),
-                BOOL,
-                Closure::empty(&Expr::FunType(
+            // bool_rec: fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b)
+            Self::bool_rec => {
+                const P: &Type = &Type::FunType(
                     Plicity::Explicit,
+                    BinderName::Underscore,
+                    BOOL,
+                    Closure::empty(&Expr::TYPE),
+                );
+
+                Type::FunType(
+                    Plicity::Implicit,
                     BinderName::User(Symbol::p),
-                    &(
-                        Expr::FunType(
-                            Plicity::Explicit,
-                            BinderName::Underscore,
-                            &(Expr::BOOL, Expr::TYPE),
-                        ),
-                        Expr::FunType(
-                            Plicity::Explicit,
-                            BinderName::Underscore,
-                            &(
-                                Expr::FunApp(Plicity::Explicit, &(VAR0, Expr::TRUE)),
-                                Expr::FunType(
-                                    Plicity::Explicit,
-                                    BinderName::Underscore,
-                                    &(
-                                        Expr::FunApp(Plicity::Explicit, &(VAR1, Expr::FALSE)),
-                                        Expr::FunApp(Plicity::Explicit, &(VAR2, VAR3)),
+                    P,
+                    Closure::empty(&Expr::FunType(
+                        Plicity::Explicit,
+                        BinderName::User(Symbol::b),
+                        &(
+                            Expr::BOOL,
+                            Expr::FunType(
+                                Plicity::Explicit,
+                                BinderName::Underscore,
+                                &(
+                                    Expr::FunApp(Plicity::Explicit, &(VAR1, Expr::TRUE)),
+                                    Expr::FunType(
+                                        Plicity::Explicit,
+                                        BinderName::Underscore,
+                                        &(
+                                            Expr::FunApp(Plicity::Explicit, &(VAR2, Expr::FALSE)),
+                                            Expr::FunApp(Plicity::Explicit, &(VAR3, VAR2)),
+                                        ),
                                     ),
                                 ),
                             ),
                         ),
-                    ),
-                )),
-            ),
+                    )),
+                )
+            }
         }
     }
 }

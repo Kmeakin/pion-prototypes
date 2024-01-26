@@ -109,7 +109,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
             gt(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x > y),
             lte(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x <= y),
             gte(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x >= y),
-            bool_rec(Value::Lit(Lit::Bool(cond)), _motive, then, r#else) => (if *cond { then } else { r#else }).clone(),
+            bool_rec(_motive, Value::Lit(Lit::Bool(cond)), then, r#else) => (if *cond { then } else { r#else }).clone(),
         }
     }
 
