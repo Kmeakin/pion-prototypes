@@ -105,7 +105,13 @@ impl<'pretty> PrettyCtx<'pretty> {
 
                 let body = self.blocklike_expr(body, Prec::MAX);
 
-                let params = self.intersperse(params, self.text(", "));
+                let params = self.intersperse(params, self.text(",").append(self.line()));
+                let params = self
+                    .line_()
+                    .append(params)
+                    .append(self.line_())
+                    .nest(INDENT)
+                    .group();
                 self.text("fun")
                     .append("(")
                     .append(params)
@@ -153,7 +159,13 @@ impl<'pretty> PrettyCtx<'pretty> {
                 if params.is_empty() {
                     codomain
                 } else {
-                    let params = self.intersperse(params, self.text(", "));
+                    let params = self.intersperse(params, self.text(",").append(self.line()));
+                    let params = self
+                        .line_()
+                        .append(params)
+                        .append(self.line_())
+                        .nest(INDENT)
+                        .group();
                     self.text("fun")
                         .append("(")
                         .append(params)
@@ -172,7 +184,14 @@ impl<'pretty> PrettyCtx<'pretty> {
                     args.push(arg);
                 }
 
-                let args = self.intersperse(args.into_iter().rev(), self.text(", "));
+                let args =
+                    self.intersperse(args.into_iter().rev(), self.text(",").append(self.line()));
+                let args = self
+                    .line_()
+                    .append(args)
+                    .append(self.line_())
+                    .nest(INDENT)
+                    .group();
                 let fun = self.expr(fun, Prec::App);
                 fun.append("(").append(args).append(")")
             }
