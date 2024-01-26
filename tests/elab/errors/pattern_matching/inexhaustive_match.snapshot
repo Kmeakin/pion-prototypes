@@ -2,8 +2,11 @@ exit status: 1
 
 stdout = """
 def empty: fun(x: Bool) -> ?1(x) = fun(x: Bool) => #error;
+
 def foo: Bool -> Int = fun(x: Bool) => #error;
+
 def bar: Bool -> Int = fun(x: Bool) => #error;
+
 def baz: Bool -> Int = fun(x: Bool) => #error;
 types of expressions:
 span   | source                                   | type

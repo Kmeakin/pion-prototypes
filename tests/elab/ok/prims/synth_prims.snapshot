@@ -2,19 +2,32 @@ exit status: 0
 
 stdout = """
 def x1: Type = Type;
+
 def x2: Type = Int;
+
 def x3: Type = Bool;
+
 def x4: Type -> Int -> Type = Array;
+
 def x5: Int -> Int -> Int = add;
+
 def x6: Int -> Int -> Int = sub;
+
 def x7: Int -> Int -> Int = mul;
+
 def x8: Int -> Int -> Bool = eq;
+
 def x9: Int -> Int -> Bool = lt;
+
 def x10: Int -> Int -> Bool = gt;
+
 def x11: fun(@A: Type) -> A -> A -> Type = Eq;
+
 def x12: fun(@A: Type, x: A) -> Eq(@A, x, x) = refl;
+
 def x13: fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) ->
     p(x) -> p(y) = subst;
+
 def x14: fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b) =
     bool_rec;
 types of expressions:

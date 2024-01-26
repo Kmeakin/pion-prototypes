@@ -2,6 +2,7 @@ exit status: 0
 
 stdout = """
 def fun0: () -> Int = fun(_: ()) => 0;
+
 def fun1: Int -> Bool = fun(x: Int) => false;
 types of expressions:
 span   | source                                   | type

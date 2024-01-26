@@ -4,6 +4,7 @@ stdout = """
 def app1: Int =
     let f: Int -> Int = fun(x: Int) => x;
     f(1);
+
 def app2: Bool =
     let id: fun(@A: Type) -> A -> A = fun(@A: Type, x: A) => x;
     id(@Bool, false);

@@ -12,6 +12,7 @@ def and3: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or3: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => match (x, y)._1 {
@@ -23,6 +24,7 @@ def or3: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or4: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => true,

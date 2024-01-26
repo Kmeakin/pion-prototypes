@@ -7,16 +7,19 @@ def is_zero_or_one: Int -> Bool =
         1 => true,
         _ => false,
     };
+
 def is_true_or_false: Bool -> Bool =
     fun(x: Bool) => match x {
         true => true,
         false => true,
     };
+
 def is_true_or_false_record: {b: Bool} -> Bool =
     fun(x: {b: Bool}) => match x.b {
         true => true,
         false => true,
     };
+
 def is_true_or_false_record2: {b: Bool} -> Bool =
     fun(x: {b: Bool}) => match x.b {
         true => true,

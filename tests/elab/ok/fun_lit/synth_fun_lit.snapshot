@@ -2,7 +2,9 @@ exit status: 0
 
 stdout = """
 def const5: () -> Int = fun(_: ()) => 5;
+
 def id_int: Int -> Int = fun(x: Int) => x;
+
 def id_poly: fun(A: Type) -> A -> A = fun(A: Type, a: A) => a;
 types of expressions:
 span   | source                                   | type

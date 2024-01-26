@@ -6,16 +6,19 @@ def is_odd: Int -> Bool =
         0 => false,
         _ => is_even(sub(x, 1)),
     };
+
 def is_even: Int -> Bool =
     fun(x: Int) => match x {
         0 => true,
         _ => is_odd(sub(x, 1)),
     };
+
 def five: Int =
     match is_odd(5) {
         true => 5,
         false => 0,
     };
+
 def five_is_odd: Array(Int, 5) = [1, 2, 3, 4, 5];
 types of expressions:
 span   | source                                   | type

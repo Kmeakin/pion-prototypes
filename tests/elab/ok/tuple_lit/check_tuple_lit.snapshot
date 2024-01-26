@@ -2,8 +2,11 @@ exit status: 0
 
 stdout = """
 def Unit: Type = ();
+
 def Tuple1: Type = (Int,);
+
 def Tuple2: Type = (Int, Bool);
+
 def unit: () = ();
 types of expressions:
 span   | source                                   | type

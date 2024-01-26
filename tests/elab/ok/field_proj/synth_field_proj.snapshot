@@ -2,7 +2,9 @@ exit status: 0
 
 stdout = """
 def a: Int = {x = 5}.x;
+
 def b: Int = {x = 5, y = false}.x;
+
 def c: Bool = {x = 5, y = false}.y;
 types of expressions:
 span   | source                                   | type

@@ -9,6 +9,7 @@ def FstType: Type =
             let a: _#3._0 = _#0._0;
             let b: _#4._1 = _#1._1;
             A;
+
 def SndType: Type =
     fun(_: (Type, Type)) ->
         let A: Type = _#0._0;

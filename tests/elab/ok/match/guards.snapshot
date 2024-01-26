@@ -22,6 +22,7 @@ def foo: Int -> Bool -> Bool -> Int =
         5 => 5,
         _ => 6,
     };
+
 def bar: Bool -> (Bool -> Bool) -> Int -> Int =
     fun(x: Bool, f: Bool -> Bool, y: Int) => match x {
         true => 0,
@@ -32,6 +33,7 @@ def bar: Bool -> (Bool -> Bool) -> Int -> Int =
                 false => 3,
             },
     };
+
 def baz: Int -> Int -> (Int -> Bool) -> Int =
     fun(x: Int, y: Int, f: Int -> Bool) => match (x, y)._0 {
         0 =>

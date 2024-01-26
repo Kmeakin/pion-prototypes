@@ -2,8 +2,10 @@ exit status: 0
 
 stdout = """
 def id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+
 def always: fun(@A: Type, @B: Type) -> A -> B -> A =
     fun(@A: Type, @B: Type, a: A, b: B) => a;
+
 def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
     fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
 types of expressions:

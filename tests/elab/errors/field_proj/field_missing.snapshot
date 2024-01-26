@@ -2,7 +2,9 @@ exit status: 1
 
 stdout = """
 def error1: #error = #error;
+
 def error2: #error = #error;
+
 def error3: #error = #error;
 types of expressions:
 span   | source                                   | type

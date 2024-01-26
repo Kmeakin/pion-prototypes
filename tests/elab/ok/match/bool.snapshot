@@ -6,11 +6,13 @@ def not: Bool -> Bool =
         true => false,
         false => true,
     };
+
 def bool-to-int: Bool -> Int =
     fun(x: Bool) => match x {
         true => 1,
         false => 0,
     };
+
 def apply: Bool -> (Bool -> Int) -> Int =
     fun(x: Bool, f: Bool -> Int) => match x {
         true => 1,

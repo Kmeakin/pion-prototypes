@@ -5,6 +5,7 @@ def fst: fun(A: Type, B: Type) -> (A, B) -> A =
     fun(A: Type, B: Type, p: (A, B)) =>
         let x: A = p._0;
         x;
+
 def snd: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
         let y: B = p._1;

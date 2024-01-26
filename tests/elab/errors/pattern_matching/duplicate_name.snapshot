@@ -5,6 +5,7 @@ def f: Int =
     let x: Int = (1, 2, 3)._0;
     let y: Int = (1, 2, 3)._1;
     x;
+
 def g: Int -> Int -> Int -> Int = fun(x: Int, y: Int, _: Int) => y;
 types of expressions:
 span   | source                                   | type

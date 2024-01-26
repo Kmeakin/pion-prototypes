@@ -4,9 +4,11 @@ stdout = """
 def f0: Bool =
     let a: Int = 0;
     false;
+
 def f1: Bool =
     let a: Int = 0;
     false;
+
 def f2: Bool =
     let a: Int = 0;
     false;

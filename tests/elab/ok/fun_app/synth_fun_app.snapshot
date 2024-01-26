@@ -4,9 +4,11 @@ stdout = """
 def app0: Bool =
     let f: () -> Bool = fun(_: ()) => false;
     f(());
+
 def app1: Int =
     let f: Int -> Int = fun(x: Int) => x;
     f(1);
+
 def curried: Int -> Type = Array(Int);
 types of expressions:
 span   | source                                   | type

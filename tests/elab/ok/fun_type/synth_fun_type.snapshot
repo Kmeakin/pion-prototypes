@@ -2,7 +2,9 @@ exit status: 0
 
 stdout = """
 def Fun0: Type = () -> Int;
+
 def Fun1: Type = Int -> Int;
+
 def IdType: Type = fun(A: Type) -> A -> A;
 types of expressions:
 span   | source                                   | type

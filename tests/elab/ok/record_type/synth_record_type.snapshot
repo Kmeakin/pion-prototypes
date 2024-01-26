@@ -2,7 +2,9 @@ exit status: 0
 
 stdout = """
 def Singleton: Type = {x: Int};
+
 def Point: Type = {x: Int, y: Int};
+
 def Any: Type = {A: Type, a: A};
 types of expressions:
 span   | source                                   | type

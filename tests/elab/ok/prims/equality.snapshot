@@ -7,6 +7,7 @@ def sym: fun(@A: Type, @a: A, @b: A) -> Eq(@A, a, b) -> Eq(@A, b, a) =
         let p_a: Eq(@A, a, a) = refl(@A, a);
         let goal: Eq(@A, b, a) = subst(@A, @p, @a, @b, a_eq_b, p_a);
         goal;
+
 def trans: fun(@A: Type, @a: A, @b: A, @c: A) -> Eq(@A, a, b) ->
     Eq(@A, b, c) -> Eq(@A, a, c) =
     fun(
@@ -21,6 +22,7 @@ def trans: fun(@A: Type, @a: A, @b: A, @c: A) -> Eq(@A, a, b) ->
         let p_b: Eq(@A, a, b) = a_eq_b;
         let goal: Eq(@A, a, c) = subst(@A, @p, @b, @c, b_eq_c, p_b);
         goal;
+
 def cong: fun(@A: Type, @B: Type, @a: A, @b: A, f: A -> B) -> Eq(@A, a, b) ->
     Eq(@B, f(a), f(b)) =
     fun(@A: Type, @B: Type, @a: A, @b: A, f: A -> B, a_eq_b: Eq(@A, a, b)) =>
@@ -28,6 +30,7 @@ def cong: fun(@A: Type, @B: Type, @a: A, @b: A, f: A -> B) -> Eq(@A, a, b) ->
         let p_a: Eq(@B, f(a), f(a)) = refl(@B, f(a));
         let goal: Eq(@B, f(a), f(b)) = subst(@A, @p, @a, @b, a_eq_b, p_a);
         goal;
+
 def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) ->
     Eq(@A -> B, f, g) -> Eq(@B, f(a), g(a)) =
     fun(
@@ -42,16 +45,23 @@ def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) ->
         let p_f: Eq(@B, f(a), f(a)) = refl(@B, f(a));
         let goal: Eq(@B, f(a), g(a)) = subst(@A -> B, @p, @f, @g, f_eq_g, p_f);
         goal;
+
 def not: Bool -> Bool =
     fun(b: Bool) => bool_rec(@fun(_: Bool) => Bool, b, false, true);
+
 def and: Bool -> Bool -> Bool =
     fun(a: Bool, b: Bool) => bool_rec(@fun(_: Bool) => Bool, a, b, false);
+
 def or: Bool -> Bool -> Bool =
     fun(a: Bool, b: Bool) => bool_rec(@fun(_: Bool) => Bool, a, true, b);
+
 def xor: Bool -> Bool -> Bool =
     fun(a: Bool, b: Bool) => bool_rec(@fun(_: Bool) => Bool, a, not(b), b);
+
 def not_false_eq_true: Eq(@Bool, true, true) = refl(@Bool, true);
+
 def not_true_eq_false: Eq(@Bool, false, false) = refl(@Bool, false);
+
 def not_self_inverse: fun(b: Bool) ->
     Eq(
         @Bool,
@@ -68,12 +78,14 @@ def not_self_inverse: fun(b: Bool) ->
         let p_true: Eq(@Bool, true, true) = refl(@Bool, true);
         let p_false: Eq(@Bool, false, false) = refl(@Bool, false);
         bool_rec(@p, b, p_true, p_false);
+
 def and_left_identity: fun(a: Bool) -> Eq(@Bool, a, a) =
     fun(a: Bool) =>
         let p: Bool -> Type = fun(x: Bool) => Eq(@Bool, and(true, x), x);
         let p_true: Eq(@Bool, true, true) = refl(@Bool, true);
         let p_false: Eq(@Bool, false, false) = refl(@Bool, false);
         bool_rec(@p, a, p_true, p_false);
+
 def and_right_identity: fun(a: Bool) ->
     Eq(@Bool, bool_rec(@fun(_: Bool) => Bool, a, true, false), a) =
     fun(a: Bool) =>
@@ -81,12 +93,14 @@ def and_right_identity: fun(a: Bool) ->
         let p_true: Eq(@Bool, true, true) = refl(@Bool, true);
         let p_false: Eq(@Bool, false, false) = refl(@Bool, false);
         bool_rec(@p, a, p_true, p_false);
+
 def and_left_absorb: Bool -> Eq(@Bool, false, false) =
     fun(a: Bool) =>
         let p: Bool -> Type = fun(x: Bool) => Eq(@Bool, and(false, x), false);
         let p_true: Eq(@Bool, false, false) = refl(@Bool, false);
         let p_false: Eq(@Bool, false, false) = refl(@Bool, false);
         bool_rec(@p, a, p_true, p_false);
+
 def and_right_absorb: fun(a: Bool) ->
     Eq(@Bool, bool_rec(@fun(_: Bool) => Bool, a, false, false), false) =
     fun(a: Bool) =>
@@ -94,6 +108,7 @@ def and_right_absorb: fun(a: Bool) ->
         let p_true: Eq(@Bool, false, false) = refl(@Bool, false);
         let p_false: Eq(@Bool, false, false) = refl(@Bool, false);
         bool_rec(@p, a, p_true, p_false);
+
 def and_commutative: fun(a: Bool, b: Bool) ->
     Eq(
         @Bool,

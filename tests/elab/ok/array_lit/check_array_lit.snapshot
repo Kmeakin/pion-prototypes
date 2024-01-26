@@ -2,7 +2,9 @@ exit status: 0
 
 stdout = """
 def a: Array(Int, 0) = [];
+
 def b: Array(Int, 1) = [1];
+
 def c: Array(Int, 1) = [1];
 types of expressions:
 span   | source                                   | type

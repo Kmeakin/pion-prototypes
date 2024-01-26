@@ -4,10 +4,12 @@ stdout = """
 def a: Bool -> Bool =
     let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
     id(@Bool);
+
 def b: Bool -> Int -> Bool =
     let always: fun(@A: Type, @B: Type) -> A -> B -> A =
         fun(@A: Type, @B: Type, a: A, b: B) => a;
     always(@Bool, @Int);
+
 def c: (Bool -> Int) -> Bool -> Int =
     let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
         fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);

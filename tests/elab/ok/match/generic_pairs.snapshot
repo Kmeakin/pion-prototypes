@@ -6,19 +6,23 @@ def fst1: fun(A: Type, B: Type) -> (A, B) -> A =
         let x: A = p._0;
         let y: B = p._1;
         x;
+
 def fst2: fun(A: Type, B: Type) -> (A, B) -> A =
     fun(A: Type, B: Type, p: (A, B)) =>
         let x: A = p._0;
         x;
+
 def snd1: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
         let x: A = p._0;
         let y: B = p._1;
         y;
+
 def snd2: fun(A: Type, B: Type) -> (A, B) -> B =
     fun(A: Type, B: Type, p: (A, B)) =>
         let y: B = p._1;
         y;
+
 def swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
     fun(A: Type, B: Type, p: (A, B)) =>
         let x: A = p._0;

@@ -33,7 +33,7 @@ impl<'pretty> PrettyCtx<'pretty> {
     pub fn module(&'pretty self, module: &Module<'_>) -> DocBuilder<'pretty> {
         self.intersperse(
             module.items.iter().map(|item| self.item(item)),
-            self.hardline(),
+            self.hardline().append(self.hardline()),
         )
     }
 

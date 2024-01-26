@@ -2,6 +2,7 @@ exit status: 0
 
 stdout = """
 def fun1: Type = Int -> Bool;
+
 def fun2: Type = Int -> Bool -> Type;
 types of expressions:
 span   | source                                   | type

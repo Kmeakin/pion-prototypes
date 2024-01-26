@@ -9,6 +9,7 @@ def fst: fun(_: (Type, Type)) -> (_#0._0, _#1._1) -> _#1._0 =
             let x: _#3._0 = _#0._0;
             let y: _#4._1 = _#1._1;
             x;
+
 def snd: fun(_: (Type, Type)) -> (_#0._0, _#1._1) -> _#1._1 =
     fun(_: (Type, Type)) =>
         let A: Type = _#0._0;

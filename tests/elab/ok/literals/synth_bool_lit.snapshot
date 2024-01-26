@@ -2,6 +2,7 @@ exit status: 0
 
 stdout = """
 def foo: Bool = true;
+
 def bar: Bool = false;
 types of expressions:
 span   | source                                   | type

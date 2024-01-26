@@ -9,6 +9,7 @@ def and1: Bool -> Bool -> Bool =
         },
         false => false,
     };
+
 def and2: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => match (x, y)._1 {
@@ -17,6 +18,7 @@ def and2: Bool -> Bool -> Bool =
         },
         false => false,
     };
+
 def and3: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => match (x, y)._1 {
@@ -28,6 +30,7 @@ def and3: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or1: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => true,
@@ -36,6 +39,7 @@ def or1: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or2: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => true,
@@ -44,6 +48,7 @@ def or2: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or3: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => match (x, y)._1 {
@@ -55,6 +60,7 @@ def or3: Bool -> Bool -> Bool =
             false => false,
         },
     };
+
 def or4: Bool -> Bool -> Bool =
     fun(x: Bool, y: Bool) => match (x, y)._0 {
         true => true,

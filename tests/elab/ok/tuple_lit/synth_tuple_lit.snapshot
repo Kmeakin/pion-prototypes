@@ -2,13 +2,19 @@ exit status: 0
 
 stdout = """
 def tuple0: () = ();
+
 def tuple1: (Int,) = (1,);
+
 def tuple2: (Int, Int) = (1, 2);
+
 def tuple3: (Int, Int, Int) = (1, 2, 3);
+
 def pair_make: fun(A: Type, B: Type) -> A -> B -> (A, B) =
     fun(A: Type, B: Type, x: A, y: B) => (x, y);
+
 def pair_id: fun(A: Type, B: Type) -> (A, B) -> (A, B) =
     fun(A: Type, B: Type, p: (A, B)) => (p._0, p._1);
+
 def pair_swap: fun(A: Type, B: Type) -> (A, B) -> (B, A) =
     fun(A: Type, B: Type, p: (A, B)) => (p._1, p._0);
 types of expressions:
