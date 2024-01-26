@@ -60,6 +60,7 @@ impl Prim {
         const VAR1: Expr = Expr::Local((), Index::new().next());
         const VAR2: Expr = Expr::Local((), Index::new().next().next());
         const VAR3: Expr = Expr::Local((), Index::new().next().next().next());
+        const VAR4: Expr = Expr::Local((), Index::new().next().next().next().next());
 
         match self {
             Self::Type | Self::Bool | Self::Int => Type::TYPE,
@@ -140,34 +141,33 @@ impl Prim {
                     ),
                 )),
             ),
-            // subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) ->
-            // p(y)
+            // subst: fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) -> p(x) -> p(y)
             Self::subst => Type::FunType(
                 Plicity::Implicit,
                 BinderName::User(Symbol::A),
                 TYPE,
                 Closure::empty(&Expr::FunType(
                     Plicity::Implicit,
-                    BinderName::User(Symbol::x),
+                    BinderName::User(Symbol::p),
                     &(
-                        VAR0,
+                        Expr::FunType(
+                            Plicity::Explicit,
+                            BinderName::Underscore,
+                            &(VAR0, Expr::TYPE),
+                        ),
                         Expr::FunType(
                             Plicity::Implicit,
-                            BinderName::User(Symbol::y),
+                            BinderName::User(Symbol::x),
                             &(
                                 VAR1,
                                 Expr::FunType(
                                     Plicity::Implicit,
-                                    BinderName::User(Symbol::p),
+                                    BinderName::User(Symbol::y),
                                     &(
+                                        VAR2,
                                         Expr::FunType(
                                             Plicity::Explicit,
                                             BinderName::Underscore,
-                                            &(VAR2, Expr::TYPE),
-                                        ),
-                                        Expr::FunType(
-                                            Plicity::Explicit,
-                                            BinderName::User(Symbol::x_eq_y),
                                             &(
                                                 Expr::FunApp(
                                                     Plicity::Explicit,
@@ -179,23 +179,23 @@ impl Prim {
                                                                     Plicity::Implicit,
                                                                     &(Expr::Prim(Prim::Eq), VAR3),
                                                                 ),
-                                                                VAR2,
+                                                                VAR1,
                                                             ),
                                                         ),
-                                                        VAR1,
+                                                        VAR0,
                                                     ),
                                                 ),
                                                 Expr::FunType(
                                                     Plicity::Explicit,
-                                                    BinderName::User(Symbol::p_x),
+                                                    BinderName::Underscore,
                                                     &(
                                                         Expr::FunApp(
                                                             Plicity::Explicit,
-                                                            &(VAR1, VAR3),
+                                                            &(VAR3, VAR2),
                                                         ),
                                                         Expr::FunApp(
                                                             Plicity::Explicit,
-                                                            &(VAR2, VAR3),
+                                                            &(VAR4, VAR2),
                                                         ),
                                                     ),
                                                 ),

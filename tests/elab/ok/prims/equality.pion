@@ -1,13 +1,13 @@
 // Eq:    fun(@A: Type, x: A, y: A) -> Type
 // refl:  fun(@A: Type, x: A) -> Eq(@A, x, x)
-// subst: fun(@A: Type, @x: A, @y: A, @p: A -> Type, x_eq_y: Eq(@A, x, y), p_x: p(x)) -> p(y)
+// subst: fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) -> p(x) -> p(y)
 // bool_rec: fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b)
 
 def sym: fun(@A: Type, @a: A, @b: A) -> Eq(a, b) -> Eq(b, a)
     = fun(a_eq_b) =>
         let p = fun(x) => Eq(@A, x, a);
         let p_a:  p(a) = refl(a);
-        let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
+        let goal: p(b) = subst(@A, @p, @a, @b, a_eq_b, p_a);
         goal
         ;
 
@@ -15,7 +15,7 @@ def trans: fun(@A: Type, @a: A, @b: A, @c: A) -> Eq(a, b) -> Eq(b, c) -> Eq(a, c
     = fun(a_eq_b, b_eq_c) =>
         let p = fun(x) => Eq(@A, a, x);
         let p_b: p(b) = a_eq_b;
-        let goal: p(c) = subst(@A, @b, @c, @p, b_eq_c, p_b);
+        let goal: p(c) = subst(@A, @p, @b, @c, b_eq_c, p_b);
         goal
         ;
 
@@ -23,7 +23,7 @@ def cong: fun(@A: Type, @B: Type, @a: A, @b: A, f: A -> B) -> Eq(a, b) -> Eq(f(a
     = fun(f, a_eq_b) =>
         let p = fun(x) => Eq(@B, f(a), f(x));
         let p_a:  p(a) = refl(f(a));
-        let goal: p(b) = subst(@A, @a, @b, @p, a_eq_b, p_a);
+        let goal: p(b) = subst(@A, @p, @a, @b, a_eq_b, p_a);
         goal
         ;
 
@@ -31,7 +31,7 @@ def cong-app: fun(@A: Type, @B: Type, a: A, f: A -> B, g: A -> B) -> Eq(f, g) ->
     = fun(a, f, g, f_eq_g) =>
         let p = fun(x : A -> B) => Eq(@B, f(a), x(a));
         let p_f: p(f) = refl(_);
-        let goal = subst(@(A -> B), @f, @g, @p, f_eq_g, p_f);
+        let goal = subst(@(A -> B), @p, @f, @g, f_eq_g, p_f);
         goal
         ;
 
