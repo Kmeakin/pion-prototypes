@@ -236,11 +236,10 @@ impl<'source, 'vec> Ctx<'source, 'vec> {
             // identifiers
             b'r' => {
                 let mut len = 1_usize;
-                let mut kind = TokenKind::Ident;
+                let kind = TokenKind::Ident;
                 match self.next_byte() {
                     None => return self.emit_token(start, len, kind),
                     Some((_, b'#')) => {
-                        kind = TokenKind::RawIdent;
                         len += 1;
                     }
                     Some((_, c)) if is_ident_continue(c) => len += 1,

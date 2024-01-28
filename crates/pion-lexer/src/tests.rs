@@ -307,9 +307,9 @@ fn identifiers() {
             28..29: Whitespace(" ")
             29..38: Ident("hello1234")
             38..39: Whitespace(" ")
-            39..52: RawIdent("r#hello_world")
+            39..52: Ident("r#hello_world")
             52..53: Whitespace(" ")
-            53..58: RawIdent("r#fun")
+            53..58: Ident("r#fun")
         "#]],
     );
 }

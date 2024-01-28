@@ -40,7 +40,6 @@ pub enum TokenKind {
 
     // identifiers
     Ident,
-    RawIdent,
 
     // integer literals
     DecInt,
@@ -124,7 +123,6 @@ impl TokenKind {
             Self::FatArrow => "`=>`",
             Self::Pipe => "`|`",
             Self::Ident => "identifier",
-            Self::RawIdent => "raw identifier",
             Self::DecInt => "decimal integer",
             Self::BinInt => "binary integer",
             Self::HexInt => "hexadecimal integer",

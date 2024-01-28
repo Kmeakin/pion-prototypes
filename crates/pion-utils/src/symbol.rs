@@ -47,7 +47,7 @@ macro_rules! symbols {
 #[rustfmt::skip]
 symbols![
     // keywords
-    def, r#else, r#false, fun, r#if, r#let, r#match, r#then, r#true,
+    r#def, r#else, r#false, r#fun, r#if, r#let, r#match, r#then, r#true,
 
     // alphabet
     a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
@@ -76,7 +76,11 @@ impl From<lasso::Spur> for Symbol {
 }
 
 impl Symbol {
-    pub fn intern(sym: impl AsRef<str>) -> Self { (INTERNER.get_or_intern(sym)).into() }
+    pub fn intern(sym: impl AsRef<str>) -> Self {
+        let sym = sym.as_ref();
+        let sym = sym.strip_prefix("r#").unwrap_or(sym);
+        (INTERNER.get_or_intern(sym)).into()
+    }
 
     pub fn get(sym: impl AsRef<str>) -> Option<Self> { INTERNER.get(sym).map(Self::from) }
 
