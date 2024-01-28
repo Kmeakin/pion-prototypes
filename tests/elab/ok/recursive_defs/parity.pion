@@ -1,3 +1,6 @@
+def two_is_even_proof: Eq(is_even(2), true) = refl(_);
+def two_is_even_bool = is_even(2);
+
 def is_even: Int -> Bool
 = fun(x) => match x {
     0 => true,

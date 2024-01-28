@@ -1,6 +1,3 @@
-use std::ops::ControlFlow;
-
-use internal_iterator::InternalIterator;
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::identity::{Identity, PtrMap, PtrSet};
 use pion_utils::symbol::{Symbol, SymbolMap};
@@ -134,73 +131,73 @@ fn expr_dependencies<'hir>(
     item_env: &ItemEnv<'hir>,
     required_items: &mut ItemSet<'hir>,
 ) {
-    expr.subexprs().try_for_each(|expr| {
-        match expr {
-            hir::Expr::Ident(.., ident) => {
-                ident_expr_dependencies(*ident, local_env, item_env, required_items);
+    match expr {
+        hir::Expr::Ident(.., ident) => {
+            ident_expr_dependencies(*ident, local_env, item_env, required_items);
+        }
+        hir::Expr::Let(.., (pat, r#type, init, body)) => {
+            if let Some(r#type) = r#type {
+                expr_dependencies(r#type, local_env, item_env, required_items);
             }
-            hir::Expr::Let(.., (pat, r#type, init, body)) => {
-                if let Some(r#type) = r#type {
-                    expr_dependencies(r#type, local_env, item_env, required_items);
+            expr_dependencies(init, local_env, item_env, required_items);
+            let len = local_env.len();
+            push_pat_names(pat, local_env);
+            expr_dependencies(body, local_env, item_env, required_items);
+            local_env.truncate(len);
+        }
+        hir::Expr::RecordType(.., fields) => {
+            let len = local_env.len();
+            for field in *fields {
+                expr_dependencies(&field.r#type, local_env, item_env, required_items);
+                local_env.push(field.name.symbol);
+            }
+            local_env.truncate(len);
+        }
+        hir::Expr::FunType(.., params, body) | hir::Expr::FunLit(.., params, body) => {
+            let len = local_env.len();
+            for param in *params {
+                push_pat_names(&param.pat, local_env);
+                if let Some(r#type) = param.r#type {
+                    expr_dependencies(&r#type, local_env, item_env, required_items);
                 }
-                expr_dependencies(init, local_env, item_env, required_items);
+            }
+            expr_dependencies(body, local_env, item_env, required_items);
+            local_env.truncate(len);
+        }
+        hir::Expr::RecordLit(.., fields) => {
+            fields.iter().for_each(|field| match field.expr.as_ref() {
+                Some(expr) => expr_dependencies(expr, local_env, item_env, required_items),
+                None => {
+                    ident_expr_dependencies(field.name, local_env, item_env, required_items);
+                }
+            });
+        }
+        hir::Expr::MethodCall(.., target, method, args) => {
+            expr_dependencies(target, local_env, item_env, required_items);
+            ident_expr_dependencies(*method, local_env, item_env, required_items);
+            args.iter().for_each(|arg| {
+                expr_dependencies(&arg.expr, local_env, item_env, required_items);
+            });
+        }
+        hir::Expr::Match(.., scrut, cases) => {
+            expr_dependencies(scrut, local_env, item_env, required_items);
+            for case in *cases {
+                let hir::MatchCase { pat, guard, expr } = case;
+
                 let len = local_env.len();
                 push_pat_names(pat, local_env);
-                expr_dependencies(body, local_env, item_env, required_items);
+                if let Some(guard) = guard {
+                    expr_dependencies(guard, local_env, item_env, required_items);
+                }
+                expr_dependencies(expr, local_env, item_env, required_items);
                 local_env.truncate(len);
             }
-            hir::Expr::RecordType(.., fields) => {
-                let len = local_env.len();
-                for field in *fields {
-                    expr_dependencies(&field.r#type, local_env, item_env, required_items);
-                    local_env.push(field.name.symbol);
-                }
-                local_env.truncate(len);
-            }
-            hir::Expr::FunType(.., params, body) | hir::Expr::FunLit(.., params, body) => {
-                let len = local_env.len();
-                for param in *params {
-                    push_pat_names(&param.pat, local_env);
-                    if let Some(r#type) = param.r#type {
-                        expr_dependencies(&r#type, local_env, item_env, required_items);
-                    }
-                }
-                expr_dependencies(body, local_env, item_env, required_items);
-                local_env.truncate(len);
-            }
-            hir::Expr::RecordLit(.., fields) => {
-                fields.iter().for_each(|field| match field.expr.as_ref() {
-                    Some(expr) => expr_dependencies(expr, local_env, item_env, required_items),
-                    None => {
-                        ident_expr_dependencies(field.name, local_env, item_env, required_items);
-                    }
-                });
-            }
-            hir::Expr::MethodCall(.., target, method, args) => {
-                expr_dependencies(target, local_env, item_env, required_items);
-                ident_expr_dependencies(*method, local_env, item_env, required_items);
-                args.iter().for_each(|arg| {
-                    expr_dependencies(&arg.expr, local_env, item_env, required_items);
-                });
-            }
-            hir::Expr::Match(.., scrut, cases) => {
-                expr_dependencies(scrut, local_env, item_env, required_items);
-                for case in *cases {
-                    let hir::MatchCase { pat, guard, expr } = case;
-
-                    let len = local_env.len();
-                    push_pat_names(pat, local_env);
-                    if let Some(guard) = guard {
-                        expr_dependencies(guard, local_env, item_env, required_items);
-                    }
-                    expr_dependencies(expr, local_env, item_env, required_items);
-                    local_env.truncate(len);
-                }
-            }
-            _ => return ControlFlow::Continue(()),
         }
-        ControlFlow::Break(())
-    });
+        _ => expr.for_each_shallow(
+            |expr| expr_dependencies(expr, local_env, item_env, required_items),
+            |_| (),
+        ),
+    }
 }
 
 fn ident_expr_dependencies<'hir>(

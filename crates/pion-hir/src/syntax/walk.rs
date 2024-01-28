@@ -1,178 +1,114 @@
 use std::ops::ControlFlow;
 
-use internal_iterator::InternalIterator;
-
 use super::*;
 
-pub fn walk_expr<'hir, R>(
-    expr: &'hir Expr<'hir>,
-    on_expr: &mut impl FnMut(&'hir Expr<'hir>) -> ControlFlow<R>,
-    on_pat: &mut impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
-) -> ControlFlow<R> {
-    on_expr(expr)?;
-
-    match expr {
-        Expr::Error(..) | Expr::Lit(..) | Expr::Underscore(..) | Expr::Ident(..) => {}
-        Expr::Ann(_, (expr, r#type)) => {
-            walk_expr(expr, on_expr, on_pat)?;
-            walk_expr(r#type, on_expr, on_pat)?;
-        }
-        Expr::Let(_, (pat, r#type, init, body)) => {
-            walk_pat(pat, on_pat)?;
-            if let Some(r#type) = r#type {
-                walk_expr(r#type, on_expr, on_pat)?;
-            }
-            walk_expr(init, on_expr, on_pat)?;
-            walk_expr(body, on_expr, on_pat)?;
-        }
-        Expr::ArrayLit(_, exprs) | Expr::TupleLit(_, exprs) => exprs
-            .iter()
-            .try_for_each(|expr| walk_expr(expr, on_expr, on_pat))?,
-        Expr::RecordType(_, fields) => fields
-            .iter()
-            .try_for_each(|field| walk_expr(&field.r#type, on_expr, on_pat))?,
-        Expr::RecordLit(_, fields) => fields
-            .iter()
-            .filter_map(|field| field.expr.as_ref())
-            .try_for_each(|expr| walk_expr(expr, on_expr, on_pat))?,
-        Expr::FieldProj(_, scrut, _) => walk_expr(scrut, on_expr, on_pat)?,
-        Expr::FunArrow(_, (lhs, rhs)) => {
-            walk_expr(lhs, on_expr, on_pat)?;
-            walk_expr(rhs, on_expr, on_pat)?;
-        }
-        Expr::FunType(_, params, body) | Expr::FunLit(_, params, body) => {
-            params.iter().try_for_each(|param| {
-                walk_pat(&param.pat, on_pat)?;
-                if let Some(r#type) = param.r#type.as_ref() {
-                    walk_expr(r#type, on_expr, on_pat)?;
-                }
-                ControlFlow::Continue(())
-            });
-            walk_expr(body, on_expr, on_pat)?;
-        }
-        Expr::FunCall(_, fun, args) => {
-            walk_expr(fun, on_expr, on_pat)?;
-            args.iter()
-                .try_for_each(|arg| walk_expr(&arg.expr, on_expr, on_pat))?;
-        }
-        Expr::MethodCall(_, head, _, args) => {
-            walk_expr(head, on_expr, on_pat)?;
-            args.iter()
-                .try_for_each(|arg| walk_expr(&arg.expr, on_expr, on_pat))?;
-        }
-        Expr::Match(_, scrut, cases) => {
-            walk_expr(scrut, on_expr, on_pat)?;
-            cases.iter().try_for_each(|case| {
-                walk_pat(&case.pat, on_pat)?;
-                if let Some(guard) = case.guard.as_ref() {
-                    walk_expr(guard, on_expr, on_pat)?;
-                }
-                walk_expr(&case.expr, on_expr, on_pat)
-            })?;
-        }
-        Expr::If(_, (scrut, then, r#else)) => {
-            walk_expr(scrut, on_expr, on_pat)?;
-            walk_expr(then, on_expr, on_pat)?;
-            walk_expr(r#else, on_expr, on_pat)?;
-        }
-    }
-    ControlFlow::Continue(())
-}
-
-pub fn walk_pat<'hir, R>(
-    pat: &'hir Pat<'hir>,
-    on_pat: &mut impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
-) -> ControlFlow<R> {
-    on_pat(pat)?;
-
-    match pat {
-        Pat::Error(_) | Pat::Lit(..) | Pat::Underscore(_) | Pat::Ident(..) => {}
-        Pat::TupleLit(_, pats) => pats.iter().try_for_each(|pat| walk_pat(pat, on_pat))?,
-        Pat::RecordLit(_, fields) => fields
-            .iter()
-            .filter_map(|field| field.pat.as_ref())
-            .try_for_each(|pat| walk_pat(pat, on_pat))?,
-        Pat::Or(_, pats) => pats.iter().try_for_each(|pat| walk_pat(pat, on_pat))?,
-    }
-
-    ControlFlow::Continue(())
-}
-
-pub struct Subexprs<'hir> {
-    expr: &'hir Expr<'hir>,
-}
-
-impl<'hir> InternalIterator for Subexprs<'hir> {
-    type Item = &'hir Expr<'hir>;
-
-    fn try_for_each<R, F>(self, mut on_expr: F) -> ControlFlow<R>
-    where
-        F: FnMut(Self::Item) -> ControlFlow<R>,
-    {
-        walk_expr(self.expr, &mut on_expr, &mut |_| ControlFlow::Continue(()))
-    }
-}
-
-pub struct Subpats<'hir> {
-    pat: &'hir Pat<'hir>,
-}
-
-impl<'hir> InternalIterator for Subpats<'hir> {
-    type Item = &'hir Pat<'hir>;
-
-    fn try_for_each<R, F>(self, mut on_pat: F) -> ControlFlow<R>
-    where
-        F: FnMut(Self::Item) -> ControlFlow<R>,
-    {
-        walk_pat(self.pat, &mut on_pat)
-    }
-}
+enum Never {}
 
 impl<'hir> Expr<'hir> {
-    /// Return an iterator over all of self's sub-expressions.
-    /// Visits each expression depth-first, pre-order ("NLR" order)
-    pub fn subexprs(&'hir self) -> Subexprs<'hir> { Subexprs { expr: self } }
+    pub fn try_for_each_shallow<R>(
+        &self,
+        mut on_expr: impl FnMut(&'hir Expr<'hir>) -> ControlFlow<R>,
+        mut on_pat: impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
+    ) -> ControlFlow<R> {
+        match self {
+            Expr::Error(_) | Expr::Lit(..) | Expr::Underscore(_) | Expr::Ident(..) => {}
+            Expr::Ann(.., (expr, r#type)) => {
+                on_expr(expr)?;
+                on_expr(r#type)?;
+            }
+            Expr::Let(.., (pat, r#type, init, body)) => {
+                on_pat(pat)?;
+                if let Some(r#type) = r#type {
+                    on_expr(r#type)?;
+                }
+                on_expr(init)?;
+                on_expr(body)?;
+            }
+            Expr::ArrayLit(.., exprs) | Expr::TupleLit(.., exprs) => {
+                exprs.iter().try_for_each(on_expr)?;
+            }
+            Expr::RecordType(.., fields) => {
+                fields.iter().try_for_each(|field| on_expr(&field.r#type))?;
+            }
+            Expr::RecordLit(.., fields) => fields
+                .iter()
+                .filter_map(|field| field.expr.as_ref())
+                .try_for_each(on_expr)?,
+            Expr::FieldProj(.., expr, _) => on_expr(expr)?,
+            Expr::FunArrow(.., (lhs, rhs)) => {
+                on_expr(lhs)?;
+                on_expr(rhs)?;
+            }
+            Expr::FunType(.., params, body) | Expr::FunLit(.., params, body) => {
+                for param in *params {
+                    on_pat(&param.pat)?;
+                    if let Some(r#type) = param.r#type.as_ref() {
+                        on_expr(r#type)?;
+                    }
+                }
+                on_expr(body)?;
+            }
+            Expr::FunCall(.., fun, args) | Expr::MethodCall(.., fun, _, args) => {
+                on_expr(fun)?;
+                args.iter().try_for_each(|arg| on_expr(&arg.expr))?;
+            }
+            Expr::Match(.., scrut, cases) => {
+                on_expr(scrut)?;
+                for case in *cases {
+                    on_pat(&case.pat)?;
+                    if let Some(guard) = case.guard.as_ref() {
+                        on_expr(guard)?;
+                    }
+                    on_expr(&case.expr)?;
+                }
+            }
+            Expr::If(.., (cond, then, r#else)) => {
+                on_expr(cond)?;
+                on_expr(then)?;
+                on_expr(r#else)?;
+            }
+        }
+        ControlFlow::Continue(())
+    }
+
+    pub fn for_each_shallow(
+        &self,
+        mut on_expr: impl FnMut(&'hir Expr<'hir>),
+        mut on_pat: impl FnMut(&'hir Pat<'hir>),
+    ) {
+        self.try_for_each_shallow(
+            |expr| {
+                on_expr(expr);
+                ControlFlow::<Never>::Continue(())
+            },
+            |pat| {
+                on_pat(pat);
+                ControlFlow::<Never>::Continue(())
+            },
+        );
+    }
 }
 
 impl<'hir> Pat<'hir> {
-    /// Return an iterator over all of self's sub-patterns.
-    /// Visits each pattern depth-first, pre-order ("NLR" order)
-    pub fn subpats(&'hir self) -> Subpats<'hir> { Subpats { pat: self } }
-}
+    pub fn try_for_each_shallow<R>(
+        &self,
+        on_pat: impl FnMut(&'hir Pat<'hir>) -> ControlFlow<R>,
+    ) -> ControlFlow<R> {
+        match self {
+            Pat::Error(..) | Pat::Lit(..) | Pat::Underscore(..) | Pat::Ident(..) => {}
+            Pat::RecordLit(_, fields) => fields
+                .iter()
+                .filter_map(|field| field.pat.as_ref())
+                .try_for_each(on_pat)?,
+            Pat::TupleLit(.., pats) | Pat::Or(.., pats) => pats.iter().try_for_each(on_pat)?,
+        }
+        ControlFlow::Continue(())
+    }
 
-#[cfg(test)]
-mod tests {
-    use internal_iterator::InternalIterator;
-
-    use super::*;
-
-    fn subexprs<'hir>(expr: &'hir Expr<'hir>) -> Vec<&'hir Expr<'hir>> { expr.subexprs().collect() }
-
-    #[test]
-    fn test_subexprs() {
-        let bump = bumpalo::Bump::new();
-
-        let expr0 = Expr::Error(ByteSpan::default());
-        assert_eq!(subexprs(&expr0), [&expr0]);
-
-        let expr1 = Expr::Lit(ByteSpan::default(), Lit::Bool(true));
-        assert_eq!(subexprs(&expr1), [&expr1]);
-
-        let expr2 = Expr::Ann(ByteSpan::default(), bump.alloc((expr0, expr1)));
-        assert_eq!(subexprs(&expr2), [&expr2, &expr0, &expr1]);
-
-        let expr4 = Expr::Let(
-            ByteSpan::default(),
-            bump.alloc((
-                Pat::Underscore(ByteSpan::default()),
-                Some(expr0),
-                expr1,
-                expr2,
-            )),
-        );
-        assert_eq!(
-            subexprs(&expr4),
-            vec![&expr4, &expr0, &expr1, &expr2, &expr0, &expr1]
-        );
+    pub fn for_each_shallow(&self, mut on_pat: impl FnMut(&'hir Pat<'hir>)) {
+        self.try_for_each_shallow(|pat| {
+            on_pat(pat);
+            ControlFlow::<Never>::Continue(())
+        });
     }
 }
