@@ -9,8 +9,6 @@ use crate::env::{EnvLen, Index, Level, SharedEnv};
 use crate::name::{BinderName, FieldName, LocalName};
 use crate::prim::Prim;
 
-mod iterators;
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Module<'core> {
     pub items: &'core [Item<'core>],
