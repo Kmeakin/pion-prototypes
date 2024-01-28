@@ -5,7 +5,8 @@ edition = { workspace = true }
 version = { workspace = true }
 
 [[test]]
-name = "integration_tests"
+harness = false
+name    = "integration_tests"
 
 [lints]
 workspace = true
@@ -26,4 +27,6 @@ codespan-reporting = { workspace = true }
 mimalloc           = { version = "0.1.39" }
 
 [dev-dependencies]
-snapbox = { version = "0.4.14", features = ["harness"] }
+libtest-mimic   = { version = "0.7.0" }
+similar-asserts = { version = "1.5.0" }
+walkdir         = { version = "2.4.0" }
