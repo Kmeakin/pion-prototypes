@@ -47,6 +47,7 @@ define_prims! {
     eq, ne, lt, gt, lte, gte,
     Eq, refl, subst,
     bool_rec,
+    fix,
 }
 
 impl Prim {
@@ -245,6 +246,50 @@ impl Prim {
                     )),
                 )
             }
+            // fix: fun(@A: Type, @B:Type) -> ((A -> B) -> A -> B) -> A -> B
+            Self::fix => Type::FunType(
+                Plicity::Implicit,
+                BinderName::User(Symbol::A),
+                TYPE,
+                Closure::empty(&Expr::FunType(
+                    Plicity::Implicit,
+                    BinderName::User(Symbol::B),
+                    &(
+                        Expr::TYPE,
+                        Expr::FunType(
+                            Plicity::Explicit,
+                            BinderName::Underscore,
+                            &(
+                                // ((A -> B) -> A -> B)
+                                (Expr::FunType(
+                                    Plicity::Explicit,
+                                    BinderName::Underscore,
+                                    &(
+                                        // (A -> B)
+                                        Expr::FunType(
+                                            Plicity::Explicit,
+                                            BinderName::Underscore,
+                                            &(VAR1, VAR1),
+                                        ),
+                                        // (A -> B)
+                                        Expr::FunType(
+                                            Plicity::Explicit,
+                                            BinderName::Underscore,
+                                            &(VAR2, VAR2),
+                                        ),
+                                    ),
+                                )),
+                                // (A -> B)
+                                Expr::FunType(
+                                    Plicity::Explicit,
+                                    BinderName::Underscore,
+                                    &(VAR2, VAR2),
+                                ),
+                            ),
+                        ),
+                    ),
+                )),
+            ),
         }
     }
 }

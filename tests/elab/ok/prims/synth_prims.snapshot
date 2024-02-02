@@ -30,6 +30,8 @@ def x13: fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) ->
 
 def x14: fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b) =
     bool_rec;
+
+def x15: fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B = fix;
 types of expressions:
 span   | source                                   | type
 -------|------------------------------------------|-----------------------------
@@ -47,6 +49,7 @@ span   | source                                   | type
 169..173 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
 185..190 | subst                                    | fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) -> p(x) -> p(y)
 203..211 | bool_rec                                 | fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b)
+224..227 | fix                                      | fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
 metavars:
 ?0 = Type
 ?1 = Type
@@ -62,6 +65,7 @@ metavars:
 ?11 = fun(@A: Type, x: A) -> Eq(@A, x, x)
 ?12 = fun(@A: Type, @p: A -> Type, @x: A, @y: A) -> Eq(@A, x, y) -> p(x) -> p(y)
 ?13 = fun(@p: Bool -> Type, b: Bool) -> p(true) -> p(false) -> p(b)
+?14 = fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
 """
 
 stderr = """

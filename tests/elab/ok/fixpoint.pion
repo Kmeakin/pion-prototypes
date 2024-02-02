@@ -1,0 +1,11 @@
+// fix: fun(@A: Type, @B:Type) -> ((A -> B) -> A -> B) -> A -> B
+
+def fact_nr: (Int -> Int) -> Int -> Int
+= fun(recur, x) => match x {
+    0 => 1,
+    _ => mul(x, recur(sub(x, 1))),
+};
+
+def fact = fix(fact_nr);
+
+def fact5is120: Eq(@Int, fact(5), 120) = refl(_);

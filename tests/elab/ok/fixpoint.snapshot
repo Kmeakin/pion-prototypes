@@ -1,0 +1,66 @@
+exit status: 0
+
+stdout = """
+def fact_nr: (Int -> Int) -> Int -> Int =
+    fun(recur: Int -> Int, x: Int) => match x {
+        0 => 1,
+        _ => mul(x, recur(sub(x, 1))),
+    };
+
+def fact: Int -> Int = fix(@Int, @Int, fact_nr);
+
+def fact5is120: Eq(@Int, 120, 120) = refl(@Int, 120);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+79..105 | (Int -> Int) -> Int -> Int               | Type
+80..83 | Int                                      | Type
+80..90 | Int -> Int                               | Type
+87..90 | Int                                      | Type
+95..98 | Int                                      | Type
+95..105 | Int -> Int                               | Type
+102..105 | Int                                      | Type
+108..183 | fun(recur, x) => m...cur(sub(x, 1))),\n} | (Int -> Int) -> Int -> Int
+125..183 | match x {\n    0 =...cur(sub(x, 1))),\n} | Int
+131..132 | x                                        | Int
+144..145 | 1                                        | Int
+156..159 | mul                                      | Int -> Int -> Int
+156..180 | mul(x, recur(sub(x, 1)))                 | Int
+160..161 | x                                        | Int
+163..168 | recur                                    | Int -> Int
+163..179 | recur(sub(x, 1))                         | Int
+169..172 | sub                                      | Int -> Int -> Int
+169..178 | sub(x, 1)                                | Int
+173..174 | x                                        | Int
+176..177 | 1                                        | Int
+197..200 | fix                                      | fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
+197..209 | fix(fact_nr)                             | Int -> Int
+201..208 | fact_nr                                  | (Int -> Int) -> Int -> Int
+228..230 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+228..250 | Eq(@Int, fact(5), 120)                   | Type
+232..235 | Int                                      | Type
+237..241 | fact                                     | Int -> Int
+237..244 | fact(5)                                  | Int
+242..243 | 5                                        | Int
+246..249 | 120                                      | Int
+253..257 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+253..260 | refl(_)                                  | Eq(@Int, 120, 120)
+258..259 | _                                        | ?3
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+112..117 | recur                                    | Int -> Int
+119..120 | x                                        | Int
+139..140 | 0                                        | Int
+151..152 | _                                        | Int
+metavars:
+?0 = Int -> Int
+?1 = Int
+?2 = Int
+?3 = Int
+?4 = 120
+"""
+
+stderr = """
+
+"""

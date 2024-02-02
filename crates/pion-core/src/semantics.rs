@@ -82,12 +82,23 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 Value::Stuck(head, spine)
             }
             Value::FunLit(.., body) => self.apply_closure(body, arg),
-            _ => panic!("Bad fun app: {fun:?} {arg:?}"),
+            _ => panic!("Bad fun app: fun={fun:?} arg={arg:?}"),
         }
+    }
+
+    pub fn fun_apps(
+        &self,
+        fun: Value<'core>,
+        args: impl IntoIterator<Item = (Plicity, Value<'core>)>,
+    ) -> Value<'core> {
+        args.into_iter()
+            .fold(fun, |fun, (plicity, arg)| self.fun_app(plicity, fun, arg))
     }
 
     #[allow(clippy::unused_self)]
     fn apply_prim(&self, prim: Prim, args: &[Elim<'core>]) -> Option<Value<'core>> {
+        #![allow(non_snake_case)]
+
         macro_rules! prim_rules {
             ($($prim:ident($($args:pat),+) => $rhs:expr,)*) => {
                 match (prim, args) {
@@ -111,6 +122,15 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
             gte(Value::Lit(Lit::Int(x)), Value::Lit(Lit::Int(y))) => Value::bool(x >= y),
             bool_rec(_p, Value::Lit(Lit::Bool(cond)), then, r#else) => (if *cond { then } else { r#else }).clone(),
             subst(_a, _p, _x, _y, _refl, on_refl) => on_refl.clone(),
+            fix(A, B, f, x) => {
+                let A = A.clone();
+                let B = B.clone();
+                let f = f.clone();
+                let x = x.clone();
+
+                // fix @A @B f x  = f (fix @A @B f) x
+                self.fun_apps(f.clone(), [(Plicity::Explicit, self.fun_apps(Value::prim(Prim::fix), [(Plicity::Implicit, A), (Plicity::Implicit, B), (Plicity::Explicit, f)])), (Plicity::Explicit, x)])
+            },
         }
     }
 

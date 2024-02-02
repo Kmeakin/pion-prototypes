@@ -64,7 +64,7 @@ stderr = """
             }
 
             let diff =
-                similar_asserts::SimpleDiff::from_str(&actual, &expected, "actual", "expected");
+                similar_asserts::SimpleDiff::from_str(&expected, &actual, "expected", "actual");
             return Err(Failed::from(diff));
         }
 

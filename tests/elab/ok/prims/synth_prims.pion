@@ -16,3 +16,5 @@ def x12 = refl;
 def x13 = subst;
 
 def x14 = bool_rec;
+
+def x15 = fix;
