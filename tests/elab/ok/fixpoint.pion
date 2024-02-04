@@ -9,3 +9,33 @@ def fact_nr: (Int -> Int) -> Int -> Int
 def fact = fix(fact_nr);
 
 def fact5is120: Eq(@Int, fact(5), 120) = refl(_);
+
+def open_evenodd: (Bool -> Int -> Bool) -> (Bool -> Int -> Bool)
+= fun(evenodd) => fun(b) => match b {
+    false => fun(n) => match n { 0 => true, _ => evenodd(true, sub(n, 1)), },
+    true => fun(n) => match n { 0 => false, _ => evenodd(false, sub(n, 1)), },
+};
+
+def even =
+    let open_evenodd: (Bool -> Int -> Bool) -> (Bool -> Int -> Bool)
+    = fun(evenodd) => fun(b) => match b {
+        false => fun(n) => match n { 0 => true, _ => evenodd(true, sub(n, 1)), },
+        true => fun(n) => match n { 0 => false, _ => evenodd(false, sub(n, 1)), },
+    };
+    let evenodd = fix(open_evenodd);
+    evenodd(false);
+
+def odd =
+    let open_evenodd: (Bool -> Int -> Bool) -> (Bool -> Int -> Bool)
+    = fun(evenodd) => fun(b) => match b {
+        false => fun(n) => match n { 0 => true, _ => evenodd(true, sub(n, 1)), },
+        true => fun(n) => match n { 0 => false, _ => evenodd(false, sub(n, 1)), },
+    };
+    let evenodd = fix(open_evenodd);
+    evenodd(true);
+
+def four_is_even: Eq(@Bool, even(4), true) = refl(_);
+def five_is_odd: Eq(@Bool, odd(5), true) = refl(_);
+
+def four_is_not_not: Eq(@Bool, odd(4), false) = refl(_);
+def five_is_not_even: Eq(@Bool, even(5), false) = refl(_);
