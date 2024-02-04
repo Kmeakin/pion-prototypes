@@ -217,7 +217,10 @@ fn push_pat_names(pat: &hir::Pat, local_env: &mut LocalEnv) {
     match pat {
         hir::Pat::Error(_) | hir::Pat::Lit(..) | hir::Pat::Underscore(_) => {}
         hir::Pat::Ident(.., ident) => local_env.push(ident.symbol),
-        hir::Pat::Or(.., pats) | hir::Pat::TupleLit(.., pats) => {
+        hir::Pat::Or(.., pats) => {
+            pats.iter().for_each(|pat| push_pat_names(pat, local_env));
+        }
+        hir::Pat::TupleLit(.., pats) => {
             pats.iter().for_each(|pat| push_pat_names(pat, local_env));
         }
         hir::Pat::RecordLit(.., fields) => fields.iter().for_each(|field| match field.pat {

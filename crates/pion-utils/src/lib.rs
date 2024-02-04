@@ -2,6 +2,7 @@
 
 pub mod identity;
 pub mod location;
+pub mod nonempty;
 pub mod numeric_conversions;
 pub mod slice_vec;
 pub mod source;

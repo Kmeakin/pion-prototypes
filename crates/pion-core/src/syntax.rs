@@ -3,6 +3,7 @@ use core::fmt;
 use ecow::{eco_vec, EcoVec};
 use pion_hir::syntax::{self as hir, Ident};
 use pion_utils::location::ByteSpan;
+use pion_utils::nonempty::NonEmptySlice;
 use pion_utils::symbol::Symbol;
 
 use crate::env::{EnvLen, Index, Level, SharedEnv};
@@ -289,8 +290,7 @@ pub enum Pat<'core> {
     Ident(ByteSpan, Symbol),
     Lit(ByteSpan, Lit),
     RecordLit(ByteSpan, &'core [(FieldName, Self)]),
-    // INVARIANT: slice.len() >= 2
-    Or(ByteSpan, &'core [Self]),
+    Or(ByteSpan, NonEmptySlice<'core, Self>),
 }
 
 impl<'core> Pat<'core> {

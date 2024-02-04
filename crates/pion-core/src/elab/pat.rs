@@ -104,10 +104,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 SynthPat::new(pat, Type::RecordType(telescope))
             }
             hir::Pat::Or(_, pats) => {
-                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                let mut core_pats = SliceVec::new(self.bump, pats.len().into());
                 let initial_names_len = idents.len();
 
-                let (first_pat, rest_pats) = pats.split_first().unwrap();
+                let (first_pat, rest_pats) = pats.split_first();
                 let Synth(first_pat, first_type) = self.synth_pat(first_pat, idents);
                 core_pats.push(first_pat);
                 let mut first_pat_names = idents.split_off(initial_names_len);
@@ -134,7 +134,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     core_pats.push(Pat::Error(pat.span()));
                 }
 
-                let pat = Pat::Or(span, core_pats.into());
+                let pats: &[_] = core_pats.into();
+                let pat = Pat::Or(span, pats.try_into().unwrap());
                 SynthPat::new(pat, first_type)
             }
         };
@@ -214,10 +215,10 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
             },
             hir::Pat::Lit(..) => self.synth_and_convert_pat(pat, expected, idents),
             hir::Pat::Or(_, pats) => {
-                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                let mut core_pats = SliceVec::new(self.bump, pats.len().into());
                 let initial_idents_len = idents.len();
 
-                let (first_pat, rest_pats) = pats.split_first().unwrap();
+                let (first_pat, rest_pats) = pats.split_first();
                 let Check(first_pat) = self.check_pat(first_pat, expected, idents);
                 core_pats.push(first_pat);
                 let mut first_pat_idents = idents.split_off(initial_idents_len);
@@ -244,7 +245,8 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                     core_pats.push(Pat::Error(pat.span()));
                 }
 
-                let pat = Pat::Or(span, core_pats.into());
+                let pats: &[_] = core_pats.into();
+                let pat = Pat::Or(span, pats.try_into().unwrap());
                 CheckPat::new(pat)
             }
         };
@@ -458,7 +460,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 // We ensured that all alternatives bind the same set of names, so we onyl need to
                 // recurse on the first alternative
                 Pat::Or(.., alts) => {
-                    let pat = alts.first().unwrap();
+                    let pat = alts.first();
                     recur(this, pat, scrut, value, toplevel, let_vars);
                 }
             }
@@ -518,7 +520,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 // We ensured that all alternatives bind the same set of names, so we only need to
                 // recurse on the first alternative
                 Pat::Or(.., alts) => {
-                    let pat = alts.first().unwrap();
+                    let pat = alts.first();
                     recur(this, pat, scrut, value, toplevel, let_vars);
                 }
             }
@@ -566,7 +568,7 @@ impl<'hir, 'core> ElabCtx<'hir, 'core> {
                 // We ensured that all alternatives bind the same set of names, so we only need to
                 // recurse on the first alternative
                 Pat::Or(.., alts) => {
-                    let pat = alts.first().unwrap();
+                    let pat = alts.first();
                     recur(this, pat, scrut, value, let_vars);
                 }
             }

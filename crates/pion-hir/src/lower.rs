@@ -5,6 +5,7 @@ use std::collections::hash_map::Entry;
 use pion_surface::syntax::{self as surface, CstNode};
 use pion_surface::tree::SyntaxToken;
 use pion_utils::location::ByteSpan;
+use pion_utils::nonempty::NonEmptySlice;
 use pion_utils::slice_vec::SliceVec;
 use pion_utils::symbol::{Symbol, SymbolMap};
 
@@ -406,7 +407,8 @@ impl<'tree, 'hir> Ctx<'hir> {
 
                 Pat::RecordLit(span, hir_fields)
             }
-            surface::Pat::OrPat(.., p) => Pat::Or(span, self.lower_pats(p.pats())),
+            surface::Pat::OrPat(.., p) => NonEmptySlice::new(self.lower_pats(p.pats()))
+                .map_or(Pat::Error(span), |pats| Pat::Or(span, pats)),
         }
     }
 

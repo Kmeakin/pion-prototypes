@@ -1,4 +1,5 @@
 use pion_utils::location::ByteSpan;
+use pion_utils::nonempty::NonEmptySlice;
 use pion_utils::symbol::Symbol;
 
 mod walk;
@@ -135,7 +136,7 @@ pub enum Pat<'hir> {
     Ident(ByteSpan, Ident),
     TupleLit(ByteSpan, &'hir [Self]),
     RecordLit(ByteSpan, &'hir [PatField<'hir>]),
-    Or(ByteSpan, &'hir [Self]),
+    Or(ByteSpan, NonEmptySlice<'hir, Self>),
 }
 
 impl<'hir> Pat<'hir> {
