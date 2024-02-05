@@ -43,10 +43,30 @@ internal-iterator  = { version = "0.2.1" }
 lasso              = { version = "0.7.2", features = ["ahasher", "multi-threaded"] }
 nohash             = { version = "0.2.0" }
 
-[profile.release]
-lto   = "thin"
-panic = "abort"
+[profile.dev]
+opt-level = 0
 
-[profile.profiling]
-debug    = true
-inherits = "release"
+debug            = 0
+debug-assertions = true
+overflow-checks  = true
+panic            = "abort"
+strip            = "debuginfo"
+
+codegen-units = 256
+incremental   = true
+
+lto = false
+
+[profile.release]
+opt-level = 3
+
+debug            = 0
+debug-assertions = false
+overflow-checks  = false
+panic            = "abort"
+strip            = "debuginfo"
+
+codegen-units = 16
+incremental   = false
+
+lto = "thin"

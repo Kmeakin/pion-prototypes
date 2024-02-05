@@ -1,2 +1,2 @@
 [build]
-rustflags = ["-Clink-arg=-fuse-ld=lld", "-Clinker-plugin-lto"]
+rustflags = ["-Clink-arg=-fuse-ld=mold"]
