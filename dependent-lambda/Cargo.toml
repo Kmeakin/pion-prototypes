@@ -1,0 +1,12 @@
+[package]
+name = "dependent-lambda"
+
+edition = { workspace = true }
+version = { workspace = true }
+
+
+[dependencies]
+common = { path = "../common" }
+
+bumpalo = { workspace = true }
+ecow    = { workspace = true }
