@@ -141,10 +141,8 @@ pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> E
             spine.iter().fold(head, |head, elim| match elim {
                 Elim::FunApp { arg } => {
                     let arg = quote(bump, local_len, arg);
-                    Expr::FunApp {
-                        fun: bump.alloc(head),
-                        arg: bump.alloc(arg),
-                    }
+                    let (fun, arg) = bump.alloc((head, arg));
+                    Expr::FunApp { fun, arg }
                 }
             })
         }
@@ -155,10 +153,11 @@ pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> E
         } => {
             let r#type = quote(bump, local_len, r#type);
             let body = quote_closure(bump, local_len, body);
+            let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunLit {
                 name_hint: *name_hint,
-                r#type: bump.alloc(r#type),
-                body: bump.alloc(body),
+                r#type,
+                body,
             }
         }
         Value::FunType {
@@ -168,10 +167,11 @@ pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> E
         } => {
             let r#type = quote(bump, local_len, r#type);
             let body = quote_closure(bump, local_len, body);
+            let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunType {
                 name_hint: *name_hint,
-                r#type: bump.alloc(r#type),
-                body: bump.alloc(body),
+                r#type,
+                body,
             }
         }
         Value::Const(r#const) => Expr::Const(*r#const),
