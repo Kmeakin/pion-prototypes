@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ops::{Deref, DerefMut};
 
 use ecow::EcoVec;
@@ -5,13 +6,25 @@ use ecow::EcoVec;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct AbsoluteVar(usize);
 
+impl fmt::Display for AbsoluteVar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
+
+impl fmt::Display for RelativeVar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
 
 /// A specialized representation of an environment for when we don't care about
 /// the elements themselves, just the number of elements in the environment.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct EnvLen(usize);
+
+impl fmt::Display for EnvLen {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+}
 
 impl EnvLen {
     /// New `EnvLen` representing an empty environment.
