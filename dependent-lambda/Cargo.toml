@@ -13,3 +13,6 @@ lalrpop-util = { version = "0.20.0" }
 logos        = { version = "0.14.0" }
 pretty       = { version = "0.12.3" }
 text-size    = { version = "1.1.1" }
+
+[build-dependencies]
+lalrpop = { version = "0.20.0" }

@@ -1,0 +1,117 @@
+use text_size::{TextRange, TextSize};
+
+use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam};
+
+grammar<'bump>(
+    bump: &'bump bumpalo::Bump,
+);
+
+extern {
+    type Location = TextSize;
+    type Error = ();
+
+    enum Token {
+        "false" => Token { kind: TokenKind::KwFalse, .. },
+        "forall" => Token { kind: TokenKind::KwForall, .. },
+        "fun" => Token { kind: TokenKind::KwFun, .. },
+        "let" => Token { kind: TokenKind::KwLet, .. },
+        "true" => Token { kind: TokenKind::KwTrue, .. },
+
+        "(" => Token { kind: TokenKind::LParen, .. },
+        ")" => Token { kind: TokenKind::RParen, .. },
+        "{" => Token { kind: TokenKind::LCurly, .. },
+        "}" => Token { kind: TokenKind::RCurly, .. },
+
+        "_" => Token { kind: TokenKind::Underscore, .. },
+        "," => Token { kind: TokenKind::Comma, .. },
+        ";" => Token { kind: TokenKind::Semicolon, .. },
+        ":" => Token { kind: TokenKind::Colon, .. },
+        "=" => Token { kind: TokenKind::Eq, .. },
+        "=>" => Token { kind: TokenKind::DoubleArrow, .. },
+        "->" => Token { kind: TokenKind::SingleArrow, .. },
+
+        "Ident" => Token { kind: TokenKind::Ident, .. },
+        "DecInt" => Token { kind: TokenKind::DecInt, .. },
+        "BinInt" => Token { kind: TokenKind::BinInt, .. },
+        "HexInt" => Token { kind: TokenKind::HexInt, .. },
+    }
+}
+
+pub Expr: Located<Expr<'bump>> = {
+    LetExpr => <>,
+}
+
+LetExpr: Located<Expr<'bump>> = {
+    <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
+        let (pat, init, body) = bump.alloc((pat, init, body));
+        Located::new(range, Expr::Let { pat, r#type, init, body })
+    },
+    FunExpr => <>,
+}
+
+FunExpr: Located<Expr<'bump>> = {
+    <start: @L> "fun" <param: FunParam> "=>" <body: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (param, body) = bump.alloc((param, body));
+        Located::new(range, Expr::FunLit { param, body })
+    },
+    <start: @L> "forall" <param: FunParam> "->" <body: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (param, body) = bump.alloc((param, body));
+        Located::new(range, Expr::FunType { param, body })
+    },
+    <start: @L> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (lhs, rhs) = bump.alloc((lhs, rhs));
+        Located::new(range, Expr::FunArrow { lhs, rhs })
+    },
+    AppExpr => <>,
+}
+
+FunParam: Located<FunParam<'bump>> = {
+    <start: @L> "(" <pat: Pat> ":" <r#type: Expr> ")" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { pat, r#type: Some(r#type) })
+    },
+    <start: @L> <pat: Pat> <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { pat, r#type: None })
+    }
+}
+
+AppExpr: Located<Expr<'bump>> = {
+    <start: @L> <fun: AtomExpr> <arg: AtomExpr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (fun, arg) = bump.alloc((fun, arg));
+        Located::new(range, Expr::FunApp { fun, arg })
+    },
+    AtomExpr => <>,
+}
+
+AtomExpr: Located<Expr<'bump>> = {
+    <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Expr::Error),
+    <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
+    <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar),
+    <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren { expr: bump.alloc(expr) }),
+}
+
+Pat: Located<Pat<'bump>> = {
+    <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Pat::Error),
+    <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
+    <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident),
+    <start: @L> "(" <pat: Pat> ")" <end: @R> => {
+        let range = TextRange::new(start, end);
+        let pat = bump.alloc(pat);
+        Located::new(range, Pat::Paren { pat })
+    }
+}
+
+Const: Const = {
+    "true" => Const::Bool(true),
+    "false" => Const::Bool(false),
+    "DecInt" => Const::DecInt,
+    "BinInt" => Const::BinInt,
+    "HexInt" => Const::HexInt,
+}

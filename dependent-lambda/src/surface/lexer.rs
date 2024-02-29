@@ -37,8 +37,8 @@ pub enum TokenKind {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Token {
-    kind: TokenKind,
-    range: TextRange,
+    pub(super) kind: TokenKind,
+    pub(super) range: TextRange,
 }
 
 impl Token {
