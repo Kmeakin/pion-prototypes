@@ -7,6 +7,9 @@ version = { workspace = true }
 [dependencies]
 common = { path = "../common" }
 
-bumpalo = { workspace = true }
-ecow    = { workspace = true }
-pretty  = { version = "0.12.3" }
+bumpalo      = { workspace = true }
+ecow         = { workspace = true }
+lalrpop-util = { version = "0.20.0" }
+logos        = { version = "0.14.0" }
+pretty       = { version = "0.12.3" }
+text-size    = { version = "1.1.1" }
