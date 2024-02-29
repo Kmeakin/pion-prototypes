@@ -73,3 +73,31 @@ pub enum Const {
     BinInt,
     HexInt,
 }
+
+pub fn parse_expr<'bump>(bump: &'bump bumpalo::Bump, text: &str) -> Located<Expr<'bump>> {
+    let tokens = lex(text)
+        .filter(|token| !token.kind.is_trivia())
+        .map(|token| (token.range.start(), token.kind, token.range.end()));
+    match grammar::ExprParser::new().parse(bump, tokens) {
+        Ok(expr) => expr,
+        Err(error) => {
+            let range = match error {
+                lalrpop_util::ParseError::InvalidToken { location } => {
+                    TextRange::new(location, location)
+                }
+                lalrpop_util::ParseError::UnrecognizedEof { location, .. } => {
+                    TextRange::new(location, location)
+                }
+                lalrpop_util::ParseError::UnrecognizedToken {
+                    token: (start, _, end),
+                    ..
+                } => TextRange::new(start, end),
+                lalrpop_util::ParseError::ExtraToken {
+                    token: (start, _, end),
+                } => TextRange::new(start, end),
+                lalrpop_util::ParseError::User { error } => match error {},
+            };
+            Located::new(range, Expr::Error)
+        }
+    }
+}

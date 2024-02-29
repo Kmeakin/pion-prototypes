@@ -8,32 +8,32 @@ grammar<'bump>(
 
 extern {
     type Location = TextSize;
-    type Error = ();
+    type Error = std::convert::Infallible;
 
-    enum Token {
-        "false" => Token { kind: TokenKind::KwFalse, .. },
-        "forall" => Token { kind: TokenKind::KwForall, .. },
-        "fun" => Token { kind: TokenKind::KwFun, .. },
-        "let" => Token { kind: TokenKind::KwLet, .. },
-        "true" => Token { kind: TokenKind::KwTrue, .. },
+    enum TokenKind {
+        "false" => TokenKind::KwFalse,
+        "forall" => TokenKind::KwForall,
+        "fun" => TokenKind::KwFun,
+        "let" => TokenKind::KwLet,
+        "true" => TokenKind::KwTrue,
 
-        "(" => Token { kind: TokenKind::LParen, .. },
-        ")" => Token { kind: TokenKind::RParen, .. },
-        "{" => Token { kind: TokenKind::LCurly, .. },
-        "}" => Token { kind: TokenKind::RCurly, .. },
+        "(" => TokenKind::LParen,
+        ")" => TokenKind::RParen,
+        "{" => TokenKind::LCurly,
+        "}" => TokenKind::RCurly,
 
-        "_" => Token { kind: TokenKind::Underscore, .. },
-        "," => Token { kind: TokenKind::Comma, .. },
-        ";" => Token { kind: TokenKind::Semicolon, .. },
-        ":" => Token { kind: TokenKind::Colon, .. },
-        "=" => Token { kind: TokenKind::Eq, .. },
-        "=>" => Token { kind: TokenKind::DoubleArrow, .. },
-        "->" => Token { kind: TokenKind::SingleArrow, .. },
+        "_" => TokenKind::Underscore,
+        "," => TokenKind::Comma,
+        ";" => TokenKind::Semicolon,
+        ":" => TokenKind::Colon,
+        "=" => TokenKind::Eq,
+        "=>" => TokenKind::DoubleArrow,
+        "->" => TokenKind::SingleArrow,
 
-        "Ident" => Token { kind: TokenKind::Ident, .. },
-        "DecInt" => Token { kind: TokenKind::DecInt, .. },
-        "BinInt" => Token { kind: TokenKind::BinInt, .. },
-        "HexInt" => Token { kind: TokenKind::HexInt, .. },
+        "Ident" => TokenKind::Ident,
+        "DecInt" => TokenKind::DecInt,
+        "BinInt" => TokenKind::BinInt,
+        "HexInt" => TokenKind::HexInt,
     }
 }
 
@@ -82,7 +82,7 @@ FunParam: Located<FunParam<'bump>> = {
 }
 
 AppExpr: Located<Expr<'bump>> = {
-    <start: @L> <fun: AtomExpr> <arg: AtomExpr> <end: @R> => {
+    <start: @L> <fun: AppExpr> <arg: AtomExpr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (fun, arg) = bump.alloc((fun, arg));
         Located::new(range, Expr::FunApp { fun, arg })

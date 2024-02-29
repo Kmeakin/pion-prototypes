@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use camino::Utf8PathBuf;
 use clap::Parser;
 
@@ -23,9 +25,30 @@ impl std::str::FromStr for PathOrStdin {
     }
 }
 
-fn main() {
+impl PathOrStdin {
+    fn read(&self) -> std::io::Result<String> {
+        match self {
+            PathOrStdin::Stdin => {
+                let mut text = String::new();
+                std::io::stdin().read_to_string(&mut text)?;
+                Ok(text)
+            }
+            PathOrStdin::Path(path) => std::fs::read_to_string(path),
+        }
+    }
+}
+
+fn main() -> std::io::Result<()> {
     match Cli::parse() {
-        Cli::Check { path } => todo!(),
-        Cli::Eval { path } => todo!(),
+        Cli::Check { path } | Cli::Eval { path } => {
+            let bump = bumpalo::Bump::new();
+            let text = path.read()?;
+            if text.len() >= u32::MAX as usize {
+                return Err(std::io::Error::other("input too big"));
+            }
+            let expr = dependent_lambda::surface::parse_expr(&bump, &text);
+            dbg!(expr);
+            Ok(())
+        }
     }
 }

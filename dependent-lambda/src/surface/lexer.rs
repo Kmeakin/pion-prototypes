@@ -34,6 +34,11 @@ pub enum TokenKind {
     #[regex("0(x|X)[0-9a-fA-F][0-9a-fA-F_]*")] HexInt,
     #[regex(r"[\p{XID_START}_]\p{XID_CONTINUE}*")] Ident,
 }
+impl TokenKind {
+    pub fn is_trivia(self) -> bool {
+        matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Token {
