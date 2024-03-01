@@ -18,6 +18,10 @@ impl fmt::Display for AbsoluteVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
+impl AbsoluteVar {
+    pub fn iter() -> impl Iterator<Item = Self> { (0..).map(Self) }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
 
@@ -104,6 +108,13 @@ impl<T> UniqueEnv<T> {
 
     pub fn truncate(&mut self, len: EnvLen) { self.elems.truncate(len.0); }
     pub fn clear(&mut self) { self.elems.clear(); }
+
+    pub fn resize(&mut self, len: EnvLen, value: T)
+    where
+        T: Clone,
+    {
+        self.elems.resize(len.0, value)
+    }
 }
 
 impl<T> Default for UniqueEnv<T> {

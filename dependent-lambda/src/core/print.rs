@@ -17,7 +17,11 @@ impl Prec {
 
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
-            Expr::Error | Expr::Prim(_) | Expr::Const(_) | Expr::LocalVar { .. } => Self::Atom,
+            Expr::Error
+            | Expr::Prim(_)
+            | Expr::Const(_)
+            | Expr::LocalVar { .. }
+            | Expr::MetaVar { .. } => Self::Atom,
             Expr::Let { .. } => Self::Let,
             Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
             Expr::FunApp { .. } => Self::App,
@@ -71,7 +75,7 @@ impl<'bump> Printer<'bump> {
         expr: &Expr,
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
-        let expr = self.expr_prec(names, expr, Prec::MAX);
+        let expr = self.expr_prec(names, expr, Prec::Atom);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
         expr.append(" : ").append(r#type)
     }
@@ -98,6 +102,7 @@ impl<'bump> Printer<'bump> {
                 None => panic!("Unbound variable: {var:?}"),
             },
             Expr::LocalVar { var } => self.text(format!("_{var}")),
+            Expr::MetaVar { var } => self.text(format!("?{var}")),
             Expr::Let {
                 name: name_hint,
                 r#type,

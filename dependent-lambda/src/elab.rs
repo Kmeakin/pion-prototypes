@@ -1,10 +1,14 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use common::env::{EnvLen, RelativeVar, SharedEnv, UniqueEnv};
+use common::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use common::Symbol;
+use text_size::TextRange;
 
-use crate::core::semantics::{self, Type, Value};
+use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
+use crate::core::semantics::{self, Closure, Type, Value};
 use crate::core::syntax::{Const, Expr, FunParam, Prim};
 use crate::surface::{self, Located};
+
+mod unify;
 
 pub struct Elaborator<'core, 'text, H, E>
 where
@@ -16,13 +20,22 @@ where
     handler: H,
 
     local_env: LocalEnv<'core>,
+    meta_env: MetaEnv<'core>,
+    renaming: PartialRenaming,
 }
 
 #[derive(Default)]
 struct LocalEnv<'core> {
     names: UniqueEnv<Option<Symbol>>,
+    infos: UniqueEnv<LocalInfo>,
     types: UniqueEnv<Type<'core>>,
     values: SharedEnv<Value<'core>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum LocalInfo {
+    Let,
+    Param,
 }
 
 impl<'core> LocalEnv<'core> {
@@ -57,6 +70,31 @@ impl<'core> LocalEnv<'core> {
     fn next_var(&self) -> Value<'core> { Value::local_var(self.len().to_absolute()) }
 }
 
+#[derive(Default)]
+struct MetaEnv<'core> {
+    sources: UniqueEnv<MetaSource>,
+    types: UniqueEnv<Type<'core>>,
+    values: UniqueEnv<Option<Value<'core>>>,
+}
+
+impl<'core> MetaEnv<'core> {
+    fn len(&self) -> EnvLen { self.sources.len() }
+
+    fn push(&mut self, source: MetaSource, r#type: Type<'core>) {
+        self.sources.push(source);
+        self.types.push(r#type);
+        self.values.push(None);
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum MetaSource {
+    PatType {
+        range: TextRange,
+        name: Option<Symbol>,
+    },
+}
+
 impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
 where
     H: FnMut(Diagnostic<usize>) -> Result<(), E>,
@@ -69,6 +107,8 @@ where
             handler,
 
             local_env: LocalEnv::default(),
+            meta_env: MetaEnv::default(),
+            renaming: PartialRenaming::default(),
         }
     }
 
@@ -76,16 +116,65 @@ where
         (self.handler)(diagnostic)
     }
 
+    fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
+        let var = self.meta_env.len().to_absolute();
+        self.meta_env.push(source, r#type);
+
+        let mut expr = Expr::MetaVar { var };
+        for (var, info) in AbsoluteVar::iter().zip(self.local_env.infos.iter()) {
+            match info {
+                LocalInfo::Let => {}
+                LocalInfo::Param => {
+                    let var = self.local_env.len().absolute_to_relative(var).unwrap();
+                    let arg = Expr::LocalVar { var };
+                    let (fun, arg) = self.bump.alloc((expr, arg));
+                    expr = Expr::FunApp { fun, arg };
+                }
+            }
+        }
+        expr
+    }
+
+    fn push_unsolved_type(&mut self, source: MetaSource) -> Value<'core> {
+        let expr = self.push_unsolved_expr(source, Value::TYPE);
+        self.eval(&expr)
+    }
+
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
-        crate::core::semantics::eval(self.bump, &mut self.local_env.values, expr)
+        crate::core::semantics::eval(
+            self.bump,
+            &mut self.local_env.values,
+            &self.meta_env.values,
+            expr,
+        )
     }
 
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        crate::core::semantics::quote(self.bump, self.local_env.values.len(), value)
+        crate::core::semantics::quote(
+            self.bump,
+            self.local_env.values.len(),
+            &self.meta_env.values,
+            value,
+        )
     }
 
     pub fn normalize(&mut self, expr: &Expr<'core>) -> Expr<'core> {
-        crate::core::semantics::normalize(self.bump, &mut self.local_env.values, expr)
+        crate::core::semantics::normalize(
+            self.bump,
+            &mut self.local_env.values,
+            &self.meta_env.values,
+            expr,
+        )
+    }
+
+    pub fn unify(&mut self, left: &Value<'core>, right: &Value<'core>) -> Result<(), UnifyError> {
+        let mut ctx = UnifyCtx::new(
+            self.bump,
+            &mut self.renaming,
+            self.local_env.len(),
+            &mut self.meta_env.values,
+        );
+        ctx.unify(left, right)
     }
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
@@ -208,8 +297,9 @@ where
             surface::Expr::FunLit { param, body } => {
                 let (param, param_type) = self.synth_param(param)?;
                 let (body_expr, body_type) = {
-                    self.local_env.push_unknown(param.name, param_type);
+                    self.local_env.push_unknown(param.name, param_type.clone());
                     let (body_expr, body_type) = self.synth_expr(body)?;
+                    let body_type = self.quote(&body_type);
                     self.local_env.pop();
                     (body_expr, body_type)
                 };
@@ -217,16 +307,26 @@ where
                     param,
                     body: self.bump.alloc(body_expr),
                 };
-                Ok((core_expr, body_type))
+                let core_type = Value::FunType {
+                    param: FunParam::new(param.name, self.bump.alloc(param_type)),
+                    body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+                };
+                Ok((core_expr, core_type))
             }
             surface::Expr::FunApp { fun, arg } => {
                 let (fun_expr, fun_type) = self.synth_expr(fun)?;
+                let fun_type = semantics::update_metas(self.bump, &self.meta_env.values, &fun_type);
                 match fun_type {
                     Value::Error => Ok((Expr::Error, Type::Error)),
                     Value::FunType { param, body } => {
                         let arg_expr = self.check_expr(arg, param.r#type)?;
                         let arg_value = self.eval(&arg_expr);
-                        let output_type = semantics::apply_closure(self.bump, body, arg_value);
+                        let output_type = semantics::apply_closure(
+                            self.bump,
+                            &self.meta_env.values,
+                            body,
+                            arg_value,
+                        );
 
                         let (fun, arg) = self.bump.alloc((fun_expr, arg_expr));
                         let core_expr = Expr::FunApp { fun, arg };
@@ -298,8 +398,9 @@ where
                     let arg_value = self.local_env.next_var();
                     self.local_env
                         .push_unknown(param.name, expected_param.r#type.clone());
-                    let expected_body_type = crate::core::semantics::apply_closure(
+                    let expected_body_type = semantics::apply_closure(
                         self.bump,
+                        &self.meta_env.values,
                         expected_body.clone(),
                         arg_value,
                     );
@@ -313,7 +414,61 @@ where
                 };
                 Ok(core_expr)
             }
-            _ => todo!("unification"),
+
+            // list cases explicitly instead of using `_` so that new cases are not forgotten when
+            // new expression variants are added
+            surface::Expr::Const(..)
+            | surface::Expr::LocalVar { .. }
+            | surface::Expr::FunArrow { .. }
+            | surface::Expr::FunType { .. }
+            | surface::Expr::FunLit { .. }
+            | surface::Expr::FunApp { .. } => self.synth_and_convert_expr(surface_expr, expected),
+        }
+    }
+
+    fn synth_and_convert_expr<'surface>(
+        &mut self,
+        surface_expr: &'surface Located<surface::Expr<'surface>>,
+        expected: &Type<'core>,
+    ) -> Result<Expr<'core>, E> {
+        let range = surface_expr.range;
+        let (expr, r#type) = self.synth_expr(surface_expr)?;
+        self.convert_expr(range, expr, r#type, expected)
+    }
+
+    fn convert_expr(
+        &mut self,
+        range: TextRange,
+        expr: Expr<'core>,
+        from: Type<'core>,
+        to: &Type<'core>,
+    ) -> Result<Expr<'core>, E> {
+        match self.unify(&from, to) {
+            Ok(()) => Ok(expr),
+            Err(error) => {
+                let from = self.quote(&from);
+                let to = self.quote(to);
+
+                let found = self.pretty(&from);
+                let expected = self.pretty(&to);
+
+                let message = match error {
+                    UnifyError::Mismatch => {
+                        format!("type mismatch: expected `{expected}`, found `{found}`")
+                    }
+                    UnifyError::Spine(_) => {
+                        "variable appeared more than once in problem spine".into()
+                    }
+                    UnifyError::Rename(_) => {
+                        "application in problem spine was not a local variable".into()
+                    }
+                };
+                let diagnostic = Diagnostic::error()
+                    .with_message(message)
+                    .with_labels(vec![Label::primary(self.file_id, range)]);
+                self.report_diagnostic(diagnostic)?;
+                Ok(Expr::Error)
+            }
         }
     }
 
@@ -379,8 +534,21 @@ where
     ) -> Result<(Option<Symbol>, Type<'core>), E> {
         match surface_pat.data {
             surface::Pat::Error => Ok((None, Type::Error)),
-            surface::Pat::Underscore => todo!("unification"),
-            surface::Pat::Ident => todo!("unification"),
+            surface::Pat::Underscore => {
+                let range = surface_pat.range;
+                let name = None;
+                let source = MetaSource::PatType { range, name };
+                let r#type = self.push_unsolved_type(source);
+                Ok((name, r#type))
+            }
+            surface::Pat::Ident => {
+                let range = surface_pat.range;
+                let text = &self.text[range];
+                let name = Some(Symbol::from(text));
+                let source = MetaSource::PatType { range, name };
+                let r#type = self.push_unsolved_type(source);
+                Ok((name, r#type))
+            }
             surface::Pat::Paren { pat } => self.synth_pat(pat),
         }
     }
@@ -388,7 +556,7 @@ where
     fn check_pat<'surface>(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
-        expected: &Type<'core>,
+        _expected: &Type<'core>,
     ) -> Result<Option<Symbol>, E> {
         match surface_pat.data {
             surface::Pat::Error => Ok(None),
@@ -398,7 +566,7 @@ where
                 let symbol = Symbol::from(text);
                 Ok(Some(symbol))
             }
-            surface::Pat::Paren { pat } => self.check_pat(pat, expected),
+            surface::Pat::Paren { pat } => self.check_pat(pat, _expected),
         }
     }
 }

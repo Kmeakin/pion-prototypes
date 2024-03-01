@@ -1,4 +1,4 @@
-use common::env::RelativeVar;
+use common::env::{AbsoluteVar, RelativeVar};
 use common::Symbol;
 
 #[derive(Debug, Copy, Clone)]
@@ -8,6 +8,9 @@ pub enum Expr<'a> {
     Prim(Prim),
     LocalVar {
         var: RelativeVar,
+    },
+    MetaVar {
+        var: AbsoluteVar,
     },
 
     Let {
@@ -41,7 +44,7 @@ impl<T> FunParam<T> {
     pub fn new(name: Option<Symbol>, r#type: T) -> Self { Self { name, r#type } }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Prim {
     Type,
     IntType,
@@ -57,7 +60,7 @@ impl Prim {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Const {
     Bool(bool),
     Int(u32),
