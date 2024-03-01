@@ -5,7 +5,12 @@ mod lexer;
 pub use lexer::{lex, Token, TokenKind};
 use text_size::TextRange;
 
-lalrpop_mod!(grammar, "/surface/grammar.rs");
+lalrpop_mod!(
+    #[allow(clippy::all)]
+    #[allow(unused_imports)]
+    grammar,
+    "/surface/grammar.rs"
+);
 
 #[derive(Debug, Copy, Clone)]
 pub struct Located<T> {

@@ -17,18 +17,6 @@ all      = { level = "warn", priority = 0 }
 nursery  = { level = "warn", priority = 0 }
 pedantic = { level = "warn", priority = 0 }
 
-items_after_statements  = { level = "allow", priority = 100 }
-match_bool              = { level = "allow", priority = 100 }
-missing_const_for_fn    = { level = "allow", priority = 100 }
-missing_errors_doc      = { level = "allow", priority = 100 }
-missing_panics_doc      = { level = "allow", priority = 100 }
-module_name_repetitions = { level = "allow", priority = 100 }
-must_use_candidate      = { level = "allow", priority = 100 }
-option_if_let_else      = { level = "allow", priority = 100 }
-single_match_else       = { level = "allow", priority = 100 }
-too_many_lines          = { level = "allow", priority = 100 }
-wildcard_imports        = { level = "allow", priority = 100 }
-
 [workspace.dependencies]
 bumpalo = { version = "3.13.0", features = ["allocator_api"] }
 ecow    = { version = "0.2.0" }

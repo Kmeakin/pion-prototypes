@@ -65,7 +65,7 @@ fn main() -> std::io::Result<()> {
             let handler = |diagnostic| {
                 let config = codespan_reporting::term::Config::default();
                 codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
-                    .map_err(|error| std::io::Error::other(error))?;
+                    .map_err(std::io::Error::other)?;
                 Ok::<(), std::io::Error>(())
             };
             let mut elaborator =
