@@ -1,3 +1,4 @@
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use common::env::{EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use common::Symbol;
 
@@ -7,10 +8,11 @@ use crate::surface::{self, Located};
 
 pub struct Elaborator<'core, 'text, H, E>
 where
-    H: FnMut() -> Result<(), E>,
+    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
 {
     bump: &'core bumpalo::Bump,
     text: &'text str,
+    file_id: usize,
     handler: H,
 
     local_env: LocalEnv<'core>,
@@ -57,19 +59,22 @@ impl<'core> LocalEnv<'core> {
 
 impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
 where
-    H: FnMut() -> Result<(), E>,
+    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
 {
-    pub fn new(bump: &'core bumpalo::Bump, text: &'text str, handler: H) -> Self {
+    pub fn new(bump: &'core bumpalo::Bump, text: &'text str, file_id: usize, handler: H) -> Self {
         Self {
             bump,
             text,
+            file_id,
             handler,
 
             local_env: LocalEnv::default(),
         }
     }
 
-    fn report_diagnostic(&mut self) -> Result<(), E> { (self.handler)() }
+    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), E> {
+        (self.handler)(diagnostic)
+    }
 
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
         crate::core::semantics::eval(self.bump, &mut self.local_env.values, expr)
@@ -83,38 +88,43 @@ where
         crate::core::semantics::normalize(self.bump, &mut self.local_env.values, expr)
     }
 
+    pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
+        let printer = crate::core::print::Printer::new(self.bump, Default::default());
+        let doc = printer.expr(&mut self.local_env.names, expr).into_doc();
+        doc.pretty(usize::MAX).to_string()
+    }
+
     pub fn synth_expr<'surface>(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
     ) -> Result<(Expr<'core>, Type<'core>), E> {
         match surface_expr.data {
             surface::Expr::Error => Ok((Expr::Error, Type::Error)),
-            surface::Expr::Const(surface::Const::Bool(b)) => {
-                Ok((Expr::Const(Const::Bool(b)), Type::BOOL_TYPE))
-            }
-            surface::Expr::Const(surface::Const::DecInt) => {
-                let text = &self.text[surface_expr.range];
-                let int = match text.parse() {
-                    Ok(int) => int,
-                    Err(_) => todo!("parse error"),
+            surface::Expr::Const(r#const) => {
+                let mut parse_int = |base| {
+                    let text = &self.text[surface_expr.range];
+                    match u32::from_str_radix(text, base) {
+                        Ok(int) => Ok(Expr::Const(Const::Int(int))),
+                        Err(error) => {
+                            self.report_diagnostic(
+                                Diagnostic::error()
+                                    .with_message(format!("Invalid integer literal: {error}"))
+                                    .with_labels(vec![Label::primary(
+                                        self.file_id,
+                                        surface_expr.range,
+                                    )]),
+                            )?;
+                            Ok(Expr::Error)
+                        }
+                    }
                 };
-                Ok((Expr::Const(Const::Int(int)), Type::INT_TYPE))
-            }
-            surface::Expr::Const(surface::Const::BinInt) => {
-                let text = &self.text[surface_expr.range];
-                let int = match u32::from_str_radix(text, 2) {
-                    Ok(int) => int,
-                    Err(_) => todo!("parse error"),
+                let (expr, r#type) = match r#const {
+                    surface::Const::Bool(b) => (Expr::Const(Const::Bool(b)), Type::BOOL_TYPE),
+                    surface::Const::DecInt => (parse_int(10)?, Type::INT_TYPE),
+                    surface::Const::BinInt => (parse_int(2)?, Type::INT_TYPE),
+                    surface::Const::HexInt => (parse_int(16)?, Type::INT_TYPE),
                 };
-                Ok((Expr::Const(Const::Int(int)), Type::INT_TYPE))
-            }
-            surface::Expr::Const(surface::Const::HexInt) => {
-                let text = &self.text[surface_expr.range];
-                let int = match u32::from_str_radix(text, 16) {
-                    Ok(int) => int,
-                    Err(_) => todo!("parse error"),
-                };
-                Ok((Expr::Const(Const::Int(int)), Type::INT_TYPE))
+                Ok((expr, r#type))
             }
             surface::Expr::LocalVar => {
                 let text = &self.text[surface_expr.range];
@@ -132,7 +142,12 @@ where
                     _ => {}
                 }
 
-                todo!("Unbound variable")
+                self.report_diagnostic(
+                    Diagnostic::error()
+                        .with_message(format!("Unbound variable: {text}"))
+                        .with_labels(vec![Label::primary(self.file_id, surface_expr.range)]),
+                )?;
+                Ok((Expr::Error, Type::Error))
             }
             surface::Expr::Paren { expr } => self.synth_expr(expr),
             surface::Expr::Let {
@@ -207,7 +222,7 @@ where
             surface::Expr::FunApp { fun, arg } => {
                 let (fun_expr, fun_type) = self.synth_expr(fun)?;
                 match fun_type {
-                    Value::Error => todo!(),
+                    Value::Error => Ok((Expr::Error, Type::Error)),
                     Value::FunType { param, body } => {
                         let arg_expr = self.check_expr(arg, param.r#type)?;
                         let arg_value = self.eval(&arg_expr);
@@ -217,7 +232,16 @@ where
                         let core_expr = Expr::FunApp { fun, arg };
                         Ok((core_expr, output_type))
                     }
-                    _ => todo!("expected fun type"),
+                    _ => {
+                        let fun_type = self.quote(&fun_type);
+                        let fun_type = self.pretty(&fun_type);
+                        self.report_diagnostic(
+                            Diagnostic::error()
+                                .with_message(format!("Expected function, found `{fun_type}`"))
+                                .with_labels(vec![Label::primary(self.file_id, fun.range)]),
+                        )?;
+                        Ok((Expr::Error, Type::Error))
+                    }
                 }
             }
         }

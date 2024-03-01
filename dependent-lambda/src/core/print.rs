@@ -71,12 +71,20 @@ impl<'bump> Printer<'bump> {
         expr: &Expr,
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
-        let expr = self.expr(names, expr, Prec::MAX);
-        let r#type = self.expr(names, r#type, Prec::MAX);
+        let expr = self.expr_prec(names, expr, Prec::MAX);
+        let r#type = self.expr_prec(names, r#type, Prec::MAX);
         expr.append(" : ").append(r#type)
     }
 
     pub fn expr(
+        &'bump self,
+        names: &mut UniqueEnv<Option<Symbol>>,
+        expr: &Expr,
+    ) -> DocBuilder<'bump> {
+        self.expr_prec(names, expr, Prec::MAX)
+    }
+
+    fn expr_prec(
         &'bump self,
         names: &mut UniqueEnv<Option<Symbol>>,
         expr: &Expr,
@@ -97,10 +105,10 @@ impl<'bump> Printer<'bump> {
                 body,
             } => {
                 let name = name_hint.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr(names, r#type, Prec::MAX);
-                let init = self.expr(names, init, Prec::MAX);
+                let r#type = self.expr_prec(names, r#type, Prec::MAX);
+                let init = self.expr_prec(names, init, Prec::MAX);
                 names.push(*name_hint);
-                let body = self.expr(names, body, Prec::MAX);
+                let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
                 self.text("let ")
@@ -115,9 +123,9 @@ impl<'bump> Printer<'bump> {
             }
             Expr::FunType { param, body } => {
                 let name = param.name.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr(names, param.r#type, Prec::MAX);
+                let r#type = self.expr_prec(names, param.r#type, Prec::MAX);
                 names.push(param.name);
-                let body = self.expr(names, body, Prec::MAX);
+                let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
                 self.text("forall")
@@ -131,9 +139,9 @@ impl<'bump> Printer<'bump> {
             }
             Expr::FunLit { param, body } => {
                 let name = param.name.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr(names, param.r#type, Prec::MAX);
+                let r#type = self.expr_prec(names, param.r#type, Prec::MAX);
                 names.push(param.name);
-                let body = self.expr(names, body, Prec::MAX);
+                let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
                 self.text("fun")
@@ -146,8 +154,8 @@ impl<'bump> Printer<'bump> {
                     .append(body)
             }
             Expr::FunApp { fun, arg } => {
-                let fun = self.expr(names, fun, Prec::Atom);
-                let arg = self.expr(names, arg, Prec::Atom);
+                let fun = self.expr_prec(names, fun, Prec::Atom);
+                let arg = self.expr_prec(names, arg, Prec::Atom);
                 fun.append(self.space()).append(arg)
             }
             Expr::Error => self.text("#error"),

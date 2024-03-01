@@ -36,26 +36,41 @@ impl PathOrStdin {
             PathOrStdin::Path(path) => std::fs::read_to_string(path),
         }
     }
+
+    fn name(&self) -> &str {
+        match self {
+            PathOrStdin::Stdin => "<stdin>",
+            PathOrStdin::Path(path) => path.as_str(),
+        }
+    }
 }
 
 fn main() -> std::io::Result<()> {
     let command = Cli::parse();
     match &command {
         Cli::Check { path } | Cli::Eval { path } => {
+            let mut writer = codespan_reporting::term::termcolor::StandardStream::stderr(
+                codespan_reporting::term::termcolor::ColorChoice::Auto,
+            );
+            let mut files = codespan_reporting::files::SimpleFiles::new();
+
             let bump = bumpalo::Bump::new();
             let text = path.read()?;
             if text.len() >= u32::MAX as usize {
                 return Err(std::io::Error::other("input too big"));
             }
+            let file_id = files.add(path.name(), text.clone());
             let expr = dependent_lambda::surface::parse_expr(&bump, &text);
 
-            let mut elaborator = dependent_lambda::elab::Elaborator::new(&bump, &text, || {
-                Ok::<(), std::convert::Infallible>(())
-            });
-            let (mut expr, r#type) = match elaborator.synth_expr(&expr) {
-                Ok((expr, r#type)) => (expr, r#type),
-                Err(error) => match error {},
+            let handler = |diagnostic| {
+                let config = codespan_reporting::term::Config::default();
+                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
+                    .map_err(|error| std::io::Error::other(error))?;
+                Ok::<(), std::io::Error>(())
             };
+            let mut elaborator =
+                dependent_lambda::elab::Elaborator::new(&bump, &text, file_id, handler);
+            let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
             let r#type = elaborator.quote(&r#type);
 
             if let Cli::Eval { .. } = command {
