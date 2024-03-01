@@ -3,32 +3,58 @@ use common::Symbol;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'a> {
+    Error,
     Const(Const),
+    Prim(Prim),
     LocalVar {
         var: RelativeVar,
     },
 
     Let {
-        name_hint: Option<Symbol>,
+        name: Option<Symbol>,
         r#type: &'a Self,
         init: &'a Self,
         body: &'a Self,
     },
 
     FunType {
-        name_hint: Option<Symbol>,
-        r#type: &'a Self,
+        param: FunParam<&'a Self>,
         body: &'a Self,
     },
     FunLit {
-        name_hint: Option<Symbol>,
-        r#type: &'a Self,
+        param: FunParam<&'a Self>,
         body: &'a Self,
     },
     FunApp {
         fun: &'a Self,
         arg: &'a Self,
     },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct FunParam<T> {
+    pub name: Option<Symbol>,
+    pub r#type: T,
+}
+
+impl<T> FunParam<T> {
+    pub fn new(name: Option<Symbol>, r#type: T) -> Self { Self { name, r#type } }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Prim {
+    Type,
+    IntType,
+    BoolType,
+}
+impl Prim {
+    pub fn name(self) -> &'static str {
+        match self {
+            Prim::Type => "Type",
+            Prim::IntType => "Int",
+            Prim::BoolType => "Bool",
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -9,8 +9,8 @@ lalrpop_mod!(grammar, "/surface/grammar.rs");
 
 #[derive(Debug, Copy, Clone)]
 pub struct Located<T> {
-    range: TextRange,
-    data: T,
+    pub range: TextRange,
+    pub data: T,
 }
 
 impl<T> Located<T> {

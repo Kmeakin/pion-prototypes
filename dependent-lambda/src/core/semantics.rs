@@ -1,30 +1,41 @@
 use common::env::{AbsoluteVar, EnvLen, SharedEnv};
-use common::Symbol;
 use ecow::EcoVec;
 
-use super::syntax::{Const, Expr};
+use super::syntax::{Const, Expr, FunParam, Prim};
+
+pub type Type<'a> = Value<'a>;
 
 #[derive(Debug, Clone)]
 pub enum Value<'a> {
+    Error,
     Const(Const),
     Neutral {
         head: Head,
         spine: EcoVec<Elim<'a>>,
     },
     FunLit {
-        name_hint: Option<Symbol>,
-        r#type: &'a Self,
+        param: FunParam<&'a Self>,
         body: Closure<'a>,
     },
     FunType {
-        name_hint: Option<Symbol>,
-        r#type: &'a Self,
+        param: FunParam<&'a Self>,
         body: Closure<'a>,
     },
 }
 
 impl<'a> Value<'a> {
-    pub fn local_var(var: AbsoluteVar) -> Self {
+    pub const TYPE: Self = Self::prim(Prim::Type);
+    pub const INT_TYPE: Self = Self::prim(Prim::IntType);
+    pub const BOOL_TYPE: Self = Self::prim(Prim::BoolType);
+
+    pub const fn prim(prim: Prim) -> Self {
+        Self::Neutral {
+            head: Head::Prim(prim),
+            spine: EcoVec::new(),
+        }
+    }
+
+    pub const fn local_var(var: AbsoluteVar) -> Self {
         Self::Neutral {
             head: Head::LocalVar { var },
             spine: EcoVec::new(),
@@ -34,6 +45,7 @@ impl<'a> Value<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum Head {
+    Prim(Prim),
     LocalVar { var: AbsoluteVar },
 }
 
@@ -62,7 +74,9 @@ pub fn eval<'a>(
     expr: &Expr<'a>,
 ) -> Value<'a> {
     match expr {
+        Expr::Error => Value::Error,
         Expr::Const(r#const) => Value::Const(*r#const),
+        Expr::Prim(prim) => Value::prim(*prim),
         Expr::LocalVar { var: index, .. } => match local_values.get_relative(*index) {
             None => panic!("Unbound local var: {index:?}"),
             Some(value) => value.clone(),
@@ -76,29 +90,19 @@ pub fn eval<'a>(
             body
         }
 
-        Expr::FunType {
-            name_hint,
-            r#type,
-            body,
-        } => {
-            let r#type = eval(bump, local_values, r#type);
+        Expr::FunType { param, body } => {
+            let r#type = eval(bump, local_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunType {
-                name_hint: *name_hint,
-                r#type: bump.alloc(r#type),
+                param: FunParam::new(param.name, bump.alloc(r#type)),
                 body,
             }
         }
-        Expr::FunLit {
-            name_hint,
-            r#type,
-            body,
-        } => {
-            let r#type = eval(bump, local_values, r#type);
+        Expr::FunLit { param, body } => {
+            let r#type = eval(bump, local_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunLit {
-                name_hint: *name_hint,
-                r#type: bump.alloc(r#type),
+                param: FunParam::new(param.name, bump.alloc(r#type)),
                 body,
             }
         }
@@ -136,6 +140,7 @@ pub fn apply_closure<'a>(
 
 pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> Expr<'a> {
     match value {
+        Value::Error => Expr::Error,
         Value::Neutral { head, spine } => {
             let head = quote_head(*head, local_len);
             spine.iter().fold(head, |head, elim| match elim {
@@ -146,31 +151,21 @@ pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> E
                 }
             })
         }
-        Value::FunLit {
-            name_hint,
-            r#type,
-            body,
-        } => {
-            let r#type = quote(bump, local_len, r#type);
+        Value::FunLit { param, body } => {
+            let r#type = quote(bump, local_len, param.r#type);
             let body = quote_closure(bump, local_len, body);
             let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunLit {
-                name_hint: *name_hint,
-                r#type,
+                param: FunParam::new(param.name, r#type),
                 body,
             }
         }
-        Value::FunType {
-            name_hint,
-            r#type,
-            body,
-        } => {
-            let r#type = quote(bump, local_len, r#type);
+        Value::FunType { param, body } => {
+            let r#type = quote(bump, local_len, param.r#type);
             let body = quote_closure(bump, local_len, body);
             let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunType {
-                name_hint: *name_hint,
-                r#type,
+                param: FunParam::new(param.name, r#type),
                 body,
             }
         }
@@ -180,6 +175,7 @@ pub fn quote<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, value: &Value) -> E
 
 fn quote_head<'a>(head: Head, local_len: EnvLen) -> Expr<'a> {
     match head {
+        Head::Prim(prim) => Expr::Prim(prim),
         Head::LocalVar { var } => match local_len.absolute_to_relative(var) {
             None => panic!("Unbound local variable: {var:?}"),
             Some(var) => Expr::LocalVar { var },
@@ -191,4 +187,13 @@ fn quote_closure<'a>(bump: &'a bumpalo::Bump, local_len: EnvLen, closure: &Closu
     let arg = Value::local_var(local_len.to_absolute());
     let body = apply_closure(bump, closure.clone(), arg);
     quote(bump, local_len.succ(), &body)
+}
+
+pub fn normalize<'a>(
+    bump: &'a bumpalo::Bump,
+    local_values: &mut LocalValues<'a>,
+    expr: &Expr<'a>,
+) -> Expr<'a> {
+    let value = eval(bump, local_values, expr);
+    quote(bump, local_values.len(), &value)
 }

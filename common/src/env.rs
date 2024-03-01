@@ -6,12 +6,28 @@ use ecow::EcoVec;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct AbsoluteVar(usize);
 
+impl From<usize> for AbsoluteVar {
+    fn from(value: usize) -> Self { Self(value) }
+}
+
+impl From<AbsoluteVar> for usize {
+    fn from(var: AbsoluteVar) -> Self { var.0 }
+}
+
 impl fmt::Display for AbsoluteVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
+
+impl From<usize> for RelativeVar {
+    fn from(value: usize) -> Self { Self(value) }
+}
+
+impl From<RelativeVar> for usize {
+    fn from(var: RelativeVar) -> Self { var.0 }
+}
 
 impl fmt::Display for RelativeVar {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
@@ -21,6 +37,14 @@ impl fmt::Display for RelativeVar {
 /// the elements themselves, just the number of elements in the environment.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct EnvLen(usize);
+
+impl From<usize> for EnvLen {
+    fn from(value: usize) -> Self { Self(value) }
+}
+
+impl From<EnvLen> for usize {
+    fn from(var: EnvLen) -> Self { var.0 }
+}
 
 impl fmt::Display for EnvLen {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }

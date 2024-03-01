@@ -17,7 +17,7 @@ impl Prec {
 
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
-            Expr::Const(_) | Expr::LocalVar { .. } => Self::Atom,
+            Expr::Error | Expr::Prim(_) | Expr::Const(_) | Expr::LocalVar { .. } => Self::Atom,
             Expr::Let { .. } => Self::Let,
             Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
             Expr::FunApp { .. } => Self::App,
@@ -25,7 +25,7 @@ impl Prec {
     }
 }
 
-pub struct Ctx<'bump> {
+pub struct Printer<'bump> {
     bump: &'bump bumpalo::Bump,
     config: Config,
 }
@@ -34,7 +34,11 @@ pub struct Config {
     print_names: bool,
 }
 
-impl<'bump, A: 'bump> DocAllocator<'bump, A> for Ctx<'bump> {
+impl Default for Config {
+    fn default() -> Self { Self { print_names: true } }
+}
+
+impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {
     type Doc = RefDoc<'bump, A>;
 
     fn alloc(&'bump self, doc: Doc<'bump, Self::Doc, A>) -> Self::Doc {
@@ -56,10 +60,21 @@ impl<'bump, A: 'bump> DocAllocator<'bump, A> for Ctx<'bump> {
     }
 }
 
-type DocBuilder<'bump> = pretty::DocBuilder<'bump, Ctx<'bump>>;
+type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
 
-impl<'bump> Ctx<'bump> {
+impl<'bump> Printer<'bump> {
     pub fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
+
+    pub fn ann_expr(
+        &'bump self,
+        names: &mut UniqueEnv<Option<Symbol>>,
+        expr: &Expr,
+        r#type: &Expr,
+    ) -> DocBuilder<'bump> {
+        let expr = self.expr(names, expr, Prec::MAX);
+        let r#type = self.expr(names, r#type, Prec::MAX);
+        expr.append(" : ").append(r#type)
+    }
 
     pub fn expr(
         &'bump self,
@@ -76,7 +91,7 @@ impl<'bump> Ctx<'bump> {
             },
             Expr::LocalVar { var } => self.text(format!("_{var}")),
             Expr::Let {
-                name_hint,
+                name: name_hint,
                 r#type,
                 init,
                 body,
@@ -98,14 +113,10 @@ impl<'bump> Ctx<'bump> {
                     .append(self.hardline())
                     .append(body)
             }
-            Expr::FunType {
-                name_hint,
-                r#type,
-                body,
-            } => {
-                let name = name_hint.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr(names, r#type, Prec::MAX);
-                names.push(*name_hint);
+            Expr::FunType { param, body } => {
+                let name = param.name.map_or("_".into(), |sym| sym.to_string());
+                let r#type = self.expr(names, param.r#type, Prec::MAX);
+                names.push(param.name);
                 let body = self.expr(names, body, Prec::MAX);
                 names.pop();
 
@@ -115,17 +126,13 @@ impl<'bump> Ctx<'bump> {
                     .append(": ")
                     .append(r#type)
                     .append(")")
-                    .append(" . ")
+                    .append(" -> ")
                     .append(body)
             }
-            Expr::FunLit {
-                name_hint,
-                r#type,
-                body,
-            } => {
-                let name = name_hint.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr(names, r#type, Prec::MAX);
-                names.push(*name_hint);
+            Expr::FunLit { param, body } => {
+                let name = param.name.map_or("_".into(), |sym| sym.to_string());
+                let r#type = self.expr(names, param.r#type, Prec::MAX);
+                names.push(param.name);
                 let body = self.expr(names, body, Prec::MAX);
                 names.pop();
 
@@ -143,8 +150,10 @@ impl<'bump> Ctx<'bump> {
                 let arg = self.expr(names, arg, Prec::Atom);
                 fun.append(self.space()).append(arg)
             }
+            Expr::Error => self.text("#error"),
+            Expr::Prim(prim) => self.text(prim.name()),
         };
-        if prec > Prec::of_expr(expr) {
+        if prec < Prec::of_expr(expr) {
             self.text("(").append(doc).append(")")
         } else {
             doc

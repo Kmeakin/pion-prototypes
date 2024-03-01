@@ -39,7 +39,8 @@ impl PathOrStdin {
 }
 
 fn main() -> std::io::Result<()> {
-    match Cli::parse() {
+    let command = Cli::parse();
+    match &command {
         Cli::Check { path } | Cli::Eval { path } => {
             let bump = bumpalo::Bump::new();
             let text = path.read()?;
@@ -47,7 +48,27 @@ fn main() -> std::io::Result<()> {
                 return Err(std::io::Error::other("input too big"));
             }
             let expr = dependent_lambda::surface::parse_expr(&bump, &text);
-            dbg!(expr);
+
+            let mut elaborator = dependent_lambda::elab::Elaborator::new(&bump, &text, || {
+                Ok::<(), std::convert::Infallible>(())
+            });
+            let (mut expr, r#type) = match elaborator.synth_expr(&expr) {
+                Ok((expr, r#type)) => (expr, r#type),
+                Err(error) => match error {},
+            };
+            let r#type = elaborator.quote(&r#type);
+
+            if let Cli::Eval { .. } = command {
+                expr = elaborator.normalize(&expr);
+            }
+
+            let printer = dependent_lambda::core::print::Printer::new(&bump, Default::default());
+            let doc = printer
+                .ann_expr(&mut Default::default(), &expr, &r#type)
+                .into_doc();
+            let doc = doc.pretty(80);
+            println!("{doc}");
+
             Ok(())
         }
     }
