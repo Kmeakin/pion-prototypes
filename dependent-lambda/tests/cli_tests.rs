@@ -158,3 +158,21 @@ error: Expected function, found `Int`
 "#]],
     );
 }
+
+#[test]
+fn r#let() {
+    check(
+        &format!("{DEPENDENT_LAMBDA} check <(echo 'let f = fun x => x; f false')"),
+        expect![[r#"
+(let f: ?0 = fun(x: ?1) => x;
+f false) : Bool"#]],
+        expect![""],
+    );
+    check(
+        &format!("{DEPENDENT_LAMBDA} check <(echo 'let f: Bool -> Bool = fun x => x; f false')"),
+        expect![[r#"
+(let f: forall(_: Bool) -> Bool = fun(x: Bool) => x;
+f false) : Bool"#]],
+        expect![""],
+    );
+}
