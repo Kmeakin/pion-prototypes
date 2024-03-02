@@ -49,9 +49,11 @@ fn main() -> std::io::Result<()> {
     let command = Cli::parse();
     match &command {
         Cli::Check { path } | Cli::Eval { path } => {
-            let mut writer = codespan_reporting::term::termcolor::StandardStream::stderr(
-                codespan_reporting::term::termcolor::ColorChoice::Auto,
-            );
+            let color = match std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+                true => codespan_reporting::term::termcolor::ColorChoice::Auto,
+                false => codespan_reporting::term::termcolor::ColorChoice::Never,
+            };
+            let mut writer = codespan_reporting::term::termcolor::StandardStream::stderr(color);
             let mut files = codespan_reporting::files::SimpleFiles::new();
 
             let bump = bumpalo::Bump::new();
