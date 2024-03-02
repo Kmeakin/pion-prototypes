@@ -2,7 +2,7 @@
 
 use expect_test::*;
 
-const DEPENDENT_LAMBDA: &str = env!("CARGO_BIN_EXE_dependent-lambda");
+const PION: &str = env!("CARGO_BIN_EXE_pion");
 
 fn check(
     command: &str,
@@ -37,10 +37,10 @@ fn check(
 #[test]
 fn cli_no_args() {
     check(
-        DEPENDENT_LAMBDA,
+        PION,
         expect![[""]],
         expect![[r#"
-Usage: dependent-lambda <COMMAND>
+Usage: pion <COMMAND>
 
 Commands:
   check
@@ -55,24 +55,24 @@ Options:
 #[test]
 fn cli_incorrect_args() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check"),
+        &format!("{PION} check"),
         expect![[""]],
         expect![[r#"
 error: the following required arguments were not provided:
   <PATH>
 
-Usage: dependent-lambda check <PATH>
+Usage: pion check <PATH>
 
 For more information, try '--help'."#]],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} eval"),
+        &format!("{PION} eval"),
         expect![[""]],
         expect![[r#"
 error: the following required arguments were not provided:
   <PATH>
 
-Usage: dependent-lambda eval <PATH>
+Usage: pion eval <PATH>
 
 For more information, try '--help'."#]],
     );
@@ -81,17 +81,17 @@ For more information, try '--help'."#]],
 #[test]
 fn consts() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo true)"),
+        &format!("{PION} check <(echo true)"),
         expect!["true : Bool"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo false)"),
+        &format!("{PION} check <(echo false)"),
         expect!["false : Bool"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 5)"),
+        &format!("{PION} check <(echo 5)"),
         expect!["5 : Int"],
         expect![""],
     );
@@ -100,17 +100,17 @@ fn consts() {
 #[test]
 fn prims() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo Type)"),
+        &format!("{PION} check <(echo Type)"),
         expect!["Type : Type"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo Int)"),
+        &format!("{PION} check <(echo Int)"),
         expect!["Int : Type"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo Bool)"),
+        &format!("{PION} check <(echo Bool)"),
         expect!["Bool : Type"],
         expect![""],
     );
@@ -119,7 +119,7 @@ fn prims() {
 #[test]
 fn fun_arrow() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'Int -> Bool')"),
+        &format!("{PION} check <(echo 'Int -> Bool')"),
         expect!["(Int -> Bool) : Type"],
         expect![""],
     );
@@ -128,12 +128,12 @@ fn fun_arrow() {
 #[test]
 fn fun_type() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'forall(x: Int) -> Bool')"),
+        &format!("{PION} check <(echo 'forall(x: Int) -> Bool')"),
         expect!["(Int -> Bool) : Type"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'forall (A: Type) -> A -> A')"),
+        &format!("{PION} check <(echo 'forall (A: Type) -> A -> A')"),
         expect!["(forall(A: Type) -> A -> A) : Type"],
         expect![""],
     );
@@ -142,12 +142,12 @@ fn fun_type() {
 #[test]
 fn fun_lit() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'fun(x: Int) => x')"),
+        &format!("{PION} check <(echo 'fun(x: Int) => x')"),
         expect!["(fun(x: Int) => x) : Int -> Int"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'fun x => x')"),
+        &format!("{PION} check <(echo 'fun x => x')"),
         expect!["(fun(x: ?0) => x) : ?0 -> ?0"],
         expect![[r#"
 error: Unsolved metavariable: ?0
@@ -158,7 +158,7 @@ error: Unsolved metavariable: ?0
 "#]],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) : Int -> Int')"),
+        &format!("{PION} check <(echo '(fun x => x) : Int -> Int')"),
         expect!["(fun(x: Int) => x) : Int -> Int"],
         expect![""],
     );
@@ -167,12 +167,12 @@ error: Unsolved metavariable: ?0
 #[test]
 fn fun_app() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) 1')"),
+        &format!("{PION} check <(echo '(fun x => x) 1')"),
         expect!["((fun(x: Int) => x) 1) : Int"],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) 1 2 3')"),
+        &format!("{PION} check <(echo '(fun x => x) 1 2 3')"),
         expect!["#error : #error"],
         expect![[r#"
 error: Expected function, found `Int`
@@ -187,14 +187,14 @@ error: Expected function, found `Int`
 #[test]
 fn r#let() {
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'let f = fun x => x; f false')"),
+        &format!("{PION} check <(echo 'let f = fun x => x; f false')"),
         expect![[r#"
 (let f: Bool -> Bool = fun(x: Bool) => x;
 f false) : Bool"#]],
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'let f: Bool -> Bool = fun x => x; f false')"),
+        &format!("{PION} check <(echo 'let f: Bool -> Bool = fun x => x; f false')"),
         expect![[r#"
 (let f: Bool -> Bool = fun(x: Bool) => x;
 f false) : Bool"#]],

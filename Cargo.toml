@@ -1,5 +1,5 @@
 [workspace]
-members  = ["common", "dependent-lambda"]
+members  = ["common", "pion"]
 resolver = "2"
 
 [workspace.package]

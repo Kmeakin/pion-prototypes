@@ -4,7 +4,7 @@ use common::Symbol;
 use text_size::TextRange;
 
 use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
-use crate::core::semantics::{self, Closure, Head, Type, Value};
+use crate::core::semantics::{self, Closure, Type, Value};
 use crate::core::syntax::{Const, Expr, FunParam, Prim};
 use crate::surface::{self, Located};
 

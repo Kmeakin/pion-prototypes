@@ -62,7 +62,7 @@ fn main() -> std::io::Result<()> {
                 return Err(std::io::Error::other("input too big"));
             }
             let file_id = files.add(path.name(), text.clone());
-            let expr = dependent_lambda::surface::parse_expr(&bump, &text);
+            let expr = pion::surface::parse_expr(&bump, &text);
 
             let handler = |diagnostic| {
                 let config = codespan_reporting::term::Config::default();
@@ -70,8 +70,7 @@ fn main() -> std::io::Result<()> {
                     .map_err(std::io::Error::other)?;
                 Ok::<(), std::io::Error>(())
             };
-            let mut elaborator =
-                dependent_lambda::elab::Elaborator::new(&bump, &text, file_id, handler);
+            let mut elaborator = pion::elab::Elaborator::new(&bump, &text, file_id, handler);
             let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
             elaborator.report_unsolved_metas()?;
             let r#type = elaborator.quote(&r#type);
@@ -83,7 +82,7 @@ fn main() -> std::io::Result<()> {
             let expr = elaborator.zonk(&expr);
             let r#type = elaborator.zonk(&r#type);
 
-            let printer = dependent_lambda::core::print::Printer::new(&bump, Default::default());
+            let printer = pion::core::print::Printer::new(&bump, Default::default());
             let doc = printer
                 .ann_expr(&mut Default::default(), &expr, &r#type)
                 .into_doc();
