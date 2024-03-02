@@ -85,6 +85,14 @@ impl<'core> MetaEnv<'core> {
         self.types.push(r#type);
         self.values.push(None);
     }
+
+    fn iter(&self) -> impl Iterator<Item = (MetaSource, &Type<'core>, &Option<Value<'core>>)> + '_ {
+        self.sources
+            .iter()
+            .zip(self.types.iter())
+            .zip(self.values.iter())
+            .map(|((source, r#type), value)| (*source, r#type, value))
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -93,6 +101,14 @@ pub enum MetaSource {
         range: TextRange,
         name: Option<Symbol>,
     },
+}
+
+impl MetaSource {
+    pub fn range(&self) -> TextRange {
+        match self {
+            MetaSource::PatType { range, .. } => *range,
+        }
+    }
 }
 
 impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
@@ -114,6 +130,31 @@ where
 
     fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), E> {
         (self.handler)(diagnostic)
+    }
+
+    pub fn report_unsolved_metas(&mut self) -> Result<(), E> {
+        let meta_env = std::mem::take(&mut self.meta_env);
+        for (id, (source, _, value)) in meta_env.iter().enumerate() {
+            if value.is_none() {
+                let message = match source {
+                    MetaSource::PatType {
+                        name: Some(name), ..
+                    } => format!("type of variable `{name}`"),
+                    MetaSource::PatType { name: None, .. } => {
+                        "type of placeholder pattern".to_string()
+                    }
+                };
+
+                self.report_diagnostic(
+                    Diagnostic::error()
+                        .with_message(format!("Unsolved metavariable: ?{id}"))
+                        .with_labels(vec![Label::primary(self.file_id, source.range())
+                            .with_message(format!("could not infer {message}"))]),
+                )?;
+            }
+        }
+        self.meta_env = meta_env;
+        Ok(())
     }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {

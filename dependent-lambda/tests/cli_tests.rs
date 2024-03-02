@@ -130,7 +130,13 @@ fn fun_lit() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'fun x => x')"),
         expect!["(fun(x: ?0) => x) : forall(x: ?0) -> ?0"],
-        expect![""],
+        expect![[r#"
+error: Unsolved metavariable: ?0
+  ┌─ /dev/fd/63:1:5
+  │
+1 │ fun x => x
+  │     ^ could not infer type of variable `x`
+"#]],
     );
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) : Int -> Int')"),

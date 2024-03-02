@@ -73,6 +73,7 @@ fn main() -> std::io::Result<()> {
             let mut elaborator =
                 dependent_lambda::elab::Elaborator::new(&bump, &text, file_id, handler);
             let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
+            elaborator.report_unsolved_metas()?;
             let r#type = elaborator.quote(&r#type);
 
             if let Cli::Eval { .. } = command {
