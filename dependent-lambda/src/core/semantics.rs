@@ -4,27 +4,27 @@ use either::Either::{self, Left, Right};
 
 use super::syntax::{Const, Expr, FunParam, Prim};
 
-pub type Type<'a> = Value<'a>;
+pub type Type<'core> = Value<'core>;
 
 #[derive(Debug, Clone)]
-pub enum Value<'a> {
+pub enum Value<'core> {
     Error,
     Const(Const),
     Neutral {
         head: Head,
-        spine: EcoVec<Elim<'a>>,
+        spine: EcoVec<Elim<'core>>,
     },
     FunLit {
-        param: FunParam<&'a Self>,
-        body: Closure<'a>,
+        param: FunParam<&'core Self>,
+        body: Closure<'core>,
     },
     FunType {
-        param: FunParam<&'a Self>,
-        body: Closure<'a>,
+        param: FunParam<&'core Self>,
+        body: Closure<'core>,
     },
 }
 
-impl<'a> Value<'a> {
+impl<'core> Value<'core> {
     pub const TYPE: Self = Self::prim(Prim::Type);
     pub const INT_TYPE: Self = Self::prim(Prim::IntType);
     pub const BOOL_TYPE: Self = Self::prim(Prim::BoolType);
@@ -59,31 +59,31 @@ pub enum Head {
 }
 
 #[derive(Debug, Clone)]
-pub enum Elim<'a> {
-    FunApp { arg: Value<'a> },
+pub enum Elim<'core> {
+    FunApp { arg: Value<'core> },
 }
 
 #[derive(Debug, Clone)]
-pub struct Closure<'a> {
-    pub local_values: LocalValues<'a>,
-    pub body: &'a Expr<'a>,
+pub struct Closure<'core> {
+    pub local_values: LocalValues<'core>,
+    pub body: &'core Expr<'core>,
 }
 
-impl<'a> Closure<'a> {
-    pub fn new(local_values: LocalValues<'a>, body: &'a Expr<'a>) -> Self {
+impl<'core> Closure<'core> {
+    pub fn new(local_values: LocalValues<'core>, body: &'core Expr<'core>) -> Self {
         Self { local_values, body }
     }
 }
 
-pub type LocalValues<'a> = SharedEnv<Value<'a>>;
-pub type MetaValues<'a> = SliceEnv<Option<Value<'a>>>;
+pub type LocalValues<'core> = SharedEnv<Value<'core>>;
+pub type MetaValues<'core> = SliceEnv<Option<Value<'core>>>;
 
-pub fn eval<'a>(
-    bump: &'a bumpalo::Bump,
-    local_values: &mut LocalValues<'a>,
-    meta_values: &MetaValues<'a>,
-    expr: &Expr<'a>,
-) -> Value<'a> {
+pub fn eval<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &mut LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    expr: &Expr<'core>,
+) -> Value<'core> {
     match expr {
         Expr::Error => Value::Error,
         Expr::Const(r#const) => Value::Const(*r#const),
@@ -130,12 +130,12 @@ pub fn eval<'a>(
     }
 }
 
-pub fn fun_app<'a>(
-    bump: &'a bumpalo::Bump,
-    meta_values: &MetaValues<'a>,
-    fun: Value<'a>,
-    arg: Value<'a>,
-) -> Value<'a> {
+pub fn fun_app<'core>(
+    bump: &'core bumpalo::Bump,
+    meta_values: &MetaValues<'core>,
+    fun: Value<'core>,
+    arg: Value<'core>,
+) -> Value<'core> {
     match fun {
         Value::Error => Value::Error,
         Value::Neutral { head, mut spine } => {
@@ -147,12 +147,12 @@ pub fn fun_app<'a>(
     }
 }
 
-pub fn apply_closure<'a>(
-    bump: &'a bumpalo::Bump,
-    meta_values: &MetaValues<'a>,
-    closure: Closure<'a>,
-    arg: Value<'a>,
-) -> Value<'a> {
+pub fn apply_closure<'core>(
+    bump: &'core bumpalo::Bump,
+    meta_values: &MetaValues<'core>,
+    closure: Closure<'core>,
+    arg: Value<'core>,
+) -> Value<'core> {
     let Closure {
         mut local_values,
         body,
@@ -161,12 +161,12 @@ pub fn apply_closure<'a>(
     eval(bump, &mut local_values, meta_values, body)
 }
 
-pub fn quote<'a>(
-    bump: &'a bumpalo::Bump,
+pub fn quote<'core>(
+    bump: &'core bumpalo::Bump,
     local_len: EnvLen,
-    meta_values: &MetaValues<'a>,
+    meta_values: &MetaValues<'core>,
     value: &Value,
-) -> Expr<'a> {
+) -> Expr<'core> {
     let value = update_metas(bump, meta_values, value);
     match value {
         Value::Error => Expr::Error,
@@ -202,12 +202,12 @@ pub fn quote<'a>(
     }
 }
 
-fn quote_head<'a>(
-    bump: &'a bumpalo::Bump,
+fn quote_head<'core>(
+    bump: &'core bumpalo::Bump,
     head: Head,
     local_len: EnvLen,
-    meta_values: &MetaValues<'a>,
-) -> Expr<'a> {
+    meta_values: &MetaValues<'core>,
+) -> Expr<'core> {
     match head {
         Head::Prim(prim) => Expr::Prim(prim),
         Head::LocalVar { var } => match local_len.absolute_to_relative(var) {
@@ -222,22 +222,22 @@ fn quote_head<'a>(
     }
 }
 
-fn quote_closure<'a>(
-    bump: &'a bumpalo::Bump,
+fn quote_closure<'core>(
+    bump: &'core bumpalo::Bump,
     local_len: EnvLen,
-    meta_values: &MetaValues<'a>,
+    meta_values: &MetaValues<'core>,
     closure: Closure,
-) -> Expr<'a> {
+) -> Expr<'core> {
     let arg = Value::local_var(local_len.to_absolute());
     let body = apply_closure(bump, meta_values, closure, arg);
     quote(bump, local_len.succ(), meta_values, &body)
 }
 
-pub fn update_metas<'a>(
-    bump: &'a bumpalo::Bump,
-    meta_values: &MetaValues<'a>,
-    value: &Value<'a>,
-) -> Value<'a> {
+pub fn update_metas<'core>(
+    bump: &'core bumpalo::Bump,
+    meta_values: &MetaValues<'core>,
+    value: &Value<'core>,
+) -> Value<'core> {
     let mut value = value.clone();
     while let Value::Neutral {
         head: Head::MetaVar { var },
@@ -262,22 +262,22 @@ pub fn update_metas<'a>(
     value
 }
 
-pub fn normalize<'a>(
-    bump: &'a bumpalo::Bump,
-    local_values: &mut LocalValues<'a>,
-    meta_values: &MetaValues<'a>,
-    expr: &Expr<'a>,
-) -> Expr<'a> {
+pub fn normalize<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &mut LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    expr: &Expr<'core>,
+) -> Expr<'core> {
     let value = eval(bump, local_values, meta_values, expr);
     quote(bump, local_values.len(), meta_values, &value)
 }
 
-pub fn zonk<'a>(
-    bump: &'a bumpalo::Bump,
-    local_values: &mut LocalValues<'a>,
-    meta_values: &MetaValues<'a>,
-    expr: &Expr<'a>,
-) -> Expr<'a> {
+pub fn zonk<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &mut LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    expr: &Expr<'core>,
+) -> Expr<'core> {
     match expr {
         Expr::Error => Expr::Error,
         Expr::Const(r#const) => Expr::Const(*r#const),
@@ -332,12 +332,12 @@ pub fn zonk<'a>(
     }
 }
 
-fn zonk_with_local<'a>(
-    bump: &'a bumpalo::Bump,
-    local_values: &mut LocalValues<'a>,
-    meta_values: &MetaValues<'a>,
-    body: &Expr<'a>,
-) -> Expr<'a> {
+fn zonk_with_local<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &mut LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    body: &Expr<'core>,
+) -> Expr<'core> {
     let var = Value::local_var(local_values.len().to_absolute());
     local_values.push(var);
     let ret = zonk(bump, local_values, meta_values, body);
@@ -345,12 +345,12 @@ fn zonk_with_local<'a>(
     ret
 }
 
-fn zonk_meta_var_spines<'a>(
-    bump: &'a bumpalo::Bump,
-    local_values: &mut LocalValues<'a>,
-    meta_values: &MetaValues<'a>,
-    expr: &Expr<'a>,
-) -> Either<Expr<'a>, Value<'a>> {
+fn zonk_meta_var_spines<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &mut LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    expr: &Expr<'core>,
+) -> Either<Expr<'core>, Value<'core>> {
     match expr {
         Expr::MetaVar { var } => match meta_values.get_absolute(*var) {
             Some(Some(value)) => Right(value.clone()),

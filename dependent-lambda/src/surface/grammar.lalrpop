@@ -2,8 +2,8 @@ use text_size::{TextRange, TextSize};
 
 use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam};
 
-grammar<'bump>(
-    bump: &'bump bumpalo::Bump,
+grammar<'surface>(
+    bump: &'surface bumpalo::Bump,
 );
 
 extern {
@@ -37,11 +37,11 @@ extern {
     }
 }
 
-pub Expr: Located<Expr<'bump>> = {
+pub Expr: Located<Expr<'surface>> = {
     LetExpr => <>,
 }
 
-LetExpr: Located<Expr<'bump>> = {
+LetExpr: Located<Expr<'surface>> = {
     <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
         let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
@@ -56,7 +56,7 @@ LetExpr: Located<Expr<'bump>> = {
     FunExpr => <>,
 }
 
-FunExpr: Located<Expr<'bump>> = {
+FunExpr: Located<Expr<'surface>> = {
     <start: @L> "fun" <param: FunParam> "=>" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (param, body) = bump.alloc((param, body));
@@ -75,7 +75,7 @@ FunExpr: Located<Expr<'bump>> = {
     AppExpr => <>,
 }
 
-FunParam: Located<FunParam<'bump>> = {
+FunParam: Located<FunParam<'surface>> = {
     <start: @L> "(" <pat: Pat> ":" <r#type: Expr> ")" <end: @R> => {
         let range = TextRange::new(start, end);
         Located::new(range, FunParam { pat, r#type: Some(r#type) })
@@ -86,7 +86,7 @@ FunParam: Located<FunParam<'bump>> = {
     }
 }
 
-AppExpr: Located<Expr<'bump>> = {
+AppExpr: Located<Expr<'surface>> = {
     <start: @L> <fun: AppExpr> <arg: AtomExpr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (fun, arg) = bump.alloc((fun, arg));
@@ -95,14 +95,14 @@ AppExpr: Located<Expr<'bump>> = {
     AtomExpr => <>,
 }
 
-AtomExpr: Located<Expr<'bump>> = {
+AtomExpr: Located<Expr<'surface>> = {
     <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Expr::Error),
     <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
     <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren { expr: bump.alloc(expr) }),
 }
 
-Pat: Located<Pat<'bump>> = {
+Pat: Located<Pat<'surface>> = {
     <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Pat::Error),
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
     <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident),

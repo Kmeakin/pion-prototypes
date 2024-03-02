@@ -2,7 +2,7 @@ use common::env::{AbsoluteVar, RelativeVar};
 use common::Symbol;
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'a> {
+pub enum Expr<'core> {
     Error,
     Const(Const),
     Prim(Prim),
@@ -15,26 +15,26 @@ pub enum Expr<'a> {
 
     Let {
         name: Option<Symbol>,
-        r#type: &'a Self,
-        init: &'a Self,
-        body: &'a Self,
+        r#type: &'core Self,
+        init: &'core Self,
+        body: &'core Self,
     },
 
     FunType {
-        param: FunParam<&'a Self>,
-        body: &'a Self,
+        param: FunParam<&'core Self>,
+        body: &'core Self,
     },
     FunLit {
-        param: FunParam<&'a Self>,
-        body: &'a Self,
+        param: FunParam<&'core Self>,
+        body: &'core Self,
     },
     FunApp {
-        fun: &'a Self,
-        arg: &'a Self,
+        fun: &'core Self,
+        arg: &'core Self,
     },
 }
 
-impl<'a> Expr<'a> {
+impl<'core> Expr<'core> {
     pub fn references_local(&self, var: RelativeVar) -> bool {
         match self {
             Expr::LocalVar { var: v } => var == *v,

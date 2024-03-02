@@ -23,56 +23,56 @@ impl<T> Located<T> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Expr<'a> {
+pub enum Expr<'surface> {
     Error,
     Const(Const),
     LocalVar,
 
     Paren {
-        expr: &'a Located<Self>,
+        expr: &'surface Located<Self>,
     },
     Ann {
-        expr: &'a Located<Self>,
-        r#type: &'a Located<Self>,
+        expr: &'surface Located<Self>,
+        r#type: &'surface Located<Self>,
     },
 
     Let {
-        pat: &'a Located<Pat<'a>>,
-        r#type: Option<&'a Located<Self>>,
-        init: &'a Located<Self>,
-        body: &'a Located<Self>,
+        pat: &'surface Located<Pat<'surface>>,
+        r#type: Option<&'surface Located<Self>>,
+        init: &'surface Located<Self>,
+        body: &'surface Located<Self>,
     },
 
     FunArrow {
-        lhs: &'a Located<Self>,
-        rhs: &'a Located<Self>,
+        lhs: &'surface Located<Self>,
+        rhs: &'surface Located<Self>,
     },
     FunType {
-        param: &'a Located<FunParam<'a>>,
-        body: &'a Located<Self>,
+        param: &'surface Located<FunParam<'surface>>,
+        body: &'surface Located<Self>,
     },
     FunLit {
-        param: &'a Located<FunParam<'a>>,
-        body: &'a Located<Self>,
+        param: &'surface Located<FunParam<'surface>>,
+        body: &'surface Located<Self>,
     },
     FunApp {
-        fun: &'a Located<Self>,
-        arg: &'a Located<Self>,
+        fun: &'surface Located<Self>,
+        arg: &'surface Located<Self>,
     },
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct FunParam<'a> {
-    pub pat: Located<Pat<'a>>,
-    pub r#type: Option<Located<Expr<'a>>>,
+pub struct FunParam<'surface> {
+    pub pat: Located<Pat<'surface>>,
+    pub r#type: Option<Located<Expr<'surface>>>,
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Pat<'a> {
+pub enum Pat<'surface> {
     Error,
     Underscore,
     Ident,
-    Paren { pat: &'a Located<Self> },
+    Paren { pat: &'surface Located<Self> },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -83,7 +83,7 @@ pub enum Const {
     HexInt,
 }
 
-pub fn parse_expr<'bump>(bump: &'bump bumpalo::Bump, text: &str) -> Located<Expr<'bump>> {
+pub fn parse_expr<'surface>(bump: &'surface bumpalo::Bump, text: &str) -> Located<Expr<'surface>> {
     let tokens = lex(text)
         .filter(|token| !token.kind.is_trivia())
         .map(|token| (token.range.start(), token.kind, token.range.end()));
