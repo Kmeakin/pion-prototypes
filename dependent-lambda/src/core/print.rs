@@ -1,8 +1,8 @@
-use common::env::UniqueEnv;
+use common::env::{RelativeVar, UniqueEnv};
 use common::Symbol;
 use pretty::{Doc, DocAllocator, DocPtr, RefDoc};
 
-use super::syntax::{Const, Expr};
+use super::syntax::{Const, Expr, FunParam};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
@@ -35,11 +35,19 @@ pub struct Printer<'bump> {
 }
 
 pub struct Config {
+    /// print local variables as names rather than de bruijn indices
     print_names: bool,
+    /// print `forall (x: A) -> B` as `A -> B` if `x` does not appear in `B`
+    fun_arrows: bool,
 }
 
 impl Default for Config {
-    fn default() -> Self { Self { print_names: true } }
+    fn default() -> Self {
+        Self {
+            print_names: true,
+            fun_arrows: true,
+        }
+    }
 }
 
 impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {
@@ -126,37 +134,36 @@ impl<'bump> Printer<'bump> {
                     .append(self.hardline())
                     .append(body)
             }
+            Expr::FunType { param, body }
+                if self.config.fun_arrows && !body.references_local(RelativeVar::default()) =>
+            {
+                let r#type = self.expr_prec(names, param.r#type, Prec::App);
+                names.push(None);
+                let body = self.expr_prec(names, body, Prec::Fun);
+                names.pop();
+
+                r#type.append(" -> ").append(body)
+            }
             Expr::FunType { param, body } => {
-                let name = param.name.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr_prec(names, param.r#type, Prec::MAX);
-                names.push(param.name);
+                let name = param.name;
+                let param = self.param(names, param);
+                names.push(name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
                 self.text("forall")
-                    .append("(")
-                    .append(name)
-                    .append(": ")
-                    .append(r#type)
-                    .append(")")
+                    .append(param)
                     .append(" -> ")
                     .append(body)
             }
             Expr::FunLit { param, body } => {
-                let name = param.name.map_or("_".into(), |sym| sym.to_string());
-                let r#type = self.expr_prec(names, param.r#type, Prec::MAX);
-                names.push(param.name);
+                let name = param.name;
+                let param = self.param(names, param);
+                names.push(name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
-                self.text("fun")
-                    .append("(")
-                    .append(name)
-                    .append(": ")
-                    .append(r#type)
-                    .append(")")
-                    .append(" => ")
-                    .append(body)
+                self.text("fun").append(param).append(" => ").append(body)
             }
             Expr::FunApp { fun, arg } => {
                 let fun = self.expr_prec(names, fun, Prec::Atom);
@@ -173,11 +180,34 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    pub fn r#const(&'bump self, r#const: &Const) -> DocBuilder<'bump> {
+    fn param(
+        &'bump self,
+        names: &mut UniqueEnv<Option<Symbol>>,
+        param: &FunParam<&Expr>,
+    ) -> DocBuilder<'bump> {
+        let FunParam { name, r#type } = param;
+        let name = self.name(*name);
+        let r#type = self.expr_prec(names, r#type, Prec::MAX);
+
+        self.text("(")
+            .append(name)
+            .append(": ")
+            .append(r#type)
+            .append(")")
+    }
+
+    fn r#const(&'bump self, r#const: &Const) -> DocBuilder<'bump> {
         match r#const {
             Const::Bool(true) => self.text("true"),
             Const::Bool(false) => self.text("false"),
             Const::Int(i) => self.text(i.to_string()),
+        }
+    }
+
+    fn name(&'bump self, name: Option<Symbol>) -> DocBuilder<'bump> {
+        match name {
+            Some(name) => self.text(name.to_string()),
+            None => self.text("_"),
         }
     }
 }

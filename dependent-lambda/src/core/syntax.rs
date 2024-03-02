@@ -34,6 +34,26 @@ pub enum Expr<'a> {
     },
 }
 
+impl<'a> Expr<'a> {
+    pub fn references_local(&self, var: RelativeVar) -> bool {
+        match self {
+            Expr::LocalVar { var: v } => var == *v,
+            Expr::Error | Expr::Const(..) | Expr::Prim(..) | Expr::MetaVar { .. } => false,
+            Expr::Let {
+                r#type, init, body, ..
+            } => {
+                r#type.references_local(var)
+                    || init.references_local(var)
+                    || body.references_local(var.succ())
+            }
+            Expr::FunType { param, body } | Expr::FunLit { param, body } => {
+                param.r#type.references_local(var) || body.references_local(var.succ())
+            }
+            Expr::FunApp { fun, arg } => fun.references_local(var) || arg.references_local(var),
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<T> {
     pub name: Option<Symbol>,

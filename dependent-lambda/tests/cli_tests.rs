@@ -101,7 +101,7 @@ fn consts() {
 fn fun_arrow() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'Int -> Bool')"),
-        expect!["(forall(_: Int) -> Bool) : Type"],
+        expect!["(Int -> Bool) : Type"],
         expect![""],
     );
 }
@@ -110,12 +110,12 @@ fn fun_arrow() {
 fn fun_type() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'forall(x: Int) -> Bool')"),
-        expect!["(forall(x: Int) -> Bool) : Type"],
+        expect!["(Int -> Bool) : Type"],
         expect![""],
     );
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'forall (A: Type) -> A -> A')"),
-        expect!["(forall(A: Type) -> forall(_: A) -> A) : Type"],
+        expect!["(forall(A: Type) -> A -> A) : Type"],
         expect![""],
     );
 }
@@ -124,12 +124,12 @@ fn fun_type() {
 fn fun_lit() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'fun(x: Int) => x')"),
-        expect!["(fun(x: Int) => x) : forall(x: Int) -> Int"],
+        expect!["(fun(x: Int) => x) : Int -> Int"],
         expect![""],
     );
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'fun x => x')"),
-        expect!["(fun(x: ?0) => x) : forall(x: ?0) -> ?0"],
+        expect!["(fun(x: ?0) => x) : ?0 -> ?0"],
         expect![[r#"
 error: Unsolved metavariable: ?0
   ┌─ /dev/fd/63:1:5
@@ -140,7 +140,7 @@ error: Unsolved metavariable: ?0
     );
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) : Int -> Int')"),
-        expect!["(fun(x: Int) => x) : forall(_: Int) -> Int"],
+        expect!["(fun(x: Int) => x) : Int -> Int"],
         expect![""],
     );
 }
@@ -170,14 +170,14 @@ fn r#let() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'let f = fun x => x; f false')"),
         expect![[r#"
-(let f: forall(x: Bool) -> Bool = fun(x: Bool) => x;
+(let f: Bool -> Bool = fun(x: Bool) => x;
 f false) : Bool"#]],
         expect![""],
     );
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'let f: Bool -> Bool = fun x => x; f false')"),
         expect![[r#"
-(let f: forall(_: Bool) -> Bool = fun(x: Bool) => x;
+(let f: Bool -> Bool = fun(x: Bool) => x;
 f false) : Bool"#]],
         expect![""],
     );
