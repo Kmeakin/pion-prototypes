@@ -1,8 +1,8 @@
-use common::env::{RelativeVar, UniqueEnv};
-use common::Symbol;
 use pretty::{Doc, DocAllocator, DocPtr, RefDoc};
 
 use super::syntax::{Const, Expr, FunParam};
+use crate::env::{RelativeVar, UniqueEnv};
+use crate::symbol::Symbol;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {

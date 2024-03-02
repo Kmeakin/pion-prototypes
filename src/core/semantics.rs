@@ -1,8 +1,8 @@
-use common::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 
 use super::syntax::{Const, Expr, FunParam, Prim};
+use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 
 pub type Type<'core> = Value<'core>;
 

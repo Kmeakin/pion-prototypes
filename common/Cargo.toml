@@ -1,9 +1,0 @@
-[package]
-name = "common"
-
-edition = { workspace = true }
-version = { workspace = true }
-
-[dependencies]
-ecow = { workspace = true }
-ustr = { workspace = true }

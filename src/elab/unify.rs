@@ -1,8 +1,6 @@
-use common::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
-
-use self::semantics::{Elim, Head, MetaValues};
-use crate::core::semantics::{self, Closure, Value};
+use crate::core::semantics::{self, Closure, Elim, Head, MetaValues, Value};
 use crate::core::syntax::{Expr, FunParam};
+use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {

@@ -1,5 +1,5 @@
-use common::env::{AbsoluteVar, RelativeVar};
-use common::Symbol;
+use crate::env::{AbsoluteVar, RelativeVar};
+use crate::symbol::Symbol;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'core> {

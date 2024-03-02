@@ -6,8 +6,7 @@ pub use lexer::{lex, Token, TokenKind};
 use text_size::TextRange;
 
 lalrpop_mod!(
-    #[allow(clippy::all)]
-    #[allow(unused_imports)]
+    #[allow(clippy::all, unused_imports, unused_qualifications)]
     grammar,
     "/surface/grammar.rs"
 );
@@ -19,7 +18,7 @@ pub struct Located<T> {
 }
 
 impl<T> Located<T> {
-    pub fn new(range: TextRange, data: T) -> Self { Self { range, data } }
+    pub const fn new(range: TextRange, data: T) -> Self { Self { range, data } }
 }
 
 #[derive(Debug, Copy, Clone)]

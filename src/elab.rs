@@ -1,12 +1,12 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use common::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
-use common::Symbol;
 use text_size::TextRange;
 
 use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
 use crate::core::semantics::{self, Closure, Type, Value};
 use crate::core::syntax::{Const, Expr, FunParam, Prim};
+use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use crate::surface::{self, Located};
+use crate::symbol::Symbol;
 
 mod unify;
 
