@@ -25,8 +25,8 @@ impl AbsoluteVar {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
 impl RelativeVar {
-    pub fn succ(self) -> RelativeVar { Self(self.0 + 1) }
-    pub fn pred(self) -> Option<RelativeVar> { Some(Self(self.0.checked_sub(1)?)) }
+    pub const fn succ(self) -> Self { Self(self.0 + 1) }
+    pub fn pred(self) -> Option<Self> { Some(Self(self.0.checked_sub(1)?)) }
 }
 
 impl From<usize> for RelativeVar {
@@ -60,7 +60,7 @@ impl fmt::Display for EnvLen {
 
 impl EnvLen {
     /// New `EnvLen` representing an empty environment.
-    pub fn new() -> Self { Self(0) }
+    pub const fn new() -> Self { Self(0) }
 
     /// Convert a `RelativeVar` to an `AbsoluteVar` in the current environment.
     pub fn relative_to_absolute(self, relative: RelativeVar) -> Option<AbsoluteVar> {
@@ -74,10 +74,10 @@ impl EnvLen {
 
     /// Get an `AbsoluteVar` representing the most recent entry in the
     /// environment.
-    pub fn to_absolute(self) -> AbsoluteVar { AbsoluteVar(self.0) }
+    pub const fn to_absolute(self) -> AbsoluteVar { AbsoluteVar(self.0) }
 
     /// Get a new environment with one extra element.
-    pub fn succ(self) -> Self { Self(self.0 + 1) }
+    pub const fn succ(self) -> Self { Self(self.0 + 1) }
 
     /// Get a new environment with one less element.
     pub fn pred(self) -> Option<Self> { Some(Self(self.0.checked_sub(1)?)) }
@@ -105,7 +105,7 @@ pub struct UniqueEnv<T> {
 }
 
 impl<T> UniqueEnv<T> {
-    pub fn new() -> Self { Self { elems: Vec::new() } }
+    pub const fn new() -> Self { Self { elems: Vec::new() } }
 
     pub fn push(&mut self, elem: T) { self.elems.push(elem); }
     pub fn pop(&mut self) { self.elems.pop(); }
@@ -117,7 +117,7 @@ impl<T> UniqueEnv<T> {
     where
         T: Clone,
     {
-        self.elems.resize(len.0, value)
+        self.elems.resize(len.0, value);
     }
 }
 
@@ -140,7 +140,7 @@ pub struct SharedEnv<T> {
 }
 
 impl<T: Clone> SharedEnv<T> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             elems: EcoVec::new(),
         }
@@ -168,9 +168,9 @@ pub struct SliceEnv<T> {
 }
 
 impl<T> SliceEnv<T> {
-    pub fn len(&self) -> EnvLen { EnvLen(self.elems.len()) }
+    pub const fn len(&self) -> EnvLen { EnvLen(self.elems.len()) }
 
-    pub fn is_empty(&self) -> bool { self.elems.is_empty() }
+    pub const fn is_empty(&self) -> bool { self.elems.is_empty() }
 
     pub fn iter(&self) -> std::slice::Iter<T> { self.elems.iter() }
 
@@ -196,18 +196,20 @@ impl<T> SliceEnv<T> {
 impl<'a, T> IntoIterator for &'a SliceEnv<T> {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
-
     fn into_iter(self) -> Self::IntoIter { self.elems.iter() }
+}
+
+impl<'a, T> IntoIterator for &'a mut SliceEnv<T> {
+    type Item = &'a mut T;
+    type IntoIter = std::slice::IterMut<'a, T>;
+    fn into_iter(self) -> Self::IntoIter { self.elems.iter_mut() }
 }
 
 impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        #[allow(clippy::as_conversions)]
-        unsafe {
-            &*(slice as *const [T] as *mut SliceEnv<T>)
-        }
+        unsafe { &*(std::ptr::from_ref::<[T]>(slice) as *const SliceEnv<T>) }
     }
 }
 
@@ -215,9 +217,6 @@ impl<'a, T> From<&'a mut [T]> for &'a mut SliceEnv<T> {
     fn from(slice: &'a mut [T]) -> &'a mut SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        #[allow(clippy::as_conversions)]
-        unsafe {
-            &mut *(slice as *mut [T] as *mut SliceEnv<T>)
-        }
+        unsafe { &mut *(std::ptr::from_mut::<[T]>(slice) as *mut SliceEnv<T>) }
     }
 }

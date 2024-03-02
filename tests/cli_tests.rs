@@ -1,14 +1,11 @@
 #![feature(iter_intersperse)]
+#![allow(clippy::needless_raw_string_hashes)]
 
 use expect_test::*;
 
 const PION: &str = env!("CARGO_BIN_EXE_pion");
 
-fn check(
-    command: &str,
-    mut expected_stdout: expect_test::Expect,
-    mut expected_stderr: expect_test::Expect,
-) {
+fn check(command: &str, mut expected_stdout: Expect, mut expected_stderr: Expect) {
     let mut shell = std::process::Command::new("/bin/sh");
     let shell = shell.arg("-c");
     let command = shell.arg(command);
@@ -18,12 +15,12 @@ fn check(
 
     let stdout: String = stdout
         .lines()
-        .map(|line| line.trim_end())
+        .map(str::trim_end)
         .intersperse("\n")
         .collect();
     let stderr: String = stderr
         .lines()
-        .map(|line| line.trim_end())
+        .map(str::trim_end)
         .intersperse("\n")
         .collect();
 

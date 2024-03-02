@@ -6,7 +6,13 @@ pub use lexer::{lex, Token, TokenKind};
 use text_size::TextRange;
 
 lalrpop_mod!(
-    #[allow(clippy::all, unused_imports, unused_qualifications)]
+    #[allow(
+        clippy::all,
+        clippy::pedantic,
+        clippy::nursery,
+        unused_imports,
+        unused_qualifications
+    )]
     grammar,
     "/surface/grammar.rs"
 );
@@ -90,17 +96,15 @@ pub fn parse_expr<'surface>(bump: &'surface bumpalo::Bump, text: &str) -> Locate
         Ok(expr) => expr,
         Err(error) => {
             let range = match error {
-                lalrpop_util::ParseError::InvalidToken { location } => {
-                    TextRange::new(location, location)
-                }
-                lalrpop_util::ParseError::UnrecognizedEof { location, .. } => {
+                lalrpop_util::ParseError::InvalidToken { location }
+                | lalrpop_util::ParseError::UnrecognizedEof { location, .. } => {
                     TextRange::new(location, location)
                 }
                 lalrpop_util::ParseError::UnrecognizedToken {
                     token: (start, _, end),
                     ..
-                } => TextRange::new(start, end),
-                lalrpop_util::ParseError::ExtraToken {
+                }
+                | lalrpop_util::ParseError::ExtraToken {
                     token: (start, _, end),
                 } => TextRange::new(start, end),
                 lalrpop_util::ParseError::User { error } => match error {},

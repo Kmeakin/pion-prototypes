@@ -70,7 +70,7 @@ pub struct Closure<'core> {
 }
 
 impl<'core> Closure<'core> {
-    pub fn new(local_values: LocalValues<'core>, body: &'core Expr<'core>) -> Self {
+    pub const fn new(local_values: LocalValues<'core>, body: &'core Expr<'core>) -> Self {
         Self { local_values, body }
     }
 }
@@ -248,7 +248,7 @@ pub fn update_metas<'core>(
             Some(Some(head)) => {
                 value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
                     Elim::FunApp { arg } => fun_app(bump, meta_values, head, arg),
-                })
+                });
             }
             Some(None) => {
                 return Value::Neutral {

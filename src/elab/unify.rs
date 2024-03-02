@@ -193,7 +193,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         for (left_elim, right_elim) in Iterator::zip(left_spine.iter(), right_spine.iter()) {
             match (left_elim, right_elim) {
                 (Elim::FunApp { arg: left_arg }, Elim::FunApp { arg: right_arg }) => {
-                    self.unify(left_arg, right_arg)?
+                    self.unify(left_arg, right_arg)?;
                 }
             }
         }

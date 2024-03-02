@@ -110,11 +110,11 @@ pub enum MetaSource {
 }
 
 impl MetaSource {
-    pub fn range(&self) -> TextRange {
+    pub const fn range(&self) -> TextRange {
         match self {
-            MetaSource::PatType { range, .. }
-            | MetaSource::FunDomain { range }
-            | MetaSource::FunCodomain { range } => *range,
+            Self::PatType { range, .. }
+            | Self::FunDomain { range }
+            | Self::FunCodomain { range } => *range,
         }
     }
 }
@@ -239,7 +239,8 @@ where
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
         let expr = self.zonk(expr);
-        let printer = crate::core::print::Printer::new(self.bump, Default::default());
+        let printer =
+            crate::core::print::Printer::new(self.bump, crate::core::print::Config::default());
         let doc = printer.expr(&mut self.local_env.names, &expr).into_doc();
         doc.pretty(usize::MAX).to_string()
     }
@@ -501,20 +502,20 @@ where
     ) -> Result<Expr<'core>, E> {
         let range = surface_expr.range;
         let (expr, r#type) = self.synth_expr(surface_expr)?;
-        self.convert_expr(range, expr, r#type, expected)
+        self.convert_expr(range, expr, &r#type, expected)
     }
 
     fn convert_expr(
         &mut self,
         range: TextRange,
         expr: Expr<'core>,
-        from: Type<'core>,
+        from: &Type<'core>,
         to: &Type<'core>,
     ) -> Result<Expr<'core>, E> {
-        match self.unify(&from, to) {
+        match self.unify(from, to) {
             Ok(()) => Ok(expr),
             Err(error) => {
-                let from = self.quote(&from);
+                let from = self.quote(from);
                 let to = self.quote(to);
 
                 let found = self.pretty(&from);
@@ -621,20 +622,20 @@ where
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn check_pat<'surface>(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
-        _expected: &Type<'core>,
+        expected: &Type<'core>,
     ) -> Result<Option<Symbol>, E> {
         match surface_pat.data {
-            surface::Pat::Error => Ok(None),
-            surface::Pat::Underscore => Ok(None),
+            surface::Pat::Error | surface::Pat::Underscore => Ok(None),
             surface::Pat::Ident => {
                 let text = &self.text[surface_pat.range];
                 let symbol = Symbol::from(text);
                 Ok(Some(symbol))
             }
-            surface::Pat::Paren { pat } => self.check_pat(pat, _expected),
+            surface::Pat::Paren { pat } => self.check_pat(pat, expected),
         }
     }
 }

@@ -35,7 +35,7 @@ pub enum TokenKind {
     #[regex(r"[\p{XID_START}_]\p{XID_CONTINUE}*")] Ident,
 }
 impl TokenKind {
-    pub fn is_trivia(self) -> bool {
+    pub const fn is_trivia(self) -> bool {
         matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
     }
 }
@@ -47,9 +47,10 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, range: TextRange) -> Self { Self { kind, range } }
+    pub const fn new(kind: TokenKind, range: TextRange) -> Self { Self { kind, range } }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 pub fn lex(text: &str) -> impl Iterator<Item = Token> + '_ {
     TokenKind::lexer(text).spanned().map(|(result, range)| {
         let Range { start, end } = range;

@@ -2,6 +2,7 @@ use std::io::Read;
 
 use camino::Utf8PathBuf;
 use clap::Parser;
+use pion::env::UniqueEnv;
 
 #[derive(Parser)]
 pub enum Cli {
@@ -28,19 +29,19 @@ impl std::str::FromStr for PathOrStdin {
 impl PathOrStdin {
     fn read(&self) -> std::io::Result<String> {
         match self {
-            PathOrStdin::Stdin => {
+            Self::Stdin => {
                 let mut text = String::new();
                 std::io::stdin().read_to_string(&mut text)?;
                 Ok(text)
             }
-            PathOrStdin::Path(path) => std::fs::read_to_string(path),
+            Self::Path(path) => std::fs::read_to_string(path),
         }
     }
 
     fn name(&self) -> &str {
         match self {
-            PathOrStdin::Stdin => "<stdin>",
-            PathOrStdin::Path(path) => path.as_str(),
+            Self::Stdin => "<stdin>",
+            Self::Path(path) => path.as_str(),
         }
     }
 }
@@ -82,9 +83,10 @@ fn main() -> std::io::Result<()> {
             let expr = elaborator.zonk(&expr);
             let r#type = elaborator.zonk(&r#type);
 
-            let printer = pion::core::print::Printer::new(&bump, Default::default());
+            let printer =
+                pion::core::print::Printer::new(&bump, pion::core::print::Config::default());
             let doc = printer
-                .ann_expr(&mut Default::default(), &expr, &r#type)
+                .ann_expr(&mut UniqueEnv::default(), &expr, &r#type)
                 .into_doc();
             let doc = doc.pretty(80);
             println!("{doc}");

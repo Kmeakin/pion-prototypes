@@ -15,7 +15,7 @@ pub enum Prec {
 impl Prec {
     pub const MAX: Self = Self::Let;
 
-    pub fn of_expr(expr: &Expr) -> Self {
+    pub const fn of_expr(expr: &Expr) -> Self {
         match expr {
             Expr::Error
             | Expr::Prim(_)
@@ -75,7 +75,7 @@ impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {
 type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
 
 impl<'bump> Printer<'bump> {
-    pub fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
+    pub const fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
 
     pub fn ann_expr(
         &'bump self,
@@ -103,7 +103,7 @@ impl<'bump> Printer<'bump> {
         prec: Prec,
     ) -> DocBuilder<'bump> {
         let doc = match expr {
-            Expr::Const(r#const) => self.r#const(r#const),
+            Expr::Const(r#const) => self.r#const(*r#const),
             Expr::LocalVar { var } if self.config.print_names => match names.get_relative(*var) {
                 Some(Some(name)) => self.text(name.to_string()),
                 Some(None) => panic!("Unnamed variable: {var:?}"),
@@ -196,7 +196,7 @@ impl<'bump> Printer<'bump> {
             .append(")")
     }
 
-    fn r#const(&'bump self, r#const: &Const) -> DocBuilder<'bump> {
+    fn r#const(&'bump self, r#const: Const) -> DocBuilder<'bump> {
         match r#const {
             Const::Bool(true) => self.text("true"),
             Const::Bool(false) => self.text("false"),

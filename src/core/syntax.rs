@@ -61,7 +61,7 @@ pub struct FunParam<T> {
 }
 
 impl<T> FunParam<T> {
-    pub fn new(name: Option<Symbol>, r#type: T) -> Self { Self { name, r#type } }
+    pub const fn new(name: Option<Symbol>, r#type: T) -> Self { Self { name, r#type } }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -71,11 +71,11 @@ pub enum Prim {
     BoolType,
 }
 impl Prim {
-    pub fn name(self) -> &'static str {
+    pub const fn name(self) -> &'static str {
         match self {
-            Prim::Type => "Type",
-            Prim::IntType => "Int",
-            Prim::BoolType => "Bool",
+            Self::Type => "Type",
+            Self::IntType => "Int",
+            Self::BoolType => "Bool",
         }
     }
 }

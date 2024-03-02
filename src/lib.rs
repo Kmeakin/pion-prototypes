@@ -4,5 +4,5 @@ pub mod core;
 pub mod elab;
 pub mod surface;
 
-mod env;
-mod symbol;
+pub mod env;
+pub mod symbol;
