@@ -4,7 +4,7 @@ use common::Symbol;
 use text_size::TextRange;
 
 use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
-use crate::core::semantics::{self, Closure, Type, Value};
+use crate::core::semantics::{self, Closure, Head, Type, Value};
 use crate::core::syntax::{Const, Expr, FunParam, Prim};
 use crate::surface::{self, Located};
 
@@ -101,12 +101,20 @@ pub enum MetaSource {
         range: TextRange,
         name: Option<Symbol>,
     },
+    FunDomain {
+        range: TextRange,
+    },
+    FunCodomain {
+        range: TextRange,
+    },
 }
 
 impl MetaSource {
     pub fn range(&self) -> TextRange {
         match self {
-            MetaSource::PatType { range, .. } => *range,
+            MetaSource::PatType { range, .. }
+            | MetaSource::FunDomain { range }
+            | MetaSource::FunCodomain { range } => *range,
         }
     }
 }
@@ -143,6 +151,8 @@ where
                     MetaSource::PatType { name: None, .. } => {
                         "type of placeholder pattern".to_string()
                     }
+                    MetaSource::FunDomain { .. } => "type of function".to_string(),
+                    MetaSource::FunCodomain { .. } => continue,
                 };
 
                 self.report_diagnostic(

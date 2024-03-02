@@ -98,6 +98,25 @@ fn consts() {
 }
 
 #[test]
+fn prims() {
+    check(
+        &format!("{DEPENDENT_LAMBDA} check <(echo Type)"),
+        expect!["Type : Type"],
+        expect![""],
+    );
+    check(
+        &format!("{DEPENDENT_LAMBDA} check <(echo Int)"),
+        expect!["Int : Type"],
+        expect![""],
+    );
+    check(
+        &format!("{DEPENDENT_LAMBDA} check <(echo Bool)"),
+        expect!["Bool : Type"],
+        expect![""],
+    );
+}
+
+#[test]
 fn fun_arrow() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'Int -> Bool')"),
