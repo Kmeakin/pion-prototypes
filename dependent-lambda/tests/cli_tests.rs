@@ -133,10 +133,8 @@ fn fun_lit() {
         expect![""],
     );
     check(
-        &format!("{DEPENDENT_LAMBDA} check <(echo 'let f: Int -> Int = fun x => x; f')"),
-        expect![[r#"
-(let f: forall(_: Int) -> Int = fun(x: Int) => x;
-f) : forall(_: Int) -> Int"#]],
+        &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) : Int -> Int')"),
+        expect!["(fun(x: Int) => x) : forall(_: Int) -> Int"],
         expect![""],
     );
 }

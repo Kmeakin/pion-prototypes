@@ -239,6 +239,12 @@ where
                 Ok((Expr::Error, Type::Error))
             }
             surface::Expr::Paren { expr } => self.synth_expr(expr),
+            surface::Expr::Ann { expr, r#type } => {
+                let r#type = self.check_expr_is_type(r#type)?;
+                let r#type = self.eval(&r#type);
+                let expr = self.check_expr(expr, &r#type)?;
+                Ok((expr, r#type))
+            }
             surface::Expr::Let {
                 pat,
                 r#type,
@@ -419,6 +425,7 @@ where
             // new expression variants are added
             surface::Expr::Const(..)
             | surface::Expr::LocalVar { .. }
+            | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }
             | surface::Expr::FunType { .. }
             | surface::Expr::FunLit { .. }

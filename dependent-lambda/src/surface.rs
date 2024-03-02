@@ -31,6 +31,10 @@ pub enum Expr<'a> {
     Paren {
         expr: &'a Located<Self>,
     },
+    Ann {
+        expr: &'a Located<Self>,
+        r#type: &'a Located<Self>,
+    },
 
     Let {
         pat: &'a Located<Pat<'a>>,

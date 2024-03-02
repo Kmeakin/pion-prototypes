@@ -48,6 +48,11 @@ LetExpr: Located<Expr<'bump>> = {
         let (pat, init, body) = bump.alloc((pat, init, body));
         Located::new(range, Expr::Let { pat, r#type, init, body })
     },
+    <start: @L> <expr: AtomExpr> ":" <r#type: FunExpr> <end:@R> => {
+        let range = TextRange::new(start, end);
+        let (expr, r#type) = bump.alloc((expr, r#type));
+        Located::new(range, Expr::Ann { expr, r#type })
+    },
     FunExpr => <>,
 }
 
