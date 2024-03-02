@@ -80,6 +80,9 @@ fn main() -> std::io::Result<()> {
                 expr = elaborator.normalize(&expr);
             }
 
+            let expr = elaborator.zonk(&expr);
+            let r#type = elaborator.zonk(&r#type);
+
             let printer = dependent_lambda::core::print::Printer::new(&bump, Default::default());
             let doc = printer
                 .ann_expr(&mut Default::default(), &expr, &r#type)

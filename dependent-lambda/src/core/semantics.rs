@@ -1,5 +1,6 @@
 use common::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use ecow::EcoVec;
+use either::Either::{self, Left, Right};
 
 use super::syntax::{Const, Expr, FunParam, Prim};
 
@@ -269,4 +270,107 @@ pub fn normalize<'a>(
 ) -> Expr<'a> {
     let value = eval(bump, local_values, meta_values, expr);
     quote(bump, local_values.len(), meta_values, &value)
+}
+
+pub fn zonk<'a>(
+    bump: &'a bumpalo::Bump,
+    local_values: &mut LocalValues<'a>,
+    meta_values: &MetaValues<'a>,
+    expr: &Expr<'a>,
+) -> Expr<'a> {
+    match expr {
+        Expr::Error => Expr::Error,
+        Expr::Const(r#const) => Expr::Const(*r#const),
+        Expr::Prim(prim) => Expr::Prim(*prim),
+        Expr::LocalVar { var } => Expr::LocalVar { var: *var },
+
+        Expr::Let {
+            name,
+            r#type,
+            init,
+            body,
+        } => {
+            let r#type = zonk(bump, local_values, meta_values, r#type);
+            let init = zonk(bump, local_values, meta_values, init);
+            let body = zonk(bump, local_values, meta_values, body);
+            let (r#type, init, body) = bump.alloc((r#type, init, body));
+            Expr::Let {
+                name: *name,
+                r#type,
+                init,
+                body,
+            }
+        }
+        Expr::FunType { param, body } => {
+            let r#type = zonk(bump, local_values, meta_values, param.r#type);
+            let body = zonk_with_local(bump, local_values, meta_values, body);
+            let (r#type, body) = bump.alloc((r#type, body));
+            Expr::FunType {
+                param: FunParam::new(param.name, r#type),
+                body,
+            }
+        }
+        Expr::FunLit { param, body } => {
+            let r#type = zonk(bump, local_values, meta_values, param.r#type);
+            let body = zonk_with_local(bump, local_values, meta_values, body);
+            let (r#type, body) = bump.alloc((r#type, body));
+            Expr::FunLit {
+                param: FunParam::new(param.name, r#type),
+                body,
+            }
+        }
+
+        Expr::MetaVar { .. } | Expr::FunApp { .. } => {
+            match zonk_meta_var_spines(bump, local_values, meta_values, expr) {
+                Left(expr) => expr,
+                Right(value) => {
+                    let expr = quote(bump, local_values.len(), meta_values, &value);
+                    zonk(bump, local_values, meta_values, &expr)
+                }
+            }
+        }
+    }
+}
+
+fn zonk_with_local<'a>(
+    bump: &'a bumpalo::Bump,
+    local_values: &mut LocalValues<'a>,
+    meta_values: &MetaValues<'a>,
+    body: &Expr<'a>,
+) -> Expr<'a> {
+    let var = Value::local_var(local_values.len().to_absolute());
+    local_values.push(var);
+    let ret = zonk(bump, local_values, meta_values, body);
+    local_values.pop();
+    ret
+}
+
+fn zonk_meta_var_spines<'a>(
+    bump: &'a bumpalo::Bump,
+    local_values: &mut LocalValues<'a>,
+    meta_values: &MetaValues<'a>,
+    expr: &Expr<'a>,
+) -> Either<Expr<'a>, Value<'a>> {
+    match expr {
+        Expr::MetaVar { var } => match meta_values.get_absolute(*var) {
+            Some(Some(value)) => Right(value.clone()),
+            Some(None) => Left(Expr::MetaVar { var: *var }),
+            None => panic!("Unbound meta var: {var:?}"),
+        },
+        Expr::FunApp { fun, arg } => {
+            let fun = zonk_meta_var_spines(bump, local_values, meta_values, fun);
+            match fun {
+                Left(fun) => {
+                    let arg = zonk(bump, local_values, meta_values, arg);
+                    let (fun, arg) = bump.alloc((fun, arg));
+                    Left(Expr::FunApp { fun, arg })
+                }
+                Right(fun) => {
+                    let arg = eval(bump, local_values, meta_values, arg);
+                    Right(fun_app(bump, meta_values, fun, arg))
+                }
+            }
+        }
+        expr => Left(zonk(bump, local_values, meta_values, expr)),
+    }
 }

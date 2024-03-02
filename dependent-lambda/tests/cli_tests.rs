@@ -149,7 +149,7 @@ error: Unsolved metavariable: ?0
 fn fun_app() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo '(fun x => x) 1')"),
-        expect!["((fun(x: ?0) => x) 1) : Int"],
+        expect!["((fun(x: Int) => x) 1) : Int"],
         expect![""],
     );
     check(
@@ -170,7 +170,7 @@ fn r#let() {
     check(
         &format!("{DEPENDENT_LAMBDA} check <(echo 'let f = fun x => x; f false')"),
         expect![[r#"
-(let f: ?0 = fun(x: ?1) => x;
+(let f: forall(x: Bool) -> Bool = fun(x: Bool) => x;
 f false) : Bool"#]],
         expect![""],
     );

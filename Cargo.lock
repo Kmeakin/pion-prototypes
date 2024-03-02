@@ -230,6 +230,7 @@ dependencies = [
  "codespan-reporting",
  "common",
  "ecow",
+ "either",
  "expect-test",
  "lalrpop",
  "lalrpop-util",

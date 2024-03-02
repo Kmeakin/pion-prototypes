@@ -208,6 +208,15 @@ where
         )
     }
 
+    pub fn zonk(&mut self, expr: &Expr<'core>) -> Expr<'core> {
+        semantics::zonk(
+            self.bump,
+            &mut self.local_env.values,
+            &self.meta_env.values,
+            expr,
+        )
+    }
+
     pub fn unify(&mut self, left: &Value<'core>, right: &Value<'core>) -> Result<(), UnifyError> {
         let mut ctx = UnifyCtx::new(
             self.bump,
@@ -219,8 +228,9 @@ where
     }
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
+        let expr = self.zonk(expr);
         let printer = crate::core::print::Printer::new(self.bump, Default::default());
-        let doc = printer.expr(&mut self.local_env.names, expr).into_doc();
+        let doc = printer.expr(&mut self.local_env.names, &expr).into_doc();
         doc.pretty(usize::MAX).to_string()
     }
 
