@@ -134,6 +134,11 @@ fn fun_type() {
         expect!["(forall(A: Type) -> A -> A) : Type"],
         expect![""],
     );
+    check(
+        &format!("{PION} check <(echo 'forall (A: Type) (_: A) -> A')"),
+        expect!["(forall(A: Type) -> A -> A) : Type"],
+        expect![""],
+    );
 }
 
 #[test]
@@ -141,6 +146,11 @@ fn fun_lit() {
     check(
         &format!("{PION} check <(echo 'fun(x: Int) => x')"),
         expect!["(fun(x: Int) => x) : Int -> Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo 'fun (x: Int) (y: Bool) => x')"),
+        expect!["(fun(x: Int) => fun(y: Bool) => x) : Int -> Bool -> Int"],
         expect![""],
     );
     check(
@@ -155,8 +165,30 @@ error: Unsolved metavariable: ?0
 "#]],
     );
     check(
+        &format!("{PION} check <(echo 'fun x y => x')"),
+        expect!["(fun(x: ?0) => fun(y: ?1) => x) : ?0 -> ?1 -> ?0"],
+        expect![[r#"
+error: Unsolved metavariable: ?0
+  ┌─ /dev/fd/63:1:5
+  │
+1 │ fun x y => x
+  │     ^ could not infer type of variable `x`
+
+error: Unsolved metavariable: ?1
+  ┌─ /dev/fd/63:1:7
+  │
+1 │ fun x y => x
+  │       ^ could not infer type of variable `y`
+"#]],
+    );
+    check(
         &format!("{PION} check <(echo '(fun x => x) : Int -> Int')"),
         expect!["(fun(x: Int) => x) : Int -> Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo '(fun x y => x) : Int -> Bool -> Int')"),
+        expect!["(fun(x: Int) => fun(y: Bool) => x) : Int -> Bool -> Int"],
         expect![""],
     );
 }

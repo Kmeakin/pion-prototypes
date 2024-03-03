@@ -53,11 +53,11 @@ pub enum Expr<'surface> {
         rhs: &'surface Located<Self>,
     },
     FunType {
-        param: &'surface Located<FunParam<'surface>>,
+        params: &'surface [Located<FunParam<'surface>>],
         body: &'surface Located<Self>,
     },
     FunLit {
-        param: &'surface Located<FunParam<'surface>>,
+        params: &'surface [Located<FunParam<'surface>>],
         body: &'surface Located<Self>,
     },
     FunApp {

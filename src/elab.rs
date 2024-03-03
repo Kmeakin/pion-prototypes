@@ -348,39 +348,8 @@ where
                 };
                 Ok((core_expr, Type::TYPE))
             }
-            surface::Expr::FunType { param, body } => {
-                let (param, param_type) = self.synth_param(param)?;
-                let body_expr = {
-                    self.local_env.push_unknown(param.name, param_type);
-                    let body_expr = self.check_expr_is_type(body)?;
-                    self.local_env.pop();
-                    body_expr
-                };
-                let core_expr = Expr::FunType {
-                    param,
-                    body: self.bump.alloc(body_expr),
-                };
-                Ok((core_expr, Type::TYPE))
-            }
-            surface::Expr::FunLit { param, body } => {
-                let (param, param_type) = self.synth_param(param)?;
-                let (body_expr, body_type) = {
-                    self.local_env.push_unknown(param.name, param_type.clone());
-                    let (body_expr, body_type) = self.synth_expr(body)?;
-                    let body_type = self.quote(&body_type);
-                    self.local_env.pop();
-                    (body_expr, body_type)
-                };
-                let core_expr = Expr::FunLit {
-                    param,
-                    body: self.bump.alloc(body_expr),
-                };
-                let core_type = Value::FunType {
-                    param: FunParam::new(param.name, self.bump.alloc(param_type)),
-                    body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
-                };
-                Ok((core_expr, core_type))
-            }
+            surface::Expr::FunType { params, body } => self.synth_fun_type(params, body),
+            surface::Expr::FunLit { params, body } => self.synth_fun_lit(params, body),
             surface::Expr::FunApp { fun, arg } => {
                 let (fun_expr, fun_type) = self.synth_expr(fun)?;
                 let fun_type = semantics::update_metas(self.bump, &self.meta_env.values, &fun_type);
@@ -411,6 +380,63 @@ where
                         Ok((Expr::Error, Type::Error))
                     }
                 }
+            }
+        }
+    }
+
+    fn synth_fun_type<'surface>(
+        &mut self,
+        surface_params: &'surface [Located<surface::FunParam<'surface>>],
+        surface_body: &'surface Located<surface::Expr<'surface>>,
+    ) -> Result<(Expr<'core>, Type<'core>), E> {
+        match surface_params.split_first() {
+            None => {
+                let body = self.check_expr_is_type(surface_body)?;
+                Ok((body, Type::TYPE))
+            }
+            Some((surface_param, surface_params)) => {
+                let (param, param_type) = self.synth_param(surface_param)?;
+                let body_expr = {
+                    self.local_env.push_unknown(param.name, param_type);
+                    let (body_expr, _) = self.synth_fun_type(surface_params, surface_body)?;
+                    self.local_env.pop();
+                    body_expr
+                };
+                let core_expr = Expr::FunType {
+                    param,
+                    body: self.bump.alloc(body_expr),
+                };
+                Ok((core_expr, Type::TYPE))
+            }
+        }
+    }
+
+    fn synth_fun_lit<'surface>(
+        &mut self,
+        surface_params: &'surface [Located<surface::FunParam<'surface>>],
+        surface_body: &'surface Located<surface::Expr<'surface>>,
+    ) -> Result<(Expr<'core>, Type<'core>), E> {
+        match surface_params.split_first() {
+            None => self.synth_expr(surface_body),
+            Some((surface_param, surface_params)) => {
+                let (param, param_type) = self.synth_param(surface_param)?;
+                let (body_expr, body_type) = {
+                    self.local_env.push_unknown(param.name, param_type.clone());
+                    let (body_expr, body_type) =
+                        self.synth_fun_lit(surface_params, surface_body)?;
+                    let body_type = self.quote(&body_type);
+                    self.local_env.pop();
+                    (body_expr, body_type)
+                };
+                let core_expr = Expr::FunLit {
+                    param,
+                    body: self.bump.alloc(body_expr),
+                };
+                let core_type = Value::FunType {
+                    param: FunParam::new(param.name, self.bump.alloc(param_type)),
+                    body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+                };
+                Ok((core_expr, core_type))
             }
         }
     }
@@ -455,24 +481,47 @@ where
                 };
                 Ok(core_expr)
             }
-            surface::Expr::FunLit { param, body }
-                if let Type::FunType {
-                    param: expected_param,
-                    body: expected_body,
-                } = expected =>
-            {
-                let param = self.check_param(param, expected_param.r#type)?;
+            surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, expected),
+
+            // list cases explicitly instead of using `_` so that new cases are not forgotten when
+            // new expression variants are added
+            surface::Expr::Const(..)
+            | surface::Expr::LocalVar { .. }
+            | surface::Expr::Ann { .. }
+            | surface::Expr::FunArrow { .. }
+            | surface::Expr::FunType { .. }
+            | surface::Expr::FunApp { .. } => self.synth_and_convert_expr(surface_expr, expected),
+        }
+    }
+
+    fn check_fun_lit<'surface>(
+        &mut self,
+        surface_params: &'surface [Located<surface::FunParam<'surface>>],
+        surface_body: &'surface Located<surface::Expr<'surface>>,
+        expected: &Type<'core>,
+    ) -> Result<Expr<'core>, E> {
+        let [surface_param, rest_params @ ..] = surface_params else {
+            return self.check_expr(surface_body, expected);
+        };
+
+        #[allow(clippy::single_match_else)]
+        match expected {
+            Value::FunType {
+                param: expected_param,
+                body: expected_body,
+            } => {
+                let param = self.check_param(surface_param, expected_param.r#type)?;
                 let body_expr = {
                     let arg_value = self.local_env.next_var();
                     self.local_env
                         .push_unknown(param.name, expected_param.r#type.clone());
-                    let expected_body_type = semantics::apply_closure(
+                    let expected = semantics::apply_closure(
                         self.bump,
                         &self.meta_env.values,
                         expected_body.clone(),
                         arg_value,
                     );
-                    let body_expr = self.check_expr(body, &expected_body_type)?;
+                    let body_expr = self.check_fun_lit(rest_params, surface_body, &expected)?;
                     self.local_env.pop();
                     body_expr
                 };
@@ -482,16 +531,12 @@ where
                 };
                 Ok(core_expr)
             }
-
-            // list cases explicitly instead of using `_` so that new cases are not forgotten when
-            // new expression variants are added
-            surface::Expr::Const(..)
-            | surface::Expr::LocalVar { .. }
-            | surface::Expr::Ann { .. }
-            | surface::Expr::FunArrow { .. }
-            | surface::Expr::FunType { .. }
-            | surface::Expr::FunLit { .. }
-            | surface::Expr::FunApp { .. } => self.synth_and_convert_expr(surface_expr, expected),
+            _ => {
+                let (expr, r#type) = self.synth_fun_lit(surface_params, surface_body)?;
+                let range = surface_param.range.cover(surface_body.range);
+                self.convert_expr(range, expr, &r#type, expected)?;
+                Ok(expr)
+            }
         }
     }
 

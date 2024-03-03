@@ -57,15 +57,17 @@ LetExpr: Located<Expr<'surface>> = {
 }
 
 FunExpr: Located<Expr<'surface>> = {
-    <start: @L> "fun" <param: FunParam> "=>" <body: Expr> <end: @R> => {
+    <start: @L> "fun" <params: FunParam+> "=>" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
-        let (param, body) = bump.alloc((param, body));
-        Located::new(range, Expr::FunLit { param, body })
+        let params = bump.alloc_slice_copy(&params);
+        let body = bump.alloc(body);
+        Located::new(range, Expr::FunLit { params, body })
     },
-    <start: @L> "forall" <param: FunParam> "->" <body: Expr> <end: @R> => {
+    <start: @L> "forall" <params: FunParam+> "->" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
-        let (param, body) = bump.alloc((param, body));
-        Located::new(range, Expr::FunType { param, body })
+        let params = bump.alloc_slice_copy(&params);
+        let body = bump.alloc(body);
+        Located::new(range, Expr::FunType { params, body })
     },
     <start: @L> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
         let range = TextRange::new(start, end);
@@ -120,3 +122,17 @@ Const: Const = {
     "BinInt" => Const::BinInt,
     "HexInt" => Const::HexInt,
 }
+
+Sep0<Elem, Sep>: &'surface [Elem] = {
+    <mut elems: (<Elem> Sep)*> <last: Elem?> => {
+        elems.extend(last);
+        bump.alloc_slice_copy(&elems)
+    }
+};
+
+Sep1<Elem, Sep>: &'surface [Elem] = {
+    <mut elems: (<Elem> Sep)*> <last: Elem> Sep? => {
+        elems.push(last);
+        bump.alloc_slice_copy(&elems)
+    }
+};
