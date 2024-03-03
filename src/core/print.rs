@@ -126,7 +126,7 @@ impl<'bump> Printer<'bump> {
 
                 self.text("let ")
                     .append(name)
-                    .append(": ")
+                    .append(" : ")
                     .append(r#type)
                     .append(" = ")
                     .append(init)
@@ -151,7 +151,7 @@ impl<'bump> Printer<'bump> {
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
-                self.text("forall")
+                self.text("forall ")
                     .append(param)
                     .append(" -> ")
                     .append(body)
@@ -163,7 +163,7 @@ impl<'bump> Printer<'bump> {
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
-                self.text("fun").append(param).append(" => ").append(body)
+                self.text("fun ").append(param).append(" => ").append(body)
             }
             Expr::FunApp { fun, arg } => {
                 let fun = self.expr_prec(names, fun, Prec::Atom);
@@ -191,7 +191,7 @@ impl<'bump> Printer<'bump> {
 
         self.text("(")
             .append(name)
-            .append(": ")
+            .append(" : ")
             .append(r#type)
             .append(")")
     }
