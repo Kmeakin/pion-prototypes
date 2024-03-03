@@ -1,7 +1,7 @@
 use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 
-use super::syntax::{Const, Expr, FunParam, Prim};
+use super::syntax::{Const, Expr, FunArg, FunParam, Prim};
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 
 pub type Type<'core> = Value<'core>;
@@ -60,7 +60,7 @@ pub enum Head {
 
 #[derive(Debug, Clone)]
 pub enum Elim<'core> {
-    FunApp { arg: Value<'core> },
+    FunApp { arg: FunArg<Value<'core>> },
 }
 
 #[derive(Debug, Clone)]
@@ -110,7 +110,7 @@ pub fn eval<'core>(
             let r#type = eval(bump, local_values, meta_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunType {
-                param: FunParam::new(param.name, bump.alloc(r#type)),
+                param: FunParam::new(param.plicity, param.name, bump.alloc(r#type)),
                 body,
             }
         }
@@ -118,13 +118,13 @@ pub fn eval<'core>(
             let r#type = eval(bump, local_values, meta_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunLit {
-                param: FunParam::new(param.name, bump.alloc(r#type)),
+                param: FunParam::new(param.plicity, param.name, bump.alloc(r#type)),
                 body,
             }
         }
         Expr::FunApp { fun, arg } => {
             let fun = eval(bump, local_values, meta_values, fun);
-            let arg = eval(bump, local_values, meta_values, arg);
+            let arg = FunArg::new(arg.plicity, eval(bump, local_values, meta_values, arg.expr));
             fun_app(bump, meta_values, fun, arg)
         }
     }
@@ -134,7 +134,7 @@ pub fn fun_app<'core>(
     bump: &'core bumpalo::Bump,
     meta_values: &MetaValues<'core>,
     fun: Value<'core>,
-    arg: Value<'core>,
+    arg: FunArg<Value<'core>>,
 ) -> Value<'core> {
     match fun {
         Value::Error => Value::Error,
@@ -142,7 +142,10 @@ pub fn fun_app<'core>(
             spine.push(Elim::FunApp { arg });
             Value::Neutral { head, spine }
         }
-        Value::FunLit { body, .. } => apply_closure(bump, meta_values, body, arg),
+        Value::FunLit { param, body, .. } => {
+            debug_assert_eq!(arg.plicity, param.plicity);
+            apply_closure(bump, meta_values, body, arg.expr)
+        }
         _ => panic!("Invalid function application"),
     }
 }
@@ -165,7 +168,7 @@ pub fn quote<'core>(
     bump: &'core bumpalo::Bump,
     local_len: EnvLen,
     meta_values: &MetaValues<'core>,
-    value: &Value,
+    value: &Value<'core>,
 ) -> Expr<'core> {
     let value = update_metas(bump, meta_values, value);
     match value {
@@ -174,29 +177,21 @@ pub fn quote<'core>(
             let head = quote_head(bump, head, local_len, meta_values);
             spine.iter().fold(head, |head, elim| match elim {
                 Elim::FunApp { arg } => {
-                    let arg = quote(bump, local_len, meta_values, arg);
-                    let (fun, arg) = bump.alloc((head, arg));
+                    let arg_expr = quote(bump, local_len, meta_values, &arg.expr);
+                    let (fun, arg_expr) = bump.alloc((head, arg_expr));
+                    let (fun, arg_expr) = (fun as &_, arg_expr as &_);
+                    let arg = FunArg::new(arg.plicity, arg_expr);
                     Expr::FunApp { fun, arg }
                 }
             })
         }
         Value::FunLit { param, body } => {
-            let r#type = quote(bump, local_len, meta_values, param.r#type);
-            let body = quote_closure(bump, local_len, meta_values, body);
-            let (r#type, body) = bump.alloc((r#type, body));
-            Expr::FunLit {
-                param: FunParam::new(param.name, r#type),
-                body,
-            }
+            let (param, body) = quote_fun(bump, local_len, meta_values, param, body);
+            Expr::FunLit { param, body }
         }
         Value::FunType { param, body } => {
-            let r#type = quote(bump, local_len, meta_values, param.r#type);
-            let body = quote_closure(bump, local_len, meta_values, body);
-            let (r#type, body) = bump.alloc((r#type, body));
-            Expr::FunType {
-                param: FunParam::new(param.name, r#type),
-                body,
-            }
+            let (param, body) = quote_fun(bump, local_len, meta_values, param, body);
+            Expr::FunType { param, body }
         }
         Value::Const(r#const) => Expr::Const(r#const),
     }
@@ -222,15 +217,22 @@ fn quote_head<'core>(
     }
 }
 
-fn quote_closure<'core>(
+fn quote_fun<'core>(
     bump: &'core bumpalo::Bump,
     local_len: EnvLen,
     meta_values: &MetaValues<'core>,
-    closure: Closure,
-) -> Expr<'core> {
+    param: FunParam<&'core Value<'core>>,
+    closure: Closure<'core>,
+) -> (FunParam<&'core Expr<'core>>, &'core Expr<'core>) {
+    let r#type = quote(bump, local_len, meta_values, param.r#type);
+
     let arg = Value::local_var(local_len.to_absolute());
     let body = apply_closure(bump, meta_values, closure, arg);
-    quote(bump, local_len.succ(), meta_values, &body)
+    let body = quote(bump, local_len.succ(), meta_values, &body);
+
+    let (r#type, body) = bump.alloc((r#type, body));
+
+    (FunParam::new(param.plicity, param.name, r#type), body)
 }
 
 pub fn update_metas<'core>(
@@ -306,7 +308,7 @@ pub fn zonk<'core>(
             let body = zonk_with_local(bump, local_values, meta_values, body);
             let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunType {
-                param: FunParam::new(param.name, r#type),
+                param: FunParam::new(param.plicity, param.name, r#type),
                 body,
             }
         }
@@ -315,7 +317,7 @@ pub fn zonk<'core>(
             let body = zonk_with_local(bump, local_values, meta_values, body);
             let (r#type, body) = bump.alloc((r#type, body));
             Expr::FunLit {
-                param: FunParam::new(param.name, r#type),
+                param: FunParam::new(param.plicity, param.name, r#type),
                 body,
             }
         }
@@ -360,14 +362,16 @@ fn zonk_meta_var_spines<'core>(
         Expr::FunApp { fun, arg } => {
             let fun = zonk_meta_var_spines(bump, local_values, meta_values, fun);
             match fun {
-                Left(fun) => {
-                    let arg = zonk(bump, local_values, meta_values, arg);
-                    let (fun, arg) = bump.alloc((fun, arg));
-                    Left(Expr::FunApp { fun, arg })
+                Left(fun_expr) => {
+                    let arg_expr = zonk(bump, local_values, meta_values, arg.expr);
+                    let (fun_expr, arg_expr) = bump.alloc((fun_expr, arg_expr));
+                    let arg = FunArg::new(arg.plicity, arg_expr as &_);
+                    Left(Expr::FunApp { fun: fun_expr, arg })
                 }
-                Right(fun) => {
-                    let arg = eval(bump, local_values, meta_values, arg);
-                    Right(fun_app(bump, meta_values, fun, arg))
+                Right(fun_value) => {
+                    let arg_value = eval(bump, local_values, meta_values, arg.expr);
+                    let arg = FunArg::new(arg.plicity, arg_value);
+                    Right(fun_app(bump, meta_values, fun_value, arg))
                 }
             }
         }

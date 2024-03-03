@@ -6,3 +6,5 @@ pub mod surface;
 
 pub mod env;
 pub mod symbol;
+
+mod plicity;

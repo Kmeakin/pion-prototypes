@@ -3,8 +3,9 @@ use text_size::TextRange;
 
 use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
 use crate::core::semantics::{self, Closure, Type, Value};
-use crate::core::syntax::{Const, Expr, FunParam, Prim};
+use crate::core::syntax::{Const, Expr, FunArg, FunParam, Prim};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
+use crate::plicity::Plicity;
 use crate::surface::{self, Located};
 use crate::symbol::Symbol;
 
@@ -179,6 +180,7 @@ where
                     let var = self.local_env.len().absolute_to_relative(var).unwrap();
                     let arg = Expr::LocalVar { var };
                     let (fun, arg) = self.bump.alloc((expr, arg));
+                    let arg = FunArg::new(Plicity::Explicit, arg as &_);
                     expr = Expr::FunApp { fun, arg };
                 }
             }
@@ -338,7 +340,7 @@ where
                 };
                 Ok((core_expr, body_type))
             }
-            surface::Expr::FunArrow { lhs, rhs } => {
+            surface::Expr::FunArrow { plicity, lhs, rhs } => {
                 let param_type = self.check_expr_is_type(lhs)?;
                 let body = {
                     let param_type_value = self.eval(&param_type);
@@ -349,7 +351,7 @@ where
                 };
                 let (param_type, body) = self.bump.alloc((param_type, body));
                 let core_expr = Expr::FunType {
-                    param: FunParam::new(None, param_type),
+                    param: FunParam::new(plicity, None, param_type),
                     body,
                 };
                 Ok((core_expr, Type::TYPE))
@@ -361,17 +363,35 @@ where
                 let fun_type = semantics::update_metas(self.bump, &self.meta_env.values, &fun_type);
                 match fun_type {
                     Value::Error => Ok((Expr::Error, Type::Error)),
+                    Value::FunType { param, .. } if arg.data.plicity != param.plicity => {
+                        let fun_type = self.quote(&fun_type);
+                        let fun_type = self.pretty(&fun_type);
+                        self.report_diagnostic(
+                            Diagnostic::error()
+                                .with_message(format!(
+                                    "Applied {} argument when {} argument was expected",
+                                    arg.data.plicity.description(),
+                                    param.plicity.description()
+                                ))
+                                .with_labels(vec![
+                                    Label::primary(self.file_id, arg.range).with_message(format!(
+                                        "{} argument",
+                                        arg.data.plicity.description()
+                                    )),
+                                    Label::secondary(self.file_id, fun.range)
+                                        .with_message(format!("function has type {fun_type}")),
+                                ]),
+                        )?;
+                        Ok((Expr::Error, Type::Error))
+                    }
                     Value::FunType { param, body } => {
-                        let arg_expr = self.check_expr(arg, param.r#type)?;
-                        let arg_value = self.eval(&arg_expr);
-                        let output_type = semantics::apply_closure(
-                            self.bump,
-                            &self.meta_env.values,
-                            body,
-                            arg_value,
-                        );
+                        let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
+                        let arg = self.eval(&arg_expr);
+                        let output_type =
+                            semantics::apply_closure(self.bump, &self.meta_env.values, body, arg);
 
-                        let (fun, arg) = self.bump.alloc((fun_expr, arg_expr));
+                        let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
+                        let arg = FunArg::new(param.plicity, arg_expr as &_);
                         let core_expr = Expr::FunApp { fun, arg };
                         Ok((core_expr, output_type))
                     }
@@ -439,7 +459,7 @@ where
                     body: self.bump.alloc(body_expr),
                 };
                 let core_type = Value::FunType {
-                    param: FunParam::new(param.name, self.bump.alloc(param_type)),
+                    param: FunParam::new(param.plicity, param.name, self.bump.alloc(param_type)),
                     body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
                 };
                 Ok((core_expr, core_type))
@@ -601,7 +621,10 @@ where
         let (name, r#type_value) =
             self.synth_ann_pat(&surface_param.pat, surface_param.r#type.as_ref())?;
         let r#type = self.quote(&r#type_value);
-        Ok((FunParam::new(name, self.bump.alloc(r#type)), type_value))
+        Ok((
+            FunParam::new(surface_param.plicity, name, self.bump.alloc(r#type)),
+            type_value,
+        ))
     }
 
     fn check_param<'surface>(
@@ -613,7 +636,11 @@ where
         let name =
             self.check_ann_pat(&surface_param.pat, surface_param.r#type.as_ref(), expected)?;
         let r#type = self.quote(expected);
-        Ok(FunParam::new(name, self.bump.alloc(r#type)))
+        Ok(FunParam::new(
+            surface_param.plicity,
+            name,
+            self.bump.alloc(r#type),
+        ))
     }
 
     fn synth_ann_pat<'surface>(

@@ -1,7 +1,8 @@
-use pretty::{Doc, DocAllocator, DocPtr, RefDoc};
+use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-use super::syntax::{Const, Expr, FunParam};
+use super::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{RelativeVar, UniqueEnv};
+use crate::plicity::Plicity;
 use crate::symbol::Symbol;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -142,11 +143,15 @@ impl<'bump> Printer<'bump> {
                 let body = self.expr_prec(names, body, Prec::Fun);
                 names.pop();
 
-                r#type.append(" -> ").append(body)
+                self.nil()
+                    .append(param.plicity)
+                    .append(r#type)
+                    .append(" -> ")
+                    .append(body)
             }
             Expr::FunType { param, body } => {
                 let name = param.name;
-                let param = self.param(names, param);
+                let param = self.fun_param(names, param);
                 names.push(name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
@@ -158,7 +163,7 @@ impl<'bump> Printer<'bump> {
             }
             Expr::FunLit { param, body } => {
                 let name = param.name;
-                let param = self.param(names, param);
+                let param = self.fun_param(names, param);
                 names.push(name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
@@ -167,7 +172,7 @@ impl<'bump> Printer<'bump> {
             }
             Expr::FunApp { fun, arg } => {
                 let fun = self.expr_prec(names, fun, Prec::Atom);
-                let arg = self.expr_prec(names, arg, Prec::Atom);
+                let arg = self.fun_arg(names, arg);
                 fun.append(self.space()).append(arg)
             }
             Expr::Error => self.text("#error"),
@@ -180,16 +185,30 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    fn param(
+    fn fun_arg(
+        &'bump self,
+        names: &mut UniqueEnv<Option<Symbol>>,
+        arg: &FunArg<&Expr>,
+    ) -> DocBuilder<'bump> {
+        let expr = self.expr_prec(names, arg.expr, Prec::Atom);
+        self.nil().append(arg.plicity).append(expr)
+    }
+
+    fn fun_param(
         &'bump self,
         names: &mut UniqueEnv<Option<Symbol>>,
         param: &FunParam<&Expr>,
     ) -> DocBuilder<'bump> {
-        let FunParam { name, r#type } = param;
+        let FunParam {
+            plicity,
+            name,
+            r#type,
+        } = param;
         let name = self.name(*name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
 
         self.text("(")
+            .append(*plicity)
             .append(name)
             .append(" : ")
             .append(r#type)
@@ -208,6 +227,15 @@ impl<'bump> Printer<'bump> {
         match name {
             Some(name) => self.text(name.to_string()),
             None => self.text("_"),
+        }
+    }
+}
+
+impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Plicity {
+    fn pretty(self, allocator: &'a D) -> pretty::DocBuilder<'a, D, ()> {
+        match self {
+            Self::Implicit => allocator.text("@"),
+            Self::Explicit => allocator.nil(),
         }
     }
 }

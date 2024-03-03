@@ -1,6 +1,7 @@
 use crate::core::semantics::{self, Closure, Elim, Head, MetaValues, Value};
-use crate::core::syntax::{Expr, FunParam};
+use crate::core::syntax::{Expr, FunArg, FunParam};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
+use crate::plicity::Plicity;
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {
@@ -136,19 +137,22 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     param: right_param,
                     body: right_body,
                 },
-            ) => {
-                self.unify(left_param.r#type, right_param.r#type)?;
-                self.unify_closures(left_body, right_body)
-            }
+            ) => self.unify_funs(left_param, left_body, right_param, right_body),
             // Unify a function literal with a value, using eta-conversion:
             // `(fun x => f x) ?= f`
-            (Value::FunLit { body, .. }, value) | (value, Value::FunLit { body, .. }) => {
+            (Value::FunLit { param, body, .. }, value)
+            | (value, Value::FunLit { param, body, .. }) => {
                 let left_var = Value::local_var(self.local_env.to_absolute());
                 let right_var = Value::local_var(self.local_env.to_absolute());
 
                 let left_value =
                     semantics::apply_closure(self.bump, self.meta_values, body, left_var);
-                let right_value = semantics::fun_app(self.bump, self.meta_values, value, right_var);
+                let right_value = semantics::fun_app(
+                    self.bump,
+                    self.meta_values,
+                    value,
+                    FunArg::new(param.plicity, right_var),
+                );
 
                 self.local_env.push();
                 let result = self.unify(&left_value, &right_value);
@@ -193,7 +197,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         for (left_elim, right_elim) in Iterator::zip(left_spine.iter(), right_spine.iter()) {
             match (left_elim, right_elim) {
                 (Elim::FunApp { arg: left_arg }, Elim::FunApp { arg: right_arg }) => {
-                    self.unify(left_arg, right_arg)?;
+                    if left_arg.plicity != right_arg.plicity {
+                        return Err(UnifyError::Mismatch);
+                    }
+
+                    self.unify(&left_arg.expr, &right_arg.expr)?;
                 }
             }
         }
@@ -201,18 +209,25 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     }
 
     /// Unify two [closures][Closure].
-    fn unify_closures(
+    fn unify_funs(
         &mut self,
-        left_closure: Closure<'core>,
-        right_closure: Closure<'core>,
+        left_param: FunParam<&Value<'core>>,
+        left_body: Closure<'core>,
+        right_param: FunParam<&Value<'core>>,
+        right_body: Closure<'core>,
     ) -> Result<(), UnifyError> {
+        if left_param.plicity != right_param.plicity {
+            return Err(UnifyError::Mismatch);
+        }
+
+        self.unify(left_param.r#type, right_param.r#type)?;
+
         let left_var = Value::local_var(self.local_env.to_absolute());
         let right_var = Value::local_var(self.local_env.to_absolute());
 
-        let left_value =
-            semantics::apply_closure(self.bump, self.meta_values, left_closure, left_var);
+        let left_value = semantics::apply_closure(self.bump, self.meta_values, left_body, left_var);
         let right_value =
-            semantics::apply_closure(self.bump, self.meta_values, right_closure, right_var);
+            semantics::apply_closure(self.bump, self.meta_values, right_body, right_var);
 
         self.local_env.push();
         let result = self.unify(&left_value, &right_value);
@@ -257,7 +272,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         for elim in spine {
             match elim {
                 Elim::FunApp { arg } => {
-                    match semantics::update_metas(self.bump, self.meta_values, arg) {
+                    match semantics::update_metas(self.bump, self.meta_values, &arg.expr) {
                         Value::Neutral {
                             head: Head::LocalVar { var },
                             spine,
@@ -279,7 +294,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn fun_intros(&self, spine: &[Elim<'core>], expr: Expr<'core>) -> Expr<'core> {
         spine.iter().fold(expr, |expr, elim| match elim {
             Elim::FunApp { .. } => Expr::FunLit {
-                param: FunParam::new(None, &Expr::Error),
+                param: FunParam::new(Plicity::Explicit, None, &Expr::Error),
                 body: self.bump.alloc(expr),
             },
         })
@@ -316,48 +331,44 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 };
                 spine.iter().try_fold(head, |head, elim| match elim {
                     Elim::FunApp { arg } => {
-                        let arg = self.rename(meta_var, arg)?;
-                        let (fun, arg) = self.bump.alloc((head, arg));
+                        let arg_expr = self.rename(meta_var, &arg.expr)?;
+                        let (fun, arg_expr) = self.bump.alloc((head, arg_expr));
+                        let arg = FunArg::new(arg.plicity, arg_expr as &_);
                         Ok(Expr::FunApp { fun, arg })
                     }
                 })
             }
             Value::FunType { param, body } => {
-                let r#type = self.rename(meta_var, param.r#type)?;
-                let body = self.rename_closure(meta_var, &body)?;
-                let (r#type, body) = self.bump.alloc((r#type, body));
-                Ok(Expr::FunType {
-                    param: FunParam::new(param.name, r#type),
-                    body,
-                })
+                let (param, body) = self.rename_fun(meta_var, param, body)?;
+                Ok(Expr::FunType { param, body })
             }
             Value::FunLit { param, body } => {
-                let r#type = self.rename(meta_var, param.r#type)?;
-                let body = self.rename_closure(meta_var, &body)?;
-                let (r#type, body) = self.bump.alloc((r#type, body));
-                Ok(Expr::FunLit {
-                    param: FunParam::new(param.name, r#type),
-                    body,
-                })
+                let (param, body) = self.rename_fun(meta_var, param, body)?;
+                Ok(Expr::FunLit { param, body })
             }
         }
     }
 
     /// Rename a closure back into an [`Expr`].
-    fn rename_closure(
+    fn rename_fun(
         &mut self,
         meta_var: AbsoluteVar,
-        closure: &Closure<'core>,
-    ) -> Result<Expr<'core>, RenameError> {
-        let source_var = self.renaming.next_local_var();
-        let value =
-            semantics::apply_closure(self.bump, self.meta_values, closure.clone(), source_var);
+        param: FunParam<&'core Value<'core>>,
+        body: Closure<'core>,
+    ) -> Result<(FunParam<&'core Expr<'core>>, &'core Expr<'core>), RenameError> {
+        let r#type = self.rename(meta_var, param.r#type)?;
+
+        let var = self.renaming.next_local_var();
+        let body = semantics::apply_closure(self.bump, self.meta_values, body, var);
 
         self.renaming.push_local();
-        let expr = self.rename(meta_var, &value);
+        let body = self.rename(meta_var, &body);
         self.renaming.pop_local();
 
-        expr
+        let (r#type, body) = self.bump.alloc((r#type, body?));
+        let param = FunParam::new(param.plicity, param.name, r#type as &_);
+
+        Ok((param, body))
     }
 }
 

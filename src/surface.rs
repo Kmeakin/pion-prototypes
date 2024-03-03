@@ -6,6 +6,8 @@ mod lexer;
 pub use lexer::{lex, Token, TokenKind};
 use text_size::{TextRange, TextSize};
 
+use crate::plicity::Plicity;
+
 lalrpop_mod!(
     #[allow(
         clippy::all,
@@ -51,6 +53,7 @@ pub enum Expr<'surface> {
     },
 
     FunArrow {
+        plicity: Plicity,
         lhs: &'surface Located<Self>,
         rhs: &'surface Located<Self>,
     },
@@ -64,14 +67,21 @@ pub enum Expr<'surface> {
     },
     FunApp {
         fun: &'surface Located<Self>,
-        arg: &'surface Located<Self>,
+        arg: Located<FunArg<'surface>>,
     },
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct FunParam<'surface> {
+    pub plicity: Plicity,
     pub pat: Located<Pat<'surface>>,
     pub r#type: Option<Located<Expr<'surface>>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct FunArg<'surface> {
+    pub plicity: Plicity,
+    pub expr: &'surface Located<Expr<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone)]

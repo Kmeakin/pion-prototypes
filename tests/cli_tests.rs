@@ -85,7 +85,7 @@ error: Syntax error: unexpected end of file
   ┌─ /dev/fd/63:1:4
   │
 1 │ fun
-  │    ^ expected one of "(", "Ident" or "_"
+  │    ^ expected one of "(", "@", "Ident" or "_"
 "#]],
     );
 }
@@ -254,5 +254,51 @@ fn holes() {
 (let x : Int = 5;
 x) : Int"#]],
         expect![[""]],
+    );
+}
+
+#[test]
+fn implicit_args() {
+    check(
+        &format!("{PION} check <(echo '@Int -> Bool')"),
+        expect!["(@Int -> Bool) : Type"],
+        expect![[""]],
+    );
+    check(
+        &format!("{PION} check <(echo 'forall (@x: Int) -> Bool')"),
+        expect!["(@Int -> Bool) : Type"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo 'fun (@x : Int) => x')"),
+        expect!["(fun (@x : Int) => x) : @Int -> Int"],
+        expect![[""]],
+    );
+    check(
+        &format!("{PION} check <(echo '(fun (@x : Int) => x) @5')"),
+        expect!["((fun (@x : Int) => x) @5) : Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '(fun (@x : Int) => x) @5')"),
+        expect!["5 : Int"],
+        expect![""],
+    );
+}
+
+#[test]
+fn plicity_mismatch() {
+    check(
+        &format!("{PION} check <(echo '(fun (@x : Int) => x) 5')"),
+        expect!["#error : #error"],
+        expect![[r#"
+error: Applied explicit argument when implicit argument was expected
+  ┌─ /dev/fd/63:1:23
+  │
+1 │ (fun (@x : Int) => x) 5
+  │ --------------------- ^ explicit argument
+  │ │
+  │ function has type @Int -> Int
+"#]],
     );
 }

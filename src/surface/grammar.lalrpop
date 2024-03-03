@@ -1,8 +1,9 @@
 use text_size::{TextRange, TextSize};
 use codespan_reporting::diagnostic::Diagnostic;
 
-use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam};
+use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg};
 use crate::surface::LalrpopError;
+use crate::plicity::Plicity;
 
 grammar<'surface>(
     bump: &'surface bumpalo::Bump,
@@ -29,6 +30,7 @@ extern {
         "," => TokenKind::Comma,
         ";" => TokenKind::Semicolon,
         ":" => TokenKind::Colon,
+        "@" => TokenKind::At,
         "=" => TokenKind::Eq,
         "=>" => TokenKind::DoubleArrow,
         "->" => TokenKind::SingleArrow,
@@ -72,32 +74,46 @@ FunExpr: Located<Expr<'surface>> = {
         let body = bump.alloc(body);
         Located::new(range, Expr::FunType { params, body })
     },
-    <start: @L> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
+    <start: @L> <plicity: Plicity> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (lhs, rhs) = bump.alloc((lhs, rhs));
-        Located::new(range, Expr::FunArrow { lhs, rhs })
+        Located::new(range, Expr::FunArrow { plicity, lhs, rhs })
     },
     AppExpr => <>,
 }
 
-FunParam: Located<FunParam<'surface>> = {
-    <start: @L> "(" <pat: Pat> ":" <r#type: Expr> ")" <end: @R> => {
-        let range = TextRange::new(start, end);
-        Located::new(range, FunParam { pat, r#type: Some(r#type) })
-    },
-    <start: @L> <pat: Pat> <end: @R> => {
-        let range = TextRange::new(start, end);
-        Located::new(range, FunParam { pat, r#type: None })
-    }
-}
-
 AppExpr: Located<Expr<'surface>> = {
-    <start: @L> <fun: AppExpr> <arg: AtomExpr> <end: @R> => {
+    <start: @L> <fun: AppExpr> <arg: FunArg> <end: @R> => {
         let range = TextRange::new(start, end);
-        let (fun, arg) = bump.alloc((fun, arg));
+        let (fun, ) = bump.alloc((fun, ));
         Located::new(range, Expr::FunApp { fun, arg })
     },
     AtomExpr => <>,
+}
+
+FunParam: Located<FunParam<'surface>> = {
+    <start: @L> "(" <plicity: Plicity> <pat: Pat> ":" <r#type: Expr> ")" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { plicity, pat, r#type: Some(r#type) })
+    },
+    <start: @L> <plicity: Plicity> <pat: Pat> <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { plicity, pat, r#type: None })
+    }
+}
+
+FunArg: Located<FunArg<'surface>> = {
+    <start: @L> <plicity: Plicity> <expr: AtomExpr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let expr = bump.alloc(expr);
+        Located::new(range, FunArg { plicity, expr })
+    }
+}
+
+#[inline]
+Plicity: Plicity = {
+    "@" => Plicity::Implicit,
+    ()  => Plicity::Explicit,
 }
 
 AtomExpr: Located<Expr<'surface>> = {
