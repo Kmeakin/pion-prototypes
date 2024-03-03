@@ -84,9 +84,34 @@ impl<'bump> Printer<'bump> {
         expr: &Expr,
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
-        let expr = self.expr_prec(names, expr, Prec::Atom);
-        let r#type = self.expr_prec(names, r#type, Prec::MAX);
-        expr.append(" : ").append(r#type)
+        // transform `(let x : A = e; b): t` into `let x: A = e; b: t`
+        if let Expr::Let {
+            name,
+            r#type: init_type,
+            init,
+            body,
+        } = expr
+        {
+            let init_type = self.expr_prec(names, init_type, Prec::MAX);
+            let init = self.expr_prec(names, init, Prec::MAX);
+            names.push(*name);
+            let body = self.ann_expr(names, body, r#type);
+            names.pop();
+
+            self.text("let ")
+                .append(self.name(*name))
+                .append(" : ")
+                .append(init_type)
+                .append(" = ")
+                .append(init)
+                .append(";")
+                .append(self.hardline())
+                .append(body)
+        } else {
+            let expr = self.expr_prec(names, expr, Prec::Atom);
+            let r#type = self.expr_prec(names, r#type, Prec::MAX);
+            expr.append(" : ").append(r#type)
+        }
     }
 
     pub fn expr(
@@ -113,20 +138,19 @@ impl<'bump> Printer<'bump> {
             Expr::LocalVar { var } => self.text(format!("_{var}")),
             Expr::MetaVar { var } => self.text(format!("?{var}")),
             Expr::Let {
-                name: name_hint,
+                name,
                 r#type,
                 init,
                 body,
             } => {
-                let name = name_hint.map_or("_".into(), |sym| sym.to_string());
                 let r#type = self.expr_prec(names, r#type, Prec::MAX);
                 let init = self.expr_prec(names, init, Prec::MAX);
-                names.push(*name_hint);
+                names.push(*name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
                 self.text("let ")
-                    .append(name)
+                    .append(self.name(*name))
                     .append(" : ")
                     .append(r#type)
                     .append(" = ")

@@ -233,15 +233,15 @@ fn r#let() {
     check(
         &format!("{PION} check <(echo 'let f = fun x => x; f false')"),
         expect![[r#"
-(let f : Bool -> Bool = fun (x : Bool) => x;
-f false) : Bool"#]],
+let f : Bool -> Bool = fun (x : Bool) => x;
+(f false) : Bool"#]],
         expect![""],
     );
     check(
         &format!("{PION} check <(echo 'let f : Bool -> Bool = fun x => x; f false')"),
         expect![[r#"
-(let f : Bool -> Bool = fun (x : Bool) => x;
-f false) : Bool"#]],
+let f : Bool -> Bool = fun (x : Bool) => x;
+(f false) : Bool"#]],
         expect![""],
     );
 }
@@ -251,8 +251,8 @@ fn holes() {
     check(
         &format!("{PION} check <(echo 'let x: _ = 5; x')"),
         expect![[r#"
-(let x : Int = 5;
-x) : Int"#]],
+let x : Int = 5;
+x : Int"#]],
         expect![[""]],
     );
 }
@@ -291,8 +291,8 @@ fn generalize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id')"),
         expect![[r#"
-(let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
-id) : forall (@A : Type) -> A -> A"#]],
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+id : forall (@A : Type) -> A -> A"#]],
         expect![""],
     );
 }
@@ -302,8 +302,8 @@ fn specialize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id 5')"),
         expect![[r#"
-(let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
-id @Int 5) : Int"#]],
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+(id @Int 5) : Int"#]],
         expect![""],
     );
 }
