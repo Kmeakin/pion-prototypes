@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{IsTerminal, Read};
 
 use camino::Utf8PathBuf;
 use clap::Parser;
@@ -50,7 +50,7 @@ fn main() -> std::io::Result<()> {
     let command = Cli::parse();
     match &command {
         Cli::Check { path } | Cli::Eval { path } => {
-            let color = match std::io::IsTerminal::is_terminal(&std::io::stderr()) {
+            let color = match std::io::stderr().is_terminal() {
                 true => codespan_reporting::term::termcolor::ColorChoice::Auto,
                 false => codespan_reporting::term::termcolor::ColorChoice::Never,
             };

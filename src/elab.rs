@@ -192,7 +192,7 @@ where
     }
 
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
-        crate::core::semantics::eval(
+        semantics::eval(
             self.bump,
             &mut self.local_env.values,
             &self.meta_env.values,
@@ -201,7 +201,7 @@ where
     }
 
     pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        crate::core::semantics::quote(
+        semantics::quote(
             self.bump,
             self.local_env.values.len(),
             &self.meta_env.values,
@@ -210,7 +210,7 @@ where
     }
 
     pub fn normalize(&mut self, expr: &Expr<'core>) -> Expr<'core> {
-        crate::core::semantics::normalize(
+        semantics::normalize(
             self.bump,
             &mut self.local_env.values,
             &self.meta_env.values,
