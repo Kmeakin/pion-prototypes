@@ -137,7 +137,7 @@ impl MetaSource {
     }
 }
 
-impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, 'surface, H, E> Elaborator<'core, 'text, H, E>
 where
     H: FnMut(Diagnostic<usize>) -> Result<(), E>,
 {
@@ -268,7 +268,7 @@ where
         doc.pretty(usize::MAX).to_string()
     }
 
-    pub fn synth_expr<'surface>(
+    pub fn synth_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
     ) -> Result<(Expr<'core>, Type<'core>), E> {
@@ -466,7 +466,7 @@ where
         (expr, r#type)
     }
 
-    fn synth_fun_type<'surface>(
+    fn synth_fun_type(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
@@ -493,7 +493,7 @@ where
         }
     }
 
-    fn synth_fun_lit<'surface>(
+    fn synth_fun_lit(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
@@ -523,14 +523,14 @@ where
         }
     }
 
-    pub fn check_expr_is_type<'surface>(
+    pub fn check_expr_is_type(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
     ) -> Result<Expr<'core>, E> {
         self.check_expr(surface_expr, &Type::TYPE)
     }
 
-    pub fn check_expr<'surface>(
+    pub fn check_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
@@ -577,7 +577,7 @@ where
         }
     }
 
-    fn check_fun_lit<'surface>(
+    fn check_fun_lit(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
@@ -649,7 +649,7 @@ where
         }
     }
 
-    fn synth_and_convert_expr<'surface>(
+    fn synth_and_convert_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
@@ -705,7 +705,7 @@ where
         }
     }
 
-    fn synth_param<'surface>(
+    fn synth_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
     ) -> Result<(FunParam<&'core Expr<'core>>, Type<'core>), E> {
@@ -719,7 +719,7 @@ where
         ))
     }
 
-    fn check_param<'surface>(
+    fn check_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
         expected: &Type<'core>,
@@ -735,7 +735,7 @@ where
         ))
     }
 
-    fn synth_ann_pat<'surface>(
+    fn synth_ann_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
@@ -751,7 +751,7 @@ where
         }
     }
 
-    fn check_ann_pat<'surface>(
+    fn check_ann_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
@@ -768,7 +768,7 @@ where
         }
     }
 
-    fn synth_pat<'surface>(
+    fn synth_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
     ) -> Result<(Option<Symbol>, Type<'core>), E> {
@@ -794,7 +794,7 @@ where
     }
 
     #[allow(clippy::only_used_in_recursion)]
-    fn check_pat<'surface>(
+    fn check_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,
