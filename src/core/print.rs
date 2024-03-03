@@ -159,40 +159,72 @@ impl<'bump> Printer<'bump> {
                     .append(self.hardline())
                     .append(body)
             }
-            Expr::FunType { param, body }
-                if self.config.fun_arrows && !body.references_local(RelativeVar::default()) =>
-            {
-                let r#type = self.expr_prec(names, param.r#type, Prec::App);
-                names.push(None);
-                let body = self.expr_prec(names, body, Prec::Fun);
-                names.pop();
+            Expr::FunType { .. } => {
+                let names_len = names.len();
+                let mut expr = expr;
+                let mut params = Vec::new();
+                loop {
+                    match expr {
+                        Expr::FunType { param, body }
+                            if self.config.fun_arrows
+                                && !body.references_local(RelativeVar::default()) =>
+                        {
+                            let r#type = self.expr_prec(names, param.r#type, Prec::App);
+                            names.push(None);
+                            let body = self.expr_prec(names, body, Prec::Fun);
+                            names.truncate(names_len);
 
-                self.nil()
-                    .append(param.plicity)
-                    .append(r#type)
-                    .append(" -> ")
-                    .append(body)
+                            if !params.is_empty() {
+                                let params = self.intersperse(params, self.space());
+                                break self
+                                    .text("forall ")
+                                    .append(params)
+                                    .append(" -> ")
+                                    .append(r#type)
+                                    .append(" -> ")
+                                    .append(body);
+                            }
+
+                            break self
+                                .nil()
+                                .append(param.plicity)
+                                .append(r#type)
+                                .append(" -> ")
+                                .append(body);
+                        }
+                        Expr::FunType { param, body } => {
+                            params.push(self.fun_param(names, param));
+                            names.push(param.name);
+                            expr = body;
+                        }
+                        _ => {
+                            let body = self.expr_prec(names, expr, Prec::MAX);
+                            names.truncate(names_len);
+
+                            let params = self.intersperse(params, self.space());
+                            break self
+                                .text("forall ")
+                                .append(params)
+                                .append(" -> ")
+                                .append(body);
+                        }
+                    }
+                }
             }
-            Expr::FunType { param, body } => {
-                let name = param.name;
-                let param = self.fun_param(names, param);
-                names.push(name);
-                let body = self.expr_prec(names, body, Prec::MAX);
-                names.pop();
+            Expr::FunLit { .. } => {
+                let names_len = names.len();
+                let mut expr = expr;
+                let mut params = Vec::new();
+                while let Expr::FunLit { param, body } = expr {
+                    params.push(self.fun_param(names, param));
+                    names.push(param.name);
+                    expr = body;
+                }
+                let body = self.expr_prec(names, expr, Prec::MAX);
+                names.truncate(names_len);
 
-                self.text("forall ")
-                    .append(param)
-                    .append(" -> ")
-                    .append(body)
-            }
-            Expr::FunLit { param, body } => {
-                let name = param.name;
-                let param = self.fun_param(names, param);
-                names.push(name);
-                let body = self.expr_prec(names, body, Prec::MAX);
-                names.pop();
-
-                self.text("fun ").append(param).append(" => ").append(body)
+                let params = self.intersperse(params, self.space());
+                self.text("fun ").append(params).append(" => ").append(body)
             }
             Expr::FunApp { fun, arg } => {
                 let fun = self.expr_prec(names, fun, Prec::App);

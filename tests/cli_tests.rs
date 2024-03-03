@@ -150,6 +150,11 @@ fn fun_type() {
         expect![""],
     );
     check(
+        &format!("{PION} check <(echo 'forall (A : Type) (B: Type) -> A -> B')"),
+        expect!["(forall (A : Type) (B : Type) -> A -> B) : Type"],
+        expect![""],
+    );
+    check(
         &format!("{PION} check <(echo 'forall (A : Type) (_ : A) -> A')"),
         expect!["(forall (A : Type) -> A -> A) : Type"],
         expect![""],
@@ -165,7 +170,7 @@ fn fun_lit() {
     );
     check(
         &format!("{PION} check <(echo 'fun (x : Int) (y : Bool) => x')"),
-        expect!["(fun (x : Int) => fun (y : Bool) => x) : Int -> Bool -> Int"],
+        expect!["(fun (x : Int) (y : Bool) => x) : Int -> Bool -> Int"],
         expect![""],
     );
     check(
@@ -181,7 +186,7 @@ error: Unsolved metavariable: ?0
     );
     check(
         &format!("{PION} check <(echo 'fun x y => x')"),
-        expect!["(fun (x : ?0) => fun (y : ?1 x) => x) : forall (x : ?0) -> ?1 x -> ?0"],
+        expect!["(fun (x : ?0) (y : ?1 x) => x) : forall (x : ?0) -> ?1 x -> ?0"],
         expect![[r#"
 error: Unsolved metavariable: ?0
   ┌─ /dev/fd/63:1:5
@@ -203,7 +208,7 @@ error: Unsolved metavariable: ?1
     );
     check(
         &format!("{PION} check <(echo '(fun x y => x) : Int -> Bool -> Int')"),
-        expect!["(fun (x : Int) => fun (y : Bool) => x) : Int -> Bool -> Int"],
+        expect!["(fun (x : Int) (y : Bool) => x) : Int -> Bool -> Int"],
         expect![""],
     );
 }
@@ -262,7 +267,7 @@ fn implicit_args() {
     check(
         &format!("{PION} check <(echo '@Int -> Bool')"),
         expect!["(@Int -> Bool) : Type"],
-        expect![[""]],
+        expect![""],
     );
     check(
         &format!("{PION} check <(echo 'forall (@x: Int) -> Bool')"),
@@ -272,7 +277,7 @@ fn implicit_args() {
     check(
         &format!("{PION} check <(echo 'fun (@x : Int) => x')"),
         expect!["(fun (@x : Int) => x) : @Int -> Int"],
-        expect![[""]],
+        expect![""],
     );
     check(
         &format!("{PION} check <(echo '(fun (@x : Int) => x) @5')"),
@@ -291,7 +296,7 @@ fn generalize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id')"),
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
 id : forall (@A : Type) -> A -> A"#]],
         expect![""],
     );
@@ -302,7 +307,7 @@ fn specialize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id 5')"),
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
 (id @Int 5) : Int"#]],
         expect![""],
     );
