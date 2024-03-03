@@ -1,3 +1,4 @@
+use core::fmt;
 use std::ops::Range;
 
 use logos::Logos;
@@ -37,6 +38,34 @@ pub enum TokenKind {
 impl TokenKind {
     pub const fn is_trivia(self) -> bool {
         matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
+    }
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Unknown => "unknown character",
+            Self::Whitespace => "whitespace",
+            Self::LineComment => "line comment",
+            Self::KwFalse => "keyword `false`",
+            Self::KwForall => "keyword `forall`",
+            Self::KwFun => "keyword `fun`",
+            Self::KwLet => "keyword `let`",
+            Self::KwTrue => "keyword `true`",
+            Self::LParen => "`(`",
+            Self::RParen => "`)`",
+            Self::LCurly => "`{`",
+            Self::RCurly => "`}`",
+            Self::Underscore => "`_`",
+            Self::Comma => "`,`",
+            Self::Semicolon => "`;`",
+            Self::Colon => "`:`",
+            Self::Eq => "`=`",
+            Self::DoubleArrow => "`=>`",
+            Self::SingleArrow => "`->`",
+            Self::DecInt | Self::BinInt | Self::HexInt => "integer",
+            Self::Ident => "identifier",
+        })
     }
 }
 

@@ -1,9 +1,12 @@
 use text_size::{TextRange, TextSize};
+use codespan_reporting::diagnostic::Diagnostic;
 
 use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam};
+use crate::surface::LalrpopError;
 
 grammar<'surface>(
     bump: &'surface bumpalo::Bump,
+    errors: &mut Vec<LalrpopError>,
 );
 
 extern {
@@ -98,14 +101,22 @@ AppExpr: Located<Expr<'surface>> = {
 }
 
 AtomExpr: Located<Expr<'surface>> = {
-    <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Expr::Error),
+    <start: @L> <recovery: !> <end: @R> => {
+        let range = TextRange::new(start, end);
+        errors.push(recovery.error);
+        Located::new(range, Expr::Error)
+    },
     <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
     <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren { expr: bump.alloc(expr) }),
 }
 
 Pat: Located<Pat<'surface>> = {
-    <start: @L> ! <end: @R> => Located::new(TextRange::new(start, end), Pat::Error),
+    <start: @L> <recovery: !> <end: @R> => {
+        let range = TextRange::new(start, end);
+        errors.push(recovery.error);
+        Located::new(range, Pat::Error)
+    },
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
     <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => {

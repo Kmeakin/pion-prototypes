@@ -1,4 +1,4 @@
-#![feature(if_let_guard)]
+#![feature(if_let_guard, iter_intersperse)]
 
 pub mod core;
 pub mod elab;

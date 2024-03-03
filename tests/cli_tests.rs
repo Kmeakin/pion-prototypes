@@ -76,6 +76,21 @@ For more information, try '--help'."#]],
 }
 
 #[test]
+fn parse_errors() {
+    check(
+        &format!("{PION} check <(echo fun )"),
+        expect!["#error : #error"],
+        expect![[r#"
+error: Syntax error: unexpected end of file
+  ┌─ /dev/fd/63:1:4
+  │
+1 │ fun
+  │    ^ expected one of "(", "Ident" or "_"
+"#]],
+    );
+}
+
+#[test]
 fn consts() {
     check(
         &format!("{PION} check <(echo true)"),

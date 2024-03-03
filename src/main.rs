@@ -63,14 +63,15 @@ fn main() -> std::io::Result<()> {
                 return Err(std::io::Error::other("input too big"));
             }
             let file_id = files.add(path.name(), text.clone());
-            let expr = pion::surface::parse_expr(&bump, &text);
 
-            let handler = |diagnostic| {
+            let handler = &mut |diagnostic| {
                 let config = codespan_reporting::term::Config::default();
                 codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
                     .map_err(std::io::Error::other)?;
                 Ok::<(), std::io::Error>(())
             };
+
+            let expr = pion::surface::parse_expr(&bump, handler, file_id, &text)?;
             let mut elaborator = pion::elab::Elaborator::new(&bump, &text, file_id, handler);
             let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
             elaborator.report_unsolved_metas()?;
