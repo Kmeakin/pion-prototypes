@@ -42,19 +42,31 @@ pub enum LocalInfo {
 impl<'core> LocalEnv<'core> {
     pub fn len(&self) -> EnvLen { self.names.len() }
 
-    pub fn push(&mut self, name: Option<Symbol>, r#type: Type<'core>, value: Value<'core>) {
+    pub fn push(
+        &mut self,
+        name: Option<Symbol>,
+        info: LocalInfo,
+        r#type: Type<'core>,
+        value: Value<'core>,
+    ) {
         self.names.push(name);
+        self.infos.push(info);
         self.types.push(r#type);
         self.values.push(value);
     }
 
-    pub fn push_unknown(&mut self, name: Option<Symbol>, r#type: Type<'core>) {
+    pub fn push_let(&mut self, name: Option<Symbol>, r#type: Type<'core>, value: Value<'core>) {
+        self.push(name, LocalInfo::Let, r#type, value);
+    }
+
+    pub fn push_param(&mut self, name: Option<Symbol>, r#type: Type<'core>) {
         let var = Value::local_var(self.values.len().to_absolute());
-        self.push(name, r#type, var);
+        self.push(name, LocalInfo::Param, r#type, var);
     }
 
     pub fn pop(&mut self) {
         self.names.pop();
+        self.infos.pop();
         self.types.pop();
         self.values.pop();
     }
@@ -108,14 +120,19 @@ pub enum MetaSource {
     HoleExpr {
         range: TextRange,
     },
+    ImplicitArg {
+        range: TextRange,
+        name: Option<Symbol>,
+    },
 }
 
 impl MetaSource {
     pub const fn range(&self) -> TextRange {
         match self {
-            MetaSource::PatType { range, .. }
-            | MetaSource::HoleType { range, .. }
-            | MetaSource::HoleExpr { range, .. } => *range,
+            Self::PatType { range, .. }
+            | Self::HoleType { range, .. }
+            | Self::HoleExpr { range, .. }
+            | Self::ImplicitArg { range, .. } => *range,
         }
     }
 }
@@ -154,6 +171,10 @@ where
                     }
                     MetaSource::HoleType { .. } => "type of hole".to_string(),
                     MetaSource::HoleExpr { .. } => "expression to solve hole".to_string(),
+                    MetaSource::ImplicitArg {
+                        name: Some(name), ..
+                    } => format!("implicit argument `{name}`"),
+                    MetaSource::ImplicitArg { name: None, .. } => "implicit argument".to_string(),
                 };
 
                 self.report_diagnostic(
@@ -326,7 +347,7 @@ where
                 let init_expr = self.check_expr(init, &r#type)?;
                 let init_value = self.eval(&init_expr);
                 let (body_expr, body_type) = {
-                    self.local_env.push(name, r#type, init_value);
+                    self.local_env.push_let(name, r#type, init_value);
                     let (body_expr, body_type) = self.synth_expr(body)?;
                     self.local_env.pop();
                     (body_expr, body_type)
@@ -344,7 +365,7 @@ where
                 let param_type = self.check_expr_is_type(lhs)?;
                 let body = {
                     let param_type_value = self.eval(&param_type);
-                    self.local_env.push_unknown(None, param_type_value);
+                    self.local_env.push_param(None, param_type_value);
                     let body = self.check_expr_is_type(rhs)?;
                     self.local_env.pop();
                     body
@@ -359,8 +380,11 @@ where
             surface::Expr::FunType { params, body } => self.synth_fun_type(params, body),
             surface::Expr::FunLit { params, body } => self.synth_fun_lit(params, body),
             surface::Expr::FunApp { fun, arg } => {
-                let (fun_expr, fun_type) = self.synth_expr(fun)?;
-                let fun_type = semantics::update_metas(self.bump, &self.meta_env.values, &fun_type);
+                let (mut fun_expr, mut fun_type) = self.synth_expr(fun)?;
+                if arg.data.plicity == Plicity::Explicit {
+                    (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
+                }
+
                 match fun_type {
                     Value::Error => Ok((Expr::Error, Type::Error)),
                     Value::FunType { param, .. } if arg.data.plicity != param.plicity => {
@@ -410,6 +434,38 @@ where
         }
     }
 
+    /// Wrap an expr in fresh implicit applications that correspond to implicit
+    /// parameters in the type provided.
+    fn insert_implicit_apps(
+        &mut self,
+        fun_range: TextRange,
+        mut expr: Expr<'core>,
+        mut r#type: Type<'core>,
+    ) -> (Expr<'core>, Type<'core>) {
+        loop {
+            r#type = semantics::update_metas(self.bump, &self.meta_env.values, &r#type);
+            match r#type {
+                Value::FunType { param, body } if param.plicity.is_implicit() => {
+                    let source = MetaSource::ImplicitArg {
+                        range: fun_range,
+                        name: param.name,
+                    };
+                    let arg_expr = self.push_unsolved_expr(source, param.r#type.clone());
+                    let arg_value = self.eval(&arg_expr);
+
+                    let (fun, arg_expr) = self.bump.alloc((expr, arg_expr));
+
+                    let arg = FunArg::new(param.plicity, arg_expr as &_);
+                    expr = Expr::FunApp { fun, arg };
+                    r#type =
+                        semantics::apply_closure(self.bump, &self.meta_env.values, body, arg_value);
+                }
+                _ => break,
+            }
+        }
+        (expr, r#type)
+    }
+
     fn synth_fun_type<'surface>(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
@@ -423,7 +479,7 @@ where
             Some((surface_param, surface_params)) => {
                 let (param, param_type) = self.synth_param(surface_param)?;
                 let body_expr = {
-                    self.local_env.push_unknown(param.name, param_type);
+                    self.local_env.push_param(param.name, param_type);
                     let (body_expr, _) = self.synth_fun_type(surface_params, surface_body)?;
                     self.local_env.pop();
                     body_expr
@@ -447,7 +503,7 @@ where
             Some((surface_param, surface_params)) => {
                 let (param, param_type) = self.synth_param(surface_param)?;
                 let (body_expr, body_type) = {
-                    self.local_env.push_unknown(param.name, param_type.clone());
+                    self.local_env.push_param(param.name, param_type.clone());
                     let (body_expr, body_type) =
                         self.synth_fun_lit(surface_params, surface_body)?;
                     let body_type = self.quote(&body_type);
@@ -493,7 +549,7 @@ where
                 let init_expr = self.check_expr(init, &r#type)?;
                 let init_value = self.eval(&init_expr);
                 let body_expr = {
-                    self.local_env.push(name, r#type, init_value);
+                    self.local_env.push_let(name, r#type, init_value);
                     let body_expr = self.check_expr(body, expected)?;
                     self.local_env.pop();
                     body_expr
@@ -531,17 +587,43 @@ where
             return self.check_expr(surface_body, expected);
         };
 
-        #[allow(clippy::single_match_else)]
         match expected {
+            // If an implicit function is expected, try to generalize the
+            // function literal by wrapping it in an implicit function
             Value::FunType {
                 param: expected_param,
                 body: expected_body,
-            } => {
+            } if surface_param.data.plicity.is_explicit()
+                && expected_param.plicity.is_implicit() =>
+            {
+                let r#type = self.quote(expected_param.r#type);
+
+                let var = self.local_env.next_var();
+                self.local_env
+                    .push_param(expected_param.name, expected_param.r#type.clone());
+                let expected = semantics::apply_closure(
+                    self.bump,
+                    &self.meta_env.values,
+                    expected_body.clone(),
+                    var,
+                );
+                let body = self.check_fun_lit(surface_params, surface_body, &expected)?;
+                self.local_env.pop();
+
+                let (r#type, body) = self.bump.alloc((r#type, body));
+                let param =
+                    FunParam::new(expected_param.plicity, expected_param.name, r#type as &_);
+                Ok(Expr::FunLit { param, body })
+            }
+            Value::FunType {
+                param: expected_param,
+                body: expected_body,
+            } if surface_param.data.plicity == expected_param.plicity => {
                 let param = self.check_param(surface_param, expected_param.r#type)?;
                 let body_expr = {
                     let arg_value = self.local_env.next_var();
                     self.local_env
-                        .push_unknown(param.name, expected_param.r#type.clone());
+                        .push_param(param.name, expected_param.r#type.clone());
                     let expected = semantics::apply_closure(
                         self.bump,
                         &self.meta_env.values,
@@ -561,7 +643,7 @@ where
             _ => {
                 let (expr, r#type) = self.synth_fun_lit(surface_params, surface_body)?;
                 let range = surface_param.range.cover(surface_body.range);
-                self.convert_expr(range, expr, &r#type, expected)?;
+                self.convert_expr(range, expr, r#type, expected)?;
                 Ok(expr)
             }
         }
@@ -574,20 +656,30 @@ where
     ) -> Result<Expr<'core>, E> {
         let range = surface_expr.range;
         let (expr, r#type) = self.synth_expr(surface_expr)?;
-        self.convert_expr(range, expr, &r#type, expected)
+        self.convert_expr(range, expr, r#type, expected)
     }
 
     fn convert_expr(
         &mut self,
         range: TextRange,
         expr: Expr<'core>,
-        from: &Type<'core>,
+        from: Type<'core>,
         to: &Type<'core>,
     ) -> Result<Expr<'core>, E> {
-        match self.unify(from, to) {
+        // Attempt to specialize exprs with freshly inserted implicit
+        // arguments if an explicit function was expected.
+        let (expr, from) = match (expr, to) {
+            (Expr::FunLit { .. }, _) => (expr, from),
+            (_, Type::FunType { param, .. }) if param.plicity.is_explicit() => {
+                self.insert_implicit_apps(range, expr, from)
+            }
+            _ => (expr, from),
+        };
+
+        match self.unify(&from, to) {
             Ok(()) => Ok(expr),
             Err(error) => {
-                let from = self.quote(from);
+                let from = self.quote(&from);
                 let to = self.quote(to);
 
                 let found = self.pretty(&from);

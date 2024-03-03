@@ -181,7 +181,7 @@ error: Unsolved metavariable: ?0
     );
     check(
         &format!("{PION} check <(echo 'fun x y => x')"),
-        expect!["(fun (x : ?0) => fun (y : ?1) => x) : ?0 -> ?1 -> ?0"],
+        expect!["(fun (x : ?0) => fun (y : ?1 x) => x) : forall (x : ?0) -> ?1 x -> ?0"],
         expect![[r#"
 error: Unsolved metavariable: ?0
   ┌─ /dev/fd/63:1:5
@@ -287,18 +287,40 @@ fn implicit_args() {
 }
 
 #[test]
+fn generalize() {
+    check(
+        &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id')"),
+        expect![[r#"
+(let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+id) : forall (@A : Type) -> A -> A"#]],
+        expect![""],
+    );
+}
+
+#[test]
+fn specialize() {
+    check(
+        &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id 5')"),
+        expect![[r#"
+(let id : forall (@A : Type) -> A -> A = fun (@A : Type) => fun (x : A) => x;
+id @Int 5) : Int"#]],
+        expect![""],
+    );
+}
+
+#[test]
 fn plicity_mismatch() {
     check(
-        &format!("{PION} check <(echo '(fun (@x : Int) => x) 5')"),
+        &format!("{PION} check <(echo '(fun (x : Int) => x) @5')"),
         expect!["#error : #error"],
         expect![[r#"
-error: Applied explicit argument when implicit argument was expected
-  ┌─ /dev/fd/63:1:23
+error: Applied implicit argument when explicit argument was expected
+  ┌─ /dev/fd/63:1:22
   │
-1 │ (fun (@x : Int) => x) 5
-  │ --------------------- ^ explicit argument
+1 │ (fun (x : Int) => x) @5
+  │ -------------------- ^^ implicit argument
   │ │
-  │ function has type @Int -> Int
+  │ function has type Int -> Int
 "#]],
     );
 }

@@ -7,13 +7,13 @@ pub enum Plicity {
 }
 
 impl Plicity {
-    pub fn is_implicit(self) -> bool { matches!(self, Self::Implicit) }
-    pub fn is_explicit(self) -> bool { matches!(self, Self::Explicit) }
+    pub const fn is_implicit(self) -> bool { matches!(self, Self::Implicit) }
+    pub const fn is_explicit(self) -> bool { matches!(self, Self::Explicit) }
 
-    pub fn description(self) -> &'static str {
+    pub const fn description(self) -> &'static str {
         match self {
-            Plicity::Implicit => "implicit",
-            Plicity::Explicit => "explicit",
+            Self::Implicit => "implicit",
+            Self::Explicit => "explicit",
         }
     }
 }

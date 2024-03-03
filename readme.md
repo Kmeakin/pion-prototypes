@@ -12,7 +12,9 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
 * [x] unification
     * [x] inferring types of unnanotated parameters
     * [x] hole expressions
-    * [ ] implicit arguments
+    * [x] implicit arguments
+      * [x] specialization
+      * [x] generalization
 
 * [ ] recursion
     * [ ] term level `fix`

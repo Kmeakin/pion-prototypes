@@ -171,7 +171,7 @@ impl<'bump> Printer<'bump> {
                 self.text("fun ").append(param).append(" => ").append(body)
             }
             Expr::FunApp { fun, arg } => {
-                let fun = self.expr_prec(names, fun, Prec::Atom);
+                let fun = self.expr_prec(names, fun, Prec::App);
                 let arg = self.fun_arg(names, arg);
                 fun.append(self.space()).append(arg)
             }

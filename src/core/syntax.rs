@@ -81,7 +81,7 @@ pub struct FunArg<T> {
 }
 
 impl<T> FunArg<T> {
-    pub fn new(plicity: Plicity, expr: T) -> Self { Self { plicity, expr } }
+    pub const fn new(plicity: Plicity, expr: T) -> Self { Self { plicity, expr } }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
