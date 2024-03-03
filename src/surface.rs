@@ -33,6 +33,7 @@ pub enum Expr<'surface> {
     Error,
     Const(Const),
     LocalVar,
+    Hole,
 
     Paren {
         expr: &'surface Located<Self>,

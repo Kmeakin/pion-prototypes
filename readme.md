@@ -11,7 +11,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [x] function application expressions
 * [x] unification
     * [x] inferring types of unnanotated parameters
-    * [ ] hole expressions
+    * [x] hole expressions
     * [ ] implicit arguments
 
 * [ ] recursion

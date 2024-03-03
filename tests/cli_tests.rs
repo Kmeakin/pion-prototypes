@@ -245,3 +245,14 @@ f false) : Bool"#]],
         expect![""],
     );
 }
+
+#[test]
+fn holes() {
+    check(
+        &format!("{PION} check <(echo 'let x: _ = 5; x')"),
+        expect![[r#"
+(let x : Int = 5;
+x) : Int"#]],
+        expect![[""]],
+    );
+}

@@ -108,6 +108,7 @@ AtomExpr: Located<Expr<'surface>> = {
     },
     <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
     <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar),
+    <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Expr::Hole),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren { expr: bump.alloc(expr) }),
 }
 

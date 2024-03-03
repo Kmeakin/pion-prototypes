@@ -101,10 +101,10 @@ pub enum MetaSource {
         range: TextRange,
         name: Option<Symbol>,
     },
-    FunDomain {
+    HoleType {
         range: TextRange,
     },
-    FunCodomain {
+    HoleExpr {
         range: TextRange,
     },
 }
@@ -112,9 +112,9 @@ pub enum MetaSource {
 impl MetaSource {
     pub const fn range(&self) -> TextRange {
         match self {
-            Self::PatType { range, .. }
-            | Self::FunDomain { range }
-            | Self::FunCodomain { range } => *range,
+            MetaSource::PatType { range, .. }
+            | MetaSource::HoleType { range, .. }
+            | MetaSource::HoleExpr { range, .. } => *range,
         }
     }
 }
@@ -151,8 +151,8 @@ where
                     MetaSource::PatType { name: None, .. } => {
                         "type of placeholder pattern".to_string()
                     }
-                    MetaSource::FunDomain { .. } => "type of function".to_string(),
-                    MetaSource::FunCodomain { .. } => continue,
+                    MetaSource::HoleType { .. } => "type of hole".to_string(),
+                    MetaSource::HoleExpr { .. } => "expression to solve hole".to_string(),
                 };
 
                 self.report_diagnostic(
@@ -299,6 +299,12 @@ where
                         .with_labels(vec![Label::primary(self.file_id, surface_expr.range)]),
                 )?;
                 Ok((Expr::Error, Type::Error))
+            }
+            surface::Expr::Hole => {
+                let range = surface_expr.range;
+                let r#type = self.push_unsolved_type(MetaSource::HoleType { range });
+                let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, r#type.clone());
+                Ok((expr, r#type))
             }
             surface::Expr::Paren { expr } => self.synth_expr(expr),
             surface::Expr::Ann { expr, r#type } => {
@@ -487,6 +493,7 @@ where
             // new expression variants are added
             surface::Expr::Const(..)
             | surface::Expr::LocalVar { .. }
+            | surface::Expr::Hole
             | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }
             | surface::Expr::FunType { .. }
