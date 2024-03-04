@@ -79,7 +79,7 @@ impl Symbol {
         INTERNER.resolve(&lasso::Spur::try_from_usize((self.as_u32()) as usize).unwrap())
     }
 
-    pub fn is_keyword(self) -> bool {
+    pub const fn is_keyword(self) -> bool {
         matches!(
             self,
             Self::r#false | Self::r#forall | Self::r#fun | Self::r#let | Self::r#true
