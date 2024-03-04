@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use text_size::TextRange;
 
@@ -293,10 +295,10 @@ where
                     }
                 };
                 let (expr, r#type) = match r#const {
-                    surface::Const::Bool(b) => (Expr::Const(Const::Bool(b)), Type::BOOL_TYPE),
-                    surface::Const::DecInt => (parse_int(10)?, Type::INT_TYPE),
-                    surface::Const::BinInt => (parse_int(2)?, Type::INT_TYPE),
-                    surface::Const::HexInt => (parse_int(16)?, Type::INT_TYPE),
+                    surface::Const::Bool(b) => (Expr::Const(Const::Bool(b)), Type::BOOL),
+                    surface::Const::DecInt => (parse_int(10)?, Type::INT),
+                    surface::Const::BinInt => (parse_int(2)?, Type::INT),
+                    surface::Const::HexInt => (parse_int(16)?, Type::INT),
                 };
                 Ok((expr, r#type))
             }
@@ -309,11 +311,9 @@ where
                     return Ok((Expr::LocalVar { var }, r#type));
                 }
 
-                match text {
-                    "Type" => return Ok((Expr::Prim(Prim::Type), Type::TYPE)),
-                    "Int" => return Ok((Expr::Prim(Prim::IntType), Type::TYPE)),
-                    "Bool" => return Ok((Expr::Prim(Prim::BoolType), Type::TYPE)),
-                    _ => {}
+                if let Ok(prim) = Prim::from_str(text) {
+                    let r#type = prim.r#type();
+                    return Ok((Expr::Prim(prim), r#type));
                 }
 
                 self.report_diagnostic(
@@ -807,6 +807,68 @@ where
                 Ok(Some(symbol))
             }
             surface::Pat::Paren { pat } => self.check_pat(pat, expected),
+        }
+    }
+}
+
+impl Prim {
+    pub const fn r#type(self) -> Type<'static> {
+        use Plicity::Explicit;
+
+        const INT: &Type<'static> = &Type::INT;
+
+        match self {
+            // `Type : Type`
+            // `Int : Type`
+            // `Bool : Type`
+            Self::Type | Self::Int | Self::Bool => Type::TYPE,
+
+            // `add : Int -> Int -> Int`
+            // `sub : Int -> Int -> Int`
+            // `mul : Int -> Int -> Int`
+            Self::add | Self::sub | Self::mul => Type::FunType {
+                param: FunParam {
+                    plicity: Explicit,
+                    name: None,
+                    r#type: INT,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &Expr::INT,
+                        },
+                        body: &Expr::INT,
+                    },
+                ),
+            },
+
+            // `eq : Int -> Int -> Bool`
+            // `ne : Int -> Int -> Bool`
+            // `lt : Int -> Int -> Bool`
+            // `gt : Int -> Int -> Bool`
+            // `lte : Int -> Int -> Bool`
+            // `gte : Int -> Int -> Bool`
+            Self::eq | Self::ne | Self::lt | Self::gt | Self::lte | Self::gte => Type::FunType {
+                param: FunParam {
+                    plicity: Explicit,
+                    name: None,
+                    r#type: INT,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &Expr::INT,
+                        },
+                        body: &Expr::BOOL,
+                    },
+                ),
+            },
         }
     }
 }

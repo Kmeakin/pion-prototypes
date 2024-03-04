@@ -126,6 +126,100 @@ fn prims() {
         expect!["Bool : Type"],
         expect![""],
     );
+    check(
+        &format!("{PION} check <(echo add)"),
+        expect!["add : Int -> Int -> Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo sub)"),
+        expect!["sub : Int -> Int -> Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo mul)"),
+        expect!["mul : Int -> Int -> Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo eq)"),
+        expect!["eq : Int -> Int -> Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo ne)"),
+        expect!["ne : Int -> Int -> Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo lt)"),
+        expect!["lt : Int -> Int -> Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo gt)"),
+        expect!["gt : Int -> Int -> Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo lte)"),
+        expect!["lte : Int -> Int -> Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} check <(echo gte)"),
+        expect!["gte : Int -> Int -> Bool"],
+        expect![""],
+    );
+}
+
+#[test]
+fn eval_prims() {
+    check(
+        &format!("{PION} eval <(echo add 3 2)"),
+        expect!["5 : Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo sub 3 2)"),
+        expect!["1 : Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo mul 3 2)"),
+        expect!["6 : Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo eq 1 0)"),
+        expect!["false : Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo ne 1 0)"),
+        expect!["true : Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo lt 1 0)"),
+        expect!["false : Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo gt 1 0)"),
+        expect!["true : Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo lte 1 0)"),
+        expect!["false : Bool"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo gte 1 0)"),
+        expect!["true : Bool"],
+        expect![""],
+    );
 }
 
 #[test]

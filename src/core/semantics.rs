@@ -26,8 +26,8 @@ pub enum Value<'core> {
 
 impl<'core> Value<'core> {
     pub const TYPE: Self = Self::prim(Prim::Type);
-    pub const INT_TYPE: Self = Self::prim(Prim::IntType);
-    pub const BOOL_TYPE: Self = Self::prim(Prim::BoolType);
+    pub const INT: Self = Self::prim(Prim::Int);
+    pub const BOOL: Self = Self::prim(Prim::Bool);
 
     pub const fn prim(prim: Prim) -> Self {
         Self::Neutral {
@@ -140,6 +140,9 @@ pub fn fun_app<'core>(
         Value::Error => Value::Error,
         Value::Neutral { head, mut spine } => {
             spine.push(Elim::FunApp { arg });
+            if let Some(value) = prim_app(head, spine.as_slice()) {
+                return value;
+            }
             Value::Neutral { head, spine }
         }
         Value::FunLit { param, body, .. } => {
@@ -147,6 +150,32 @@ pub fn fun_app<'core>(
             apply_closure(bump, meta_values, body, arg.expr)
         }
         _ => panic!("Invalid function application"),
+    }
+}
+
+fn prim_app<'core>(head: Head, spine: &[Elim<'core>]) -> Option<Value<'core>> {
+    let Head::Prim(prim) = head else { return None };
+
+    macro_rules! prim_rules {
+        ($($prim:ident $($args:pat)* => $rhs:expr),*,) => {
+            match (prim, spine) {
+                $((Prim::$prim, [$(Elim::FunApp { arg: FunArg{ plicity:_, expr:$args } },)*]) => Some($rhs),)*
+                _ => None,
+            }
+        };
+    }
+
+    prim_rules! {
+        add Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_add(*y))),
+        sub Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_sub(*y))),
+        mul Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_mul(*y))),
+
+        eq  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x == y)),
+        ne  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x != y)),
+        lt  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x < y)),
+        gt  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x > y)),
+        lte Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x <= y)),
+        gte Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x >= y)),
     }
 }
 
