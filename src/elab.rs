@@ -361,6 +361,13 @@ where
                 };
                 Ok((core_expr, body_type))
             }
+            surface::Expr::If { cond, then, r#else } => {
+                let cond = self.check_expr(cond, &Type::BOOL)?;
+                let (then, then_type) = self.synth_expr(then)?;
+                let r#else = self.check_expr(r#else, &then_type)?;
+                let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
+                Ok((Expr::If { cond, then, r#else }, then_type))
+            }
             surface::Expr::FunArrow { plicity, lhs, rhs } => {
                 let param_type = self.check_expr_is_type(lhs)?;
                 let body = {
@@ -562,6 +569,13 @@ where
                     body,
                 };
                 Ok(core_expr)
+            }
+            surface::Expr::If { cond, then, r#else } => {
+                let cond = self.check_expr(cond, &Type::BOOL)?;
+                let then = self.check_expr(then, expected)?;
+                let r#else = self.check_expr(r#else, expected)?;
+                let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
+                Ok(Expr::If { cond, then, r#else })
             }
             surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, expected),
 

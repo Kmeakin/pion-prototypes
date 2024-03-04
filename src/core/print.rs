@@ -23,7 +23,7 @@ impl Prec {
             | Expr::Const(_)
             | Expr::LocalVar { .. }
             | Expr::MetaVar { .. } => Self::Atom,
-            Expr::Let { .. } => Self::Let,
+            Expr::Let { .. } | Expr::If { .. } => Self::Let,
             Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
             Expr::FunApp { .. } => Self::App,
         }
@@ -158,6 +158,18 @@ impl<'bump> Printer<'bump> {
                     .append(";")
                     .append(self.hardline())
                     .append(body)
+            }
+            Expr::If { cond, then, r#else } => {
+                let cond = self.expr_prec(names, cond, Prec::App);
+                let then = self.expr_prec(names, then, Prec::MAX);
+                let r#else = self.expr_prec(names, r#else, Prec::MAX);
+
+                self.text("if ")
+                    .append(cond)
+                    .append(" then ")
+                    .append(then)
+                    .append(" else ")
+                    .append(r#else)
             }
             Expr::FunType { .. } => {
                 let names_len = names.len();

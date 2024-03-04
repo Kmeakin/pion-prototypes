@@ -1,5 +1,5 @@
 use crate::core::semantics::{self, Closure, Elim, Head, MetaValues, Value};
-use crate::core::syntax::{Expr, FunArg, FunParam};
+use crate::core::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use crate::plicity::Plicity;
 
@@ -196,13 +196,41 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
         for (left_elim, right_elim) in Iterator::zip(left_spine.iter(), right_spine.iter()) {
             match (left_elim, right_elim) {
-                (Elim::FunApp { arg: left_arg }, Elim::FunApp { arg: right_arg }) => {
-                    if left_arg.plicity != right_arg.plicity {
-                        return Err(UnifyError::Mismatch);
-                    }
-
+                (Elim::FunApp { arg: left_arg }, Elim::FunApp { arg: right_arg })
+                    if left_arg.plicity == right_arg.plicity =>
+                {
                     self.unify(&left_arg.expr, &right_arg.expr)?;
                 }
+                (Elim::BoolCases(left_cases), Elim::BoolCases(right_cases)) => {
+                    let left_then = semantics::apply_bool_elim(
+                        self.bump,
+                        self.meta_values,
+                        left_cases.clone(),
+                        Value::Const(Const::Bool(true)),
+                    );
+                    let right_then = semantics::apply_bool_elim(
+                        self.bump,
+                        self.meta_values,
+                        right_cases.clone(),
+                        Value::Const(Const::Bool(true)),
+                    );
+                    self.unify(&left_then, &right_then)?;
+
+                    let left_else = semantics::apply_bool_elim(
+                        self.bump,
+                        self.meta_values,
+                        left_cases.clone(),
+                        Value::Const(Const::Bool(false)),
+                    );
+                    let right_else = semantics::apply_bool_elim(
+                        self.bump,
+                        self.meta_values,
+                        right_cases.clone(),
+                        Value::Const(Const::Bool(false)),
+                    );
+                    self.unify(&left_else, &right_else)?;
+                }
+                _ => return Err(UnifyError::Mismatch),
             }
         }
         Ok(())
@@ -284,6 +312,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         _ => return Err(SpineError::NonLocalFunApp),
                     }
                 }
+                Elim::BoolCases(..) => return Err(SpineError::BoolCases),
             }
         }
         Ok(())
@@ -297,6 +326,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 param: FunParam::new(Plicity::Explicit, None, &Expr::Error),
                 body: self.bump.alloc(expr),
             },
+            Elim::BoolCases(..) => unreachable!("should have been caught by `init_renaming`"),
         })
     }
 
@@ -335,6 +365,26 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let (fun, arg_expr) = self.bump.alloc((head, arg_expr));
                         let arg = FunArg::new(arg.plicity, arg_expr as &_);
                         Ok(Expr::FunApp { fun, arg })
+                    }
+                    Elim::BoolCases(cases) => {
+                        let then = semantics::apply_bool_elim(
+                            self.bump,
+                            self.meta_values,
+                            cases.clone(),
+                            Value::Const(Const::Bool(false)),
+                        );
+                        let then = self.rename(meta_var, &then)?;
+
+                        let r#else = semantics::apply_bool_elim(
+                            self.bump,
+                            self.meta_values,
+                            cases.clone(),
+                            Value::Const(Const::Bool(false)),
+                        );
+                        let r#else = self.rename(meta_var, &r#else)?;
+
+                        let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
+                        Ok(Expr::If { cond, then, r#else })
                     }
                 })
             }
@@ -442,6 +492,7 @@ pub enum SpineError {
     /// A function application was in the problem spine, but it wasn't a local
     /// variable.
     NonLocalFunApp,
+    BoolCases,
 }
 
 /// An error that occurred when renaming the solution.

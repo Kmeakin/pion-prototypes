@@ -22,6 +22,11 @@ pub enum Expr<'core> {
         init: &'core Self,
         body: &'core Self,
     },
+    If {
+        cond: &'core Self,
+        then: &'core Self,
+        r#else: &'core Self,
+    },
 
     FunType {
         param: FunParam<&'core Self>,
@@ -52,6 +57,11 @@ impl<'core> Expr<'core> {
                 r#type.references_local(var)
                     || init.references_local(var)
                     || body.references_local(var.succ())
+            }
+            Expr::If { cond, then, r#else } => {
+                cond.references_local(var)
+                    || then.references_local(var)
+                    || r#else.references_local(var)
             }
             Expr::FunType { param, body } | Expr::FunLit { param, body } => {
                 param.r#type.references_local(var) || body.references_local(var.succ())

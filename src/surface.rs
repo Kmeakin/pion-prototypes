@@ -51,6 +51,11 @@ pub enum Expr<'surface> {
         init: &'surface Located<Self>,
         body: &'surface Located<Self>,
     },
+    If {
+        cond: &'surface Located<Self>,
+        then: &'surface Located<Self>,
+        r#else: &'surface Located<Self>,
+    },
 
     FunArrow {
         plicity: Plicity,

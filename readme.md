@@ -27,6 +27,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [ ] row types
 
 * [ ] pattern matching
+    * [x] `if` expressions
     * [ ] single-layer pattern matching over integers and booleans
     * [ ] multi-layer pattern matching compilation w/ coverage checking
 

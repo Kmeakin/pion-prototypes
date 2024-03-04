@@ -61,6 +61,28 @@ pub enum Head {
 #[derive(Debug, Clone)]
 pub enum Elim<'core> {
     FunApp { arg: FunArg<Value<'core>> },
+    BoolCases(BoolCases<'core>),
+}
+
+#[derive(Debug, Clone)]
+pub struct BoolCases<'core> {
+    pub local_values: LocalValues<'core>,
+    pub then: &'core Expr<'core>,
+    pub r#else: &'core Expr<'core>,
+}
+
+impl<'core> BoolCases<'core> {
+    pub const fn new(
+        local_values: LocalValues<'core>,
+        then: &'core Expr<'core>,
+        r#else: &'core Expr<'core>,
+    ) -> Self {
+        Self {
+            local_values,
+            then,
+            r#else,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -104,6 +126,10 @@ pub fn eval<'core>(
             let body = eval(bump, local_values, meta_values, body);
             local_values.pop();
             body
+        }
+        Expr::If { cond, then, r#else } => {
+            let cond = eval(bump, local_values, meta_values, cond);
+            if_then_else(bump, local_values, meta_values, cond, then, r#else)
         }
 
         Expr::FunType { param, body } => {
@@ -193,6 +219,40 @@ pub fn apply_closure<'core>(
     eval(bump, &mut local_values, meta_values, body)
 }
 
+pub fn if_then_else<'core>(
+    bump: &'core bumpalo::Bump,
+    local_values: &LocalValues<'core>,
+    meta_values: &MetaValues<'core>,
+    cond: Value<'core>,
+    then: &'core Expr<'core>,
+    r#else: &'core Expr<'core>,
+) -> Value<'core> {
+    let cases = BoolCases::new(local_values.clone(), then, r#else);
+    apply_bool_elim(bump, meta_values, cases, cond)
+}
+
+pub fn apply_bool_elim<'core>(
+    bump: &'core bumpalo::Bump,
+    meta_values: &MetaValues<'core>,
+    mut cases: BoolCases<'core>,
+    cond: Value<'core>,
+) -> Value<'core> {
+    match cond {
+        Value::Error => Value::Error,
+        Value::Neutral { head, mut spine } => {
+            spine.push(Elim::BoolCases(cases));
+            Value::Neutral { head, spine }
+        }
+        Value::Const(Const::Bool(true)) => {
+            eval(bump, &mut cases.local_values, meta_values, cases.then)
+        }
+        Value::Const(Const::Bool(false)) => {
+            eval(bump, &mut cases.local_values, meta_values, cases.r#else)
+        }
+        _ => panic!("Invalid if-then-else"),
+    }
+}
+
 pub fn quote<'core>(
     bump: &'core bumpalo::Bump,
     local_len: EnvLen,
@@ -211,6 +271,17 @@ pub fn quote<'core>(
                     let (fun, arg_expr) = (fun as &_, arg_expr as &_);
                     let arg = FunArg::new(arg.plicity, arg_expr);
                     Expr::FunApp { fun, arg }
+                }
+                Elim::BoolCases(elim) => {
+                    let mut elim = elim.clone();
+                    let then = eval(bump, &mut elim.local_values, meta_values, elim.then);
+                    let r#else = eval(bump, &mut elim.local_values, meta_values, elim.r#else);
+
+                    let then = quote(bump, local_len, meta_values, &then);
+                    let r#else = quote(bump, local_len, meta_values, &r#else);
+
+                    let (cond, then, r#else) = bump.alloc((head, then, r#else));
+                    Expr::If { cond, then, r#else }
                 }
             })
         }
@@ -279,6 +350,7 @@ pub fn update_metas<'core>(
             Some(Some(head)) => {
                 value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
                     Elim::FunApp { arg } => fun_app(bump, meta_values, head, arg),
+                    Elim::BoolCases(cases) => apply_bool_elim(bump, meta_values, cases, head),
                 });
             }
             Some(None) => {
@@ -351,7 +423,7 @@ pub fn zonk<'core>(
             }
         }
 
-        Expr::MetaVar { .. } | Expr::FunApp { .. } => {
+        Expr::MetaVar { .. } | Expr::FunApp { .. } | Expr::If { .. } => {
             match zonk_meta_var_spines(bump, local_values, meta_values, expr) {
                 Left(expr) => expr,
                 Right(value) => {
@@ -401,6 +473,20 @@ fn zonk_meta_var_spines<'core>(
                     let arg_value = eval(bump, local_values, meta_values, arg.expr);
                     let arg = FunArg::new(arg.plicity, arg_value);
                     Right(fun_app(bump, meta_values, fun_value, arg))
+                }
+            }
+        }
+        Expr::If { cond, then, r#else } => {
+            match zonk_meta_var_spines(bump, local_values, meta_values, cond) {
+                Left(cond) => {
+                    let then = zonk(bump, local_values, meta_values, then);
+                    let r#else = zonk(bump, local_values, meta_values, r#else);
+                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+                    Left(Expr::If { cond, then, r#else })
+                }
+                Right(cond) => {
+                    let cases = BoolCases::new(local_values.clone(), then, r#else);
+                    Right(apply_bool_elim(bump, meta_values, cases, cond))
                 }
             }
         }

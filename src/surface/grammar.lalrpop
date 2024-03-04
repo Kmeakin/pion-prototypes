@@ -15,10 +15,13 @@ extern {
     type Error = std::convert::Infallible;
 
     enum TokenKind {
+        "else" => TokenKind::KwElse,
         "false" => TokenKind::KwFalse,
         "forall" => TokenKind::KwForall,
         "fun" => TokenKind::KwFun,
+        "if" => TokenKind::KwIf,
         "let" => TokenKind::KwLet,
+        "then" => TokenKind::KwThen,
         "true" => TokenKind::KwTrue,
 
         "(" => TokenKind::LParen,
@@ -52,6 +55,11 @@ LetExpr: Located<Expr<'surface>> = {
         let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
         let (pat, init, body) = bump.alloc((pat, init, body));
         Located::new(range, Expr::Let { pat, r#type, init, body })
+    },
+    <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+        Located::new(range, Expr::If { cond, then, r#else })
     },
     <start: @L> <expr: AtomExpr> ":" <r#type: FunExpr> <end:@R> => {
         let range = TextRange::new(start, end);

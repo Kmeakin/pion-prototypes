@@ -423,3 +423,17 @@ error: Applied implicit argument when explicit argument was expected
 "#]],
     );
 }
+
+#[test]
+fn if_then_else() {
+    check(
+        &format!("{PION} check <(echo 'if true then 1 else 0')"),
+        expect!["(if true then 1 else 0) : Int"],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo 'if true then 1 else 0')"),
+        expect!["1 : Int"],
+        expect![""],
+    );
+}
