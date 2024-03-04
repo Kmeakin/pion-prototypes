@@ -171,10 +171,15 @@ fn prims() {
         expect!["gte : Int -> Int -> Bool"],
         expect![""],
     );
+    check(
+        &format!("{PION} check <(echo fix)"),
+        expect!["fix : forall (@A : Type) (@B : Type) -> ((A -> B) -> A -> B) -> A -> B"],
+        expect![""],
+    );
 }
 
 #[test]
-fn eval_prims() {
+fn arith_prims() {
     check(
         &format!("{PION} eval <(echo add 3 2)"),
         expect!["5 : Int"],
@@ -390,7 +395,7 @@ fn generalize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id')"),
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
+let id : forall (@A : Type) -> A -> A = fun (x : Type) (x : x) => x;
 id : forall (@A : Type) -> A -> A"#]],
         expect![""],
     );
@@ -401,7 +406,7 @@ fn specialize() {
     check(
         &format!("{PION} check <(echo 'let id: forall (@A: Type) -> A -> A = fun x => x; id 5')"),
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
+let id : forall (@A : Type) -> A -> A = fun (x : Type) (x : x) => x;
 (id @Int 5) : Int"#]],
         expect![""],
     );
@@ -434,6 +439,74 @@ fn if_then_else() {
     check(
         &format!("{PION} eval <(echo 'if true then 1 else 0')"),
         expect!["1 : Int"],
+        expect![""],
+    );
+}
+
+#[test]
+fn fixpoint_factorial() {
+    let fact = "fix (fun fact n => if eq n 0 then 1 else mul n (sub n 1))";
+
+    check(
+        &format!("{PION} check <(echo '{fact}')"),
+        expect![
+            "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
+             (sub n 1))) : Int -> Int"
+        ],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '{fact}')"),
+        expect![
+            "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
+             (sub n 1))) : Int -> Int"
+        ],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '{fact} 5')"),
+        expect!["20 : Int"],
+        expect![""],
+    );
+}
+
+#[test]
+fn fixpoint_parity() {
+    let evenodd = "fix (fun (evenodd : Bool -> Int -> Bool) b n => if b then (if eq n 0 then true \
+                   else evenodd false (sub n 1)) else (if eq n 0 then false else evenodd true \
+                   (sub n 1)))";
+
+    check(
+        &format!("{PION} check <(echo '{evenodd}')"),
+        expect![
+            "(fix @Bool @(Int -> Bool) (fun (evenodd : Bool -> Int -> Bool) (b : Bool) (n : Int) \
+             => if b then if eq n 0 then true else evenodd false (sub n 1) else if eq n 0 then \
+             false else evenodd true (sub n 1))) : Bool -> Int -> Bool"
+        ],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '{evenodd}')"),
+        expect![
+            "(fix @Bool @(Int -> Bool) (fun (evenodd : Bool -> Int -> Bool) (b : Bool) (n : Int) \
+             => if b then if eq n 0 then true else evenodd false (sub n 1) else if eq n 0 then \
+             false else evenodd true (sub n 1))) : Bool -> Int -> Bool"
+        ],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '{evenodd} true')"),
+        expect![
+            "(fun (n : Int) => if eq n 0 then true else fix @Bool @(Int -> Bool) (fun (evenodd : \
+             Bool -> Int -> Bool) (b : Bool) (n : Int) => if b then if eq n 0 then true else \
+             evenodd false (sub n 1) else if eq n 0 then false else evenodd true (sub n 1)) false \
+             (sub n 1)) : Int -> Bool"
+        ],
+        expect![""],
+    );
+    check(
+        &format!("{PION} eval <(echo '{evenodd} true 3')"),
+        expect!["false : Bool"],
         expect![""],
     );
 }

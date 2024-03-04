@@ -32,10 +32,11 @@ codespan-reporting = { version = "0.11.1" }
 ecow               = { version = "0.2.0" }
 either             = { version = "1.10.0" }
 lalrpop-util       = { version = "0.20.0" }
+lasso              = { version = "0.7.2", features = ["multi-threaded"] }
 logos              = { version = "0.14.0" }
+once_cell          = { version = "1.19.0", features = ["parking_lot"] }
 pretty             = { version = "0.12.3" }
 text-size          = { version = "1.1.1" }
-ustr               = { version = "1.0.0" }
 
 [build-dependencies]
 lalrpop = { version = "0.20.0" }

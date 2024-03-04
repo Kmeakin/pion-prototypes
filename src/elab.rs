@@ -4,7 +4,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use text_size::TextRange;
 
 use self::unify::{PartialRenaming, UnifyCtx, UnifyError};
-use crate::core::semantics::{self, Closure, Type, Value};
+use crate::core::semantics::{self, Closure, EvalOpts, Type, Value};
 use crate::core::syntax::{Const, Expr, FunArg, FunParam, Prim};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use crate::plicity::Plicity;
@@ -219,6 +219,7 @@ where
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
         semantics::eval(
             self.bump,
+            EvalOpts::default(),
             &mut self.local_env.values,
             &self.meta_env.values,
             expr,
@@ -304,7 +305,7 @@ where
             }
             surface::Expr::LocalVar => {
                 let text = &self.text[surface_expr.range];
-                let name = Symbol::from(text);
+                let name = Symbol::intern(text);
 
                 if let Some(var) = self.local_env.lookup(name) {
                     let r#type = self.local_env.types.get_relative(var).unwrap().clone();
@@ -391,6 +392,12 @@ where
                 if arg.data.plicity == Plicity::Explicit {
                     (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
                 }
+                let fun_type = semantics::update_metas(
+                    self.bump,
+                    EvalOpts::default(),
+                    &self.meta_env.values,
+                    &fun_type,
+                );
 
                 match fun_type {
                     Value::Error => Ok((Expr::Error, Type::Error)),
@@ -418,8 +425,13 @@ where
                     Value::FunType { param, body } => {
                         let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
                         let arg = self.eval(&arg_expr);
-                        let output_type =
-                            semantics::apply_closure(self.bump, &self.meta_env.values, body, arg);
+                        let output_type = semantics::apply_closure(
+                            self.bump,
+                            EvalOpts::default(),
+                            &self.meta_env.values,
+                            body,
+                            arg,
+                        );
 
                         let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
                         let arg = FunArg::new(param.plicity, arg_expr as &_);
@@ -450,7 +462,12 @@ where
         mut r#type: Type<'core>,
     ) -> (Expr<'core>, Type<'core>) {
         loop {
-            r#type = semantics::update_metas(self.bump, &self.meta_env.values, &r#type);
+            r#type = semantics::update_metas(
+                self.bump,
+                EvalOpts::default(),
+                &self.meta_env.values,
+                &r#type,
+            );
             match r#type {
                 Value::FunType { param, body } if param.plicity.is_implicit() => {
                     let source = MetaSource::ImplicitArg {
@@ -464,8 +481,13 @@ where
 
                     let arg = FunArg::new(param.plicity, arg_expr as &_);
                     expr = Expr::FunApp { fun, arg };
-                    r#type =
-                        semantics::apply_closure(self.bump, &self.meta_env.values, body, arg_value);
+                    r#type = semantics::apply_closure(
+                        self.bump,
+                        EvalOpts::default(),
+                        &self.meta_env.values,
+                        body,
+                        arg_value,
+                    );
                 }
                 _ => break,
             }
@@ -542,9 +564,15 @@ where
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
     ) -> Result<Expr<'core>, E> {
+        let expected = semantics::update_metas(
+            self.bump,
+            EvalOpts::default(),
+            &self.meta_env.values,
+            expected,
+        );
         match surface_expr.data {
             surface::Expr::Error => Ok(Expr::Error),
-            surface::Expr::Paren { expr } => self.check_expr(expr, expected),
+            surface::Expr::Paren { expr } => self.check_expr(expr, &expected),
             surface::Expr::Let {
                 pat,
                 r#type,
@@ -557,7 +585,7 @@ where
                 let init_value = self.eval(&init_expr);
                 let body_expr = {
                     self.local_env.push_let(name, r#type, init_value);
-                    let body_expr = self.check_expr(body, expected)?;
+                    let body_expr = self.check_expr(body, &expected)?;
                     self.local_env.pop();
                     body_expr
                 };
@@ -572,12 +600,12 @@ where
             }
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL)?;
-                let then = self.check_expr(then, expected)?;
-                let r#else = self.check_expr(r#else, expected)?;
+                let then = self.check_expr(then, &expected)?;
+                let r#else = self.check_expr(r#else, &expected)?;
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 Ok(Expr::If { cond, then, r#else })
             }
-            surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, expected),
+            surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, &expected),
 
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
             // new expression variants are added
@@ -587,7 +615,7 @@ where
             | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }
             | surface::Expr::FunType { .. }
-            | surface::Expr::FunApp { .. } => self.synth_and_convert_expr(surface_expr, expected),
+            | surface::Expr::FunApp { .. } => self.synth_and_convert_expr(surface_expr, &expected),
         }
     }
 
@@ -610,6 +638,7 @@ where
             } if surface_param.data.plicity.is_explicit()
                 && expected_param.plicity.is_implicit() =>
             {
+                let param = self.check_param(surface_param, expected_param.r#type)?;
                 let r#type = self.quote(expected_param.r#type);
 
                 let var = self.local_env.next_var();
@@ -617,6 +646,7 @@ where
                     .push_param(expected_param.name, expected_param.r#type.clone());
                 let expected = semantics::apply_closure(
                     self.bump,
+                    EvalOpts::default(),
                     &self.meta_env.values,
                     expected_body.clone(),
                     var,
@@ -625,8 +655,7 @@ where
                 self.local_env.pop();
 
                 let (r#type, body) = self.bump.alloc((r#type, body));
-                let param =
-                    FunParam::new(expected_param.plicity, expected_param.name, r#type as &_);
+                let param = FunParam::new(param.plicity, param.name, r#type as &_);
                 Ok(Expr::FunLit { param, body })
             }
             Value::FunType {
@@ -640,6 +669,7 @@ where
                         .push_param(param.name, expected_param.r#type.clone());
                     let expected = semantics::apply_closure(
                         self.bump,
+                        EvalOpts::default(),
                         &self.meta_env.values,
                         expected_body.clone(),
                         arg_value,
@@ -774,9 +804,10 @@ where
         match surface_ann {
             None => self.check_pat(surface_pat, expected),
             Some(surface_ann) => {
-                let ann_expr = self.check_expr_is_type(surface_ann)?;
-                let ann_value = self.eval(&ann_expr);
-                let name = self.check_pat(surface_pat, &ann_value)?;
+                let type_expr = self.check_expr_is_type(surface_ann)?;
+                let type_value = self.eval(&type_expr);
+                let name = self.check_pat(surface_pat, &type_value)?;
+                self.convert_pat(surface_pat.range, &type_value, expected)?;
                 Ok(name)
             }
         }
@@ -798,7 +829,7 @@ where
             surface::Pat::Ident => {
                 let range = surface_pat.range;
                 let text = &self.text[range];
-                let name = Some(Symbol::from(text));
+                let name = Some(Symbol::intern(text));
                 let source = MetaSource::PatType { range, name };
                 let r#type = self.push_unsolved_type(source);
                 Ok((name, r#type))
@@ -817,10 +848,45 @@ where
             surface::Pat::Error | surface::Pat::Underscore => Ok(None),
             surface::Pat::Ident => {
                 let text = &self.text[surface_pat.range];
-                let symbol = Symbol::from(text);
+                let symbol = Symbol::intern(text);
                 Ok(Some(symbol))
             }
             surface::Pat::Paren { pat } => self.check_pat(pat, expected),
+        }
+    }
+
+    fn convert_pat(
+        &mut self,
+        range: TextRange,
+        from: &Type<'core>,
+        to: &Type<'core>,
+    ) -> Result<(), E> {
+        match self.unify(from, to) {
+            Ok(()) => Ok(()),
+            Err(error) => {
+                let from = self.quote(from);
+                let to = self.quote(to);
+
+                let found = self.pretty(&from);
+                let expected = self.pretty(&to);
+
+                let message = match error {
+                    UnifyError::Mismatch => {
+                        format!("type mismatch: expected `{expected}`, found `{found}`")
+                    }
+                    UnifyError::Spine(_) => {
+                        "variable appeared more than once in problem spine".into()
+                    }
+                    UnifyError::Rename(_) => {
+                        "application in problem spine was not a local variable".into()
+                    }
+                };
+                let diagnostic = Diagnostic::error()
+                    .with_message(message)
+                    .with_labels(vec![Label::primary(self.file_id, range)]);
+                self.report_diagnostic(diagnostic)?;
+                Ok(())
+            }
         }
     }
 }
@@ -829,7 +895,15 @@ impl Prim {
     pub const fn r#type(self) -> Type<'static> {
         use Plicity::Explicit;
 
+        const TYPE: &Type<'static> = &Type::TYPE;
         const INT: &Type<'static> = &Type::INT;
+
+        const VAR1: Expr = Expr::LocalVar {
+            var: RelativeVar::new(1),
+        };
+        const VAR2: Expr = Expr::LocalVar {
+            var: RelativeVar::new(2),
+        };
 
         match self {
             // `Type : Type`
@@ -880,6 +954,66 @@ impl Prim {
                             r#type: &Expr::INT,
                         },
                         body: &Expr::BOOL,
+                    },
+                ),
+            },
+
+            // `fix: forall (@A : Type) (@B : Type) -> ((A -> B) -> A -> B) -> A -> B`
+            Self::fix => Type::FunType {
+                param: FunParam {
+                    plicity: Plicity::Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Plicity::Implicit,
+                            name: Some(Symbol::B),
+                            r#type: &Expr::TYPE,
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: None,
+                                // ((A -> B) -> A -> B)
+                                r#type: &Expr::FunType {
+                                    param: FunParam {
+                                        plicity: Explicit,
+                                        name: None,
+                                        // (A -> B)
+                                        r#type: &Expr::FunType {
+                                            param: FunParam {
+                                                plicity: Explicit,
+                                                name: None,
+                                                r#type: &VAR1,
+                                            },
+                                            body: &VAR1,
+                                        },
+                                    },
+
+                                    // (A -> B)
+                                    body: &Expr::FunType {
+                                        param: FunParam {
+                                            plicity: Explicit,
+                                            name: None,
+                                            r#type: &VAR2,
+                                        },
+                                        body: &VAR2,
+                                    },
+                                },
+                            },
+                            // (A -> B)
+                            body: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &VAR2,
+                                },
+                                body: &VAR2,
+                            },
+                        },
                     },
                 ),
             },

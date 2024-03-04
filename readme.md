@@ -17,9 +17,9 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
       * [x] generalization
 
 * [ ] recursion
-    * [ ] term level `fix`
-    * [ ] type level `fix`?
+    * [x] `fix`
     * [ ] `let rec`
+    * [ ] termination checking
 
 * [ ] aggregate types
     * [ ] record types

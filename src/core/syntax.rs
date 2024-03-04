@@ -128,7 +128,7 @@ macro_rules! prims {
     };
 }
 
-prims![Type, Int, Bool, add, sub, mul, eq, ne, gt, lt, gte, lte];
+prims![Type, Int, Bool, add, sub, mul, eq, ne, gt, lt, gte, lte, fix];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Const {

@@ -3,6 +3,7 @@ use either::Either::{self, Left, Right};
 
 use super::syntax::{Const, Expr, FunArg, FunParam, Prim};
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
+use crate::plicity::Plicity;
 
 pub type Type<'core> = Value<'core>;
 
@@ -100,8 +101,18 @@ impl<'core> Closure<'core> {
 pub type LocalValues<'core> = SharedEnv<Value<'core>>;
 pub type MetaValues<'core> = SliceEnv<Option<Value<'core>>>;
 
+#[derive(Debug, Copy, Clone)]
+pub struct EvalOpts {
+    pub unfold_fix: bool,
+}
+
+impl Default for EvalOpts {
+    fn default() -> Self { Self { unfold_fix: true } }
+}
+
 pub fn eval<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     local_values: &mut LocalValues<'core>,
     meta_values: &MetaValues<'core>,
     expr: &Expr<'core>,
@@ -121,19 +132,19 @@ pub fn eval<'core>(
         },
 
         Expr::Let { init, body, .. } => {
-            let init = eval(bump, local_values, meta_values, init);
+            let init = eval(bump, opts, local_values, meta_values, init);
             local_values.push(init);
-            let body = eval(bump, local_values, meta_values, body);
+            let body = eval(bump, opts, local_values, meta_values, body);
             local_values.pop();
             body
         }
         Expr::If { cond, then, r#else } => {
-            let cond = eval(bump, local_values, meta_values, cond);
-            if_then_else(bump, local_values, meta_values, cond, then, r#else)
+            let cond = eval(bump, opts, local_values, meta_values, cond);
+            if_then_else(bump, opts, local_values, meta_values, cond, then, r#else)
         }
 
         Expr::FunType { param, body } => {
-            let r#type = eval(bump, local_values, meta_values, param.r#type);
+            let r#type = eval(bump, opts, local_values, meta_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunType {
                 param: FunParam::new(param.plicity, param.name, bump.alloc(r#type)),
@@ -141,7 +152,7 @@ pub fn eval<'core>(
             }
         }
         Expr::FunLit { param, body } => {
-            let r#type = eval(bump, local_values, meta_values, param.r#type);
+            let r#type = eval(bump, opts, local_values, meta_values, param.r#type);
             let body = Closure::new(local_values.clone(), body);
             Value::FunLit {
                 param: FunParam::new(param.plicity, param.name, bump.alloc(r#type)),
@@ -149,15 +160,19 @@ pub fn eval<'core>(
             }
         }
         Expr::FunApp { fun, arg } => {
-            let fun = eval(bump, local_values, meta_values, fun);
-            let arg = FunArg::new(arg.plicity, eval(bump, local_values, meta_values, arg.expr));
-            fun_app(bump, meta_values, fun, arg)
+            let fun = eval(bump, opts, local_values, meta_values, fun);
+            let arg = FunArg::new(
+                arg.plicity,
+                eval(bump, opts, local_values, meta_values, arg.expr),
+            );
+            fun_app(bump, opts, meta_values, fun, arg)
         }
     }
 }
 
 pub fn fun_app<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     meta_values: &MetaValues<'core>,
     fun: Value<'core>,
     arg: FunArg<Value<'core>>,
@@ -166,47 +181,66 @@ pub fn fun_app<'core>(
         Value::Error => Value::Error,
         Value::Neutral { head, mut spine } => {
             spine.push(Elim::FunApp { arg });
-            if let Some(value) = prim_app(head, spine.as_slice()) {
+            if let Some(value) = prim_app(bump, opts, meta_values, head, spine.as_slice()) {
                 return value;
             }
             Value::Neutral { head, spine }
         }
         Value::FunLit { param, body, .. } => {
             debug_assert_eq!(arg.plicity, param.plicity);
-            apply_closure(bump, meta_values, body, arg.expr)
+            apply_closure(bump, opts, meta_values, body, arg.expr)
         }
         _ => panic!("Invalid function application"),
     }
 }
 
-fn prim_app<'core>(head: Head, spine: &[Elim<'core>]) -> Option<Value<'core>> {
+fn prim_app<'core>(
+    bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
+    meta_values: &MetaValues<'core>,
+    head: Head,
+    spine: &[Elim<'core>],
+) -> Option<Value<'core>> {
     let Head::Prim(prim) = head else { return None };
 
     macro_rules! prim_rules {
-        ($($prim:ident $($args:pat)* => $rhs:expr),*,) => {
+        ($($prim:ident($($args:pat)*)$(if $guard:expr)? => $rhs:expr),*,) => {
+            #[allow(non_snake_case)]
             match (prim, spine) {
-                $((Prim::$prim, [$(Elim::FunApp { arg: FunArg{ plicity:_, expr:$args } },)*]) => Some($rhs),)*
+                $((Prim::$prim, [$(Elim::FunApp { arg: FunArg{ plicity:_, expr:$args } },)*]) $(if $guard)? => Some($rhs),)*
                 _ => None,
             }
         };
     }
 
     prim_rules! {
-        add Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_add(*y))),
-        sub Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_sub(*y))),
-        mul Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Int(x.wrapping_mul(*y))),
+        add(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_add(*y))),
+        sub(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_sub(*y))),
+        mul(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_mul(*y))),
 
-        eq  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x == y)),
-        ne  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x != y)),
-        lt  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x < y)),
-        gt  Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x > y)),
-        lte Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x <= y)),
-        gte Value::Const(Const::Int(x)) Value::Const(Const::Int(y)) => Value::Const(Const::Bool(x >= y)),
+        eq (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x == y)),
+        ne (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x != y)),
+        lt (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x < y)),
+        gt (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x > y)),
+        lte(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x <= y)),
+        gte(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x >= y)),
+
+        // fix @A @B f x  = f (fix @A @B f) x
+        fix(A B f x) if opts.unfold_fix => {
+            let fix = Value::prim(Prim::fix);
+            let fixA = fun_app(bump, opts, meta_values, fix, FunArg::new(Plicity::Implicit, A.clone()));
+            let fixAB = fun_app(bump, opts, meta_values, fixA, FunArg::new(Plicity::Implicit, B.clone()));
+            let fixABf = fun_app(bump, opts, meta_values, fixAB, FunArg::new(Plicity::Explicit, f.clone()));
+            let ffixABf = fun_app(bump, opts, meta_values, f.clone(), FunArg::new(Plicity::Explicit, fixABf));
+            let ffixABfx = fun_app(bump, opts, meta_values, ffixABf, FunArg::new(Plicity::Explicit, x.clone()));
+            ffixABfx
+        },
     }
 }
 
 pub fn apply_closure<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     meta_values: &MetaValues<'core>,
     closure: Closure<'core>,
     arg: Value<'core>,
@@ -216,11 +250,12 @@ pub fn apply_closure<'core>(
         body,
     } = closure;
     local_values.push(arg);
-    eval(bump, &mut local_values, meta_values, body)
+    eval(bump, opts, &mut local_values, meta_values, body)
 }
 
 pub fn if_then_else<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     local_values: &LocalValues<'core>,
     meta_values: &MetaValues<'core>,
     cond: Value<'core>,
@@ -228,11 +263,12 @@ pub fn if_then_else<'core>(
     r#else: &'core Expr<'core>,
 ) -> Value<'core> {
     let cases = BoolCases::new(local_values.clone(), then, r#else);
-    apply_bool_elim(bump, meta_values, cases, cond)
+    apply_bool_elim(bump, opts, meta_values, cases, cond)
 }
 
 pub fn apply_bool_elim<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     meta_values: &MetaValues<'core>,
     mut cases: BoolCases<'core>,
     cond: Value<'core>,
@@ -244,11 +280,15 @@ pub fn apply_bool_elim<'core>(
             Value::Neutral { head, spine }
         }
         Value::Const(Const::Bool(true)) => {
-            eval(bump, &mut cases.local_values, meta_values, cases.then)
+            eval(bump, opts, &mut cases.local_values, meta_values, cases.then)
         }
-        Value::Const(Const::Bool(false)) => {
-            eval(bump, &mut cases.local_values, meta_values, cases.r#else)
-        }
+        Value::Const(Const::Bool(false)) => eval(
+            bump,
+            opts,
+            &mut cases.local_values,
+            meta_values,
+            cases.r#else,
+        ),
         _ => panic!("Invalid if-then-else"),
     }
 }
@@ -259,7 +299,8 @@ pub fn quote<'core>(
     meta_values: &MetaValues<'core>,
     value: &Value<'core>,
 ) -> Expr<'core> {
-    let value = update_metas(bump, meta_values, value);
+    let opts = EvalOpts { unfold_fix: false };
+    let value = update_metas(bump, opts, meta_values, value);
     match value {
         Value::Error => Expr::Error,
         Value::Neutral { head, spine } => {
@@ -274,8 +315,8 @@ pub fn quote<'core>(
                 }
                 Elim::BoolCases(elim) => {
                     let mut elim = elim.clone();
-                    let then = eval(bump, &mut elim.local_values, meta_values, elim.then);
-                    let r#else = eval(bump, &mut elim.local_values, meta_values, elim.r#else);
+                    let then = eval(bump, opts, &mut elim.local_values, meta_values, elim.then);
+                    let r#else = eval(bump, opts, &mut elim.local_values, meta_values, elim.r#else);
 
                     let then = quote(bump, local_len, meta_values, &then);
                     let r#else = quote(bump, local_len, meta_values, &r#else);
@@ -286,11 +327,11 @@ pub fn quote<'core>(
             })
         }
         Value::FunLit { param, body } => {
-            let (param, body) = quote_fun(bump, local_len, meta_values, param, body);
+            let (param, body) = quote_fun(bump, opts, local_len, meta_values, param, body);
             Expr::FunLit { param, body }
         }
         Value::FunType { param, body } => {
-            let (param, body) = quote_fun(bump, local_len, meta_values, param, body);
+            let (param, body) = quote_fun(bump, opts, local_len, meta_values, param, body);
             Expr::FunType { param, body }
         }
         Value::Const(r#const) => Expr::Const(r#const),
@@ -319,6 +360,7 @@ fn quote_head<'core>(
 
 fn quote_fun<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     local_len: EnvLen,
     meta_values: &MetaValues<'core>,
     param: FunParam<&'core Value<'core>>,
@@ -327,7 +369,7 @@ fn quote_fun<'core>(
     let r#type = quote(bump, local_len, meta_values, param.r#type);
 
     let arg = Value::local_var(local_len.to_absolute());
-    let body = apply_closure(bump, meta_values, closure, arg);
+    let body = apply_closure(bump, opts, meta_values, closure, arg);
     let body = quote(bump, local_len.succ(), meta_values, &body);
 
     let (r#type, body) = bump.alloc((r#type, body));
@@ -337,6 +379,7 @@ fn quote_fun<'core>(
 
 pub fn update_metas<'core>(
     bump: &'core bumpalo::Bump,
+    opts: EvalOpts,
     meta_values: &MetaValues<'core>,
     value: &Value<'core>,
 ) -> Value<'core> {
@@ -349,8 +392,8 @@ pub fn update_metas<'core>(
         match meta_values.get_absolute(var) {
             Some(Some(head)) => {
                 value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
-                    Elim::FunApp { arg } => fun_app(bump, meta_values, head, arg),
-                    Elim::BoolCases(cases) => apply_bool_elim(bump, meta_values, cases, head),
+                    Elim::FunApp { arg } => fun_app(bump, opts, meta_values, head, arg),
+                    Elim::BoolCases(cases) => apply_bool_elim(bump, opts, meta_values, cases, head),
                 });
             }
             Some(None) => {
@@ -371,7 +414,7 @@ pub fn normalize<'core>(
     meta_values: &MetaValues<'core>,
     expr: &Expr<'core>,
 ) -> Expr<'core> {
-    let value = eval(bump, local_values, meta_values, expr);
+    let value = eval(bump, EvalOpts::default(), local_values, meta_values, expr);
     quote(bump, local_values.len(), meta_values, &value)
 }
 
@@ -454,6 +497,7 @@ fn zonk_meta_var_spines<'core>(
     meta_values: &MetaValues<'core>,
     expr: &Expr<'core>,
 ) -> Either<Expr<'core>, Value<'core>> {
+    let opts = EvalOpts::default();
     match expr {
         Expr::MetaVar { var } => match meta_values.get_absolute(*var) {
             Some(Some(value)) => Right(value.clone()),
@@ -470,9 +514,9 @@ fn zonk_meta_var_spines<'core>(
                     Left(Expr::FunApp { fun: fun_expr, arg })
                 }
                 Right(fun_value) => {
-                    let arg_value = eval(bump, local_values, meta_values, arg.expr);
+                    let arg_value = eval(bump, opts, local_values, meta_values, arg.expr);
                     let arg = FunArg::new(arg.plicity, arg_value);
-                    Right(fun_app(bump, meta_values, fun_value, arg))
+                    Right(fun_app(bump, opts, meta_values, fun_value, arg))
                 }
             }
         }
@@ -486,7 +530,7 @@ fn zonk_meta_var_spines<'core>(
                 }
                 Right(cond) => {
                     let cases = BoolCases::new(local_values.clone(), then, r#else);
-                    Right(apply_bool_elim(bump, meta_values, cases, cond))
+                    Right(apply_bool_elim(bump, opts, meta_values, cases, cond))
                 }
             }
         }

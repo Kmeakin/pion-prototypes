@@ -25,6 +25,7 @@ impl AbsoluteVar {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
 impl RelativeVar {
+    pub const fn new(value: usize) -> Self { Self(value) }
     pub const fn succ(self) -> Self { Self(self.0 + 1) }
     pub fn pred(self) -> Option<Self> { Some(Self(self.0.checked_sub(1)?)) }
 }

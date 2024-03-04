@@ -1,4 +1,4 @@
-use crate::core::semantics::{self, Closure, Elim, Head, MetaValues, Value};
+use crate::core::semantics::{self, Closure, Elim, EvalOpts, Head, MetaValues, Value};
 use crate::core::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use crate::plicity::Plicity;
@@ -101,8 +101,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             return Ok(());
         }
 
-        let left = semantics::update_metas(self.bump, self.meta_values, left);
-        let right = semantics::update_metas(self.bump, self.meta_values, right);
+        let opts = EvalOpts::default();
+        let left = semantics::update_metas(self.bump, opts, self.meta_values, left);
+        let right = semantics::update_metas(self.bump, opts, self.meta_values, right);
 
         match (left, right) {
             (Value::Const(left), Value::Const(right)) if left == right => Ok(()),
@@ -146,9 +147,10 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 let right_var = Value::local_var(self.local_env.to_absolute());
 
                 let left_value =
-                    semantics::apply_closure(self.bump, self.meta_values, body, left_var);
+                    semantics::apply_closure(self.bump, opts, self.meta_values, body, left_var);
                 let right_value = semantics::fun_app(
                     self.bump,
+                    opts,
                     self.meta_values,
                     value,
                     FunArg::new(param.plicity, right_var),
@@ -193,6 +195,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         if left_spine.len() != right_spine.len() {
             return Err(UnifyError::Mismatch);
         }
+        let opts = EvalOpts::default();
 
         for (left_elim, right_elim) in Iterator::zip(left_spine.iter(), right_spine.iter()) {
             match (left_elim, right_elim) {
@@ -204,12 +207,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 (Elim::BoolCases(left_cases), Elim::BoolCases(right_cases)) => {
                     let left_then = semantics::apply_bool_elim(
                         self.bump,
+                        opts,
                         self.meta_values,
                         left_cases.clone(),
                         Value::Const(Const::Bool(true)),
                     );
                     let right_then = semantics::apply_bool_elim(
                         self.bump,
+                        opts,
                         self.meta_values,
                         right_cases.clone(),
                         Value::Const(Const::Bool(true)),
@@ -218,12 +223,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
                     let left_else = semantics::apply_bool_elim(
                         self.bump,
+                        opts,
                         self.meta_values,
                         left_cases.clone(),
                         Value::Const(Const::Bool(false)),
                     );
                     let right_else = semantics::apply_bool_elim(
                         self.bump,
+                        opts,
                         self.meta_values,
                         right_cases.clone(),
                         Value::Const(Const::Bool(false)),
@@ -247,15 +254,17 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         if left_param.plicity != right_param.plicity {
             return Err(UnifyError::Mismatch);
         }
+        let opts = EvalOpts::default();
 
         self.unify(left_param.r#type, right_param.r#type)?;
 
         let left_var = Value::local_var(self.local_env.to_absolute());
         let right_var = Value::local_var(self.local_env.to_absolute());
 
-        let left_value = semantics::apply_closure(self.bump, self.meta_values, left_body, left_var);
+        let left_value =
+            semantics::apply_closure(self.bump, opts, self.meta_values, left_body, left_var);
         let right_value =
-            semantics::apply_closure(self.bump, self.meta_values, right_body, right_var);
+            semantics::apply_closure(self.bump, opts, self.meta_values, right_body, right_var);
 
         self.local_env.push();
         let result = self.unify(&left_value, &right_value);
@@ -286,7 +295,13 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         let expr = self.rename(meta_var, value)?;
         let fun_expr = self.fun_intros(spine, expr);
         let mut local_values = SharedEnv::new();
-        let solution = semantics::eval(self.bump, &mut local_values, self.meta_values, &fun_expr);
+        let solution = semantics::eval(
+            self.bump,
+            EvalOpts::default(),
+            &mut local_values,
+            self.meta_values,
+            &fun_expr,
+        );
         self.meta_values.set_absolute(meta_var, Some(solution));
         Ok(())
     }
@@ -297,10 +312,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     fn init_renaming(&mut self, spine: &[Elim<'core>]) -> Result<(), SpineError> {
         self.renaming.init(self.local_env);
 
+        let opts = EvalOpts::default();
         for elim in spine {
             match elim {
                 Elim::FunApp { arg } => {
-                    match semantics::update_metas(self.bump, self.meta_values, &arg.expr) {
+                    match semantics::update_metas(self.bump, opts, self.meta_values, &arg.expr) {
                         Value::Neutral {
                             head: Head::LocalVar { var },
                             spine,
@@ -343,7 +359,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         meta_var: AbsoluteVar,
         value: &Value<'core>,
     ) -> Result<Expr<'core>, RenameError> {
-        let value = semantics::update_metas(self.bump, self.meta_values, value);
+        let opts = EvalOpts::default();
+        let value = semantics::update_metas(self.bump, opts, self.meta_values, value);
         match value {
             Value::Error => Ok(Expr::Error),
             Value::Const(r#const) => Ok(Expr::Const(r#const)),
@@ -369,6 +386,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Elim::BoolCases(cases) => {
                         let then = semantics::apply_bool_elim(
                             self.bump,
+                            opts,
                             self.meta_values,
                             cases.clone(),
                             Value::Const(Const::Bool(false)),
@@ -377,6 +395,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
                         let r#else = semantics::apply_bool_elim(
                             self.bump,
+                            opts,
                             self.meta_values,
                             cases.clone(),
                             Value::Const(Const::Bool(false)),
@@ -408,8 +427,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     ) -> Result<(FunParam<&'core Expr<'core>>, &'core Expr<'core>), RenameError> {
         let r#type = self.rename(meta_var, param.r#type)?;
 
+        let opts = EvalOpts::default();
         let var = self.renaming.next_local_var();
-        let body = semantics::apply_closure(self.bump, self.meta_values, body, var);
+        let body = semantics::apply_closure(self.bump, opts, self.meta_values, body, var);
 
         self.renaming.push_local();
         let body = self.rename(meta_var, &body);
