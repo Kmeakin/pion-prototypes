@@ -438,7 +438,7 @@ pub fn zonk<'core>(
         } => {
             let r#type = zonk(bump, local_values, meta_values, r#type);
             let init = zonk(bump, local_values, meta_values, init);
-            let body = zonk(bump, local_values, meta_values, body);
+            let body = zonk_with_local(bump, local_values, meta_values, body);
             let (r#type, init, body) = bump.alloc((r#type, init, body));
             Expr::Let {
                 name: *name,
