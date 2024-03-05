@@ -19,10 +19,10 @@ impl Prec {
     pub const fn of_expr(expr: &Expr) -> Self {
         match expr {
             Expr::Error
-            | Expr::Prim(_)
-            | Expr::Const(_)
-            | Expr::LocalVar { .. }
-            | Expr::MetaVar { .. } => Self::Atom,
+            | Expr::Prim(..)
+            | Expr::Const(..)
+            | Expr::LocalVar(..)
+            | Expr::MetaVar(..) => Self::Atom,
             Expr::Let { .. } | Expr::If { .. } => Self::Let,
             Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
             Expr::FunApp { .. } => Self::App,
@@ -130,13 +130,13 @@ impl<'bump> Printer<'bump> {
     ) -> DocBuilder<'bump> {
         let doc = match expr {
             Expr::Const(r#const) => self.r#const(*r#const),
-            Expr::LocalVar { var } if self.config.print_names => match names.get_relative(*var) {
+            Expr::LocalVar(var) if self.config.print_names => match names.get_relative(*var) {
                 Some(Some(name)) => self.text(name.to_string()),
                 Some(None) => panic!("Unnamed variable: {var:?}"),
                 None => panic!("Unbound variable: {var:?}"),
             },
-            Expr::LocalVar { var } => self.text(format!("_{var}")),
-            Expr::MetaVar { var } => self.text(format!("?{var}")),
+            Expr::LocalVar(var) => self.text(format!("_{var}")),
+            Expr::MetaVar(var) => self.text(format!("?{var}")),
             Expr::Let {
                 name,
                 r#type,

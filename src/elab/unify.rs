@@ -167,7 +167,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             // attempt to solve it using pattern unification.
             (
                 Value::Neutral {
-                    head: Head::MetaVar { var },
+                    head: Head::MetaVar(var),
                     spine,
                 },
                 value,
@@ -175,7 +175,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             | (
                 value,
                 Value::Neutral {
-                    head: Head::MetaVar { var },
+                    head: Head::MetaVar(var),
                     spine,
                 },
             ) => self.solve(var, &spine, &value),
@@ -199,7 +199,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
         for (left_elim, right_elim) in Iterator::zip(left_spine.iter(), right_spine.iter()) {
             match (left_elim, right_elim) {
-                (Elim::FunApp { arg: left_arg }, Elim::FunApp { arg: right_arg })
+                (Elim::FunApp(left_arg), Elim::FunApp(right_arg))
                     if left_arg.plicity == right_arg.plicity =>
                 {
                     self.unify(&left_arg.expr, &right_arg.expr)?;
@@ -315,14 +315,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         let opts = EvalOpts::default();
         for elim in spine {
             match elim {
-                Elim::FunApp { arg } => {
+                Elim::FunApp(arg) => {
                     match semantics::update_metas(self.bump, opts, self.meta_values, &arg.expr) {
                         Value::Neutral {
-                            head: Head::LocalVar { var },
+                            head: Head::LocalVar(var),
                             spine,
                         } if spine.is_empty() && self.renaming.set_local(var) => {}
                         Value::Neutral {
-                            head: Head::LocalVar { var },
+                            head: Head::LocalVar(var),
                             spine: _,
                         } => return Err(SpineError::NonLinearSpine(var)),
                         _ => return Err(SpineError::NonLocalFunApp),
@@ -338,7 +338,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
     /// given `spine`.
     fn fun_intros(&self, spine: &[Elim<'core>], expr: Expr<'core>) -> Expr<'core> {
         spine.iter().fold(expr, |expr, elim| match elim {
-            Elim::FunApp { .. } => Expr::FunLit {
+            Elim::FunApp(..) => Expr::FunLit {
                 param: FunParam::new(Plicity::Explicit, None, &Expr::Error),
                 body: self.bump.alloc(expr),
             },
@@ -367,17 +367,17 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::Neutral { head, spine } => {
                 let head = match head {
                     Head::Prim(prim) => Expr::Prim(prim),
-                    Head::LocalVar { var } => match self.renaming.get_as_relative(var) {
+                    Head::LocalVar(var) => match self.renaming.get_as_relative(var) {
                         None => return Err(RenameError::EscapingLocalVar(var)),
-                        Some(var) => Expr::LocalVar { var },
+                        Some(var) => Expr::LocalVar(var),
                     },
-                    Head::MetaVar { var } => match meta_var == var {
+                    Head::MetaVar(var) => match meta_var == var {
                         true => return Err(RenameError::InfiniteSolution),
-                        false => Expr::MetaVar { var },
+                        false => Expr::MetaVar(var),
                     },
                 };
                 spine.iter().try_fold(head, |head, elim| match elim {
-                    Elim::FunApp { arg } => {
+                    Elim::FunApp(arg) => {
                         let arg_expr = self.rename(meta_var, &arg.expr)?;
                         let (fun, arg_expr) = self.bump.alloc((head, arg_expr));
                         let arg = FunArg::new(arg.plicity, arg_expr as &_);

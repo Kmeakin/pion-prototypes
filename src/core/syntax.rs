@@ -9,12 +9,8 @@ pub enum Expr<'core> {
     Error,
     Const(Const),
     Prim(Prim),
-    LocalVar {
-        var: RelativeVar,
-    },
-    MetaVar {
-        var: AbsoluteVar,
-    },
+    LocalVar(RelativeVar),
+    MetaVar(AbsoluteVar),
 
     Let {
         name: Option<Symbol>,
@@ -49,8 +45,8 @@ impl<'core> Expr<'core> {
 
     pub fn references_local(&self, var: RelativeVar) -> bool {
         match self {
-            Expr::LocalVar { var: v } => var == *v,
-            Expr::Error | Expr::Const(..) | Expr::Prim(..) | Expr::MetaVar { .. } => false,
+            Expr::LocalVar(v) => var == *v,
+            Expr::Error | Expr::Const(..) | Expr::Prim(..) | Expr::MetaVar(..) => false,
             Expr::Let {
                 r#type, init, body, ..
             } => {

@@ -39,14 +39,14 @@ impl<'core> Value<'core> {
 
     pub const fn local_var(var: AbsoluteVar) -> Self {
         Self::Neutral {
-            head: Head::LocalVar { var },
+            head: Head::LocalVar(var),
             spine: EcoVec::new(),
         }
     }
 
     pub const fn meta_var(var: AbsoluteVar) -> Self {
         Self::Neutral {
-            head: Head::MetaVar { var },
+            head: Head::MetaVar(var),
             spine: EcoVec::new(),
         }
     }
@@ -55,13 +55,13 @@ impl<'core> Value<'core> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Head {
     Prim(Prim),
-    LocalVar { var: AbsoluteVar },
-    MetaVar { var: AbsoluteVar },
+    LocalVar(AbsoluteVar),
+    MetaVar(AbsoluteVar),
 }
 
 #[derive(Debug, Clone)]
 pub enum Elim<'core> {
-    FunApp { arg: FunArg<Value<'core>> },
+    FunApp(FunArg<Value<'core>>),
     BoolCases(BoolCases<'core>),
 }
 
@@ -121,11 +121,11 @@ pub fn eval<'core>(
         Expr::Error => Value::Error,
         Expr::Const(r#const) => Value::Const(*r#const),
         Expr::Prim(prim) => Value::prim(*prim),
-        Expr::LocalVar { var, .. } => match local_values.get_relative(*var) {
+        Expr::LocalVar(var) => match local_values.get_relative(*var) {
             None => panic!("Unbound local var: {var:?}"),
             Some(value) => value.clone(),
         },
-        Expr::MetaVar { var } => match meta_values.get_absolute(*var) {
+        Expr::MetaVar(var) => match meta_values.get_absolute(*var) {
             None => panic!("Unbound meta var: {var:?}"),
             Some(None) => Value::meta_var(*var),
             Some(Some(value)) => value.clone(),
@@ -180,7 +180,7 @@ pub fn fun_app<'core>(
     match fun {
         Value::Error => Value::Error,
         Value::Neutral { head, mut spine } => {
-            spine.push(Elim::FunApp { arg });
+            spine.push(Elim::FunApp(arg));
             if let Some(value) = prim_app(bump, opts, meta_values, head, spine.as_slice()) {
                 return value;
             }
@@ -207,7 +207,7 @@ fn prim_app<'core>(
         ($($prim:ident($($args:pat)*)$(if $guard:expr)? => $rhs:expr),*,) => {
             #[allow(non_snake_case)]
             match (prim, spine) {
-                $((Prim::$prim, [$(Elim::FunApp { arg: FunArg{ plicity:_, expr:$args } },)*]) $(if $guard)? => Some($rhs),)*
+                $((Prim::$prim, [$(Elim::FunApp(FunArg{ plicity: _, expr:$args } ),)*]) $(if $guard)? => Some($rhs),)*
                 _ => None,
             }
         };
@@ -306,7 +306,7 @@ pub fn quote<'core>(
         Value::Neutral { head, spine } => {
             let head = quote_head(bump, head, local_len, meta_values);
             spine.iter().fold(head, |head, elim| match elim {
-                Elim::FunApp { arg } => {
+                Elim::FunApp(arg) => {
                     let arg_expr = quote(bump, local_len, meta_values, &arg.expr);
                     let (fun, arg_expr) = bump.alloc((head, arg_expr));
                     let (fun, arg_expr) = (fun as &_, arg_expr as &_);
@@ -346,13 +346,13 @@ fn quote_head<'core>(
 ) -> Expr<'core> {
     match head {
         Head::Prim(prim) => Expr::Prim(prim),
-        Head::LocalVar { var } => match local_len.absolute_to_relative(var) {
+        Head::LocalVar(var) => match local_len.absolute_to_relative(var) {
             None => panic!("Unbound local variable: {var:?}"),
-            Some(var) => Expr::LocalVar { var },
+            Some(var) => Expr::LocalVar(var),
         },
-        Head::MetaVar { var } => match meta_values.get_absolute(var) {
+        Head::MetaVar(var) => match meta_values.get_absolute(var) {
             Some(Some(value)) => quote(bump, local_len, meta_values, value),
-            Some(None) => Expr::MetaVar { var },
+            Some(None) => Expr::MetaVar(var),
             None => panic!("Unbound meta var: {var:?}"),
         },
     }
@@ -385,20 +385,20 @@ pub fn update_metas<'core>(
 ) -> Value<'core> {
     let mut value = value.clone();
     while let Value::Neutral {
-        head: Head::MetaVar { var },
+        head: Head::MetaVar(var),
         spine,
     } = value
     {
         match meta_values.get_absolute(var) {
             Some(Some(head)) => {
                 value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
-                    Elim::FunApp { arg } => fun_app(bump, opts, meta_values, head, arg),
+                    Elim::FunApp(arg) => fun_app(bump, opts, meta_values, head, arg),
                     Elim::BoolCases(cases) => apply_bool_elim(bump, opts, meta_values, cases, head),
                 });
             }
             Some(None) => {
                 return Value::Neutral {
-                    head: Head::MetaVar { var },
+                    head: Head::MetaVar(var),
                     spine,
                 }
             }
@@ -428,7 +428,7 @@ pub fn zonk<'core>(
         Expr::Error => Expr::Error,
         Expr::Const(r#const) => Expr::Const(*r#const),
         Expr::Prim(prim) => Expr::Prim(*prim),
-        Expr::LocalVar { var } => Expr::LocalVar { var: *var },
+        Expr::LocalVar(var) => Expr::LocalVar(*var),
 
         Expr::Let {
             name,
@@ -466,7 +466,7 @@ pub fn zonk<'core>(
             }
         }
 
-        Expr::MetaVar { .. } | Expr::FunApp { .. } | Expr::If { .. } => {
+        Expr::MetaVar(..) | Expr::FunApp { .. } | Expr::If { .. } => {
             match zonk_meta_var_spines(bump, local_values, meta_values, expr) {
                 Left(expr) => expr,
                 Right(value) => {
@@ -499,9 +499,9 @@ fn zonk_meta_var_spines<'core>(
 ) -> Either<Expr<'core>, Value<'core>> {
     let opts = EvalOpts::default();
     match expr {
-        Expr::MetaVar { var } => match meta_values.get_absolute(*var) {
+        Expr::MetaVar(var) => match meta_values.get_absolute(*var) {
             Some(Some(value)) => Right(value.clone()),
-            Some(None) => Left(Expr::MetaVar { var: *var }),
+            Some(None) => Left(Expr::MetaVar(*var)),
             None => panic!("Unbound meta var: {var:?}"),
         },
         Expr::FunApp { fun, arg } => {

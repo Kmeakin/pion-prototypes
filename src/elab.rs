@@ -195,13 +195,13 @@ where
         let var = self.meta_env.len().to_absolute();
         self.meta_env.push(source, r#type);
 
-        let mut expr = Expr::MetaVar { var };
+        let mut expr = Expr::MetaVar(var);
         for (var, info) in AbsoluteVar::iter().zip(self.local_env.infos.iter()) {
             match info {
                 LocalInfo::Let => {}
                 LocalInfo::Param => {
                     let var = self.local_env.len().absolute_to_relative(var).unwrap();
-                    let arg = Expr::LocalVar { var };
+                    let arg = Expr::LocalVar(var);
                     let (fun, arg) = self.bump.alloc((expr, arg));
                     let arg = FunArg::new(Plicity::Explicit, arg as &_);
                     expr = Expr::FunApp { fun, arg };
@@ -309,7 +309,7 @@ where
 
                 if let Some(var) = self.local_env.lookup(name) {
                     let r#type = self.local_env.types.get_relative(var).unwrap().clone();
-                    return Ok((Expr::LocalVar { var }, r#type));
+                    return Ok((Expr::LocalVar(var), r#type));
                 }
 
                 if let Ok(prim) = Prim::from_str(text) {
@@ -898,12 +898,8 @@ impl Prim {
         const TYPE: &Type<'static> = &Type::TYPE;
         const INT: &Type<'static> = &Type::INT;
 
-        const VAR1: Expr = Expr::LocalVar {
-            var: RelativeVar::new(1),
-        };
-        const VAR2: Expr = Expr::LocalVar {
-            var: RelativeVar::new(2),
-        };
+        const VAR1: Expr = Expr::LocalVar(RelativeVar::new(1));
+        const VAR2: Expr = Expr::LocalVar(RelativeVar::new(2));
 
         match self {
             // `Type : Type`
