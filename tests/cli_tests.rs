@@ -236,7 +236,7 @@ fn generalize() {
     check(
         "let id: forall (@A: Type) -> A -> A = fun x => x; id",
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (x : Type) (x : x) => x;
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
 id : forall (@A : Type) -> A -> A"#]],
     );
 }
@@ -246,7 +246,7 @@ fn specialize() {
     check(
         "let id: forall (@A: Type) -> A -> A = fun x => x; id 5",
         expect![[r#"
-let id : forall (@A : Type) -> A -> A = fun (x : Type) (x : x) => x;
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
 (id @Int 5) : Int"#]],
     );
 }

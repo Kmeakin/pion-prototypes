@@ -638,7 +638,6 @@ where
             } if surface_param.data.plicity.is_explicit()
                 && expected_param.plicity.is_implicit() =>
             {
-                let param = self.check_param(surface_param, expected_param.r#type)?;
                 let r#type = self.quote(expected_param.r#type);
 
                 let var = self.local_env.next_var();
@@ -655,7 +654,8 @@ where
                 self.local_env.pop();
 
                 let (r#type, body) = self.bump.alloc((r#type, body));
-                let param = FunParam::new(param.plicity, param.name, r#type as &_);
+                let param =
+                    FunParam::new(expected_param.plicity, expected_param.name, r#type as &_);
                 Ok(Expr::FunLit { param, body })
             }
             Value::FunType {
