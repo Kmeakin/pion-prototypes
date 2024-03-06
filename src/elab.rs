@@ -573,6 +573,11 @@ where
         );
         match surface_expr.data {
             surface::Expr::Error => Ok(Expr::Error),
+            surface::Expr::Hole => {
+                let range = surface_expr.range;
+                let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, expected);
+                Ok(expr)
+            }
             surface::Expr::Paren { expr } => self.check_expr(expr, &expected),
             surface::Expr::Let {
                 pat,
@@ -612,7 +617,6 @@ where
             // new expression variants are added
             surface::Expr::Const(..)
             | surface::Expr::LocalVar { .. }
-            | surface::Expr::Hole
             | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }
             | surface::Expr::FunType { .. }
