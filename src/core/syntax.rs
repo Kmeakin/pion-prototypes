@@ -1,5 +1,4 @@
-use std::str::FromStr;
-
+use super::prim::Prim;
 use crate::env::{AbsoluteVar, RelativeVar};
 use crate::plicity::Plicity;
 use crate::symbol::Symbol;
@@ -95,36 +94,6 @@ pub struct FunArg<T> {
 impl<T> FunArg<T> {
     pub const fn new(plicity: Plicity, expr: T) -> Self { Self { plicity, expr } }
 }
-
-macro_rules! prims {
-    ($($prim:ident),*) => {
-        #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-        #[allow(non_camel_case_types)]
-        pub enum Prim {
-            $($prim,)*
-        }
-
-        impl Prim {
-            pub const fn name(self) -> &'static str {
-                match self {
-                    $(Self::$prim => stringify!($prim),)*
-                }
-            }
-        }
-
-        impl FromStr for Prim {
-            type Err = ();
-            fn from_str(text: &str) -> Result<Self, Self::Err> {
-                match text {
-                    $(stringify!($prim) => Ok(Self::$prim),)*
-                    _ => Err(()),
-                }
-            }
-        }
-    };
-}
-
-prims![Type, Int, Bool, add, sub, mul, eq, ne, gt, lt, gte, lte, fix];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Const {

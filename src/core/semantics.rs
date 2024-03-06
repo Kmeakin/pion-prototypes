@@ -1,7 +1,8 @@
 use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 
-use super::syntax::{Const, Expr, FunArg, FunParam, Prim};
+use super::prim::Prim;
+use super::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::plicity::Plicity;
 
