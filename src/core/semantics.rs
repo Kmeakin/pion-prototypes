@@ -30,6 +30,7 @@ impl<'core> Value<'core> {
     pub const TYPE: Self = Self::prim(Prim::Type);
     pub const INT: Self = Self::prim(Prim::Int);
     pub const BOOL: Self = Self::prim(Prim::Bool);
+    pub const UNIT: Self = Self::prim(Prim::Unit);
 
     pub const fn prim(prim: Prim) -> Self {
         Self::Neutral {
@@ -219,6 +220,16 @@ fn prim_app<'core>(
         sub(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_sub(*y))),
         mul(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_mul(*y))),
 
+        // dhead @A @B (MKDPair @A @B a b) = a
+        // dtail @A @B (MKDPair @A @B a b) = b
+        dhead (_ _ Value::Neutral { head: Head::Prim(Prim::MkDPair), spine }) => {
+            let [Elim::FunApp(..), Elim::FunApp(..), Elim::FunApp(a), Elim::FunApp(..)] = spine.as_slice() else { return None };
+            a.expr.clone()
+        },
+        dtail (_ _ Value::Neutral { head: Head::Prim(Prim::MkDPair), spine }) => {
+            let [Elim::FunApp(..), Elim::FunApp(..), Elim::FunApp(..), Elim::FunApp(b)] = spine.as_slice() else { return None };
+            b.expr.clone()
+        },
         eq (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x == y)),
         ne (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x != y)),
         lt (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x < y)),

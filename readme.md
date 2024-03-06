@@ -22,6 +22,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [ ] termination checking
 
 * [ ] aggregate types
+    * [x] dependent pairs
     * [ ] record types
     * [ ] sum types
     * [ ] row types

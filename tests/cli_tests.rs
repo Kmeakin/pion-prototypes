@@ -331,3 +331,72 @@ fn fixpoint_parity() {
     );
     eval(&format!("{evenodd} true 3"), expect!["false : Bool"]);
 }
+
+#[test]
+fn dpairs() {
+    check(
+        "DPair",
+        expect!["DPair : forall (A : Type) -> (A -> Type) -> Type"],
+    );
+    check(
+        "MkDPair",
+        expect!["MkDPair : forall (@A : Type) (@B : A -> Type) (a : A) -> B a -> DPair A B"],
+    );
+    check(
+        "dhead",
+        expect!["dhead : forall (@A : Type) (@B : A -> Type) -> DPair A B -> A"],
+    );
+    check(
+        "dtail",
+        expect!["dtail : forall (@A : Type) (@B : A -> Type) (p : DPair A B) -> B (dhead @A @B p)"],
+    );
+}
+
+#[test]
+fn pairs() {
+    let pair_type = "fun A B => DPair A (fun _ => B)";
+    let mkpair = "fun @A @B a b => MkDPair @A @(fun _ => B) a b";
+    let head = "fun @A @B p => dhead @A @(fun _ => B) p";
+    let tail = "fun @A @B p => dtail @A @(fun _ => B) p";
+
+    check(
+        pair_type,
+        expect!["(fun (A : Type) (B : Type) => DPair A (fun (_ : A) => B)) : Type -> Type -> Type"],
+    );
+    check(
+        mkpair,
+        expect![
+            "(fun (@A : Type) (@B : Type) (a : A) (b : B) => MkDPair @A @(fun (_ : A) => B) a b) \
+             : forall (@A : Type) (@B : Type) -> A -> B -> DPair A (fun (_ : A) => B)"
+        ],
+    );
+    check(
+        head,
+        expect![
+            "(fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dhead @A @(fun (_ : \
+             A) => B) p) : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> A"
+        ],
+    );
+    check(
+        tail,
+        expect![
+            "(fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dtail @A @(fun (_ : \
+             A) => B) p) : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> B"
+        ],
+    );
+
+    eval(
+        &format!("let MKPair = {mkpair}; MKPair 1 false"),
+        expect![
+            "(MkDPair @Int @(fun (_ : Int) => Bool) 1 false) : DPair Int (fun (_ : Int) => Bool)"
+        ],
+    );
+    eval(
+        &format!("let MKPair = {mkpair}; let head = {head}; let p = MKPair 1 false; head p"),
+        expect!["1 : Int"],
+    );
+    eval(
+        &format!("let MKPair = {mkpair}; let tail = {tail}; let p = MKPair 1 false; tail p"),
+        expect!["false : Bool"],
+    );
+}

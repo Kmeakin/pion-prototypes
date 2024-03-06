@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use super::semantics::Type;
 use crate::core::semantics::Closure;
-use crate::core::syntax::{Expr, FunParam};
+use crate::core::syntax::{Expr, FunArg, FunParam};
 use crate::env::{RelativeVar, SharedEnv};
 use crate::plicity::Plicity;
 use crate::symbol::Symbol;
@@ -35,7 +35,14 @@ macro_rules! prims {
     };
 }
 
-prims![Type, Int, Bool, add, sub, mul, eq, ne, gt, lt, gte, lte, fix];
+prims! {
+    Type, Int, Bool,
+    Unit, MkUnit,
+    DPair, MkDPair, dhead, dtail,
+    add, sub, mul,
+    eq, ne, gt, lt, gte, lte,
+    fix
+}
 
 impl Prim {
     pub const fn r#type(self) -> Type<'static> {
@@ -44,14 +51,223 @@ impl Prim {
         const TYPE: &Type<'static> = &Type::TYPE;
         const INT: &Type<'static> = &Type::INT;
 
+        const VAR0: Expr = Expr::LocalVar(RelativeVar::new(0));
         const VAR1: Expr = Expr::LocalVar(RelativeVar::new(1));
         const VAR2: Expr = Expr::LocalVar(RelativeVar::new(2));
+        const VAR3: Expr = Expr::LocalVar(RelativeVar::new(3));
 
+        #[allow(clippy::match_same_arms)]
         match self {
             // `Type : Type`
             // `Int : Type`
             // `Bool : Type`
             Self::Type | Self::Int | Self::Bool => Type::TYPE,
+
+            // `Unit : Type`
+            // `MkUnit : Unit`
+            Self::Unit => Type::TYPE,
+            Self::MkUnit => Type::UNIT,
+
+            // DPair : forall (A : Type) -> (A -> Type) -> Type
+            Self::DPair => Type::FunType {
+                param: FunParam {
+                    plicity: Explicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &VAR0,
+                                },
+                                body: &Expr::TYPE,
+                            },
+                        },
+                        body: &Expr::TYPE,
+                    },
+                ),
+            },
+            // MkDPair : forall (@A : Type) (@B : A -> Type) (a : A) -> B a -> DPair A B
+            Self::MkDPair => Type::FunType {
+                param: FunParam {
+                    plicity: Plicity::Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Plicity::Implicit,
+                            name: Some(Symbol::B),
+                            r#type: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &VAR0,
+                                },
+                                body: &Expr::TYPE,
+                            },
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: Some(Symbol::a),
+                                r#type: &VAR1,
+                            },
+                            body: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &Expr::FunApp {
+                                        fun: &VAR1,
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR0,
+                                        },
+                                    },
+                                },
+                                body: &Expr::FunApp {
+                                    fun: &Expr::FunApp {
+                                        fun: &Expr::Prim(Self::DPair),
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR3,
+                                        },
+                                    },
+                                    arg: FunArg {
+                                        plicity: Explicit,
+                                        expr: &VAR2,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ),
+            },
+            // dhead : forall (@A: Type) (@B: A -> Type) -> DPair A B -> A
+            Self::dhead => Type::FunType {
+                param: FunParam {
+                    plicity: Plicity::Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Plicity::Implicit,
+                            name: Some(Symbol::B),
+                            r#type: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &VAR0,
+                                },
+                                body: &Expr::TYPE,
+                            },
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: None,
+                                r#type: &Expr::FunApp {
+                                    fun: &Expr::FunApp {
+                                        fun: &Expr::Prim(Self::DPair),
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR1,
+                                        },
+                                    },
+                                    arg: FunArg {
+                                        plicity: Explicit,
+                                        expr: &VAR0,
+                                    },
+                                },
+                            },
+                            body: &VAR2,
+                        },
+                    },
+                ),
+            },
+            // dtail : forall (@A: Type) (@B: A -> Type) -> (p : DPair A B) -> B (dhead @A @B p)
+            Self::dtail => Type::FunType {
+                param: FunParam {
+                    plicity: Plicity::Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::new(
+                    SharedEnv::new(),
+                    &Expr::FunType {
+                        param: FunParam {
+                            plicity: Plicity::Implicit,
+                            name: Some(Symbol::B),
+                            r#type: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &VAR0,
+                                },
+                                body: &Expr::TYPE,
+                            },
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: Some(Symbol::p),
+                                r#type: &Expr::FunApp {
+                                    fun: &Expr::FunApp {
+                                        fun: &Expr::Prim(Self::DPair),
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR1,
+                                        },
+                                    },
+                                    arg: FunArg {
+                                        plicity: Explicit,
+                                        expr: &VAR0,
+                                    },
+                                },
+                            },
+                            body: &Expr::FunApp {
+                                fun: &VAR1,
+                                arg: FunArg {
+                                    plicity: Explicit,
+                                    expr: &Expr::FunApp {
+                                        fun: &Expr::FunApp {
+                                            fun: &Expr::FunApp {
+                                                fun: &Expr::Prim(Self::dhead),
+                                                arg: FunArg {
+                                                    plicity: Plicity::Implicit,
+                                                    expr: &VAR2,
+                                                },
+                                            },
+                                            // @B
+                                            arg: FunArg {
+                                                plicity: Plicity::Implicit,
+                                                expr: &VAR1,
+                                            },
+                                        },
+                                        // p
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR0,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ),
+            },
 
             // `add : Int -> Int -> Int`
             // `sub : Int -> Int -> Int`
