@@ -98,6 +98,8 @@ impl<'core> Closure<'core> {
     pub const fn new(local_values: LocalValues<'core>, body: &'core Expr<'core>) -> Self {
         Self { local_values, body }
     }
+
+    pub const fn empty(body: &'core Expr<'core>) -> Self { Self::new(LocalValues::new(), body) }
 }
 
 pub type LocalValues<'core> = SharedEnv<Value<'core>>;
