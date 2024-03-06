@@ -147,17 +147,23 @@ mod tests {
     fn keywords() {
         #[rustfmt::skip]
         check(
-            "false forall fun let true",
+            "else false forall fun if let then true",
             &[
-                Token { kind: KwFalse,      range: range(0..5) },
-                Token { kind: Whitespace,   range: range(5..6) },
-                Token { kind: KwForall,     range: range(6..12) },
-                Token { kind: Whitespace,   range: range(12..13) },
-                Token { kind: KwFun,        range: range(13..16) },
-                Token { kind: Whitespace,   range: range(16..17) },
-                Token { kind: KwLet,        range: range(17..20) },
-                Token { kind: Whitespace,   range: range(20..21) },
-                Token { kind: KwTrue,       range: range(21..25) },
+                Token { kind: KwElse,       range: range(0..4) },
+                Token { kind: Whitespace,   range: range(4..5) },
+                Token { kind: KwFalse,      range: range(5..10) },
+                Token { kind: Whitespace,   range: range(10..11) },
+                Token { kind: KwForall,     range: range(11..17) },
+                Token { kind: Whitespace,   range: range(17..18) },
+                Token { kind: KwFun,        range: range(18..21) },
+                Token { kind: Whitespace,   range: range(21..22) },
+                Token { kind: KwIf,         range: range(22..24) },
+                Token { kind: Whitespace,   range: range(24..25) },
+                Token { kind: KwLet,        range: range(25..28) },
+                Token { kind: Whitespace,   range: range(28..29) },
+                Token { kind: KwThen,       range: range(29..33) },
+                Token { kind: Whitespace,   range: range(33..34) },
+                Token { kind: KwTrue,       range: range(34..38) },
             ],
         );
     }
