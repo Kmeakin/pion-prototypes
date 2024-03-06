@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::semantics::Type;
 use crate::core::semantics::Closure;
 use crate::core::syntax::{Expr, FunArg, FunParam};
@@ -21,14 +19,11 @@ macro_rules! prims {
                     $(Self::$prim => stringify!($prim),)*
                 }
             }
-        }
 
-        impl FromStr for Prim {
-            type Err = ();
-            fn from_str(text: &str) -> Result<Self, Self::Err> {
-                match text {
-                    $(stringify!($prim) => Ok(Self::$prim),)*
-                    _ => Err(()),
+            pub const fn from_symbol(sym: Symbol) -> Option<Self> {
+                match sym {
+                    $(Symbol::$prim => Some(Self::$prim),)*
+                    _ => None,
                 }
             }
         }

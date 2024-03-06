@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use text_size::TextRange;
 
@@ -306,14 +304,14 @@ where
             }
             surface::Expr::LocalVar => {
                 let text = &self.text[surface_expr.range];
-                let name = Symbol::intern(text);
+                let symbol = Symbol::intern(text);
 
-                if let Some(var) = self.local_env.lookup(name) {
+                if let Some(var) = self.local_env.lookup(symbol) {
                     let r#type = self.local_env.types.get_relative(var).unwrap().clone();
                     return Ok((Expr::LocalVar(var), r#type));
                 }
 
-                if let Ok(prim) = Prim::from_str(text) {
+                if let Some(prim) = Prim::from_symbol(symbol) {
                     let r#type = prim.r#type();
                     return Ok((Expr::Prim(prim), r#type));
                 }

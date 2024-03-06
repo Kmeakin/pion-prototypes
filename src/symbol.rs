@@ -53,6 +53,8 @@ symbols![
 
     // prim names
     Type, Bool, Int,
+    Unit, MkUnit,
+    DPair, MkDPair, dhead, dtail,
     add, sub, mul,
     eq, ne, lt, gt, lte, gte,
     fix
