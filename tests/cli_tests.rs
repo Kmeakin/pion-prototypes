@@ -279,23 +279,23 @@ fn if_then_else() {
 
 #[test]
 fn fixpoint_factorial() {
-    let fact = "fix (fun fact n => if eq n 0 then 1 else mul n (sub n 1))";
+    let fact = "fix (fun fact n => if eq n 0 then 1 else mul n (fact (sub n 1)))";
 
     check(
         fact,
         expect![
             "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
-             (sub n 1))) : Int -> Int"
+             (fact (sub n 1)))) : Int -> Int"
         ],
     );
     eval(
         fact,
         expect![
             "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
-             (sub n 1))) : Int -> Int"
+             (fact (sub n 1)))) : Int -> Int"
         ],
     );
-    eval(&format!("{fact} 5"), expect!["20 : Int"]);
+    eval(&format!("{fact} 5"), expect!["120 : Int"]);
 }
 
 #[test]
