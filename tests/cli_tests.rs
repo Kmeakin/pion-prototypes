@@ -8,7 +8,12 @@ const PION: &str = env!("CARGO_BIN_EXE_pion");
 fn check(expr: &str, mut expected: Expect) {
     let mut shell = std::process::Command::new("/bin/sh");
     let shell = shell.arg("-c");
-    let command = shell.arg(format!("{PION} check - <<< '{expr}'"));
+    let command = shell.arg(format!(
+        "\
+{PION} check - <<EOF
+{expr}
+EOF"
+    ));
     let output = command.output().unwrap();
 
     let output = {
@@ -31,7 +36,12 @@ fn check(expr: &str, mut expected: Expect) {
 fn eval(expr: &str, mut expected: Expect) {
     let mut shell = std::process::Command::new("/bin/sh");
     let shell = shell.arg("-c");
-    let command = shell.arg(format!("{PION} eval - <<< '{expr}'"));
+    let command = shell.arg(format!(
+        "\
+{PION} eval - <<EOF
+{expr}
+EOF"
+    ));
     let output = command.output().unwrap();
 
     let output = {
