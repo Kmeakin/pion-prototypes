@@ -398,45 +398,31 @@ where
                     &fun_type,
                 );
 
-                match fun_type {
-                    Value::Error => Ok((Expr::Error, Type::Error)),
-                    Value::FunType { param, .. } if arg.data.plicity != param.plicity => {
+                let (param, body) = match fun_type {
+                    Value::FunType { param, body } if arg.data.plicity == param.plicity => {
+                        (param, body)
+                    }
+                    Value::FunType { param, .. } => {
                         let fun_type = self.quote(&fun_type);
                         let fun_type = self.pretty(&fun_type);
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!(
-                                    "Applied {} argument when {} argument was expected",
-                                    arg.data.plicity.description(),
-                                    param.plicity.description()
-                                ))
-                                .with_labels(vec![
-                                    Label::primary(self.file_id, arg.range).with_message(format!(
-                                        "{} argument",
-                                        arg.data.plicity.description()
-                                    )),
-                                    Label::secondary(self.file_id, fun.range)
-                                        .with_message(format!("function has type {fun_type}")),
-                                ]),
-                        )?;
-                        Ok((Expr::Error, Type::Error))
+                        let diagnostic = Diagnostic::error()
+                            .with_message(format!(
+                                "Applied {} argument when {} argument was expected",
+                                arg.data.plicity.description(),
+                                param.plicity.description()
+                            ))
+                            .with_labels(vec![
+                                Label::primary(self.file_id, arg.range).with_message(format!(
+                                    "{} argument",
+                                    arg.data.plicity.description()
+                                )),
+                                Label::secondary(self.file_id, fun.range)
+                                    .with_message(format!("function has type {fun_type}")),
+                            ]);
+                        self.report_diagnostic(diagnostic)?;
+                        return Ok((Expr::Error, Type::Error));
                     }
-                    Value::FunType { param, body } => {
-                        let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
-                        let arg = self.eval(&arg_expr);
-                        let output_type = semantics::apply_closure(
-                            self.bump,
-                            EvalOpts::default(),
-                            &self.meta_env.values,
-                            body,
-                            arg,
-                        );
-
-                        let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
-                        let arg = FunArg::new(param.plicity, arg_expr as &_);
-                        let core_expr = Expr::FunApp { fun, arg };
-                        Ok((core_expr, output_type))
-                    }
+                    Value::Error => return Ok((Expr::Error, Type::Error)),
                     _ => {
                         let fun_type = self.quote(&fun_type);
                         let fun_type = self.pretty(&fun_type);
@@ -445,9 +431,24 @@ where
                                 .with_message(format!("Expected function, found `{fun_type}`"))
                                 .with_labels(vec![Label::primary(self.file_id, fun.range)]),
                         )?;
-                        Ok((Expr::Error, Type::Error))
+                        return Ok((Expr::Error, Type::Error));
                     }
-                }
+                };
+
+                let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
+                let arg = self.eval(&arg_expr);
+                let output_type = semantics::apply_closure(
+                    self.bump,
+                    EvalOpts::default(),
+                    &self.meta_env.values,
+                    body,
+                    arg,
+                );
+
+                let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
+                let arg = FunArg::new(param.plicity, arg_expr as &_);
+                let core_expr = Expr::FunApp { fun, arg };
+                Ok((core_expr, output_type))
             }
         }
     }
