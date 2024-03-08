@@ -336,31 +336,13 @@ where
                 let expr = self.check_expr(expr, &r#type)?;
                 Ok((expr, r#type))
             }
+            #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
                 pat,
                 r#type,
                 init,
                 body,
-            } => {
-                let (name, r#type) = self.synth_ann_pat(pat, r#type)?;
-                let r#type_expr = self.quote(&r#type);
-                let init_expr = self.check_expr(init, &r#type)?;
-                let init_value = self.eval(&init_expr);
-                let (body_expr, body_type) = {
-                    self.local_env.push_let(name, r#type, init_value);
-                    let (body_expr, body_type) = self.synth_expr(body)?;
-                    self.local_env.pop();
-                    (body_expr, body_type)
-                };
-                let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
-                let core_expr = Expr::Let {
-                    name,
-                    r#type,
-                    init,
-                    body,
-                };
-                Ok((core_expr, body_type))
-            }
+            } => self.elab_let(pat, r#type, init, body, |this, body| this.synth_expr(body)),
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL)?;
                 let (then, then_type) = self.synth_expr(then)?;
@@ -584,24 +566,11 @@ where
                 init,
                 body,
             } => {
-                let (name, r#type) = self.synth_ann_pat(pat, r#type)?;
-                let r#type_expr = self.quote(&r#type);
-                let init_expr = self.check_expr(init, &r#type)?;
-                let init_value = self.eval(&init_expr);
-                let body_expr = {
-                    self.local_env.push_let(name, r#type, init_value);
-                    let body_expr = self.check_expr(body, &expected)?;
-                    self.local_env.pop();
-                    body_expr
-                };
-                let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
-                let core_expr = Expr::Let {
-                    name,
-                    r#type,
-                    init,
-                    body,
-                };
-                Ok(core_expr)
+                let (expr, ()) = self.elab_let(pat, r#type, init, body, |this, body| {
+                    let body = this.check_expr(body, &expected)?;
+                    Ok((body, ()))
+                })?;
+                Ok(expr)
             }
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL)?;
@@ -695,6 +664,39 @@ where
                 Ok(expr)
             }
         }
+    }
+
+    fn elab_let<T>(
+        &mut self,
+        surface_pat: &'surface Located<surface::Pat<'surface>>,
+        surface_type: Option<&'surface Located<surface::Expr<'surface>>>,
+        surface_init: &'surface Located<surface::Expr<'surface>>,
+        surface_body: &'surface Located<surface::Expr<'surface>>,
+        mut elab_body: impl FnMut(
+            &mut Self,
+            &'surface Located<surface::Expr<'surface>>,
+        ) -> Result<(Expr<'core>, T), E>,
+    ) -> Result<(Expr<'core>, T), E> {
+        let (name, r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
+        let init_expr = self.check_expr(surface_init, &r#type)?;
+        let init_value = self.eval(&init_expr);
+
+        let r#type_expr = self.quote(&r#type);
+        let (body_expr, body_type) = {
+            self.local_env.push_let(name, r#type, init_value);
+            let (body_expr, body_type) = elab_body(self, surface_body)?;
+            self.local_env.pop();
+            (body_expr, body_type)
+        };
+
+        let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
+        let core_expr = Expr::Let {
+            name,
+            r#type,
+            init,
+            body,
+        };
+        Ok((core_expr, body_type))
     }
 
     fn synth_and_convert_expr(
