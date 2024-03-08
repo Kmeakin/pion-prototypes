@@ -344,6 +344,7 @@ where
                 init,
                 body,
             } => self.elab_let(pat, r#type, init, body, |this, body| this.synth_expr(body)),
+            #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
                 rec: surface::Rec::Rec,
                 pat,
