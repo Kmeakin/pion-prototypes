@@ -9,12 +9,14 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [x] `fun` expressions
     * [x] `forall` expressions
     * [x] function application expressions
+
 * [x] unification
     * [x] inferring types of unnanotated parameters
     * [x] hole expressions
     * [x] implicit arguments
       * [x] specialization
       * [x] generalization
+    * [ ] pruning
 
 * [ ] recursion
     * [x] `fix`
@@ -31,6 +33,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
 
 * [ ] pattern matching
     * [x] `if` expressions
+        * [ ] dependent `if` expressions
     * [ ] single-layer pattern matching over integers and booleans
     * [ ] multi-layer pattern matching compilation w/ coverage checking
 
