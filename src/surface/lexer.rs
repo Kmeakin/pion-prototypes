@@ -17,6 +17,7 @@ pub enum TokenKind {
     #[token("fun")]     KwFun,
     #[token("if")]      KwIf,
     #[token("let")]     KwLet,
+    #[token("rec")]     KwRec,
     #[token("then")]    KwThen,
     #[token("true")]    KwTrue,
 
@@ -57,6 +58,7 @@ impl fmt::Display for TokenKind {
             Self::KwFun => "keyword `fun`",
             Self::KwIf => "keyword `if`",
             Self::KwLet => "keyword `let`",
+            Self::KwRec => "keyword `rec`",
             Self::KwThen => "keyword `then`",
             Self::KwTrue => "keyword `true`",
             Self::LParen => "`(`",

@@ -372,7 +372,7 @@ fn quote_head<'core>(
     }
 }
 
-fn quote_fun<'core>(
+pub fn quote_fun<'core>(
     bump: &'core bumpalo::Bump,
     opts: EvalOpts,
     local_len: EnvLen,

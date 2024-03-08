@@ -18,7 +18,9 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
 
 * [ ] recursion
     * [x] `fix`
-    * [ ] `let rec`
+    * [x] `let rec`
+        * [x] single recursive value binding
+        * [ ] mutually recursive value bindings
     * [ ] termination checking
 
 * [ ] aggregate types

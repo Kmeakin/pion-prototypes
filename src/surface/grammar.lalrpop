@@ -1,7 +1,7 @@
 use text_size::{TextRange, TextSize};
 use codespan_reporting::diagnostic::Diagnostic;
 
-use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg};
+use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg, Rec};
 use crate::surface::LalrpopError;
 use crate::plicity::Plicity;
 
@@ -21,6 +21,7 @@ extern {
         "fun" => TokenKind::KwFun,
         "if" => TokenKind::KwIf,
         "let" => TokenKind::KwLet,
+        "rec" => TokenKind::KwRec,
         "then" => TokenKind::KwThen,
         "true" => TokenKind::KwTrue,
 
@@ -50,11 +51,11 @@ pub Expr: Located<Expr<'surface>> = {
 }
 
 LetExpr: Located<Expr<'surface>> = {
-    <start: @L> "let" <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => {
+    <start: @L> "let" <rec: Rec> <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
         let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
         let (pat, init, body) = bump.alloc((pat, init, body));
-        Located::new(range, Expr::Let { pat, r#type, init, body })
+        Located::new(range, Expr::Let { rec, pat, r#type, init, body })
     },
     <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
@@ -67,6 +68,11 @@ LetExpr: Located<Expr<'surface>> = {
         Located::new(range, Expr::Ann { expr, r#type })
     },
     FunExpr => <>,
+}
+
+Rec: Rec = {
+    () => Rec::Nonrec,
+    "rec" => Rec::Rec,
 }
 
 FunExpr: Located<Expr<'surface>> = {

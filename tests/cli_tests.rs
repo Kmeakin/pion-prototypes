@@ -468,3 +468,23 @@ even 2
         expect!["true : Bool"],
     );
 }
+
+#[test]
+fn letrec() {
+    check(
+        "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
+        expect![[r#"
+let fact : Int -> Int = fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n (fact (sub n 1)));
+fact : Int -> Int"#]],
+    );
+    eval(
+        "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
+        expect![
+            r#"(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#
+        ],
+    );
+    eval(
+        "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact 5",
+        expect!["120 : Int"],
+    );
+}

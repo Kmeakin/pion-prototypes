@@ -46,6 +46,7 @@ pub enum Expr<'surface> {
     },
 
     Let {
+        rec: Rec,
         pat: &'surface Located<Pat<'surface>>,
         r#type: Option<&'surface Located<Self>>,
         init: &'surface Located<Self>,
@@ -74,6 +75,12 @@ pub enum Expr<'surface> {
         fun: &'surface Located<Self>,
         arg: Located<FunArg<'surface>>,
     },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Rec {
+    Rec,
+    Nonrec,
 }
 
 #[derive(Debug, Copy, Clone)]

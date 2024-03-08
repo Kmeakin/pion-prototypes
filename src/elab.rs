@@ -338,11 +338,19 @@ where
             }
             #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
+                rec: surface::Rec::Nonrec,
                 pat,
                 r#type,
                 init,
                 body,
             } => self.elab_let(pat, r#type, init, body, |this, body| this.synth_expr(body)),
+            surface::Expr::Let {
+                rec: surface::Rec::Rec,
+                pat,
+                r#type,
+                init,
+                body,
+            } => self.elab_letrec(pat, r#type, init, body, |this, body| this.synth_expr(body)),
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL)?;
                 let (then, then_type) = self.synth_expr(then)?;
@@ -561,12 +569,26 @@ where
             }
             surface::Expr::Paren { expr } => self.check_expr(expr, &expected),
             surface::Expr::Let {
+                rec: surface::Rec::Nonrec,
                 pat,
                 r#type,
                 init,
                 body,
             } => {
                 let (expr, ()) = self.elab_let(pat, r#type, init, body, |this, body| {
+                    let body = this.check_expr(body, &expected)?;
+                    Ok((body, ()))
+                })?;
+                Ok(expr)
+            }
+            surface::Expr::Let {
+                rec: surface::Rec::Rec,
+                pat,
+                r#type,
+                init,
+                body,
+            } => {
+                let (expr, ()) = self.elab_letrec(pat, r#type, init, body, |this, body| {
                     let body = this.check_expr(body, &expected)?;
                     Ok((body, ()))
                 })?;
@@ -683,7 +705,101 @@ where
 
         let r#type_expr = self.quote(&r#type);
         let (body_expr, body_type) = {
-            self.local_env.push_let(name, r#type, init_value);
+            self.local_env.push_let(name, r#type.clone(), init_value);
+            let (body_expr, body_type) = elab_body(self, surface_body)?;
+            self.local_env.pop();
+            (body_expr, body_type)
+        };
+
+        let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
+        let core_expr = Expr::Let {
+            name,
+            r#type,
+            init,
+            body,
+        };
+        Ok((core_expr, body_type))
+    }
+
+    fn elab_letrec<T>(
+        &mut self,
+        surface_pat: &'surface Located<surface::Pat<'surface>>,
+        surface_type: Option<&'surface Located<surface::Expr<'surface>>>,
+        surface_init: &'surface Located<surface::Expr<'surface>>,
+        surface_body: &'surface Located<surface::Expr<'surface>>,
+        mut elab_body: impl FnMut(
+            &mut Self,
+            &'surface Located<surface::Expr<'surface>>,
+        ) -> Result<(Expr<'core>, T), E>,
+    ) -> Result<(Expr<'core>, T), E> {
+        let (name, mut r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
+
+        let init_expr = {
+            let var = self.local_env.next_var();
+            self.local_env.push_let(name, r#type.clone(), var);
+            let init_expr = self.check_expr(surface_init, &r#type)?;
+            self.local_env.pop();
+            init_expr
+        };
+
+        let r#type_expr = self.quote(&r#type);
+        let init_expr = match init_expr {
+            Expr::FunLit { .. } => {
+                let opts = EvalOpts::default();
+                r#type = semantics::update_metas(
+                    self.bump,
+                    EvalOpts::default(),
+                    &self.meta_env.values,
+                    &r#type,
+                );
+                let Value::FunType { param, body } = &r#type else {
+                    unreachable!()
+                };
+
+                let (param, output_type) = semantics::quote_fun(
+                    self.bump,
+                    opts,
+                    self.local_env.len(),
+                    &self.meta_env.values,
+                    *param,
+                    body.clone(),
+                );
+
+                let fix = &Expr::Prim(Prim::fix);
+                Expr::FunApp {
+                    fun: self.bump.alloc(Expr::FunApp {
+                        fun: self.bump.alloc(Expr::FunApp {
+                            fun: fix,
+                            arg: FunArg::new(Plicity::Implicit, param.r#type),
+                        }),
+                        arg: FunArg::new(Plicity::Implicit, output_type),
+                    }),
+                    arg: FunArg::new(
+                        Plicity::Explicit,
+                        self.bump.alloc(Expr::FunLit {
+                            param: FunParam::new(
+                                Plicity::Explicit,
+                                name,
+                                self.bump.alloc(r#type_expr),
+                            ),
+                            body: self.bump.alloc(init_expr),
+                        }),
+                    ),
+                }
+            }
+            Expr::Error => Expr::Error,
+            _ => {
+                let diagnostic = Diagnostic::error()
+                    .with_message("recursive bindings must be function literals")
+                    .with_labels(vec![Label::primary(self.file_id, surface_pat.range)]);
+                self.report_diagnostic(diagnostic)?;
+                Expr::Error
+            }
+        };
+
+        let (body_expr, body_type) = {
+            let init_value = self.eval(&init_expr);
+            self.local_env.push_let(name, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self, surface_body)?;
             self.local_env.pop();
             (body_expr, body_type)
