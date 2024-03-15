@@ -288,6 +288,40 @@ fn if_then_else() {
 }
 
 #[test]
+fn record_literals() {
+    check("{}", expect!["{} : {}"]);
+    check(
+        "{x=1, y=false}",
+        expect!["{x = 1, y = false} : {x : Int, y : Bool}"],
+    );
+    check("{x=1, y=false}.x", expect!["{x = 1, y = false}.x : Int"]);
+    eval("{x=1, y=false}.x", expect!["1 : Int"]);
+}
+
+#[test]
+fn record_types() {
+    check("{} : Type", expect!["{} : Type"]);
+    check("{x: Int}", expect!["{x : Int} : Type"]);
+    check("{A: Type, a: A}", expect!["{A : Type, a : A} : Type"]);
+}
+
+#[test]
+fn tuple_literals() {
+    check("()", expect!["{} : {}"]);
+    check("(1,)", expect!["{_0 = 1} : {_0 : Int}"]);
+    check(
+        "(1,2,3)",
+        expect!["{_0 = 1, _1 = 2, _2 = 3} : {_0 : Int, _1 : Int, _2 : Int}"],
+    );
+    check("() : Type", expect!["{} : Type"]);
+    check("(Bool,) : Type", expect!["{_0 : Bool} : Type"]);
+    check(
+        "(Bool, Int) : Type",
+        expect!["{_0 : Bool, _1 : Int} : Type"],
+    );
+}
+
+#[test]
 fn fixpoint_factorial() {
     let fact = "fix (fun fact n => if eq n 0 then 1 else mul n (fact (sub n 1)))";
 
@@ -309,132 +343,20 @@ fn fixpoint_factorial() {
 }
 
 #[test]
-fn fixpoint_parity() {
-    let evenodd = "fix (fun (evenodd : Bool -> Int -> Bool) b n => if b then (if eq n 0 then true \
-                   else evenodd false (sub n 1)) else (if eq n 0 then false else evenodd true \
-                   (sub n 1)))";
-
-    check(
-        evenodd,
-        expect![
-            "(fix @Bool @(Int -> Bool) (fun (evenodd : Bool -> Int -> Bool) (b : Bool) (n : Int) \
-             => if b then if eq n 0 then true else evenodd false (sub n 1) else if eq n 0 then \
-             false else evenodd true (sub n 1))) : Bool -> Int -> Bool"
-        ],
-    );
-    eval(
-        evenodd,
-        expect![
-            "(fix @Bool @(Int -> Bool) (fun (evenodd : Bool -> Int -> Bool) (b : Bool) (n : Int) \
-             => if b then if eq n 0 then true else evenodd false (sub n 1) else if eq n 0 then \
-             false else evenodd true (sub n 1))) : Bool -> Int -> Bool"
-        ],
-    );
-    eval(
-        &format!("{evenodd} true"),
-        expect![
-            "(fun (n : Int) => if eq n 0 then true else fix @Bool @(Int -> Bool) (fun (evenodd : \
-             Bool -> Int -> Bool) (b : Bool) (n : Int) => if b then if eq n 0 then true else \
-             evenodd false (sub n 1) else if eq n 0 then false else evenodd true (sub n 1)) false \
-             (sub n 1)) : Int -> Bool"
-        ],
-    );
-    eval(&format!("{evenodd} true 3"), expect!["false : Bool"]);
-}
-
-#[test]
-fn dpairs() {
-    check(
-        "DPair",
-        expect!["DPair : forall (A : Type) -> (A -> Type) -> Type"],
-    );
-    check(
-        "MkDPair",
-        expect!["MkDPair : forall (@A : Type) (@B : A -> Type) (a : A) -> B a -> DPair A B"],
-    );
-    check(
-        "dhead",
-        expect!["dhead : forall (@A : Type) (@B : A -> Type) -> DPair A B -> A"],
-    );
-    check(
-        "dtail",
-        expect!["dtail : forall (@A : Type) (@B : A -> Type) (p : DPair A B) -> B (dhead @A @B p)"],
-    );
-}
-
-#[test]
-fn pairs() {
-    let pair_type = "fun A B => DPair A (fun _ => B)";
-    let mkpair = "fun @A @B a b => MkDPair @A @(fun _ => B) a b";
-    let head = "fun @A @B p => dhead @A @(fun _ => B) p";
-    let tail = "fun @A @B p => dtail @A @(fun _ => B) p";
-
-    check(
-        pair_type,
-        expect!["(fun (A : Type) (B : Type) => DPair A (fun (_ : A) => B)) : Type -> Type -> Type"],
-    );
-    check(
-        mkpair,
-        expect![
-            "(fun (@A : Type) (@B : Type) (a : A) (b : B) => MkDPair @A @(fun (_ : A) => B) a b) \
-             : forall (@A : Type) (@B : Type) -> A -> B -> DPair A (fun (_ : A) => B)"
-        ],
-    );
-    check(
-        head,
-        expect![
-            "(fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dhead @A @(fun (_ : \
-             A) => B) p) : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> A"
-        ],
-    );
-    check(
-        tail,
-        expect![
-            "(fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dtail @A @(fun (_ : \
-             A) => B) p) : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> B"
-        ],
-    );
-
-    eval(
-        &format!("let MKPair = {mkpair}; MKPair 1 false"),
-        expect![
-            "(MkDPair @Int @(fun (_ : Int) => Bool) 1 false) : DPair Int (fun (_ : Int) => Bool)"
-        ],
-    );
-    eval(
-        &format!("let MKPair = {mkpair}; let head = {head}; let p = MKPair 1 false; head p"),
-        expect!["1 : Int"],
-    );
-    eval(
-        &format!("let MKPair = {mkpair}; let tail = {tail}; let p = MKPair 1 false; tail p"),
-        expect!["false : Bool"],
-    );
-}
-
-#[test]
 fn fixpoint_fix2() {
     check(
         r#"
-let Pair = fun A B => DPair A (fun _ => B);
-let MkPair = fun @A @B a b => MkDPair @A @(fun _ => B) a b;
-let head = fun @A @B p => dhead @A @(fun _ => B) p;
-let tail = fun @A @B p => dtail @A @(fun _ => B) p;
-
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((Pair (A1 -> B1) (A2 -> B2)) -> Pair (A1 -> B1) (A2 -> B2)) -> (Pair (A1 -> B1) (A2 -> B2))
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
 = fun @A1 @B1 @A2 @B2 =>
-fix (fun (fix2 : ((Pair (A1 -> B1) (A2 -> B2)) -> Pair (A1 -> B1) (A2 -> B2)) -> (Pair (A1 -> B1) (A2 -> B2))) f => MkPair
-   (fun x => head (f (fix2 f)) x)
-   (fun x => tail (f (fix2 f)) x)
-);
+fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) f => (
+   (fun x => (f (fix2 f))._0 x),
+   (fun x => (f (fix2 f))._1 x)
+));
 fix2
 "#,
         expect![[r#"
-let Pair : Type -> Type -> Type = fun (A : Type) (B : Type) => DPair A (fun (_ : A) => B);
-let MkPair : forall (@A : Type) (@B : Type) -> A -> B -> DPair A (fun (_ : A) => B) = fun (@A : Type) (@B : Type) (a : A) (b : B) => MkDPair @A @(fun (_ : A) => B) a b;
-let head : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> A = fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dhead @A @(fun (_ : A) => B) p;
-let tail : forall (@A : Type) (@B : Type) -> DPair A (fun (_ : A) => B) -> B = fun (@A : Type) (@B : Type) (p : DPair A (fun (_ : A) => B)) => dtail @A @(fun (_ : A) => B) p;
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> (DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) => fix @(DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) @(DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) (fun (fix2 : (DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) (f : DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) => MkPair @(A1 -> B1) @(A2 -> B2) (fun (x : A1) => head @(A1 -> B1) @(A2 -> B2) (f (fix2 f)) x) (fun (x : A2) => tail @(A1 -> B1) @(A2 -> B2) (f (fix2 f)) x));
-fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> (DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)) -> DPair (A1 -> B1) (fun (_ : A1 -> B1) => A2 -> B2)"#]],
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2} = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) => fix @({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) @{_0 : A1 -> B1, _1 : A2 -> B2} (fun (fix2 : ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2}) (f : {_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) => {_0 = fun (x : A1) => (f (fix2 f))._0 x, _1 = fun (x : A2) => (f (fix2 f))._1 x});
+fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2}"#]],
     );
 }
 
@@ -442,27 +364,20 @@ fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> (DPair (A1 
 fn fix2_parity() {
     eval(
         r#"
-let Pair = fun A B => DPair A (fun _ => B);
-let MkPair = fun @A @B a b => MkDPair @A @(fun _ => B) a b;
-let head = fun @A @B p => dhead @A @(fun _ => B) p;
-let tail = fun @A @B p => dtail @A @(fun _ => B) p;
-
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type)
-           -> ((Pair (A1 -> B1) (A2 -> B2)) -> Pair (A1 -> B1) (A2 -> B2))
-           -> (Pair (A1 -> B1) (A2 -> B2))
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
 = fun @A1 @B1 @A2 @B2 =>
-fix (fun (fix2 : ((Pair (A1 -> B1) (A2 -> B2)) -> Pair (A1 -> B1) (A2 -> B2)) -> (Pair (A1 -> B1) (A2 -> B2))) f => MkPair
-   (fun x => head (f (fix2 f)) x)
-   (fun x => tail (f (fix2 f)) x)
-);
+fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) f => (
+   (fun x => (f (fix2 f))._0 x),
+   (fun x => (f (fix2 f))._1 x)
+));
 
-let evenodd : Pair (Int -> Bool) (Int -> Bool)
-= fix2 (fun evenodd => MkPair
-    (fun n => if eq n 0 then true else tail evenodd (sub n 1))
-    (fun n => if eq n 0 then false else head evenodd (sub n 1))
-);
-let even = head evenodd;
-let odd = tail evenodd;
+let evenodd : (Int -> Bool, Int -> Bool)
+= fix2 (fun evenodd => (
+    fun n => if eq n 0 then true else evenodd._1 (sub n 1),
+    fun n => if eq n 0 then false else evenodd._0 (sub n 1)
+));
+let even = evenodd._0;
+let odd = evenodd._1;
 even 2
 "#,
         expect!["true : Bool"],

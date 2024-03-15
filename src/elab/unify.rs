@@ -2,6 +2,7 @@ use crate::core::semantics::{self, Closure, Elim, EvalOpts, Head, MetaValues, Va
 use crate::core::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use crate::plicity::Plicity;
+use crate::slice_vec::SliceVec;
 
 /// Unification context.
 pub struct UnifyCtx<'core, 'env> {
@@ -77,6 +78,13 @@ impl PartialRenaming {
     fn get_as_relative(&self, source_var: AbsoluteVar) -> Option<RelativeVar> {
         let target_var = self.get_as_absolute(source_var)?;
         Some(self.target.absolute_to_relative(target_var).unwrap())
+    }
+
+    fn len(&self) -> (EnvLen, EnvLen) { (self.source.len(), self.target) }
+
+    fn truncate(&mut self, (source_len, target_len): (EnvLen, EnvLen)) {
+        self.source.truncate(source_len);
+        self.target.truncate(target_len);
     }
 }
 
@@ -163,6 +171,74 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 result
             }
 
+            (Value::RecordType(mut left_telescope), Value::RecordType(mut right_telescope)) => {
+                if !crate::slice_eq_by_key(
+                    left_telescope.fields,
+                    right_telescope.fields,
+                    |(field, _)| *field,
+                ) {
+                    return Err(UnifyError::Mismatch);
+                }
+
+                let local_len = self.local_env;
+
+                while let Some((
+                    (_, left_value, left_update_telescope),
+                    (_, right_value, right_update_telescope),
+                )) = Option::zip(
+                    semantics::split_telescope(
+                        self.bump,
+                        opts,
+                        self.meta_values,
+                        &mut left_telescope,
+                    ),
+                    semantics::split_telescope(
+                        self.bump,
+                        opts,
+                        self.meta_values,
+                        &mut right_telescope,
+                    ),
+                ) {
+                    if let Err(error) = self.unify(&left_value, &right_value) {
+                        self.local_env.truncate(local_len);
+                        return Err(error);
+                    }
+
+                    let left_var = Value::local_var(self.local_env.to_absolute());
+                    let right_var = Value::local_var(self.local_env.to_absolute());
+                    left_update_telescope(left_var);
+                    right_update_telescope(right_var);
+                    self.local_env.push();
+                }
+
+                self.local_env.truncate(local_len);
+
+                Ok(())
+            }
+
+            (Value::RecordLit(left_fields), Value::RecordLit(right_fields)) => {
+                if !crate::slice_eq_by_key(left_fields, right_fields, |(field, _)| *field) {
+                    return Err(UnifyError::Mismatch);
+                }
+
+                for ((_, left), (_, right)) in left_fields.iter().zip(right_fields.iter()) {
+                    self.unify(left, right)?;
+                }
+
+                Ok(())
+            }
+
+            // Unify a record literal with a value, using eta-conversion:
+            // `{ x = r.x, y = r.y, .. } ?= r`
+            (Value::RecordLit(fields), value) | (value, Value::RecordLit(fields)) => {
+                for (name, scrut) in fields {
+                    let field_value = semantics::record_proj(scrut.clone(), *name);
+                    self.unify(&value, &field_value)?;
+                }
+
+                Ok(())
+            }
+
             // One of the values has a metavariable at its head, so we
             // attempt to solve it using pattern unification.
             (
@@ -237,6 +313,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     );
                     self.unify(&left_else, &right_else)?;
                 }
+                (Elim::RecordProj(left_field), Elim::RecordProj(right_field))
+                    if left_field == right_field => {}
                 _ => return Err(UnifyError::Mismatch),
             }
         }
@@ -329,6 +407,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     }
                 }
                 Elim::BoolCases(..) => return Err(SpineError::BoolCases),
+                Elim::RecordProj(_) => return Err(SpineError::RecordProj),
             }
         }
         Ok(())
@@ -342,7 +421,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 param: FunParam::new(Plicity::Explicit, None, &Expr::Error),
                 body: self.bump.alloc(expr),
             },
-            Elim::BoolCases(..) => unreachable!("should have been caught by `init_renaming`"),
+            Elim::BoolCases(..) | Elim::RecordProj(_) => {
+                unreachable!("should have been caught by `init_renaming`")
+            }
         })
     }
 
@@ -383,6 +464,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let arg = FunArg::new(arg.plicity, arg_expr as &_);
                         Ok(Expr::FunApp { fun, arg })
                     }
+                    Elim::RecordProj(name) => Ok(Expr::RecordProj(self.bump.alloc(head), *name)),
                     Elim::BoolCases(cases) => {
                         let then = semantics::apply_bool_elim(
                             self.bump,
@@ -414,6 +496,39 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             Value::FunLit { param, body } => {
                 let (param, body) = self.rename_fun(meta_var, param, body)?;
                 Ok(Expr::FunLit { param, body })
+            }
+            Value::RecordType(telescope) => {
+                let initial_renaming_len = self.renaming.len();
+                let mut telescope = telescope;
+                let mut expr_fields = SliceVec::new(self.bump, telescope.len());
+
+                while let Some((name, value, update_telescope)) =
+                    semantics::split_telescope(self.bump, opts, self.meta_values, &mut telescope)
+                {
+                    match self.rename(meta_var, &value) {
+                        Ok(expr) => {
+                            expr_fields.push((name, expr));
+                            let source_var = self.renaming.next_local_var();
+                            update_telescope(source_var);
+                            self.renaming.push_local();
+                        }
+                        Err(error) => {
+                            self.renaming.truncate(initial_renaming_len);
+                            return Err(error);
+                        }
+                    }
+                }
+
+                self.renaming.truncate(initial_renaming_len);
+                Ok(Expr::RecordType(expr_fields.into()))
+            }
+            Value::RecordLit(value_fields) => {
+                let mut expr_fields = SliceVec::new(self.bump, value_fields.len());
+                for (name, value) in value_fields {
+                    let expr = self.rename(meta_var, value)?;
+                    expr_fields.push((*name, expr));
+                }
+                Ok(Expr::RecordLit(expr_fields.into()))
             }
         }
     }
@@ -513,6 +628,7 @@ pub enum SpineError {
     /// variable.
     NonLocalFunApp,
     BoolCases,
+    RecordProj,
 }
 
 /// An error that occurred when renaming the solution.
