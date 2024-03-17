@@ -39,7 +39,7 @@ macro_rules! symbols {
 #[rustfmt::skip]
 symbols![
     // keywords
-    r#false, r#forall, r#fun, r#let, r#true,
+    r#else, r#false, r#forall, r#fun, r#if, r#let, r#rec, r#then, r#true,
 
     // alphabet
     a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
