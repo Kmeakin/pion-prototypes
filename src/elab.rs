@@ -540,7 +540,7 @@ where
                                 return Ok((expr, r#type));
                             }
 
-                            let projected = semantics::record_proj(scrut_value.clone(), name.data);
+                            let projected = semantics::record_proj(scrut_value.clone(), n);
                             update_telescope(projected);
                         }
 

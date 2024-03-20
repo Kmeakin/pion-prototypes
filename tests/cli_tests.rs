@@ -296,6 +296,7 @@ fn record_literals() {
     );
     check("{x=1, y=false}.x", expect!["{x = 1, y = false}.x : Int"]);
     eval("{x=1, y=false}.x", expect!["1 : Int"]);
+    check("({A = Int, a = 5} : {A : Type, a : A}).a", expect!["{A = Int, a = 5}.a : Int"]);
 }
 
 #[test]
