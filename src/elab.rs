@@ -464,7 +464,7 @@ where
 
                 for (index, surface_expr) in surface_exprs.iter().enumerate() {
                     let (expr, r#type) = self.synth_expr(surface_expr)?;
-                    let name = Symbol::tuple_index(index as u32);
+                    let name = Symbol::tuple_index(index);
                     expr_fields.push((name, expr));
                     type_fields.push((name, self.quote_offset(&r#type, index)));
                 }
@@ -726,7 +726,7 @@ where
                 let len = self.local_env.len();
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());
                 for (index, expr) in surface_exprs.iter().enumerate() {
-                    let name = Symbol::tuple_index(index as u32);
+                    let name = Symbol::tuple_index(index);
                     let r#type = self.check_expr_is_type(expr)?;
                     let r#type_value = self.eval(&r#type);
                     self.local_env.push_param(None, type_value);

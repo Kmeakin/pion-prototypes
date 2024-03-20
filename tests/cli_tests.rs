@@ -289,7 +289,7 @@ fn if_then_else() {
 
 #[test]
 fn record_literals() {
-    check("{}", expect!["{} : {}"]);
+    check("{}", expect!["() : ()"]);
     check(
         "{x=1, y=false}",
         expect!["{x = 1, y = false} : {x : Int, y : Bool}"],
@@ -301,24 +301,24 @@ fn record_literals() {
 
 #[test]
 fn record_types() {
-    check("{} : Type", expect!["{} : Type"]);
+    check("{} : Type", expect!["() : Type"]);
     check("{x: Int}", expect!["{x : Int} : Type"]);
     check("{A: Type, a: A}", expect!["{A : Type, a : A} : Type"]);
 }
 
 #[test]
 fn tuple_literals() {
-    check("()", expect!["{} : {}"]);
-    check("(1,)", expect!["{_0 = 1} : {_0 : Int}"]);
+    check("()", expect!["() : ()"]);
+    check("(1,)", expect!["(1,) : (Int,)"]);
     check(
         "(1,2,3)",
-        expect!["{_0 = 1, _1 = 2, _2 = 3} : {_0 : Int, _1 : Int, _2 : Int}"],
+        expect!["(1, 2, 3) : (Int, Int, Int)"],
     );
-    check("() : Type", expect!["{} : Type"]);
-    check("(Bool,) : Type", expect!["{_0 : Bool} : Type"]);
+    check("() : Type", expect!["() : Type"]);
+    check("(Bool,) : Type", expect!["(Bool,) : Type"]);
     check(
         "(Bool, Int) : Type",
-        expect!["{_0 : Bool, _1 : Int} : Type"],
+        expect!["(Bool, Int) : Type"],
     );
 }
 
@@ -356,8 +356,8 @@ fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2
 fix2
 "#,
         expect![[r#"
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2} = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) => fix @({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) @{_0 : A1 -> B1, _1 : A2 -> B2} (fun (fix2 : ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2}) (f : {_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) => {_0 = fun (x : A1) => (f (fix2 f))._0 x, _1 = fun (x : A2) => (f (fix2 f))._1 x});
-fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ({_0 : A1 -> B1, _1 : A2 -> B2} -> {_0 : A1 -> B1, _1 : A2 -> B2}) -> {_0 : A1 -> B1, _1 : A2 -> B2}"#]],
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2) = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) => fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1, A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) => (fun (x : A1) => (f (fix2 f))._0 x, fun (x : A2) => (f (fix2 f))._1 x));
+fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)"#]],
     );
 }
 

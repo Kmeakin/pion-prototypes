@@ -86,9 +86,9 @@ impl Symbol {
         )
     }
 
-    pub fn tuple_index(index: u32) -> Self {
+    pub fn tuple_index(index: usize) -> Self {
         if index <= 32 {
-            Self::from_u32(Self::_0.as_u32() + index)
+            Self::from_u32(Self::_0.as_u32() + index as u32)
         } else {
             Self::intern(format!("_{index}"))
         }
@@ -111,4 +111,10 @@ impl fmt::Debug for Symbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.as_str().fmt(f) }
+}
+
+pub fn are_tuple_field_names(names: impl Iterator<Item = Symbol>) -> bool {
+    names
+        .enumerate()
+        .all(|(index, name)| name == Symbol::tuple_index(index))
 }

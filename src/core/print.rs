@@ -3,7 +3,7 @@ use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 use super::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::{RelativeVar, UniqueEnv};
 use crate::plicity::Plicity;
-use crate::symbol::Symbol;
+use crate::symbol::{self, Symbol};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
@@ -249,6 +249,39 @@ impl<'bump> Printer<'bump> {
                 fun.append(self.space()).append(arg)
             }
             Expr::Prim(prim) => self.text(prim.name()),
+            Expr::RecordType(type_fields)
+                // TODO: check that subsequent fields do not depend on previous fields
+                if symbol::are_tuple_field_names(type_fields.iter().map(|(n, _)| *n)) =>
+            {
+                if type_fields.len() == 1 {
+                    let expr = self.expr_prec(names, &type_fields[0].1, Prec::MAX);
+                    self.text("(").append(expr).append(",)")
+                } else {
+                    let names_len = names.len();
+                    let elems = type_fields.iter().map(|(_, expr)| {
+                        let field = self.expr_prec(names, expr, Prec::MAX);
+                        names.push(None);
+                        field
+                    });
+                    let elems = self.intersperse(elems, self.text(", "));
+                    names.truncate(names_len);
+                    self.text("(").append(elems).append(")")
+                }
+            }
+            Expr::RecordLit(expr_fields)
+                if symbol::are_tuple_field_names(expr_fields.iter().map(|(n, _)| *n)) =>
+            {
+                if expr_fields.len() == 1 {
+                    let expr = self.expr_prec(names, &expr_fields[0].1, Prec::MAX);
+                    self.text("(").append(expr).append(",)")
+                } else {
+                    let elems = expr_fields
+                        .iter()
+                        .map(|(_, expr)| self.expr_prec(names, expr, Prec::MAX));
+                    let elems = self.intersperse(elems, self.text(", "));
+                    self.text("(").append(elems).append(")")
+                }
+            }
             Expr::RecordType(type_fields) => {
                 let names_len = names.len();
                 let type_fields = type_fields.iter().map(|(name, r#type)| {
@@ -264,6 +297,7 @@ impl<'bump> Printer<'bump> {
                 names.truncate(names_len);
                 self.text("{").append(type_fields).append("}")
             }
+
             Expr::RecordLit(expr_fields) => {
                 let expr_fields = expr_fields.iter().map(|(name, expr)| {
                     self.name(Some(*name)).append(" = ").append(self.expr_prec(
