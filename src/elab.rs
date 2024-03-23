@@ -220,67 +220,41 @@ where
 
     fn push_unsolved_type(&mut self, source: MetaSource) -> Value<'core> {
         let expr = self.push_unsolved_expr(source, Value::TYPE);
-        self.eval(&expr)
+        self.eval_env().eval(&expr)
     }
 
-    pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
-        semantics::eval(
+    pub fn elim_env(&mut self) -> semantics::ElimEnv<'core, '_> {
+        semantics::ElimEnv::new(self.bump, EvalOpts::default(), &self.meta_env.values)
+    }
+
+    pub fn eval_env(&mut self) -> semantics::EvalEnv<'core, '_> {
+        semantics::EvalEnv::new(
             self.bump,
             EvalOpts::default(),
             &mut self.local_env.values,
             &self.meta_env.values,
-            expr,
         )
     }
 
-    pub fn quote(&mut self, value: &Value<'core>) -> Expr<'core> {
-        semantics::quote(
-            self.bump,
-            self.local_env.values.len(),
-            &self.meta_env.values,
-            value,
-        )
+    pub fn quote_env(&self) -> semantics::QuoteEnv<'core, '_> {
+        semantics::QuoteEnv::new(self.bump, self.local_env.len(), &self.meta_env.values)
     }
 
-    pub fn quote_offset(&mut self, value: &Value<'core>, offset: usize) -> Expr<'core> {
-        semantics::quote(
-            self.bump,
-            self.local_env.values.len() + EnvLen::from(offset),
-            &self.meta_env.values,
-            value,
-        )
+    pub fn zonk_env(&mut self) -> semantics::ZonkEnv<'core, '_> {
+        semantics::ZonkEnv::new(self.bump, &mut self.local_env.values, &self.meta_env.values)
     }
 
-    pub fn normalize(&mut self, expr: &Expr<'core>) -> Expr<'core> {
-        semantics::normalize(
-            self.bump,
-            &mut self.local_env.values,
-            &self.meta_env.values,
-            expr,
-        )
-    }
-
-    pub fn zonk(&mut self, expr: &Expr<'core>) -> Expr<'core> {
-        semantics::zonk(
-            self.bump,
-            &mut self.local_env.values,
-            &self.meta_env.values,
-            expr,
-        )
-    }
-
-    pub fn unify(&mut self, left: &Value<'core>, right: &Value<'core>) -> Result<(), UnifyError> {
-        let mut ctx = UnifyCtx::new(
+    pub fn unify_env(&mut self) -> UnifyCtx<'core, '_> {
+        UnifyCtx::new(
             self.bump,
             &mut self.renaming,
             self.local_env.len(),
             &mut self.meta_env.values,
-        );
-        ctx.unify(left, right)
+        )
     }
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
-        let expr = self.zonk(expr);
+        let expr = self.zonk_env().zonk(expr);
         let printer =
             crate::core::print::Printer::new(self.bump, crate::core::print::Config::default());
         let doc = printer.expr(&mut self.local_env.names, &expr).into_doc();
@@ -349,7 +323,7 @@ where
             surface::Expr::Paren { expr } => self.synth_expr(expr),
             surface::Expr::Ann { expr, r#type } => {
                 let r#type = self.check_expr_is_type(r#type)?;
-                let r#type = self.eval(&r#type);
+                let r#type = self.eval_env().eval(&r#type);
                 let expr = self.check_expr(expr, &r#type)?;
                 Ok((expr, r#type))
             }
@@ -379,7 +353,7 @@ where
             surface::Expr::FunArrow { plicity, lhs, rhs } => {
                 let param_type = self.check_expr_is_type(lhs)?;
                 let body = {
-                    let param_type_value = self.eval(&param_type);
+                    let param_type_value = self.eval_env().eval(&param_type);
                     self.local_env.push_param(None, param_type_value);
                     let body = self.check_expr_is_type(rhs)?;
                     self.local_env.pop();
@@ -399,19 +373,14 @@ where
                 if arg.data.plicity == Plicity::Explicit {
                     (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
                 }
-                let fun_type = semantics::update_metas(
-                    self.bump,
-                    EvalOpts::default(),
-                    &self.meta_env.values,
-                    &fun_type,
-                );
+                let fun_type = self.elim_env().update_metas(&fun_type);
 
                 let (param, body) = match fun_type {
                     Value::FunType { param, body } if arg.data.plicity == param.plicity => {
                         (param, body)
                     }
                     Value::FunType { param, .. } => {
-                        let fun_type = self.quote(&fun_type);
+                        let fun_type = self.quote_env().quote(&fun_type);
                         let fun_type = self.pretty(&fun_type);
                         let diagnostic = Diagnostic::error()
                             .with_message(format!(
@@ -432,7 +401,7 @@ where
                     }
                     Value::Error => return Ok((Expr::Error, Type::Error)),
                     _ => {
-                        let fun_type = self.quote(&fun_type);
+                        let fun_type = self.quote_env().quote(&fun_type);
                         let fun_type = self.pretty(&fun_type);
                         self.report_diagnostic(
                             Diagnostic::error()
@@ -444,14 +413,8 @@ where
                 };
 
                 let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
-                let arg = self.eval(&arg_expr);
-                let output_type = semantics::apply_closure(
-                    self.bump,
-                    EvalOpts::default(),
-                    &self.meta_env.values,
-                    body,
-                    arg,
-                );
+                let arg = self.eval_env().eval(&arg_expr);
+                let output_type = self.elim_env().apply_closure(body, arg);
 
                 let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
                 let arg = FunArg::new(param.plicity, arg_expr as &_);
@@ -466,7 +429,7 @@ where
                     let (expr, r#type) = self.synth_expr(surface_expr)?;
                     let name = Symbol::tuple_index(index);
                     expr_fields.push((name, expr));
-                    type_fields.push((name, self.quote_offset(&r#type, index)));
+                    type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
@@ -482,7 +445,7 @@ where
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     let r#type = self.check_expr_is_type(&surface_field.data.r#type)?;
-                    let r#type_value = self.eval(&r#type);
+                    let r#type_value = self.eval_env().eval(&r#type);
                     type_fields.push((name, r#type));
                     self.local_env.push_param(Some(name), r#type_value);
                 }
@@ -498,7 +461,7 @@ where
                     let (expr, r#type) = self.synth_expr(&surface_field.data.expr)?;
                     let name = surface_field.data.name.data;
                     expr_fields.push((name, expr));
-                    type_fields.push((name, self.quote_offset(&r#type, index)));
+                    type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
@@ -510,12 +473,7 @@ where
             surface::Expr::RecordProj { scrut, name } => {
                 let (scrut_expr, scrut_type) = self.synth_expr(scrut)?;
 
-                let scrut_type = semantics::update_metas(
-                    self.bump,
-                    EvalOpts::default(),
-                    &self.meta_env.values,
-                    &scrut_type,
-                );
+                let scrut_type = self.elim_env().update_metas(&scrut_type);
 
                 match scrut_type {
                     Value::RecordType(mut telescope) => {
@@ -528,19 +486,16 @@ where
                             return Ok((Expr::Error, Type::Error));
                         };
 
-                        let scrut_value = self.eval(&scrut_expr);
-                        while let Some((n, r#type, update_telescope)) = semantics::split_telescope(
-                            self.bump,
-                            EvalOpts::default(),
-                            &self.meta_env.values,
-                            &mut telescope,
-                        ) {
+                        let scrut_value = self.eval_env().eval(&scrut_expr);
+                        while let Some((n, r#type, update_telescope)) =
+                            self.elim_env().split_telescope(&mut telescope)
+                        {
                             if n == name.data {
                                 let expr = Expr::RecordProj(self.bump.alloc(scrut_expr), name.data);
                                 return Ok((expr, r#type));
                             }
 
-                            let projected = semantics::record_proj(scrut_value.clone(), n);
+                            let projected = self.elim_env().record_proj(scrut_value.clone(), n);
                             update_telescope(projected);
                         }
 
@@ -548,7 +503,7 @@ where
                     }
                     Value::Error => Ok((Expr::Error, Type::Error)),
                     _ => {
-                        let scrut_type = self.quote(&scrut_type);
+                        let scrut_type = self.quote_env().quote(&scrut_type);
                         let scrut_type = self.pretty(&scrut_type);
                         self.report_diagnostic(
                             Diagnostic::error()
@@ -571,12 +526,7 @@ where
         mut r#type: Type<'core>,
     ) -> (Expr<'core>, Type<'core>) {
         loop {
-            r#type = semantics::update_metas(
-                self.bump,
-                EvalOpts::default(),
-                &self.meta_env.values,
-                &r#type,
-            );
+            r#type = self.elim_env().update_metas(&r#type);
             match r#type {
                 Value::FunType { param, body } if param.plicity.is_implicit() => {
                     let source = MetaSource::ImplicitArg {
@@ -584,19 +534,13 @@ where
                         name: param.name,
                     };
                     let arg_expr = self.push_unsolved_expr(source, param.r#type.clone());
-                    let arg_value = self.eval(&arg_expr);
+                    let arg_value = self.eval_env().eval(&arg_expr);
 
                     let (fun, arg_expr) = self.bump.alloc((expr, arg_expr));
 
                     let arg = FunArg::new(param.plicity, arg_expr as &_);
                     expr = Expr::FunApp { fun, arg };
-                    r#type = semantics::apply_closure(
-                        self.bump,
-                        EvalOpts::default(),
-                        &self.meta_env.values,
-                        body,
-                        arg_value,
-                    );
+                    r#type = self.elim_env().apply_closure(body, arg_value);
                 }
                 _ => break,
             }
@@ -644,7 +588,7 @@ where
                     self.local_env.push_param(param.name, param_type.clone());
                     let (body_expr, body_type) =
                         self.synth_fun_lit(surface_params, surface_body)?;
-                    let body_type = self.quote(&body_type);
+                    let body_type = self.quote_env().quote(&body_type);
                     self.local_env.pop();
                     (body_expr, body_type)
                 };
@@ -673,12 +617,7 @@ where
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
     ) -> Result<Expr<'core>, E> {
-        let expected = semantics::update_metas(
-            self.bump,
-            EvalOpts::default(),
-            &self.meta_env.values,
-            expected,
-        );
+        let expected = self.elim_env().update_metas(expected);
         match surface_expr.data {
             surface::Expr::Error => Ok(Expr::Error),
             surface::Expr::Hole => {
@@ -728,7 +667,7 @@ where
                 for (index, expr) in surface_exprs.iter().enumerate() {
                     let name = Symbol::tuple_index(index);
                     let r#type = self.check_expr_is_type(expr)?;
-                    let r#type_value = self.eval(&r#type);
+                    let r#type_value = self.eval_env().eval(&r#type);
                     self.local_env.push_param(None, type_value);
                     type_fields.push((name, r#type));
                 }
@@ -746,15 +685,10 @@ where
                 {
                     let mut expr_fields = SliceVec::new(self.bump, surface_fields.len());
                     for surface_field in surface_fields {
-                        let (name, r#type, update_telescope) = semantics::split_telescope(
-                            self.bump,
-                            EvalOpts::default(),
-                            &self.meta_env.values,
-                            &mut telescope,
-                        )
-                        .unwrap();
+                        let (name, r#type, update_telescope) =
+                            self.elim_env().split_telescope(&mut telescope).unwrap();
                         let expr = self.check_expr(&surface_field.data.expr, &r#type)?;
-                        let value = self.eval(&expr);
+                        let value = self.eval_env().eval(&expr);
                         update_telescope(value);
                         expr_fields.push((name, expr));
                     }
@@ -798,18 +732,12 @@ where
             } if surface_param.data.plicity.is_explicit()
                 && expected_param.plicity.is_implicit() =>
             {
-                let r#type = self.quote(expected_param.r#type);
+                let r#type = self.quote_env().quote(expected_param.r#type);
 
                 let var = self.local_env.next_var();
                 self.local_env
                     .push_param(expected_param.name, expected_param.r#type.clone());
-                let expected = semantics::apply_closure(
-                    self.bump,
-                    EvalOpts::default(),
-                    &self.meta_env.values,
-                    expected_body.clone(),
-                    var,
-                );
+                let expected = self.elim_env().apply_closure(expected_body.clone(), var);
                 let body = self.check_fun_lit(surface_params, surface_body, &expected)?;
                 self.local_env.pop();
 
@@ -827,13 +755,9 @@ where
                     let arg_value = self.local_env.next_var();
                     self.local_env
                         .push_param(param.name, expected_param.r#type.clone());
-                    let expected = semantics::apply_closure(
-                        self.bump,
-                        EvalOpts::default(),
-                        &self.meta_env.values,
-                        expected_body.clone(),
-                        arg_value,
-                    );
+                    let expected = self
+                        .elim_env()
+                        .apply_closure(expected_body.clone(), arg_value);
                     let body_expr = self.check_fun_lit(rest_params, surface_body, &expected)?;
                     self.local_env.pop();
                     body_expr
@@ -866,9 +790,9 @@ where
     ) -> Result<(Expr<'core>, T), E> {
         let (name, r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
         let init_expr = self.check_expr(surface_init, &r#type)?;
-        let init_value = self.eval(&init_expr);
+        let init_value = self.eval_env().eval(&init_expr);
 
-        let r#type_expr = self.quote(&r#type);
+        let r#type_expr = self.quote_env().quote(&r#type);
         let (body_expr, body_type) = {
             self.local_env.push_let(name, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self, surface_body)?;
@@ -907,28 +831,15 @@ where
             init_expr
         };
 
-        let r#type_expr = self.quote(&r#type);
+        let r#type_expr = self.quote_env().quote(&r#type);
         let init_expr = match init_expr {
             Expr::FunLit { .. } => {
-                let opts = EvalOpts::default();
-                r#type = semantics::update_metas(
-                    self.bump,
-                    EvalOpts::default(),
-                    &self.meta_env.values,
-                    &r#type,
-                );
+                r#type = self.elim_env().update_metas(&r#type);
                 let Value::FunType { param, body } = &r#type else {
                     unreachable!()
                 };
 
-                let (param, output_type) = semantics::quote_fun(
-                    self.bump,
-                    opts,
-                    self.local_env.len(),
-                    &self.meta_env.values,
-                    *param,
-                    body.clone(),
-                );
+                let (param, output_type) = self.quote_env().quote_fun(*param, body.clone());
 
                 let fix = &Expr::Prim(Prim::fix);
                 Expr::FunApp {
@@ -963,7 +874,7 @@ where
         };
 
         let (body_expr, body_type) = {
-            let init_value = self.eval(&init_expr);
+            let init_value = self.eval_env().eval(&init_expr);
             self.local_env.push_let(name, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self, surface_body)?;
             self.local_env.pop();
@@ -1007,11 +918,11 @@ where
             _ => (expr, from),
         };
 
-        match self.unify(&from, to) {
+        match self.unify_env().unify(&from, to) {
             Ok(()) => Ok(expr),
             Err(error) => {
-                let from = self.quote(&from);
-                let to = self.quote(to);
+                let from = self.quote_env().quote(&from);
+                let to = self.quote_env().quote(to);
 
                 let found = self.pretty(&from);
                 let expected = self.pretty(&to);
@@ -1043,7 +954,7 @@ where
         let surface_param = surface_param.data;
         let (name, r#type_value) =
             self.synth_ann_pat(&surface_param.pat, surface_param.r#type.as_ref())?;
-        let r#type = self.quote(&r#type_value);
+        let r#type = self.quote_env().quote(&r#type_value);
         Ok((
             FunParam::new(surface_param.plicity, name, self.bump.alloc(r#type)),
             type_value,
@@ -1058,7 +969,7 @@ where
         let surface_param = surface_param.data;
         let name =
             self.check_ann_pat(&surface_param.pat, surface_param.r#type.as_ref(), expected)?;
-        let r#type = self.quote(expected);
+        let r#type = self.quote_env().quote(expected);
         Ok(FunParam::new(
             surface_param.plicity,
             name,
@@ -1075,7 +986,7 @@ where
             None => self.synth_pat(surface_pat),
             Some(surface_ann) => {
                 let ann_expr = self.check_expr_is_type(surface_ann)?;
-                let ann_value = self.eval(&ann_expr);
+                let ann_value = self.eval_env().eval(&ann_expr);
                 let name = self.check_pat(surface_pat, &ann_value)?;
                 Ok((name, ann_value))
             }
@@ -1092,7 +1003,7 @@ where
             None => self.check_pat(surface_pat, expected),
             Some(surface_ann) => {
                 let type_expr = self.check_expr_is_type(surface_ann)?;
-                let type_value = self.eval(&type_expr);
+                let type_value = self.eval_env().eval(&type_expr);
                 let name = self.check_pat(surface_pat, &type_value)?;
                 self.convert_pat(surface_pat.range, &type_value, expected)?;
                 Ok(name)
@@ -1148,11 +1059,11 @@ where
         from: &Type<'core>,
         to: &Type<'core>,
     ) -> Result<(), E> {
-        match self.unify(from, to) {
+        match self.unify_env().unify(from, to) {
             Ok(()) => Ok(()),
             Err(error) => {
-                let from = self.quote(from);
-                let to = self.quote(to);
+                let from = self.quote_env().quote(from);
+                let to = self.quote_env().quote(to);
 
                 let found = self.pretty(&from);
                 let expected = self.pretty(&to);

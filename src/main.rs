@@ -75,14 +75,14 @@ fn main() -> std::io::Result<()> {
             let mut elaborator = pion::elab::Elaborator::new(&bump, &text, file_id, handler);
             let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
             elaborator.report_unsolved_metas()?;
-            let r#type = elaborator.quote(&r#type);
+            let r#type = elaborator.quote_env().quote(&r#type);
 
             if let Cli::Eval { .. } = command {
-                expr = elaborator.normalize(&expr);
+                expr = elaborator.eval_env().normalize(&expr);
             }
 
-            let expr = elaborator.zonk(&expr);
-            let r#type = elaborator.zonk(&r#type);
+            let expr = elaborator.zonk_env().zonk(&expr);
+            let r#type = elaborator.zonk_env().zonk(&r#type);
 
             let printer =
                 pion::core::print::Printer::new(&bump, pion::core::print::Config::default());

@@ -296,7 +296,10 @@ fn record_literals() {
     );
     check("{x=1, y=false}.x", expect!["{x = 1, y = false}.x : Int"]);
     eval("{x=1, y=false}.x", expect!["1 : Int"]);
-    check("({A = Int, a = 5} : {A : Type, a : A}).a", expect!["{A = Int, a = 5}.a : Int"]);
+    check(
+        "({A = Int, a = 5} : {A : Type, a : A}).a",
+        expect!["{A = Int, a = 5}.a : Int"],
+    );
 }
 
 #[test]
@@ -310,16 +313,10 @@ fn record_types() {
 fn tuple_literals() {
     check("()", expect!["() : ()"]);
     check("(1,)", expect!["(1,) : (Int,)"]);
-    check(
-        "(1,2,3)",
-        expect!["(1, 2, 3) : (Int, Int, Int)"],
-    );
+    check("(1,2,3)", expect!["(1, 2, 3) : (Int, Int, Int)"]);
     check("() : Type", expect!["() : Type"]);
     check("(Bool,) : Type", expect!["(Bool,) : Type"]);
-    check(
-        "(Bool, Int) : Type",
-        expect!["(Bool, Int) : Type"],
-    );
+    check("(Bool, Int) : Type", expect!["(Bool, Int) : Type"]);
 }
 
 #[test]
