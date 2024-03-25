@@ -320,7 +320,7 @@ where
                 let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, r#type.clone());
                 Ok((expr, r#type))
             }
-            surface::Expr::Paren { expr } => self.synth_expr(expr),
+            surface::Expr::Paren(expr) => self.synth_expr(expr),
             surface::Expr::Ann { expr, r#type } => {
                 let r#type = self.check_expr_is_type(r#type)?;
                 let r#type = self.eval_env().eval(&r#type);
@@ -625,7 +625,7 @@ where
                 let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, expected);
                 Ok(expr)
             }
-            surface::Expr::Paren { expr } => self.check_expr(expr, &expected),
+            surface::Expr::Paren(expr) => self.check_expr(expr, &expected),
             surface::Expr::Let {
                 rec: surface::Rec::Nonrec,
                 pat,
@@ -1032,7 +1032,7 @@ where
                 let r#type = self.push_unsolved_type(source);
                 Ok((name, r#type))
             }
-            surface::Pat::Paren { pat } => self.synth_pat(pat),
+            surface::Pat::Paren(pat) => self.synth_pat(pat),
         }
     }
 
@@ -1049,7 +1049,7 @@ where
                 let symbol = Symbol::intern(text);
                 Ok(Some(symbol))
             }
-            surface::Pat::Paren { pat } => self.check_pat(pat, expected),
+            surface::Pat::Paren(pat) => self.check_pat(pat, expected),
         }
     }
 

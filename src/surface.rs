@@ -38,9 +38,7 @@ pub enum Expr<'surface> {
     LocalVar,
     Hole,
 
-    Paren {
-        expr: &'surface Located<Self>,
-    },
+    Paren(&'surface Located<Self>),
     Ann {
         expr: &'surface Located<Self>,
         r#type: &'surface Located<Self>,
@@ -122,7 +120,7 @@ pub enum Pat<'surface> {
     Error,
     Underscore,
     Ident,
-    Paren { pat: &'surface Located<Self> },
+    Paren(&'surface Located<Self>),
 }
 
 #[derive(Debug, Copy, Clone)]
