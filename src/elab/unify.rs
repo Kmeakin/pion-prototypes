@@ -123,16 +123,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         match (left, right) {
             (Value::Const(left), Value::Const(right)) if left == right => Ok(()),
 
-            (
-                Value::Neutral {
-                    head: left_head,
-                    spine: left_spine,
-                },
-                Value::Neutral {
-                    head: right_head,
-                    spine: right_spine,
-                },
-            ) if left_head == right_head => self.unify_spines(&left_spine, &right_spine),
+            (Value::Neutral(left_head, left_spine), Value::Neutral(right_head, right_spine))
+                if left_head == right_head =>
+            {
+                self.unify_spines(&left_spine, &right_spine)
+            }
 
             (
                 Value::FunType {
@@ -233,20 +228,8 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
 
             // One of the values has a metavariable at its head, so we
             // attempt to solve it using pattern unification.
-            (
-                Value::Neutral {
-                    head: Head::MetaVar(var),
-                    spine,
-                },
-                value,
-            )
-            | (
-                value,
-                Value::Neutral {
-                    head: Head::MetaVar(var),
-                    spine,
-                },
-            ) => self.solve(var, &spine, &value),
+            (Value::Neutral(Head::MetaVar(var), spine), value)
+            | (value, Value::Neutral(Head::MetaVar(var), spine)) => self.solve(var, &spine, &value),
 
             (Value::Error, _) | (_, Value::Error) => Ok(()),
 
@@ -365,14 +348,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         for elim in spine {
             match elim {
                 Elim::FunApp(arg) => match self.elim_env().update_metas(&arg.expr) {
-                    Value::Neutral {
-                        head: Head::LocalVar(var),
-                        spine,
-                    } if spine.is_empty() && self.renaming.set_local(var) => {}
-                    Value::Neutral {
-                        head: Head::LocalVar(var),
-                        spine: _,
-                    } => return Err(SpineError::NonLinearSpine(var)),
+                    Value::Neutral(Head::LocalVar(var), spine)
+                        if spine.is_empty() && self.renaming.set_local(var) => {}
+                    Value::Neutral(Head::LocalVar(var), _) => {
+                        return Err(SpineError::NonLinearSpine(var))
+                    }
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
                 Elim::BoolCases(..) => return Err(SpineError::BoolCases),
@@ -413,7 +393,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         match value {
             Value::Error => Ok(Expr::Error),
             Value::Const(r#const) => Ok(Expr::Const(r#const)),
-            Value::Neutral { head, spine } => {
+            Value::Neutral(head, spine) => {
                 let head = match head {
                     Head::Prim(prim) => Expr::Prim(prim),
                     Head::LocalVar(var) => match self.renaming.get_as_relative(var) {

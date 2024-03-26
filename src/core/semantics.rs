@@ -14,10 +14,7 @@ pub type Type<'core> = Value<'core>;
 pub enum Value<'core> {
     Error,
     Const(Const),
-    Neutral {
-        head: Head,
-        spine: EcoVec<Elim<'core>>,
-    },
+    Neutral(Head, EcoVec<Elim<'core>>),
     FunLit {
         param: FunParam<&'core Self>,
         body: Closure<'core>,
@@ -35,29 +32,18 @@ impl<'core> Value<'core> {
     pub const INT: Self = Self::prim(Prim::Int);
     pub const BOOL: Self = Self::prim(Prim::Bool);
 
-    pub const fn prim(prim: Prim) -> Self {
-        Self::Neutral {
-            head: Head::Prim(prim),
-            spine: EcoVec::new(),
-        }
-    }
+    pub const fn prim(prim: Prim) -> Self { Self::Neutral(Head::Prim(prim), EcoVec::new()) }
 
     pub const fn local_var(var: AbsoluteVar) -> Self {
-        Self::Neutral {
-            head: Head::LocalVar(var),
-            spine: EcoVec::new(),
-        }
+        Self::Neutral(Head::LocalVar(var), EcoVec::new())
     }
 
     pub const fn meta_var(var: AbsoluteVar) -> Self {
-        Self::Neutral {
-            head: Head::MetaVar(var),
-            spine: EcoVec::new(),
-        }
+        Self::Neutral(Head::MetaVar(var), EcoVec::new())
     }
 
     pub const fn is_type(&self) -> bool {
-        matches!(self, Self::Neutral { head:Head::Prim(Prim::Type), spine } if spine.is_empty())
+        matches!(self, Self::Neutral(Head::Prim(Prim::Type), spine) if spine.is_empty())
     }
 }
 
@@ -180,12 +166,12 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     pub fn fun_app(&self, fun: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
         match fun {
             Value::Error => Value::Error,
-            Value::Neutral { head, mut spine } => {
+            Value::Neutral(head, mut spine) => {
                 spine.push(Elim::FunApp(arg));
                 if let Some(value) = self.prim_app(head, spine.as_slice()) {
                     return value;
                 }
-                Value::Neutral { head, spine }
+                Value::Neutral(head, spine)
             }
             Value::FunLit { param, body, .. } => {
                 debug_assert_eq!(arg.plicity, param.plicity);
@@ -245,9 +231,9 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     pub fn apply_bool_elim(&self, mut cases: BoolCases<'core>, cond: Value<'core>) -> Value<'core> {
         match cond {
             Value::Error => Value::Error,
-            Value::Neutral { head, mut spine } => {
+            Value::Neutral(head, mut spine) => {
                 spine.push(Elim::BoolCases(cases));
-                Value::Neutral { head, spine }
+                Value::Neutral(head, spine)
             }
             Value::Const(Const::Bool(true)) => {
                 self.eval_env(&mut cases.local_values).eval(cases.then)
@@ -262,9 +248,9 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
     pub fn record_proj(&self, scrut: Value<'core>, name: Symbol) -> Value<'core> {
         match scrut {
             Value::Error => Value::Error,
-            Value::Neutral { head, mut spine } => {
+            Value::Neutral(head, mut spine) => {
                 spine.push(Elim::RecordProj(name));
-                Value::Neutral { head, spine }
+                Value::Neutral(head, spine)
             }
             Value::RecordLit(fields) => match fields.iter().find(|(n, _)| *n == name) {
                 Some((_, value)) => value.clone(),
@@ -288,11 +274,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 
     pub fn update_metas(&self, value: &Value<'core>) -> Value<'core> {
         let mut value = value.clone();
-        while let Value::Neutral {
-            head: Head::MetaVar(var),
-            spine,
-        } = value
-        {
+        while let Value::Neutral(Head::MetaVar(var), spine) = value {
             match self.meta_values.get_absolute(var) {
                 Some(Some(head)) => {
                     value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
@@ -301,12 +283,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                         Elim::RecordProj(name) => self.record_proj(head, name),
                     });
                 }
-                Some(None) => {
-                    return Value::Neutral {
-                        head: Head::MetaVar(var),
-                        spine,
-                    }
-                }
+                Some(None) => return Value::Neutral(Head::MetaVar(var), spine),
                 None => panic!("Unbound meta var: {var:?}"),
             }
         }
@@ -453,7 +430,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
         let value = self.elim_env().update_metas(value);
         match value {
             Value::Error => Expr::Error,
-            Value::Neutral { head, spine } => {
+            Value::Neutral(head, spine) => {
                 let head = self.quote_head(head);
                 spine.iter().fold(head, |head, elim| match elim {
                     Elim::FunApp(arg) => {
