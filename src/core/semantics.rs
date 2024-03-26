@@ -173,6 +173,10 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }
     }
 
+    fn eval_env(&self, local_values: &'env mut LocalValues<'core>) -> EvalEnv<'core, 'env> {
+        EvalEnv::new(self.bump, self.opts, local_values, self.meta_values)
+    }
+
     pub fn fun_app(&self, fun: Value<'core>, arg: FunArg<Value<'core>>) -> Value<'core> {
         match fun {
             Value::Error => Value::Error,
@@ -245,20 +249,12 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 spine.push(Elim::BoolCases(cases));
                 Value::Neutral { head, spine }
             }
-            Value::Const(Const::Bool(true)) => EvalEnv::new(
-                self.bump,
-                self.opts,
-                &mut cases.local_values,
-                self.meta_values,
-            )
-            .eval(cases.then),
-            Value::Const(Const::Bool(false)) => EvalEnv::new(
-                self.bump,
-                self.opts,
-                &mut cases.local_values,
-                self.meta_values,
-            )
-            .eval(cases.r#else),
+            Value::Const(Const::Bool(true)) => {
+                self.eval_env(&mut cases.local_values).eval(cases.then)
+            }
+            Value::Const(Const::Bool(false)) => {
+                self.eval_env(&mut cases.local_values).eval(cases.r#else)
+            }
             _ => panic!("Invalid if-then-else"),
         }
     }
@@ -270,7 +266,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 spine.push(Elim::RecordProj(name));
                 Value::Neutral { head, spine }
             }
-            Value::RecordLit(fields) => match (fields.iter()).find(|(n, _)| *n == name) {
+            Value::RecordLit(fields) => match fields.iter().find(|(n, _)| *n == name) {
                 Some((_, value)) => value.clone(),
                 None => panic!("Invalid record projection"),
             },
@@ -283,13 +279,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         telescope: &'tele mut Telescope<'core>,
     ) -> Option<(Symbol, Value<'core>, impl FnOnce(Value<'core>) + 'tele)> {
         let ((name, expr), fields) = telescope.fields.split_first()?;
-        let value = EvalEnv::new(
-            self.bump,
-            self.opts,
-            &mut telescope.local_values,
-            self.meta_values,
-        )
-        .eval(expr);
+        let value = self.eval_env(&mut telescope.local_values).eval(expr);
         Some((*name, value, move |prev| {
             telescope.local_values.push(prev);
             telescope.fields = fields;
