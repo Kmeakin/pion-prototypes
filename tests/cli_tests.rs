@@ -326,17 +326,15 @@ fn fixpoint_factorial() {
 
     check(
         fact,
-        expect![
-            "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
-             (fact (sub n 1)))) : Int -> Int"
-        ],
+        expect![[r#"
+(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
+    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(
         fact,
-        expect![
-            "(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n \
-             (fact (sub n 1)))) : Int -> Int"
-        ],
+        expect![[r#"
+(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
+    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(&format!("{fact} 5"), expect!["120 : Int"]);
 }
@@ -354,7 +352,11 @@ fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2
 fix2
 "#,
         expect![[r#"
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2) = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) => fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1, A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) => (fun (x : A1) => (f (fix2 f))._0 x, fun (x : A2) => (f (fix2 f))._1 x));
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2) =
+    fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) =>
+        fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1, A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
+            (fun (x : A1) => (f (fix2 f))._0 x, fun (x : A2) =>
+                (f (fix2 f))._1 x));
 fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)"#]],
     );
 }
@@ -388,14 +390,16 @@ fn letrec() {
     check(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
         expect![[r#"
-let fact : Int -> Int = fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n (fact (sub n 1)));
+let fact : Int -> Int =
+    fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
+        if eq n 0 then 1 else mul n (fact (sub n 1)));
 fact : Int -> Int"#]],
     );
     eval(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
-        expect![
-            r#"(fix @Int @Int (fun (fact : Int -> Int) (n : Int) => if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#
-        ],
+        expect![[r#"
+(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
+    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact 5",
@@ -424,8 +428,17 @@ let y : Int = (1, 2)._1;
     check(
         "fun ((x, y) : (Int, Bool)) => (y, x)",
         expect![[r#"
-(fun (_ : (Int, Bool)) => let x : Int = _#0._0;
+(fun (_ : (Int, Bool)) =>
+    let x : Int = _#0._0;
+    let y : Bool = _#1._1;
+    (y, x)) : (Int, Bool) -> (Bool, Int)"#]],
+    );
+
+    check(
+        "forall ((x, y) : (Int, Bool)) -> Int",
+        expect![[r#"
+(forall (_ : (Int, Bool)) -> let x : Int = _#0._0;
 let y : Bool = _#1._1;
-(y, x)) : (Int, Bool) -> (Bool, Int)"#]],
+Int) : Type"#]],
     );
 }

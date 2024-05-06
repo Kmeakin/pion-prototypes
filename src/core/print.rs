@@ -5,6 +5,8 @@ use crate::env::{RelativeVar, UniqueEnv};
 use crate::plicity::Plicity;
 use crate::symbol::{self, Symbol};
 
+const INDENT: isize = 4;
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
     Atom,
@@ -82,6 +84,23 @@ type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
 impl<'bump> Printer<'bump> {
     pub const fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
 
+    fn let_expr(
+        &'bump self,
+        name: Option<Symbol>,
+        r#type: DocBuilder<'bump>,
+        init: DocBuilder<'bump>,
+        body: DocBuilder<'bump>,
+    ) -> DocBuilder<'bump> {
+        self.text("let ")
+            .append(self.name(name))
+            .append(" : ")
+            .append(r#type)
+            .append(" =")
+            .append(self.line().append(init).append(";").group().nest(INDENT))
+            .append(self.hardline())
+            .append(body)
+    }
+
     pub fn ann_expr(
         &'bump self,
         names: &mut UniqueEnv<Option<Symbol>>,
@@ -102,15 +121,7 @@ impl<'bump> Printer<'bump> {
             let body = self.ann_expr(names, body, r#type);
             names.pop();
 
-            self.text("let ")
-                .append(self.name(*name))
-                .append(" : ")
-                .append(init_type)
-                .append(" = ")
-                .append(init)
-                .append(";")
-                .append(self.hardline())
-                .append(body)
+            self.let_expr(*name, init_type, init, body)
         } else {
             let expr = self.expr_prec(names, expr, Prec::Proj);
             let r#type = self.expr_prec(names, r#type, Prec::MAX);
@@ -154,15 +165,7 @@ impl<'bump> Printer<'bump> {
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
-                self.text("let ")
-                    .append(self.name(*name))
-                    .append(" : ")
-                    .append(r#type)
-                    .append(" = ")
-                    .append(init)
-                    .append(";")
-                    .append(self.hardline())
-                    .append(body)
+                self.let_expr(*name, r#type, init, body)
             }
             Expr::If { cond, then, r#else } => {
                 let cond = self.expr_prec(names, cond, Prec::App);
@@ -241,7 +244,7 @@ impl<'bump> Printer<'bump> {
                 names.truncate(names_len);
 
                 let params = self.intersperse(params, self.space());
-                self.text("fun ").append(params).append(" => ").append(body)
+                self.text("fun ").append(params).append(" =>").append(self.line().append(body).group().nest(INDENT))
             }
             Expr::FunApp { fun, arg } => {
                 let fun = self.expr_prec(names, fun, Prec::App);
