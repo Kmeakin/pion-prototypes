@@ -442,3 +442,18 @@ let y : Bool = _#1._1;
 Int) : Type"#]],
     );
 }
+
+#[test]
+fn equality() {
+    check("Eq", expect!["Eq : forall (@A : Type) -> A -> A -> Type"]);
+    check(
+        "refl",
+        expect!["refl : forall (@A : Type) (a : A) -> Eq @A a a"],
+    );
+    check(
+        "subst",
+        expect![
+            "subst : forall (@A : Type) (@p : A -> Type) (@a : A) (@b : A) -> Eq @A a @b -> p a -> p b"
+        ],
+    );
+}

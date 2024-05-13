@@ -1,6 +1,6 @@
 use super::semantics::Type;
 use crate::core::semantics::Closure;
-use crate::core::syntax::{Expr, FunParam};
+use crate::core::syntax::{Expr, FunArg, FunParam};
 use crate::env::RelativeVar;
 use crate::plicity::Plicity;
 use crate::symbol::Symbol;
@@ -34,7 +34,8 @@ prims! {
     Type, Int, Bool,
     add, sub, mul,
     eq, ne, gt, lt, gte, lte,
-    fix
+    fix,
+    Eq, refl, subst
 }
 
 impl Prim {
@@ -44,10 +45,14 @@ impl Prim {
         const TYPE: &Type<'static> = &Type::TYPE;
         const INT: &Type<'static> = &Type::INT;
 
+        const VAR0: Expr = Expr::LocalVar(RelativeVar::new(0));
         const VAR1: Expr = Expr::LocalVar(RelativeVar::new(1));
         const VAR2: Expr = Expr::LocalVar(RelativeVar::new(2));
+        const VAR3: Expr = Expr::LocalVar(RelativeVar::new(3));
+        const VAR4: Expr = Expr::LocalVar(RelativeVar::new(4));
 
         #[allow(clippy::match_same_arms)]
+        #[allow(clippy::use_self)]
         match self {
             // `Type : Type`
             // `Int : Type`
@@ -147,6 +152,147 @@ impl Prim {
                                 r#type: &VAR2,
                             },
                             body: &VAR2,
+                        },
+                    },
+                }),
+            },
+
+            // `Eq : forall (@A : Type) -> A -> A -> Type`
+            Self::Eq => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: None,
+                        r#type: &VAR0,
+                    },
+                    body: &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &VAR1,
+                        },
+                        body: &Expr::TYPE,
+                    },
+                }),
+            },
+            // `refl : forall (@A : Type) (a : A) -> Eq @A a a`
+            Self::refl => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: Some(Symbol::a),
+                        r#type: &VAR0,
+                    },
+                    body: &Expr::FunApp {
+                        fun: &Expr::FunApp {
+                            fun: &Expr::FunApp {
+                                fun: &Expr::Prim(Prim::Eq),
+                                arg: FunArg {
+                                    plicity: Implicit,
+                                    expr: &VAR1,
+                                },
+                            },
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: &VAR0,
+                            },
+                        },
+                        arg: FunArg {
+                            plicity: Explicit,
+                            expr: &VAR0,
+                        },
+                    },
+                }),
+            },
+
+            // `subst : forall (@A : Type) (@p : A -> Type) (@a : A) (@b : A) -> Eq @A a b -> p a ->
+            // p b`
+            Self::subst => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: Some(Symbol::A),
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Implicit,
+                        name: Some(Symbol::p),
+                        r#type: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: None,
+                                r#type: &VAR0,
+                            },
+                            body: &Expr::TYPE,
+                        },
+                    },
+                    body: &Expr::FunType {
+                        param: FunParam {
+                            plicity: Implicit,
+                            name: Some(Symbol::a),
+                            r#type: &VAR1,
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Implicit,
+                                name: Some(Symbol::b),
+                                r#type: &VAR2,
+                            },
+                            body: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &Expr::FunApp {
+                                        fun: &Expr::FunApp {
+                                            fun: &Expr::FunApp {
+                                                fun: &Expr::Prim(Prim::Eq),
+                                                arg: FunArg {
+                                                    plicity: Implicit,
+                                                    expr: &VAR3,
+                                                },
+                                            },
+                                            arg: FunArg {
+                                                plicity: Explicit,
+                                                expr: &VAR1,
+                                            },
+                                        },
+                                        arg: FunArg {
+                                            plicity: Implicit,
+                                            expr: &VAR0,
+                                        },
+                                    },
+                                },
+                                body: &Expr::FunType {
+                                    param: FunParam {
+                                        plicity: Explicit,
+                                        name: None,
+                                        r#type: &Expr::FunApp {
+                                            fun: &VAR3,
+                                            arg: FunArg {
+                                                plicity: Explicit,
+                                                expr: &VAR2,
+                                            },
+                                        },
+                                    },
+                                    body: &Expr::FunApp {
+                                        fun: &VAR4,
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &VAR2,
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                 }),
