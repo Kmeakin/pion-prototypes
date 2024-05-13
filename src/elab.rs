@@ -223,7 +223,7 @@ where
         self.eval_env().eval(&expr)
     }
 
-    pub fn elim_env(&mut self) -> semantics::ElimEnv<'core, '_> {
+    pub fn elim_env(&self) -> semantics::ElimEnv<'core, '_> {
         semantics::ElimEnv::new(self.bump, EvalOpts::default(), &self.meta_env.values)
     }
 

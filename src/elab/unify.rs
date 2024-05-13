@@ -106,11 +106,11 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         }
     }
 
-    pub fn quote_env(&mut self) -> semantics::QuoteEnv<'core, '_> {
+    pub fn quote_env(&self) -> semantics::QuoteEnv<'core, '_> {
         semantics::QuoteEnv::new(self.bump, self.local_env, self.meta_values)
     }
 
-    pub fn elim_env(&mut self) -> semantics::ElimEnv<'core, '_> {
+    pub fn elim_env(&self) -> semantics::ElimEnv<'core, '_> {
         semantics::ElimEnv::new(self.bump, EvalOpts::default(), self.meta_values)
     }
 
