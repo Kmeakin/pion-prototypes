@@ -628,21 +628,14 @@ where
                     fun: self.bump.alloc(Expr::FunApp {
                         fun: self.bump.alloc(Expr::FunApp {
                             fun: fix,
-                            arg: FunArg::new(Plicity::Implicit, param.r#type),
+                            arg: FunArg::implicit(param.r#type),
                         }),
-                        arg: FunArg::new(Plicity::Implicit, output_type),
+                        arg: FunArg::implicit(output_type),
                     }),
-                    arg: FunArg::new(
-                        Plicity::Explicit,
-                        self.bump.alloc(Expr::FunLit {
-                            param: FunParam::new(
-                                Plicity::Explicit,
-                                name,
-                                self.bump.alloc(r#type_expr),
-                            ),
-                            body: self.bump.alloc(init_expr),
-                        }),
-                    ),
+                    arg: FunArg::explicit(self.bump.alloc(Expr::FunLit {
+                        param: FunParam::explicit(name, self.bump.alloc(r#type_expr)),
+                        body: self.bump.alloc(init_expr),
+                    })),
                 }
             }
             Expr::Error => Expr::Error,
