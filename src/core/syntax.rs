@@ -211,6 +211,12 @@ impl<T> FunParam<T> {
             r#type,
         }
     }
+    pub const fn explicit(name: Option<Symbol>, r#type: T) -> Self {
+        Self::new(Plicity::Explicit, name, r#type)
+    }
+    pub const fn implicit(name: Option<Symbol>, r#type: T) -> Self {
+        Self::new(Plicity::Implicit, name, r#type)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -221,6 +227,8 @@ pub struct FunArg<T> {
 
 impl<T> FunArg<T> {
     pub const fn new(plicity: Plicity, expr: T) -> Self { Self { plicity, expr } }
+    pub const fn explicit(expr: T) -> Self { Self::new(Plicity::Explicit, expr) }
+    pub const fn implicit(expr: T) -> Self { Self::new(Plicity::Implicit, expr) }
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -453,7 +453,8 @@ fn equality() {
     check(
         "subst",
         expect![
-            "subst : forall (@A : Type) (@p : A -> Type) (@a : A) (@b : A) -> Eq @A a @b -> p a -> p b"
+            "subst : forall (@A : Type) (@p : A -> Type) (a : A) (b : A) -> Eq @A a b -> p a -> p \
+             b"
         ],
     );
 }
