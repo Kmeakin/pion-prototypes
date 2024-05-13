@@ -9,6 +9,8 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [x] `fun` expressions
     * [x] `forall` expressions
     * [x] function application expressions
+    * [x] propositional equality
+    * [ ] type universes
 
 * [x] unification
     * [x] inferring types of unnanotated parameters
