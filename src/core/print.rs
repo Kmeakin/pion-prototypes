@@ -81,24 +81,19 @@ impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {
 
 type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
 
+/// Construction
 impl<'bump> Printer<'bump> {
     pub const fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
+}
 
-    fn let_expr(
+/// Expressions
+impl<'bump> Printer<'bump> {
+    pub fn expr(
         &'bump self,
-        name: Option<Symbol>,
-        r#type: DocBuilder<'bump>,
-        init: DocBuilder<'bump>,
-        body: DocBuilder<'bump>,
+        names: &mut UniqueEnv<Option<Symbol>>,
+        expr: &Expr,
     ) -> DocBuilder<'bump> {
-        self.text("let ")
-            .append(self.name(name))
-            .append(" : ")
-            .append(r#type)
-            .append(" =")
-            .append(self.line().append(init).append(";").group().nest(INDENT))
-            .append(self.hardline())
-            .append(body)
+        self.expr_prec(names, expr, Prec::MAX)
     }
 
     pub fn ann_expr(
@@ -129,12 +124,21 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    pub fn expr(
+    fn let_expr(
         &'bump self,
-        names: &mut UniqueEnv<Option<Symbol>>,
-        expr: &Expr,
+        name: Option<Symbol>,
+        r#type: DocBuilder<'bump>,
+        init: DocBuilder<'bump>,
+        body: DocBuilder<'bump>,
     ) -> DocBuilder<'bump> {
-        self.expr_prec(names, expr, Prec::MAX)
+        self.text("let ")
+            .append(self.name(name))
+            .append(" : ")
+            .append(r#type)
+            .append(" =")
+            .append(self.line().append(init).append(";").group().nest(INDENT))
+            .append(self.hardline())
+            .append(body)
     }
 
     fn expr_prec(
@@ -313,9 +317,9 @@ impl<'bump> Printer<'bump> {
                     .append(self.intersperse(expr_fields, self.text(", ")))
                     .append("}")
             }
-            Expr::RecordProj(scrut, name) => {
+            Expr::RecordProj(scrut, symbol) => {
                 let scrut = self.expr_prec(names, scrut, Prec::Proj);
-                scrut.append(".").append(self.name(Some(*name)))
+                scrut.append(".").append(self.symbol(*symbol))
             }
         };
         if prec < Prec::of_expr(expr) {
@@ -324,7 +328,10 @@ impl<'bump> Printer<'bump> {
             doc
         }
     }
+}
 
+/// Function arguments and parameters
+impl<'bump> Printer<'bump> {
     fn fun_arg(
         &'bump self,
         names: &mut UniqueEnv<Option<Symbol>>,
@@ -344,17 +351,19 @@ impl<'bump> Printer<'bump> {
             name,
             r#type,
         } = param;
-        let name = self.name(*name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
 
         self.text("(")
             .append(*plicity)
-            .append(name)
+            .append(self.name(*name))
             .append(" : ")
             .append(r#type)
             .append(")")
     }
+}
 
+/// Misc
+impl<'bump> Printer<'bump> {
     fn r#const(&'bump self, r#const: Const) -> DocBuilder<'bump> {
         match r#const {
             Const::Bool(true) => self.text("true"),
@@ -365,10 +374,12 @@ impl<'bump> Printer<'bump> {
 
     fn name(&'bump self, name: Option<Symbol>) -> DocBuilder<'bump> {
         match name {
-            Some(name) => self.text(name.to_string()),
             None => self.text("_"),
+            Some(symbol) => self.symbol(symbol),
         }
     }
+
+    fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> { self.text(symbol.as_str()) }
 }
 
 impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Plicity {
