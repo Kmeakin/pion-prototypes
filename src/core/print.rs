@@ -7,6 +7,8 @@ use crate::symbol::{self, Symbol};
 
 const INDENT: isize = 4;
 
+type NameEnv = UniqueEnv<Option<Symbol>>;
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Prec {
     Atom,
@@ -98,7 +100,7 @@ impl<'bump> Printer<'bump> {
 
     pub fn ann_expr(
         &'bump self,
-        names: &mut UniqueEnv<Option<Symbol>>,
+        names: &mut NameEnv,
         expr: &Expr,
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
@@ -116,12 +118,12 @@ impl<'bump> Printer<'bump> {
             let body = self.ann_expr(names, body, r#type);
             names.pop();
 
-            self.let_expr(*name, init_type, init, body)
-        } else {
-            let expr = self.expr_prec(names, expr, Prec::Proj);
-            let r#type = self.expr_prec(names, r#type, Prec::MAX);
-            expr.append(" : ").append(r#type)
+            return self.let_expr(*name, init_type, init, body);
         }
+
+        let expr = self.expr_prec(names, expr, Prec::Proj);
+        let r#type = self.expr_prec(names, r#type, Prec::MAX);
+        expr.append(" : ").append(r#type)
     }
 
     fn let_expr(
@@ -141,12 +143,7 @@ impl<'bump> Printer<'bump> {
             .append(body)
     }
 
-    fn expr_prec(
-        &'bump self,
-        names: &mut UniqueEnv<Option<Symbol>>,
-        expr: &Expr,
-        prec: Prec,
-    ) -> DocBuilder<'bump> {
+    fn expr_prec(&'bump self, names: &mut NameEnv, expr: &Expr, prec: Prec) -> DocBuilder<'bump> {
         let doc = match expr {
             Expr::Error => self.text("#error"),
             Expr::Const(r#const) => self.r#const(*r#const),
@@ -171,181 +168,221 @@ impl<'bump> Printer<'bump> {
 
                 self.let_expr(*name, r#type, init, body)
             }
-            Expr::If { cond, then, r#else } => {
-                let cond = self.expr_prec(names, cond, Prec::App);
-                let then = self.expr_prec(names, then, Prec::MAX);
-                let r#else = self.expr_prec(names, r#else, Prec::MAX);
-
-                self.text("if ")
-                    .append(cond)
-                    .append(" then ")
-                    .append(then)
-                    .append(" else ")
-                    .append(r#else)
-            }
-            Expr::FunType { .. } => {
-                let names_len = names.len();
-                let mut expr = expr;
-                let mut params = Vec::new();
-                loop {
-                    match expr {
-                        Expr::FunType { param, body }
-                            if self.config.fun_arrows
-                                && !body.references_local(RelativeVar::default()) =>
-                        {
-                            let r#type = self.expr_prec(names, param.r#type, Prec::App);
-                            names.push(None);
-                            let body = self.expr_prec(names, body, Prec::Fun);
-                            names.truncate(names_len);
-
-                            if !params.is_empty() {
-                                let params = self.intersperse(params, self.space());
-                                break self
-                                    .text("forall ")
-                                    .append(params)
-                                    .append(" -> ")
-                                    .append(r#type)
-                                    .append(" -> ")
-                                    .append(body);
-                            }
-
-                            break self
-                                .nil()
-                                .append(param.plicity)
-                                .append(r#type)
-                                .append(" -> ")
-                                .append(body);
-                        }
-                        Expr::FunType { param, body } => {
-                            params.push(self.fun_param(names, param));
-                            names.push(param.name);
-                            expr = body;
-                        }
-                        _ => {
-                            let body = self.expr_prec(names, expr, Prec::MAX);
-                            names.truncate(names_len);
-
-                            let params = self.intersperse(params, self.space());
-                            break self
-                                .text("forall ")
-                                .append(params)
-                                .append(" -> ")
-                                .append(body);
-                        }
-                    }
-                }
-            }
-            Expr::FunLit { .. } => {
-                let names_len = names.len();
-                let mut expr = expr;
-                let mut params = Vec::new();
-                while let Expr::FunLit { param, body } = expr {
-                    params.push(self.fun_param(names, param));
-                    names.push(param.name);
-                    expr = body;
-                }
-                let body = self.expr_prec(names, expr, Prec::MAX);
-                names.truncate(names_len);
-
-                let params = self.intersperse(params, self.space());
-                self.text("fun ").append(params).append(" =>").append(self.line().append(body).group().nest(INDENT))
-            }
-            Expr::FunApp { fun, arg } => {
-                let fun = self.expr_prec(names, fun, Prec::App);
-                let arg = self.fun_arg(names, arg);
-                fun.append(self.space()).append(arg)
-            }
+            Expr::If { cond, then, r#else } => self.if_then_else(names, cond, then, r#else),
+            Expr::FunType { .. } => self.fun_type(names, expr),
+            Expr::FunLit { .. } => self.fun_lit(names, expr),
+            Expr::FunApp { fun, arg } => self.fun_app(names, fun, arg),
             Expr::Prim(prim) => self.text(prim.name()),
-            Expr::RecordType(type_fields)
-                // TODO: check that subsequent fields do not depend on previous fields
-                if symbol::are_tuple_field_names(type_fields.iter().map(|(n, _)| *n)) =>
-            {
-                if type_fields.len() == 1 {
-                    let expr = self.expr_prec(names, &type_fields[0].1, Prec::MAX);
-                    self.text("(").append(expr).append(",)")
-                } else {
-                    let names_len = names.len();
-                    let elems = type_fields.iter().map(|(_, expr)| {
-                        let field = self.expr_prec(names, expr, Prec::MAX);
-                        names.push(None);
-                        field
-                    });
-                    let elems = self.intersperse(elems, self.text(", "));
-                    names.truncate(names_len);
-                    self.text("(").append(elems).append(")")
-                }
-            }
-            Expr::RecordLit(expr_fields)
-                if symbol::are_tuple_field_names(expr_fields.iter().map(|(n, _)| *n)) =>
-            {
-                if expr_fields.len() == 1 {
-                    let expr = self.expr_prec(names, &expr_fields[0].1, Prec::MAX);
-                    self.text("(").append(expr).append(",)")
-                } else {
-                    let elems = expr_fields
-                        .iter()
-                        .map(|(_, expr)| self.expr_prec(names, expr, Prec::MAX));
-                    let elems = self.intersperse(elems, self.text(", "));
-                    self.text("(").append(elems).append(")")
-                }
-            }
-            Expr::RecordType(type_fields) => {
-                let names_len = names.len();
-                let type_fields = type_fields.iter().map(|(name, r#type)| {
-                    let field = self.name(Some(*name)).append(" : ").append(self.expr_prec(
-                        names,
-                        r#type,
-                        Prec::MAX,
-                    ));
-                    names.push(Some(*name));
-                    field
-                });
-                let type_fields = self.intersperse(type_fields, self.text(", "));
-                names.truncate(names_len);
-                self.text("{").append(type_fields).append("}")
-            }
-
-            Expr::RecordLit(expr_fields) => {
-                let expr_fields = expr_fields.iter().map(|(name, expr)| {
-                    self.name(Some(*name)).append(" = ").append(self.expr_prec(
-                        names,
-                        expr,
-                        Prec::MAX,
-                    ))
-                });
-                self.text("{")
-                    .append(self.intersperse(expr_fields, self.text(", ")))
-                    .append("}")
-            }
-            Expr::RecordProj(scrut, symbol) => {
-                let scrut = self.expr_prec(names, scrut, Prec::Proj);
-                scrut.append(".").append(self.symbol(*symbol))
-            }
+            Expr::RecordType(fields) => self.record_type(names, fields),
+            Expr::RecordLit(expr_fields) => self.record_lit(names, expr_fields),
+            Expr::RecordProj(scrut, symbol) => self.record_proj(names, scrut, *symbol),
         };
+
         if prec < Prec::of_expr(expr) {
             self.text("(").append(doc).append(")")
         } else {
             doc
         }
     }
+
+    fn if_then_else(
+        &'bump self,
+        names: &mut NameEnv,
+        cond: &Expr,
+        then: &Expr,
+        r#else: &Expr,
+    ) -> DocBuilder<'bump> {
+        let cond = self.expr_prec(names, cond, Prec::App);
+        let then = self.expr_prec(names, then, Prec::MAX);
+        let r#else = self.expr_prec(names, r#else, Prec::MAX);
+
+        self.text("if ")
+            .append(cond)
+            .append(" then ")
+            .append(then)
+            .append(" else ")
+            .append(r#else)
+    }
+
+    fn fun_type(&'bump self, names: &mut NameEnv, expr: &Expr) -> DocBuilder<'bump> {
+        let names_len = names.len();
+        let mut expr = expr;
+        let mut params = Vec::new();
+        loop {
+            match expr {
+                Expr::FunType { param, body }
+                    if self.config.fun_arrows && !body.references_local(RelativeVar::default()) =>
+                {
+                    let r#type = self.expr_prec(names, param.r#type, Prec::App);
+                    names.push(None);
+                    let body = self.expr_prec(names, body, Prec::Fun);
+                    names.truncate(names_len);
+
+                    if !params.is_empty() {
+                        let params = self.intersperse(params, self.space());
+                        break self
+                            .text("forall ")
+                            .append(params)
+                            .append(" -> ")
+                            .append(r#type)
+                            .append(" -> ")
+                            .append(body);
+                    }
+
+                    break self
+                        .nil()
+                        .append(param.plicity)
+                        .append(r#type)
+                        .append(" -> ")
+                        .append(body);
+                }
+                Expr::FunType { param, body } => {
+                    params.push(self.fun_param(names, param));
+                    names.push(param.name);
+                    expr = body;
+                }
+                _ => {
+                    let body = self.expr_prec(names, expr, Prec::MAX);
+                    names.truncate(names_len);
+
+                    let params = self.intersperse(params, self.space());
+                    break self
+                        .text("forall ")
+                        .append(params)
+                        .append(" -> ")
+                        .append(body);
+                }
+            }
+        }
+    }
+
+    fn fun_lit(&'bump self, names: &mut NameEnv, expr: &Expr) -> DocBuilder<'bump> {
+        let names_len = names.len();
+        let mut rhs = expr;
+        let mut params = Vec::new();
+        while let Expr::FunLit { param, body } = rhs {
+            params.push(self.fun_param(names, param));
+            names.push(param.name);
+            rhs = body;
+        }
+        let body = self.expr_prec(names, rhs, Prec::MAX);
+        names.truncate(names_len);
+
+        let params = self.intersperse(params, self.space());
+        self.text("fun ")
+            .append(params)
+            .append(" =>")
+            .append(self.line().append(body).group().nest(INDENT))
+    }
+
+    fn fun_app(
+        &'bump self,
+        names: &mut NameEnv,
+        fun: &Expr,
+        arg: &FunArg<&Expr>,
+    ) -> DocBuilder<'bump> {
+        let fun = self.expr_prec(names, fun, Prec::App);
+        let arg = self.fun_arg(names, arg);
+        fun.append(self.space()).append(arg)
+    }
+
+    fn record_type(
+        &'bump self,
+        names: &mut NameEnv,
+        type_fields: &[(Symbol, Expr)],
+    ) -> DocBuilder<'bump> {
+        // TODO: check that subsequent fields do not depend on previous fields
+        if symbol::are_tuple_field_names(type_fields.iter().map(|(n, _)| *n)) {
+            return self.tuple_type(names, type_fields);
+        }
+
+        let names_len = names.len();
+        let type_fields = type_fields.iter().map(|(name, r#type)| {
+            let field = self.name(Some(*name)).append(" : ").append(self.expr_prec(
+                names,
+                r#type,
+                Prec::MAX,
+            ));
+            names.push(Some(*name));
+            field
+        });
+        let type_fields = self.intersperse(type_fields, self.text(", "));
+        names.truncate(names_len);
+        self.text("{").append(type_fields).append("}")
+    }
+
+    fn tuple_type(
+        &'bump self,
+        names: &mut NameEnv,
+        fields: &[(Symbol, Expr)],
+    ) -> DocBuilder<'bump> {
+        if let [(_, expr)] = fields {
+            let expr = self.expr_prec(names, expr, Prec::MAX);
+            return self.text("(").append(expr).append(",)");
+        }
+
+        let names_len = names.len();
+        let elems = fields.iter().map(|(_, expr)| {
+            let field = self.expr_prec(names, expr, Prec::MAX);
+            names.push(None);
+            field
+        });
+        let elems = self.intersperse(elems, self.text(", "));
+        names.truncate(names_len);
+        self.text("(").append(elems).append(")")
+    }
+
+    fn record_lit(
+        &'bump self,
+        names: &mut NameEnv,
+        expr_fields: &[(Symbol, Expr)],
+    ) -> DocBuilder<'bump> {
+        if symbol::are_tuple_field_names(expr_fields.iter().map(|(n, _)| *n)) {
+            return self.tuple_lit(names, expr_fields);
+        }
+
+        let expr_fields = expr_fields.iter().map(|(name, expr)| {
+            self.name(Some(*name))
+                .append(" = ")
+                .append(self.expr_prec(names, expr, Prec::MAX))
+        });
+        self.text("{")
+            .append(self.intersperse(expr_fields, self.text(", ")))
+            .append("}")
+    }
+
+    fn tuple_lit(&'bump self, names: &mut NameEnv, fields: &[(Symbol, Expr)]) -> DocBuilder<'bump> {
+        if let [(_, expr)] = fields {
+            let expr = self.expr_prec(names, expr, Prec::MAX);
+            return self.text("(").append(expr).append(",)");
+        }
+
+        let elems = fields
+            .iter()
+            .map(|(_, expr)| self.expr_prec(names, expr, Prec::MAX));
+        let elems = self.intersperse(elems, self.text(", "));
+        self.text("(").append(elems).append(")")
+    }
+
+    fn record_proj(
+        &'bump self,
+        names: &mut NameEnv,
+        scrut: &Expr,
+        symbol: Symbol,
+    ) -> DocBuilder<'bump> {
+        let scrut = self.expr_prec(names, scrut, Prec::Proj);
+        scrut.append(".").append(self.symbol(symbol))
+    }
 }
 
 /// Function arguments and parameters
 impl<'bump> Printer<'bump> {
-    fn fun_arg(
-        &'bump self,
-        names: &mut UniqueEnv<Option<Symbol>>,
-        arg: &FunArg<&Expr>,
-    ) -> DocBuilder<'bump> {
+    fn fun_arg(&'bump self, names: &mut NameEnv, arg: &FunArg<&Expr>) -> DocBuilder<'bump> {
         let expr = self.expr_prec(names, arg.expr, Prec::Atom);
         self.nil().append(arg.plicity).append(expr)
     }
 
-    fn fun_param(
-        &'bump self,
-        names: &mut UniqueEnv<Option<Symbol>>,
-        param: &FunParam<&Expr>,
-    ) -> DocBuilder<'bump> {
+    fn fun_param(&'bump self, names: &mut NameEnv, param: &FunParam<&Expr>) -> DocBuilder<'bump> {
         let FunParam {
             plicity,
             name,
