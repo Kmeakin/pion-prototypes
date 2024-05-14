@@ -457,4 +457,88 @@ fn equality() {
              b"
         ],
     );
+    check(
+        "
+let sym: forall (@A: Type) (@a: A) (@b: A) -> Eq a b -> Eq b a
+    = fun a_eq_b =>
+        let p = fun x => Eq @A x a;
+        let p_a  : p a = refl a;
+        let goal : p b = subst @A @p a b a_eq_b p_a;
+        goal
+        ;
+sym
+    ",
+        expect![[r#"
+let sym : forall (@A : Type) (@a : A) (@b : A) -> Eq @A a b -> Eq @A b a =
+    fun (@A : Type) (@a : A) (@b : A) (a_eq_b : Eq @A a b) =>
+        let p : A -> Type = fun (x : A) => Eq @A x a;
+        let p_a : Eq @A a a = refl @A a;
+        let goal : Eq @A b a = subst @A @p a b a_eq_b p_a;
+        goal;
+sym : forall (@A : Type) (@a : A) (@b : A) -> Eq @A a b -> Eq @A b a"#]],
+    );
+
+    check(
+        "
+let trans: forall (@A: Type) (@a: A) (@b: A) (@c: A) -> Eq a b -> Eq b c -> Eq a c
+    = fun a_eq_b b_eq_c =>
+        let p = fun x => Eq @A a x;
+        let p_b  : p b = a_eq_b;
+        let goal : p c = subst @A @p b c b_eq_c p_b;
+        goal
+        ;
+trans
+    ",
+        expect![[r#"
+let trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) -> Eq @A a b -> Eq @A b c -> Eq @A a c =
+    fun (@A : Type) (@a : A) (@b : A) (@c : A) (a_eq_b : Eq @A a b) (b_eq_c : Eq @A b c) =>
+        let p : A -> Type = fun (x : A) => Eq @A a x;
+        let p_b : Eq @A a b = a_eq_b;
+        let goal : Eq @A a c = subst @A @p b c b_eq_c p_b;
+        goal;
+trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) -> Eq @A a b -> Eq @A b c -> Eq @A a c"#]],
+    );
+
+    check(
+        "
+let cong: forall (@A: Type) (@B: Type) (@a: A) (@b: A) (f: A -> B) -> Eq a b -> Eq (f a) (f b)
+    = fun f a_eq_b =>
+        let p = fun x => Eq @B (f a) (f x);
+        let p_a:  p a = refl (f a);
+        let goal: p b = subst @A @p a b a_eq_b p_a;
+        goal
+        ;
+cong
+        ",
+        expect![[r#"
+let cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) -> Eq @A a b -> Eq @B (f a) (f b) =
+    fun (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) (a_eq_b : Eq @A a b) =>
+        let p : A -> Type = fun (x : A) => Eq @B (f a) (f x);
+        let p_a : Eq @B (f a) (f a) = refl @B (f a);
+        let goal : Eq @B (f a) (f b) = subst @A @p a b a_eq_b p_a;
+        goal;
+cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) -> Eq @A a b -> Eq @B (f a) (f b)"#]],
+    );
+
+    check(
+        "
+let cong_app: forall (@A: Type) (@B: Type) (a: A) (f: A -> B) (g: A -> B)
+    -> Eq f g -> Eq (f a) (g a)
+    = fun a f g f_eq_g =>
+        let p = fun (x : A -> B) => Eq @B (f a) (x a);
+        let p_f : p f = refl _;
+        let goal = subst @(A -> B) @p f g f_eq_g p_f;
+        goal
+        ;
+cong_app
+        ",
+        expect![[r#"
+let cong_app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a) =
+    fun (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) (f_eq_g : Eq @(A -> B) f g) =>
+        let p : (A -> B) -> Type = fun (x : A -> B) => Eq @B (f a) (x a);
+        let p_f : Eq @B (f a) (f a) = refl @B (f a);
+        let goal : Eq @B (f a) (g a) = subst @(A -> B) @p f g f_eq_g p_f;
+        goal;
+cong_app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
+    );
 }
