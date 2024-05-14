@@ -39,7 +39,7 @@ pub enum TokenKind {
     #[regex("[0-9][0-9_]*")] DecInt,
     #[regex("0(b|B)[0-1][0-1_]*")] BinInt,
     #[regex("0(x|X)[0-9a-fA-F][0-9a-fA-F_]*")] HexInt,
-    #[regex(r"[\p{XID_START}_]\p{XID_CONTINUE}*")] Ident,
+    #[regex(r"[\p{XID_START}_][\p{XID_CONTINUE}\-]*")] Ident,
 }
 impl TokenKind {
     pub const fn is_trivia(self) -> bool {
@@ -222,13 +222,15 @@ mod tests {
     fn identifiers() {
         #[rustfmt::skip]
         check(
-            "abcDEF_ _hello λ",
+            "abcDEF_ _hello λ hello-world",
             &[
                 Token { kind: Ident,        range: range(0..7) },
                 Token { kind: Whitespace,   range: range(7..8) },
                 Token { kind: Ident,        range: range(8..14) },
                 Token { kind: Whitespace,   range: range(14..15) },
                 Token { kind: Ident,        range: range(15..17) },
+                Token { kind: Whitespace,   range: range(17..18) },
+                Token { kind: Ident,        range: range(18..29) },
             ],
         );
     }

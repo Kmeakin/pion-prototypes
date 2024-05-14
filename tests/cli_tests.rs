@@ -522,7 +522,7 @@ cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) -> Eq @A a 
 
     check(
         "
-let cong_app: forall (@A: Type) (@B: Type) (a: A) (f: A -> B) (g: A -> B)
+let cong-app: forall (@A: Type) (@B: Type) (a: A) (f: A -> B) (g: A -> B)
     -> Eq f g -> Eq (f a) (g a)
     = fun a f g f_eq_g =>
         let p = fun (x : A -> B) => Eq @B (f a) (x a);
@@ -530,15 +530,15 @@ let cong_app: forall (@A: Type) (@B: Type) (a: A) (f: A -> B) (g: A -> B)
         let goal = subst @(A -> B) @p f g f_eq_g p_f;
         goal
         ;
-cong_app
+cong-app
         ",
         expect![[r#"
-let cong_app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a) =
+let cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a) =
     fun (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) (f_eq_g : Eq @(A -> B) f g) =>
         let p : (A -> B) -> Type = fun (x : A -> B) => Eq @B (f a) (x a);
         let p_f : Eq @B (f a) (f a) = refl @B (f a);
         let goal : Eq @B (f a) (g a) = subst @(A -> B) @p f g f_eq_g p_f;
         goal;
-cong_app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
+cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
     );
 }
