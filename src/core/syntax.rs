@@ -47,6 +47,9 @@ impl<'core> Expr<'core> {
     pub const BOOL: Self = Self::Prim(Prim::Bool);
     pub const INT: Self = Self::Prim(Prim::Int);
 
+    pub const TRUE: Self = Self::Const(Const::Bool(true));
+    pub const FALSE: Self = Self::Const(Const::Bool(false));
+
     pub fn references_local(&self, var: RelativeVar) -> bool {
         match self {
             Expr::LocalVar(v) => var == *v,

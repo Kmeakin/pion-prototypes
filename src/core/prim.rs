@@ -37,7 +37,8 @@ prims! {
     add, sub, mul,
     eq, ne, gt, lt, gte, lte,
     fix,
-    Eq, refl, subst
+    Eq, refl, subst,
+    bool_rec
 }
 
 impl Prim {
@@ -345,6 +346,66 @@ impl Prim {
                     },
                 ),
             },
+
+            // bool_rec : forall (@p: Bool -> Type) (b: Bool) -> p true -> p false -> p b
+            Self::bool_rec => {
+                const P: &Type = &Type::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: None,
+                        r#type: &Type::BOOL,
+                    },
+                    body: Closure::empty(&Expr::TYPE),
+                };
+
+                Type::FunType {
+                    param: FunParam {
+                        plicity: Implicit,
+                        name: Some(Symbol::p),
+                        r#type: P,
+                    },
+                    body: Closure::empty(&Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: Some(Symbol::b),
+                            r#type: &Expr::BOOL,
+                        },
+                        body: &Expr::FunType {
+                            param: FunParam {
+                                plicity: Explicit,
+                                name: None,
+                                r#type: &Expr::FunApp {
+                                    fun: &VAR1,
+                                    arg: FunArg {
+                                        plicity: Explicit,
+                                        expr: &Expr::TRUE,
+                                    },
+                                },
+                            },
+                            body: &Expr::FunType {
+                                param: FunParam {
+                                    plicity: Explicit,
+                                    name: None,
+                                    r#type: &Expr::FunApp {
+                                        fun: &VAR2,
+                                        arg: FunArg {
+                                            plicity: Explicit,
+                                            expr: &Expr::FALSE,
+                                        },
+                                    },
+                                },
+                                body: &Expr::FunApp {
+                                    fun: &VAR3,
+                                    arg: FunArg {
+                                        plicity: Explicit,
+                                        expr: &(VAR2),
+                                    },
+                                },
+                            },
+                        },
+                    }),
+                }
+            }
         }
     }
 }

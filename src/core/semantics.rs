@@ -272,6 +272,8 @@ fn prim_app2<'core>(
         Prim::push => push,
         Prim::append => append,
 
+        Prim::bool_rec => bool_rec,
+
         Prim::add => add,
         Prim::sub => sub,
         Prim::mul => mul,
@@ -382,6 +384,14 @@ fn prim_app2<'core>(
 
         lhs.extend_from_slice(rhs.as_ref());
         Ok(Value::List(lhs))
+    }
+
+    fn bool_rec<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![_, Value::Const(Const::Bool(true)), then, _] => Ok(then.clone()),
+            args![_, Value::Const(Const::Bool(false)), _, r#else] => Ok(r#else.clone()),
+            _ => Err(spine),
+        }
     }
 
     fn add<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {

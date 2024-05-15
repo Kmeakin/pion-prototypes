@@ -566,3 +566,35 @@ let cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) 
 cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
     );
 }
+
+#[test]
+fn dependent_if_then_else() {
+    check(
+        "
+let not = fun b => if b then false else true;
+
+let not-false-is-true : Eq (not false) true = refl _;
+let not-true-is-false : Eq (not true) false = refl _;
+
+let not-inverse : forall b -> Eq (not (not b)) b
+    = fun b =>
+        let p = fun a => Eq (not (not a)) a;
+        let p-true = refl _;
+        let p-false = refl _;
+        bool_rec @p b p-true p-false
+        ;
+()
+",
+        expect![[r#"
+let not : Bool -> Bool = fun (b : Bool) => if b then false else true;
+let not-false-is-true : Eq @Bool true true = refl @Bool true;
+let not-true-is-false : Eq @Bool false false = refl @Bool false;
+let not-inverse : forall (b : Bool) -> Eq @Bool (if (if b then false else true) then false else true) b =
+    fun (b : Bool) =>
+        let p : Bool -> Type = fun (a : Bool) => Eq @Bool (not (not a)) a;
+        let p-true : Eq @Bool true true = refl @Bool true;
+        let p-false : Eq @Bool false false = refl @Bool false;
+        bool_rec @p b p-true p-false;
+() : ()"#]],
+    );
+}

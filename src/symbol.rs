@@ -57,7 +57,8 @@ symbols![
     add, sub, mul,
     eq, ne, lt, gt, lte, gte,
     fix,
-    Eq, refl, subst
+    Eq, refl, subst,
+    bool_rec
 ];
 
 pub type Interner = lasso::ThreadedRodeo<lasso::Spur>;
