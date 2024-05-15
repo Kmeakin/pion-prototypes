@@ -32,7 +32,8 @@ macro_rules! prims {
 
 prims! {
     Type, Int, Bool,
-    List,
+    List, len, push, append,
+
     add, sub, mul,
     eq, ne, gt, lt, gte, lte,
     fix,
@@ -68,6 +69,106 @@ impl Prim {
                     r#type: TYPE,
                 },
                 body: Closure::empty(&Expr::TYPE),
+            },
+            // `len:  forall (@A : Type) -> List A -> Int`
+            Self::len => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: None,
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: None,
+                        r#type: &Expr::FunApp {
+                            fun: &Expr::Prim(Prim::List),
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: (&VAR0),
+                            },
+                        },
+                    },
+                    body: &Expr::INT,
+                }),
+            },
+
+            // `push : forall (@A : Type) -> List A -> A -> List A`
+            Self::push => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: None,
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: None,
+                        r#type: &Expr::FunApp {
+                            fun: &Expr::Prim(Prim::List),
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: (&VAR0),
+                            },
+                        },
+                    },
+                    body: &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &VAR1,
+                        },
+                        body: &Expr::FunApp {
+                            fun: &Expr::Prim(Prim::List),
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: (&VAR2),
+                            },
+                        },
+                    },
+                }),
+            },
+
+            // `append : forall (@A : Type) -> List A -> List A -> List A`
+            Self::append => Type::FunType {
+                param: FunParam {
+                    plicity: Implicit,
+                    name: None,
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::FunType {
+                    param: FunParam {
+                        plicity: Explicit,
+                        name: None,
+                        r#type: &Expr::FunApp {
+                            fun: &Expr::Prim(Prim::List),
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: (&VAR0),
+                            },
+                        },
+                    },
+                    body: &Expr::FunType {
+                        param: FunParam {
+                            plicity: Explicit,
+                            name: None,
+                            r#type: &Expr::FunApp {
+                                fun: &Expr::Prim(Prim::List),
+                                arg: FunArg {
+                                    plicity: Explicit,
+                                    expr: (&VAR1),
+                                },
+                            },
+                        },
+                        body: &Expr::FunApp {
+                            fun: &Expr::Prim(Prim::List),
+                            arg: FunArg {
+                                plicity: Explicit,
+                                expr: (&VAR2),
+                            },
+                        },
+                    },
+                }),
             },
 
             // `add : Int -> Int -> Int`

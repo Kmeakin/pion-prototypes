@@ -53,7 +53,7 @@ symbols![
 
     // prim names
     Type, Bool, Int,
-    List,
+    List, len, push, append,
     add, sub, mul,
     eq, ne, lt, gt, lte, gte,
     fix,

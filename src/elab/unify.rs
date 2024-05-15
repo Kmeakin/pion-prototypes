@@ -206,7 +206,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 Ok(())
             }
 
-            (Value::ListLit(left_values), Value::ListLit(right_values)) => {
+            (Value::List(left_values), Value::List(right_values)) => {
                 if left_values.len() != right_values.len() {
                     return Err(UnifyError::Mismatch);
                 }
@@ -485,7 +485,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 }
                 Ok(Expr::RecordLit(expr_fields.into()))
             }
-            Value::ListLit(values) => {
+            Value::List(values) => {
                 let mut exprs = SliceVec::new(self.bump, values.len());
                 for value in &values {
                     let expr = self.rename(meta_var, value)?;

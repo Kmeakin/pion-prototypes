@@ -23,7 +23,7 @@ pub enum Value<'core> {
         param: FunParam<&'core Self>,
         body: Closure<'core>,
     },
-    ListLit(EcoVec<Self>),
+    List(EcoVec<Self>),
     RecordType(Telescope<'core>),
     RecordLit(&'core [(Symbol, Self)]),
 }
@@ -169,54 +169,16 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
             Value::Error => Value::Error,
             Value::Neutral(head, mut spine) => {
                 spine.push(Elim::FunApp(arg));
-                if let Some(value) = self.prim_app(head, spine.as_slice()) {
-                    return value;
+                match prim_app2(self, head, spine) {
+                    Ok(value) => value,
+                    Err(spine) => Value::Neutral(head, spine),
                 }
-                Value::Neutral(head, spine)
             }
             Value::FunLit { param, body, .. } => {
                 debug_assert_eq!(arg.plicity, param.plicity);
                 self.apply_closure(body, arg.expr)
             }
             _ => panic!("Invalid function application"),
-        }
-    }
-
-    fn prim_app(&self, head: Head, spine: &[Elim<'core>]) -> Option<Value<'core>> {
-        let Head::Prim(prim) = head else { return None };
-
-        macro_rules! prim_rules {
-            ($($prim:ident($($args:pat)*)$(if $guard:expr)? => $rhs:expr),*,) => {
-                #[allow(non_snake_case)]
-                match (prim, spine) {
-                    $((Prim::$prim, [$(Elim::FunApp(FunArg{ plicity: _, expr:$args } ),)*]) $(if $guard)? => Some($rhs),)*
-                    _ => None,
-                }
-            };
-        }
-
-        prim_rules! {
-            add(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_add(*y))),
-            sub(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_sub(*y))),
-            mul(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Int(x.wrapping_mul(*y))),
-
-            eq (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x == y)),
-            ne (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x != y)),
-            lt (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x < y)),
-            gt (Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x > y)),
-            lte(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x <= y)),
-            gte(Value::Const(Const::Int(x)) Value::Const(Const::Int(y))) => Value::Const(Const::Bool(x >= y)),
-
-            // fix @A @B f x  = f (fix @A @B f) x
-            fix(A B f x) if self.opts.unfold_fix => {
-                let fix = Value::prim(Prim::fix);
-                let fixA = self.fun_app(fix, FunArg::new(Plicity::Implicit, A.clone()));
-                let fixAB = self.fun_app(fixA, FunArg::new(Plicity::Implicit, B.clone()));
-                let fixABf = self.fun_app(fixAB, FunArg::new(Plicity::Explicit, f.clone()));
-                let ffixABf = self.fun_app(f.clone(), FunArg::new(Plicity::Explicit, fixABf));
-                let ffixABfx = self.fun_app(ffixABf, FunArg::new(Plicity::Explicit, x.clone()));
-                ffixABfx
-            },
         }
     }
 
@@ -289,6 +251,218 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
             }
         }
         value
+    }
+}
+
+type Spine<'core> = EcoVec<Elim<'core>>;
+type PrimAppResult<'core> = Result<Value<'core>, Spine<'core>>;
+
+#[allow(clippy::items_after_statements)]
+fn prim_app2<'core>(
+    env: &ElimEnv<'core, '_>,
+    head: Head,
+    spine: Spine<'core>,
+) -> PrimAppResult<'core> {
+    let Head::Prim(prim) = head else {
+        return Err(spine);
+    };
+
+    let fun = match prim {
+        Prim::len => len,
+        Prim::push => push,
+        Prim::append => append,
+
+        Prim::add => add,
+        Prim::sub => sub,
+        Prim::mul => mul,
+        Prim::eq => eq,
+        Prim::ne => ne,
+        Prim::gt => gt,
+        Prim::lt => lt,
+        Prim::gte => gte,
+        Prim::lte => lte,
+
+        Prim::fix if env.opts.unfold_fix => fix,
+
+        _ => return Err(spine),
+    };
+
+    return fun(env, spine);
+
+    macro_rules! args {
+        ($($arg:pat),*) => {
+            [$(Elim::FunApp(FunArg { plicity: _, expr: $arg })),*]
+        };
+    }
+
+    // fix @A @B f x  = f (fix @A @B f) x
+    fn fix<'core>(env: &ElimEnv<'core, '_>, mut spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![_a, _b, _f, _x] => {}
+            _ => return Err(spine),
+        }
+
+        let Some(Elim::FunApp(x)) = spine.pop() else {
+            unreachable!()
+        };
+        let Some(Elim::FunApp(f)) = spine.pop() else {
+            unreachable!()
+        };
+        let Some(Elim::FunApp(b)) = spine.pop() else {
+            unreachable!()
+        };
+        let Some(Elim::FunApp(a)) = spine.pop() else {
+            unreachable!()
+        };
+
+        let a = a.expr;
+        let b = b.expr;
+        let f = f.expr;
+        let x = x.expr;
+
+        let fix = Value::prim(Prim::fix);
+        let fixa = env.fun_app(fix, FunArg::new(Plicity::Implicit, a));
+        let fixab = env.fun_app(fixa, FunArg::new(Plicity::Implicit, b));
+        let fixabf = env.fun_app(fixab, FunArg::new(Plicity::Explicit, f.clone()));
+        let ffixabf = env.fun_app(f, FunArg::new(Plicity::Explicit, fixabf));
+        let ffixabfx = env.fun_app(ffixabf, FunArg::new(Plicity::Explicit, x));
+
+        Ok(ffixabfx)
+    }
+
+    fn len<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![_, Value::List(list)] => Ok(Value::Const(Const::Int(list.len() as u32))),
+            _ => Err(spine),
+        }
+    }
+
+    fn push<'core>(_: &ElimEnv<'core, '_>, mut spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![_, Value::List(_list), _elem] => {}
+            _ => return Err(spine),
+        }
+
+        let Some(Elim::FunApp(elem)) = spine.pop() else {
+            unreachable!()
+        };
+        let Some(Elim::FunApp(list)) = spine.pop() else {
+            unreachable!()
+        };
+
+        let elem = elem.expr;
+        let list = list.expr;
+        let Value::List(mut list) = list else {
+            unreachable!()
+        };
+
+        list.push(elem);
+        Ok(Value::List(list))
+    }
+
+    fn append<'core>(_: &ElimEnv<'core, '_>, mut spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![_, Value::List(_lhs), Value::List(_rhs)] => {}
+            _ => return Err(spine),
+        }
+
+        let Some(Elim::FunApp(rhs)) = spine.pop() else {
+            unreachable!()
+        };
+        let Some(Elim::FunApp(lhs)) = spine.pop() else {
+            unreachable!()
+        };
+
+        let Value::List(mut lhs) = lhs.expr else {
+            unreachable!()
+        };
+        let Value::List(rhs) = rhs.expr else {
+            unreachable!()
+        };
+
+        lhs.extend_from_slice(rhs.as_ref());
+        Ok(Value::List(lhs))
+    }
+
+    fn add<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Int(lhs.wrapping_add(*rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn sub<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Int(lhs.wrapping_sub(*rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn mul<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Int(lhs.wrapping_mul(*rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn eq<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.eq(rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn ne<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.ne(rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn lt<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.lt(rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn gt<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.gt(rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn lte<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.le(rhs))))
+            }
+            _ => Err(spine),
+        }
+    }
+
+    fn gte<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
+        match spine.as_ref() {
+            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
+                Ok(Value::Const(Const::Bool(lhs.ge(rhs))))
+            }
+            _ => Err(spine),
+        }
     }
 }
 
@@ -386,9 +560,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 let scrut = self.eval(scrut);
                 self.elim_env().record_proj(scrut, *name)
             }
-            Expr::ListLit(elems) => {
-                Value::ListLit(elems.iter().map(|expr| self.eval(expr)).collect())
-            }
+            Expr::ListLit(elems) => Value::List(elems.iter().map(|expr| self.eval(expr)).collect()),
         }
     }
 }
@@ -489,7 +661,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                         .map(|(name, value)| (*name, self.quote(value))),
                 ),
             ),
-            Value::ListLit(values) => Expr::ListLit(
+            Value::List(values) => Expr::ListLit(
                 self.bump
                     .alloc_slice_fill_iter(values.iter().map(|value| self.quote(value))),
             ),

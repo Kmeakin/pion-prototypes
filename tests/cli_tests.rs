@@ -458,6 +458,13 @@ error: Unsolved metavariable: ?0
   │ ^^ could not infer type of list elements
 "#]],
     );
+
+    eval("len [1, 2, 3]", expect!["3 : Int"]);
+    eval("push [1, 2, 3] 4", expect!["[1, 2, 3, 4] : List Int"]);
+    eval(
+        "append [1, 2, 3] [4, 5, 6]",
+        expect!["[1, 2, 3, 4, 5, 6] : List Int"],
+    );
 }
 
 #[test]
