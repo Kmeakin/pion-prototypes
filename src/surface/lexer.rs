@@ -25,6 +25,8 @@ pub enum TokenKind {
     #[token(")")] RParen,
     #[token("{")] LCurly,
     #[token("}")] RCurly,
+    #[token("[")] LSquare,
+    #[token("]")] RSquare,
 
     #[token("_", priority = 10)] Underscore,
     #[token(",")] Comma,
@@ -66,6 +68,8 @@ impl fmt::Display for TokenKind {
             Self::RParen => "`)`",
             Self::LCurly => "`{`",
             Self::RCurly => "`}`",
+            Self::LSquare => "`[`",
+            Self::RSquare => "`]`",
             Self::Underscore => "`_`",
             Self::Comma => "`,`",
             Self::Semicolon => "`;`",
@@ -176,12 +180,14 @@ mod tests {
     fn delimiters() {
         #[rustfmt::skip]
         check(
-            "(){}",
+            "(){}[]",
             &[
                 Token { kind: LParen, range: range(0..1) },
                 Token { kind: RParen, range: range(1..2) },
                 Token { kind: LCurly, range: range(2..3) },
                 Token { kind: RCurly, range: range(3..4) },
+                Token { kind: LSquare, range: range(4..5) },
+                Token { kind: RSquare, range: range(5..6) },
             ],
         );
     }

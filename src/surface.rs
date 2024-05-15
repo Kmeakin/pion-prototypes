@@ -75,6 +75,7 @@ pub enum Expr<'surface> {
         arg: Located<FunArg<'surface>>,
     },
 
+    ListLit(&'surface [Located<Self>]),
     TupleLit(&'surface [Located<Self>]),
     RecordType(&'surface [Located<TypeField<'surface>>]),
     RecordLit(&'surface [Located<ExprField<'surface>>]),

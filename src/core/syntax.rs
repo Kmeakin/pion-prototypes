@@ -36,6 +36,7 @@ pub enum Expr<'core> {
         arg: FunArg<&'core Self>,
     },
 
+    ListLit(&'core [Self]),
     RecordType(&'core [(Symbol, Self)]),
     RecordLit(&'core [(Symbol, Self)]),
     RecordProj(&'core Self, Symbol),
@@ -73,6 +74,7 @@ impl<'core> Expr<'core> {
                 .any(|(var, (_, r#type))| r#type.references_local(var)),
             Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.references_local(var)),
             Expr::RecordProj(scrut, _) => scrut.references_local(var),
+            Expr::ListLit(elems) => elems.iter().any(|expr| expr.references_local(var)),
         }
     }
 
@@ -170,6 +172,9 @@ impl<'core> Expr<'core> {
                 let (cond, then, r#else) = bump.alloc((cond, then, r#else));
                 Expr::If { cond, then, r#else }
             }
+            Expr::ListLit(elems) => Expr::ListLit(bump.alloc_slice_fill_iter(
+                elems.iter().map(|expr| expr.shift_inner(bump, min, amount)),
+            )),
         }
     }
 }

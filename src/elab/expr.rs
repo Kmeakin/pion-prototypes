@@ -1,9 +1,10 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
+use ecow::eco_vec;
 use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
 use crate::core::prim::Prim;
-use crate::core::semantics::{Closure, Telescope, Type, Value};
+use crate::core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use crate::core::syntax::{Const, Expr, FunArg, FunParam};
 use crate::env::RelativeVar;
 use crate::plicity::Plicity;
@@ -174,6 +175,38 @@ where
                 let arg = FunArg::new(param.plicity, arg_expr as &_);
                 let core_expr = Expr::FunApp { fun, arg };
                 Ok((core_expr, output_type))
+            }
+            surface::Expr::ListLit(surface_exprs) => {
+                let Some((first_surface_expr, rest_surface_exprs)) = surface_exprs.split_first()
+                else {
+                    let elem_type = self.push_unsolved_type(MetaSource::ListElemType {
+                        range: surface_expr.range,
+                    });
+                    return Ok((
+                        Expr::ListLit(&[]),
+                        Type::Neutral(
+                            Head::Prim(Prim::List),
+                            eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
+                        ),
+                    ));
+                };
+
+                let mut exprs = SliceVec::new(self.bump, surface_exprs.len());
+                let (expr, elem_type) = self.synth_expr(first_surface_expr)?;
+                exprs.push(expr);
+
+                for surface_expr in rest_surface_exprs {
+                    let expr = self.check_expr(surface_expr, &elem_type)?;
+                    exprs.push(expr);
+                }
+
+                Ok((
+                    Expr::ListLit(exprs.into()),
+                    Type::Neutral(
+                        Head::Prim(Prim::List),
+                        eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
+                    ),
+                ))
             }
             surface::Expr::TupleLit(surface_exprs) => {
                 let mut expr_fields = SliceVec::new(self.bump, surface_exprs.len());
@@ -434,6 +467,26 @@ where
             }
             surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, &expected),
 
+            surface::Expr::ListLit(surface_exprs) => {
+                let Type::Neutral(Head::Prim(Prim::List), args) = &expected else {
+                    return self.synth_and_convert_expr(surface_expr, &expected);
+                };
+                let &[Elim::FunApp(FunArg {
+                    plicity: Plicity::Explicit,
+                    expr: ref elem_type,
+                })] = args.as_ref()
+                else {
+                    return self.synth_and_convert_expr(surface_expr, &expected);
+                };
+
+                let mut exprs = SliceVec::new(self.bump, surface_exprs.len());
+                for surface_expr in surface_exprs {
+                    let expr = self.check_expr(surface_expr, elem_type)?;
+                    exprs.push(expr);
+                }
+
+                Ok(Expr::ListLit(exprs.into()))
+            }
             surface::Expr::TupleLit(surface_exprs) if expected.is_type() => {
                 let len = self.local_env.len();
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());

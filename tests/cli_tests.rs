@@ -444,6 +444,23 @@ Int) : Type"#]],
 }
 
 #[test]
+fn lists() {
+    check("[1, 2, 3]", expect!["[1, 2, 3] : List Int"]);
+    check("[] : List Int", expect!["[] : List Int"]);
+    check(
+        "[]",
+        expect![[r#"
+[] : List ?0
+error: Unsolved metavariable: ?0
+  ┌─ <stdin>:1:1
+  │
+1 │ []
+  │ ^^ could not infer type of list elements
+"#]],
+    );
+}
+
+#[test]
 fn equality() {
     check("Eq", expect!["Eq : forall (@A : Type) -> A -> A -> Type"]);
     check(

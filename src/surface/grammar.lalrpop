@@ -31,6 +31,8 @@ extern {
         ")" => TokenKind::RParen,
         "{" => TokenKind::LCurly,
         "}" => TokenKind::RCurly,
+        "[" => TokenKind::LSquare,
+        "]" => TokenKind::RSquare,
 
         "_" => TokenKind::Underscore,
         "," => TokenKind::Comma,
@@ -156,6 +158,7 @@ AtomExpr: Located<Expr<'surface>> = {
     <start: @L> "{" "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::TupleLit(&[])),
     <start: @L> "{" <fields: Sep1<TypeField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordType(fields)),
     <start: @L> "{" <fields: Sep1<ExprField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordLit(fields)),
+    <start: @L> "[" <exprs: Sep0<Expr, ",">> "]" <end: @R> => Located::new(TextRange::new(start, end), Expr::ListLit(exprs)),
 }
 
 Tuple<Elem>: &'surface [Elem] = {

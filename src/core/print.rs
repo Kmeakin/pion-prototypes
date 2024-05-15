@@ -28,6 +28,7 @@ impl Prec {
             | Expr::Const(..)
             | Expr::LocalVar(..)
             | Expr::MetaVar(..)
+            | Expr::ListLit(_)
             | Expr::RecordType(_)
             | Expr::RecordLit(_) => Self::Atom,
             Expr::Let { .. } | Expr::If { .. } => Self::Let,
@@ -173,6 +174,7 @@ impl<'bump> Printer<'bump> {
             Expr::FunLit { .. } => self.fun_lit(names, expr),
             Expr::FunApp { fun, arg } => self.fun_app(names, fun, arg),
             Expr::Prim(prim) => self.text(prim.name()),
+            Expr::ListLit(exprs) => self.list_lit(names, exprs),
             Expr::RecordType(fields) => self.record_type(names, fields),
             Expr::RecordLit(expr_fields) => self.record_lit(names, expr_fields),
             Expr::RecordProj(scrut, symbol) => self.record_proj(names, scrut, *symbol),
@@ -284,6 +286,11 @@ impl<'bump> Printer<'bump> {
         let fun = self.expr_prec(names, fun, Prec::App);
         let arg = self.fun_arg(names, arg);
         fun.append(self.space()).append(arg)
+    }
+
+    fn list_lit(&'bump self, names: &mut NameEnv, exprs: &[Expr]) -> DocBuilder<'bump> {
+        let elems = self.intersperse(exprs.iter().map(|expr| self.expr(names, expr)), ", ");
+        self.text("[").append(elems).append("]")
     }
 
     fn record_type(

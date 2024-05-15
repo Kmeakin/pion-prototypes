@@ -23,6 +23,7 @@ pub enum Value<'core> {
         param: FunParam<&'core Self>,
         body: Closure<'core>,
     },
+    ListLit(EcoVec<Self>),
     RecordType(Telescope<'core>),
     RecordLit(&'core [(Symbol, Self)]),
 }
@@ -385,6 +386,9 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 let scrut = self.eval(scrut);
                 self.elim_env().record_proj(scrut, *name)
             }
+            Expr::ListLit(elems) => {
+                Value::ListLit(elems.iter().map(|expr| self.eval(expr)).collect())
+            }
         }
     }
 }
@@ -484,6 +488,10 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                         .iter()
                         .map(|(name, value)| (*name, self.quote(value))),
                 ),
+            ),
+            Value::ListLit(values) => Expr::ListLit(
+                self.bump
+                    .alloc_slice_fill_iter(values.iter().map(|value| self.quote(value))),
             ),
         }
     }
@@ -620,6 +628,10 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                         .iter()
                         .map(|(name, expr)| (*name, self.zonk(expr))),
                 ),
+            ),
+            Expr::ListLit(elems) => Expr::ListLit(
+                self.bump
+                    .alloc_slice_fill_iter(elems.iter().map(|expr| self.zonk(expr))),
             ),
         }
     }

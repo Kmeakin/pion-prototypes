@@ -206,6 +206,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 Ok(())
             }
 
+            (Value::ListLit(left_values), Value::ListLit(right_values)) => {
+                if left_values.len() != right_values.len() {
+                    return Err(UnifyError::Mismatch);
+                }
+
+                for (left, right) in left_values.iter().zip(right_values.iter()) {
+                    self.unify(left, right)?;
+                }
+
+                Ok(())
+            }
+
             (Value::RecordLit(left_fields), Value::RecordLit(right_fields)) => {
                 if !crate::slice_eq_by_key(left_fields, right_fields, |(field, _)| *field) {
                     return Err(UnifyError::Mismatch);
@@ -472,6 +484,14 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     expr_fields.push((*name, expr));
                 }
                 Ok(Expr::RecordLit(expr_fields.into()))
+            }
+            Value::ListLit(values) => {
+                let mut exprs = SliceVec::new(self.bump, values.len());
+                for value in &values {
+                    let expr = self.rename(meta_var, value)?;
+                    exprs.push(expr);
+                }
+                Ok(Expr::ListLit(exprs.into()))
             }
         }
     }

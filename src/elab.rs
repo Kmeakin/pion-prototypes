@@ -133,6 +133,9 @@ pub enum MetaSource {
         range: TextRange,
         name: Option<Symbol>,
     },
+    ListElemType {
+        range: TextRange,
+    },
 }
 
 impl MetaSource {
@@ -141,7 +144,8 @@ impl MetaSource {
             Self::PatType { range, .. }
             | Self::HoleType { range, .. }
             | Self::HoleExpr { range, .. }
-            | Self::ImplicitArg { range, .. } => *range,
+            | Self::ImplicitArg { range, .. }
+            | Self::ListElemType { range, .. } => *range,
         }
     }
 }
@@ -184,6 +188,7 @@ where
                         name: Some(name), ..
                     } => format!("implicit argument `{name}`"),
                     MetaSource::ImplicitArg { name: None, .. } => "implicit argument".to_string(),
+                    MetaSource::ListElemType { .. } => "type of list elements".to_string(),
                 };
 
                 self.report_diagnostic(

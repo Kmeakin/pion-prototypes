@@ -32,6 +32,7 @@ macro_rules! prims {
 
 prims! {
     Type, Int, Bool,
+    List,
     add, sub, mul,
     eq, ne, gt, lt, gte, lte,
     fix,
@@ -58,6 +59,16 @@ impl Prim {
             // `Int : Type`
             // `Bool : Type`
             Self::Type | Self::Int | Self::Bool => Type::TYPE,
+
+            // `List : Type -> Type`
+            Self::List => Type::FunType {
+                param: FunParam {
+                    plicity: Explicit,
+                    name: None,
+                    r#type: TYPE,
+                },
+                body: Closure::empty(&Expr::TYPE),
+            },
 
             // `add : Int -> Int -> Int`
             // `sub : Int -> Int -> Int`
