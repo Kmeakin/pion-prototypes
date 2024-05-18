@@ -327,14 +327,20 @@ fn fixpoint_factorial() {
     check(
         fact,
         expect![[r#"
-(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
-    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+(fix
+    @Int
+    @Int
+    (fun (fact : Int -> Int) (n : Int) =>
+        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(
         fact,
         expect![[r#"
-(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
-    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+(fix
+    @Int
+    @Int
+    (fun (fact : Int -> Int) (n : Int) =>
+        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(&format!("{fact} 5"), expect!["120 : Int"]);
 }
@@ -352,12 +358,19 @@ fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2
 fix2
 "#,
         expect![[r#"
-let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2) =
-    fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) =>
-        fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1, A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
-            (fun (x : A1) => (f (fix2 f))._0 x, fun (x : A2) =>
-                (f (fix2 f))._1 x));
-fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)"#]],
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) ->
+    ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
+    = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) =>
+        fix
+            @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2))
+            @(A1 -> B1, A2 -> B2)
+            (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1,
+            A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1,
+            A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
+                (fun (x : A1) => (f (fix2 f))._0 x,
+                fun (x : A2) => (f (fix2 f))._1 x));
+fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) ->
+    ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)"#]],
     );
 }
 
@@ -390,16 +403,22 @@ fn letrec() {
     check(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
         expect![[r#"
-let fact : Int -> Int =
-    fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
-        if eq n 0 then 1 else mul n (fact (sub n 1)));
+let fact : Int -> Int
+    = fix
+        @Int
+        @Int
+        (fun (fact : Int -> Int) (n : Int) =>
+            if eq n 0 then 1 else mul n (fact (sub n 1)));
 fact : Int -> Int"#]],
     );
     eval(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact",
         expect![[r#"
-(fix @Int @Int (fun (fact : Int -> Int) (n : Int) =>
-    if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+(fix
+    @Int
+    @Int
+    (fun (fact : Int -> Int) (n : Int) =>
+        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
     );
     eval(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact 5",
@@ -437,9 +456,10 @@ let y : Int = (1, 2)._1;
     check(
         "forall ((x, y) : (Int, Bool)) -> Int",
         expect![[r#"
-(forall (_ : (Int, Bool)) -> let x : Int = _#0._0;
-let y : Bool = _#1._1;
-Int) : Type"#]],
+(forall (_ : (Int, Bool)) ->
+    let x : Int = _#0._0;
+    let y : Bool = _#1._1;
+    Int) : Type"#]],
     );
 }
 
@@ -476,10 +496,9 @@ fn equality() {
     );
     check(
         "subst",
-        expect![
-            "subst : forall (@A : Type) (@p : A -> Type) (a : A) (b : A) -> Eq @A a b -> p a -> p \
-             b"
-        ],
+        expect![[r#"
+subst : forall (@A : Type) (@p : A -> Type) (a : A) (b : A) ->
+    Eq @A a b -> p a -> p b"#]],
     );
     check(
         "
@@ -493,8 +512,8 @@ let sym: forall (@A: Type) (@a: A) (@b: A) -> Eq a b -> Eq b a
 sym
     ",
         expect![[r#"
-let sym : forall (@A : Type) (@a : A) (@b : A) -> Eq @A a b -> Eq @A b a =
-    fun (@A : Type) (@a : A) (@b : A) (a_eq_b : Eq @A a b) =>
+let sym : forall (@A : Type) (@a : A) (@b : A) -> Eq @A a b -> Eq @A b a
+    = fun (@A : Type) (@a : A) (@b : A) (a_eq_b : Eq @A a b) =>
         let p : A -> Type = fun (x : A) => Eq @A x a;
         let p_a : Eq @A a a = refl @A a;
         let goal : Eq @A b a = subst @A @p a b a_eq_b p_a;
@@ -514,13 +533,16 @@ let trans: forall (@A: Type) (@a: A) (@b: A) (@c: A) -> Eq a b -> Eq b c -> Eq a
 trans
     ",
         expect![[r#"
-let trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) -> Eq @A a b -> Eq @A b c -> Eq @A a c =
-    fun (@A : Type) (@a : A) (@b : A) (@c : A) (a_eq_b : Eq @A a b) (b_eq_c : Eq @A b c) =>
+let trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) ->
+    Eq @A a b -> Eq @A b c -> Eq @A a c
+    = fun (@A : Type) (@a : A) (@b : A) (@c : A) (a_eq_b : Eq @A a b)
+    (b_eq_c : Eq @A b c) =>
         let p : A -> Type = fun (x : A) => Eq @A a x;
         let p_b : Eq @A a b = a_eq_b;
         let goal : Eq @A a c = subst @A @p b c b_eq_c p_b;
         goal;
-trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) -> Eq @A a b -> Eq @A b c -> Eq @A a c"#]],
+trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) ->
+    Eq @A a b -> Eq @A b c -> Eq @A a c"#]],
     );
 
     check(
@@ -535,13 +557,18 @@ let cong: forall (@A: Type) (@B: Type) (@a: A) (@b: A) (f: A -> B) -> Eq a b -> 
 cong
         ",
         expect![[r#"
-let cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) -> Eq @A a b -> Eq @B (f a) (f b) =
-    fun (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) (a_eq_b : Eq @A a b) =>
+let cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) ->
+    Eq @A a b -> Eq @B (f a) (f b)
+    = fun (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) (a_eq_b : Eq
+        @A
+        a
+        b) =>
         let p : A -> Type = fun (x : A) => Eq @B (f a) (f x);
         let p_a : Eq @B (f a) (f a) = refl @B (f a);
         let goal : Eq @B (f a) (f b) = subst @A @p a b a_eq_b p_a;
         goal;
-cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) -> Eq @A a b -> Eq @B (f a) (f b)"#]],
+cong : forall (@A : Type) (@B : Type) (@a : A) (@b : A) (f : A -> B) ->
+    Eq @A a b -> Eq @B (f a) (f b)"#]],
     );
 
     check(
@@ -557,13 +584,18 @@ let cong-app: forall (@A: Type) (@B: Type) (a: A) (f: A -> B) (g: A -> B)
 cong-app
         ",
         expect![[r#"
-let cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a) =
-    fun (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) (f_eq_g : Eq @(A -> B) f g) =>
+let cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B)
+(g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)
+    = fun (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) (f_eq_g : Eq
+        @(A -> B)
+        f
+        g) =>
         let p : (A -> B) -> Type = fun (x : A -> B) => Eq @B (f a) (x a);
         let p_f : Eq @B (f a) (f a) = refl @B (f a);
         let goal : Eq @B (f a) (g a) = subst @(A -> B) @p f g f_eq_g p_f;
         goal;
-cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) -> Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
+cong-app : forall (@A : Type) (@B : Type) (a : A) (f : A -> B) (g : A -> B) ->
+    Eq @(A -> B) f g -> Eq @B (f a) (g a)"#]],
     );
 }
 
@@ -589,8 +621,9 @@ let not-inverse : forall b -> Eq (not (not b)) b
 let not : Bool -> Bool = fun (b : Bool) => if b then false else true;
 let not-false-is-true : Eq @Bool true true = refl @Bool true;
 let not-true-is-false : Eq @Bool false false = refl @Bool false;
-let not-inverse : forall (b : Bool) -> Eq @Bool (if (if b then false else true) then false else true) b =
-    fun (b : Bool) =>
+let not-inverse : forall (b : Bool) ->
+    Eq @Bool (if (if b then false else true) then false else true) b
+    = fun (b : Bool) =>
         let p : Bool -> Type = fun (a : Bool) => Eq @Bool (not (not a)) a;
         let p-true : Eq @Bool true true = refl @Bool true;
         let p-false : Eq @Bool false false = refl @Bool false;
