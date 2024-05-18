@@ -151,7 +151,7 @@ AtomExpr: Located<Expr<'surface>> = {
         Located::new(range, Expr::Error)
     },
     <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
-    <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar(ident)),
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Expr::Hole),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren(bump.alloc(expr))),
     <start: @L> <exprs: Tuple<Expr>> <end: @R> => Located::new(TextRange::new(start, end), Expr::TupleLit(exprs)),
@@ -182,7 +182,7 @@ Pat: Located<Pat<'surface>> = {
         Located::new(range, Pat::Error)
     },
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
-    <start: @L> "Ident" <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident(ident)),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => Located::new(TextRange::new(start, end), Pat::Paren(bump.alloc(pat))),
     <start: @L> <pats: Tuple<Pat>> <end: @R> => Located::new(TextRange::new(start, end), Pat::TupleLit(pats)),
     <start: @L> "{" <fields: Sep0<PatField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Pat::RecordLit(fields)),

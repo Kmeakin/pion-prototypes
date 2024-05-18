@@ -35,7 +35,7 @@ impl<T> Located<T> {
 pub enum Expr<'surface> {
     Error,
     Const(Const),
-    LocalVar,
+    LocalVar(Located<Symbol>),
     Hole,
 
     Paren(&'surface Located<Self>),
@@ -120,7 +120,7 @@ pub struct FunArg<'surface> {
 pub enum Pat<'surface> {
     Error,
     Underscore,
-    Ident,
+    Ident(Located<Symbol>),
     Paren(&'surface Located<Self>),
     TupleLit(&'surface [Located<Self>]),
     RecordLit(&'surface [Located<PatField<'surface>>]),

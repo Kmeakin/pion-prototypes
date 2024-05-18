@@ -48,23 +48,20 @@ where
                 };
                 Ok((expr, r#type))
             }
-            surface::Expr::LocalVar => {
-                let text = &self.text[surface_expr.range];
-                let symbol = Symbol::intern(text);
-
-                if let Some(var) = self.local_env.lookup(symbol) {
+            surface::Expr::LocalVar(Located { data: name, .. }) => {
+                if let Some(var) = self.local_env.lookup(name) {
                     let r#type = self.local_env.types.get_relative(var).unwrap().clone();
                     return Ok((Expr::LocalVar(var), r#type));
                 }
 
-                if let Some(prim) = Prim::from_symbol(symbol) {
+                if let Some(prim) = Prim::from_symbol(name) {
                     let r#type = prim.r#type();
                     return Ok((Expr::Prim(prim), r#type));
                 }
 
                 self.report_diagnostic(
                     Diagnostic::error()
-                        .with_message(format!("Unbound variable: {text}"))
+                        .with_message(format!("Unbound variable: {name}"))
                         .with_labels(vec![Label::primary(self.file_id, surface_expr.range)]),
                 )?;
                 Ok((Expr::Error, Type::Error))

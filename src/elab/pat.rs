@@ -90,10 +90,7 @@ where
                 let r#type = self.push_unsolved_type(source);
                 Ok((Pat::Underscore, r#type))
             }
-            surface::Pat::Ident => {
-                let range = surface_pat.range;
-                let text = &self.text[range];
-                let name = Symbol::intern(text);
+            surface::Pat::Ident(Located { range, data: name }) => {
                 let source = MetaSource::PatType {
                     range,
                     name: Some(name),
@@ -142,11 +139,7 @@ where
         match surface_pat.data {
             surface::Pat::Error => Ok(Pat::Error),
             surface::Pat::Underscore => Ok(Pat::Underscore),
-            surface::Pat::Ident => {
-                let text = &self.text[surface_pat.range];
-                let symbol = Symbol::intern(text);
-                Ok(Pat::Ident(symbol))
-            }
+            surface::Pat::Ident(Located { data: name, .. }) => Ok(Pat::Ident(name)),
             surface::Pat::Paren(pat) => self.check_pat(pat, expected),
             surface::Pat::TupleLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
