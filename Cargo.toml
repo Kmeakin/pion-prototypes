@@ -31,11 +31,13 @@ clap               = { version = "4.5.4", features = ["derive"] }
 codespan-reporting = { version = "0.11.1" }
 ecow               = { version = "0.2.2" }
 either             = { version = "1.10.0" }
+internal-iterator  = { version = "0.2.3" }
 lalrpop-util       = { version = "0.20.2", default-features = false }
 lasso              = { version = "0.7.2", features = ["multi-threaded"] }
 logos              = { version = "0.14.0" }
 once_cell          = { version = "1.19.0", features = ["parking_lot"] }
 pretty             = { version = "0.12.3" }
+smallvec           = { version = "1.13.2", features = ["union"] }
 text-size          = { version = "1.1.1" }
 
 [build-dependencies]

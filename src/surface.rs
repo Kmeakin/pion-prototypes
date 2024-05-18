@@ -56,6 +56,10 @@ pub enum Expr<'surface> {
         then: &'surface Located<Self>,
         r#else: &'surface Located<Self>,
     },
+    Match {
+        scrut: &'surface Located<Self>,
+        cases: &'surface [MatchCase<'surface>],
+    },
 
     FunArrow {
         plicity: Plicity,
@@ -83,6 +87,18 @@ pub enum Expr<'surface> {
         scrut: &'surface Located<Self>,
         name: Located<Symbol>,
     },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct MatchCase<'surface> {
+    pub pat: Located<Pat<'surface>>,
+    pub guard: Option<MatchGuard<'surface>>,
+    pub expr: Located<Expr<'surface>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum MatchGuard<'surface> {
+    If { cond: Located<Expr<'surface>> },
 }
 
 #[derive(Debug, Copy, Clone)]

@@ -1,7 +1,7 @@
 use text_size::{TextRange, TextSize};
 use codespan_reporting::diagnostic::Diagnostic;
 
-use crate::surface::{Lit, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg, Rec, ExprField, TypeField, PatField};
+use crate::surface::*;
 use crate::surface::LalrpopError;
 use crate::plicity::Plicity;
 use crate::symbol::Symbol;
@@ -23,6 +23,7 @@ extern {
         "fun" => TokenKind::KwFun,
         "if" => TokenKind::KwIf,
         "let" => TokenKind::KwLet,
+        "match" => TokenKind::KwMatch,
         "rec" => TokenKind::KwRec,
         "then" => TokenKind::KwThen,
         "true" => TokenKind::KwTrue,
@@ -159,6 +160,15 @@ AtomExpr: Located<Expr<'surface>> = {
     <start: @L> "{" <fields: Sep1<TypeField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordType(fields)),
     <start: @L> "{" <fields: Sep1<ExprField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordLit(fields)),
     <start: @L> "[" <exprs: Sep0<Expr, ",">> "]" <end: @R> => Located::new(TextRange::new(start, end), Expr::ListLit(exprs)),
+    <start: @L> "match" <scrut: ProjExpr> "{" <cases: Sep0<MatchCase, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::Match { scrut: bump.alloc(scrut), cases }),
+}
+
+MatchCase: MatchCase<'surface> = {
+    <pat: Pat> <guard: MatchGuard?> "=>" <expr: Expr> => MatchCase { pat, guard, expr },
+}
+
+MatchGuard: MatchGuard<'surface> = {
+    "if" <cond: Expr> => MatchGuard::If { cond },
 }
 
 Tuple<Elem>: &'surface [Elem] = {

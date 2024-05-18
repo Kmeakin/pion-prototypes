@@ -30,8 +30,10 @@ impl Prec {
             | Expr::MetaVar(..)
             | Expr::ListLit(_)
             | Expr::RecordType(_)
-            | Expr::RecordLit(_) => Self::Atom,
-            Expr::Let { .. } | Expr::If { .. } => Self::Let,
+            | Expr::RecordLit(_)
+            | Expr::MatchBool { .. }
+            | Expr::MatchInt { .. } => Self::Atom,
+            Expr::Let { .. } => Self::Let,
             Expr::FunType { .. } | Expr::FunLit { .. } => Self::Fun,
             Expr::FunApp { .. } => Self::App,
             Expr::RecordProj(..) => Self::Proj,
@@ -175,7 +177,12 @@ impl<'bump> Printer<'bump> {
 
                 self.let_expr(*name, r#type, init, body)
             }
-            Expr::If { cond, then, r#else } => self.if_then_else(names, cond, then, r#else),
+            Expr::MatchBool { cond, then, r#else } => self.match_bool(names, cond, then, r#else),
+            Expr::MatchInt {
+                scrut,
+                cases,
+                default,
+            } => self.match_int(names, scrut, cases, default),
             Expr::FunType { .. } => self.fun_type(names, expr),
             Expr::FunLit { .. } => self.fun_lit(names, expr),
             Expr::FunApp { .. } => self.fun_app(names, expr),
@@ -193,23 +200,60 @@ impl<'bump> Printer<'bump> {
         }
     }
 
-    fn if_then_else(
+    fn match_bool(
         &'bump self,
         names: &mut NameEnv,
         cond: &Expr,
         then: &Expr,
         r#else: &Expr,
     ) -> DocBuilder<'bump> {
-        let cond = self.expr_prec(names, cond, Prec::App);
+        let cond = self.expr_prec(names, cond, Prec::Proj);
         let then = self.expr_prec(names, then, Prec::MAX);
         let r#else = self.expr_prec(names, r#else, Prec::MAX);
 
-        self.text("if ")
-            .append(cond)
-            .append(" then ")
+        let then = self.text("true => ").append(then).append(",");
+        let r#else = self.text("false => ").append(r#else).append(",");
+        let cases = self
+            .hardline()
             .append(then)
-            .append(" else ")
-            .append(r#else)
+            .append(self.hardline())
+            .append(r#else);
+
+        self.text("match ")
+            .append(cond)
+            .append(" {")
+            .append(cases.nest(INDENT))
+            .append(self.hardline())
+            .append("}")
+            .group()
+    }
+
+    fn match_int(
+        &'bump self,
+        names: &mut NameEnv,
+        scrut: &Expr,
+        cases: &[(u32, Expr)],
+        default: &Expr,
+    ) -> DocBuilder<'bump> {
+        let scrut = self.expr_prec(names, scrut, Prec::Proj);
+        let default = {
+            let expr = self.expr_prec(names, default, Prec::MAX);
+            self.text("_").append(" => ").append(expr)
+        };
+        let cases = cases.iter().map(|(lit, expr)| {
+            let expr = self.expr_prec(names, expr, Prec::MAX);
+            self.lit(Lit::Int(*lit)).append(" => ").append(expr)
+        });
+        let cases = cases.chain(Some(default));
+        let cases = cases.map(|case| self.hardline().append(case).append(","));
+        let cases = self.concat(cases).nest(INDENT);
+        self.text("match ")
+            .append(scrut)
+            .append(" {")
+            .append(cases)
+            .append(self.line_())
+            .append("}")
+            .group()
     }
 
     fn fun_type(&'bump self, names: &mut NameEnv, mut expr: &Expr) -> DocBuilder<'bump> {

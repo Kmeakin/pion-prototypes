@@ -332,6 +332,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "internal-iterator"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "969ee3fc68ec2e88eb21434ce4d9b7e1600d1ce92ff974560a6c4a304f5124b9"
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -528,12 +534,14 @@ dependencies = [
  "ecow",
  "either",
  "expect-test",
+ "internal-iterator",
  "lalrpop",
  "lalrpop-util",
  "lasso",
  "logos",
  "once_cell",
  "pretty",
+ "smallvec",
  "text-size",
 ]
 

@@ -139,7 +139,7 @@ where
         }
     }
 
-    fn check_pat(
+    pub(super) fn check_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,

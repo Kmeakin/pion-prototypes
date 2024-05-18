@@ -283,7 +283,11 @@ error: Applied implicit argument when explicit argument was expected
 fn if_then_else() {
     check(
         "if true then 1 else 0",
-        expect!["(if true then 1 else 0) : Int"],
+        expect![[r#"
+match true {
+    true => 1,
+    false => 0,
+} : Int"#]],
     );
     eval("if true then 1 else 0", expect!["1 : Int"]);
 }
@@ -331,7 +335,10 @@ fn fixpoint_factorial() {
     @Int
     @Int
     (fun (fact : Int -> Int) (n : Int) =>
-        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+        match (eq n 0) {
+            true => 1,
+            false => mul n (fact (sub n 1)),
+        })) : Int -> Int"#]],
     );
     eval(
         fact,
@@ -340,7 +347,10 @@ fn fixpoint_factorial() {
     @Int
     @Int
     (fun (fact : Int -> Int) (n : Int) =>
-        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+        match (eq n 0) {
+            true => 1,
+            false => mul n (fact (sub n 1)),
+        })) : Int -> Int"#]],
     );
     eval(&format!("{fact} 5"), expect!["120 : Int"]);
 }
@@ -408,7 +418,10 @@ let fact : Int -> Int
         @Int
         @Int
         (fun (fact : Int -> Int) (n : Int) =>
-            if eq n 0 then 1 else mul n (fact (sub n 1)));
+            match (eq n 0) {
+                true => 1,
+                false => mul n (fact (sub n 1)),
+            });
 fact : Int -> Int"#]],
     );
     eval(
@@ -418,7 +431,10 @@ fact : Int -> Int"#]],
     @Int
     @Int
     (fun (fact : Int -> Int) (n : Int) =>
-        if eq n 0 then 1 else mul n (fact (sub n 1)))) : Int -> Int"#]],
+        match (eq n 0) {
+            true => 1,
+            false => mul n (fact (sub n 1)),
+        })) : Int -> Int"#]],
     );
     eval(
         "let rec fact : Int -> Int = fun n => if eq n 0 then 1 else mul n (fact (sub n 1)); fact 5",
@@ -618,16 +634,371 @@ let not-inverse : forall b -> Eq (not (not b)) b
 ()
 ",
         expect![[r#"
-let not : Bool -> Bool = fun (b : Bool) => if b then false else true;
+let not : Bool -> Bool
+    = fun (b : Bool) =>
+        match b {
+            true => false,
+            false => true,
+        };
 let not-false-is-true : Eq @Bool true true = refl @Bool true;
 let not-true-is-false : Eq @Bool false false = refl @Bool false;
 let not-inverse : forall (b : Bool) ->
-    Eq @Bool (if (if b then false else true) then false else true) b
+    Eq
+        @Bool
+        match match b {
+            true => false,
+            false => true,
+        } {
+            true => false,
+            false => true,
+        }
+        b
     = fun (b : Bool) =>
         let p : Bool -> Type = fun (a : Bool) => Eq @Bool (not (not a)) a;
         let p-true : Eq @Bool true true = refl @Bool true;
         let p-false : Eq @Bool false false = refl @Bool false;
         bool_rec @p b p-true p-false;
+() : ()"#]],
+    );
+}
+
+#[test]
+fn r#match() {
+    check(
+        "
+let and1 = fun x y => match (x, y) {
+    (true, true) => true,
+    _ => false,
+};
+
+let and2 = fun x y => match (x, y) {
+    (true, true) => true,
+    (_, _) => false,
+};
+
+let and3 = fun x y => match (x, y) {
+    (true, true) => true,
+    (false, true) => false,
+    (true, false) => false,
+    (false, false) => false,
+};
+
+let or1 = fun x y => match (x, y) {
+    (false, false) => false,
+    _ => true,
+};
+
+let or2 = fun x y => match (x, y) {
+    (false, false) => false,
+    (_, _) => true,
+};
+
+let or3 = fun x y => match (x, y) {
+    (true, true) => true,
+    (false, true) => true,
+    (true, false) => true,
+    (false, false) => false,
+};
+
+let or4 = fun x y => match (x, y) {
+    (true, _) => true,
+    (_, true) => true,
+    _ => false,
+};
+()
+",
+        expect![[r#"
+let and1 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+            false => false,
+        };
+let and2 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+            false => false,
+        };
+let and3 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+            false => match (x, y)._1 {
+                true => false,
+                false => false,
+            },
+        };
+let or1 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => true,
+            false => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+        };
+let or2 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => true,
+            false => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+        };
+let or3 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => match (x, y)._1 {
+                true => true,
+                false => true,
+            },
+            false => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+        };
+let or4 : Bool -> Bool -> Bool
+    = fun (x : Bool) (y : Bool) =>
+        match (x, y)._0 {
+            true => true,
+            false => match (x, y)._1 {
+                true => true,
+                false => false,
+            },
+        };
+() : ()"#]],
+    );
+
+    // regression test: dont bind `z` twice (once as the default branch of the
+    // match, then again as a `let` in RHS). This required removing the ability of
+    // core `match` exprs to bind variables in their default branch.
+    check(
+        "
+let apply = fun (x: Bool) (f: Bool -> Int) => match x {
+    true => 1,
+    z => f(z),
+};
+()
+    ",
+        expect![[r#"
+let apply : Bool -> (Bool -> Int) -> Int
+    = fun (x : Bool) (f : Bool -> Int) =>
+        match x {
+            true => 1,
+            false => let z : Bool = x;
+            f z,
+        };
+() : ()"#]],
+    );
+
+    check(
+        "
+let fst1 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => x,
+};
+
+let fst2 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, _) => x,
+};
+
+let snd1 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => y,
+};
+
+let snd2 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (_, y) => y,
+};
+
+let swap = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => (y, x),
+};
+()
+    ",
+        expect![[r#"
+let fst1 : forall (A : Type) (B : Type) -> (A, B) -> A
+    = fun (A : Type) (B : Type) (p : (A, B)) =>
+        let x : A = p._0;
+        let y : B = p._1;
+        x;
+let fst2 : forall (A : Type) (B : Type) -> (A, B) -> A
+    = fun (A : Type) (B : Type) (p : (A, B)) =>
+        let x : A = p._0;
+        x;
+let snd1 : forall (A : Type) (B : Type) -> (A, B) -> B
+    = fun (A : Type) (B : Type) (p : (A, B)) =>
+        let x : A = p._0;
+        let y : B = p._1;
+        y;
+let snd2 : forall (A : Type) (B : Type) -> (A, B) -> B
+    = fun (A : Type) (B : Type) (p : (A, B)) =>
+        let y : B = p._1;
+        y;
+let swap : forall (A : Type) (B : Type) -> (A, B) -> (B, A)
+    = fun (A : Type) (B : Type) (p : (A, B)) =>
+        let x : A = p._0;
+        let y : B = p._1;
+        (y, x);
+() : ()"#]],
+    );
+
+    check(
+        "
+let foo = fun (x: Int) (y: Bool) (z: Bool) => match x {
+    1 if y => 1,
+    2 if z => 2,
+    3 if y => 3,
+    4 if z => 4,
+    5 => 5,
+    _ => 6,
+};
+
+let bar = fun (x: Bool) (f: Bool -> Bool) (y: Int) => match x {
+    true => 0,
+    z if f(z) => y,
+    _ => 3,
+};
+
+let baz = fun (x) (y: Int) (f: Int -> Bool) => match (x, y) {
+    (0, a) if f(a) => a,
+    (0, b) if f(b) => b,
+    (0, c) if f(c) => c,
+    (0, d) if f(d) => d,
+    (aa, bb) => bb,
+};
+()
+
+    ",
+        expect![[r#"
+let foo : Int -> Bool -> Bool -> Int
+    = fun (x : Int) (y : Bool) (z : Bool) =>
+        match x {
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            4 => 4,
+            5 => 5,
+            _ => 6,
+        };
+let bar : Bool -> (Bool -> Bool) -> Int -> Int
+    = fun (x : Bool) (f : Bool -> Bool) (y : Int) =>
+        match x {
+            true => 0,
+            false => let z : Bool = x;
+            y,
+        };
+let baz : Int -> Int -> (Int -> Bool) -> Int
+    = fun (x : Int) (y : Int) (f : Int -> Bool) =>
+        match (x, y)._0 {
+            0 => let a : Int = (x, y)._1;
+            a,
+            _ => let aa : Int = (x, y)._0;
+            let bb : Int = (x, y)._1;
+            bb,
+        };
+() : ()"#]],
+    );
+    // FIXME: type annotations required on `y`, otherwise we get an
+    // `escaping local variable` error when checking `a`.
+    check(
+        "
+let foo = fun (x) (y: Int) => match (x, y) {
+    (0, a) => a,
+    (b, 0) => b,
+    (1, c) => c,
+    (d, 1) => d,
+    (xx, yy) => xx,
+};
+()
+    ",
+        expect![[r#"
+let foo : Int -> Int -> Int
+    = fun (x : Int) (y : Int) =>
+        match (x, y)._0 {
+            0 => let a : Int = (x, y)._1;
+            a,
+            1 => match (x, y)._1 {
+                0 => let b : Int = (x, y)._0;
+                b,
+                1 => let c : Int = (x, y)._1;
+                c,
+                _ => let c : Int = (x, y)._1;
+                c,
+            },
+            _ => match (x, y)._1 {
+                0 => let b : Int = (x, y)._0;
+                b,
+                1 => let d : Int = (x, y)._0;
+                d,
+                _ => let xx : Int = (x, y)._0;
+                let yy : Int = (x, y)._1;
+                xx,
+            },
+        };
+() : ()"#]],
+    );
+
+    check(
+        "
+let is-zero = fun(x) => match x {
+    0 => true,
+    _ => false,
+};
+()
+    ",
+        expect![[r#"
+let is-zero : Int -> Bool
+    = fun (x : Int) =>
+        match x {
+            0 => true,
+            _ => false,
+        };
+() : ()"#]],
+    );
+
+    // TODO: record field shorthand
+    check(
+        "
+let fst1 = fun (A: Type) (B: Type) (p: {x: A, y: B}) => match p {
+    {x=x, y=y} => x,
+};
+()
+",
+        expect![[r#"
+let fst1 : forall (A : Type) (B : Type) -> {x : A, y : B} -> A
+    = fun (A : Type) (B : Type) (p : {x : A, y : B}) =>
+        let x : A = p.x;
+        let y : B = p.y;
+        x;
+() : ()"#]],
+    );
+
+    check(
+        "
+let foo = fun(x: Bool) => match x {
+    true => 1,
+    false => 2,
+    true => 3,
+};
+()
+",
+        expect![[r#"
+let foo : Bool -> Int
+    = fun (x : Bool) =>
+        match x {
+            true => 1,
+            false => 2,
+        };
 () : ()"#]],
     );
 }

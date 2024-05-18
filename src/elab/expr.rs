@@ -109,7 +109,14 @@ where
                 let (then, then_type) = self.synth_expr(then)?;
                 let r#else = self.check_expr(r#else, &then_type)?;
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Ok((Expr::If { cond, then, r#else }, then_type))
+                Ok((Expr::MatchBool { cond, then, r#else }, then_type))
+            }
+            surface::Expr::Match { scrut, cases } => {
+                let range = surface_expr.range;
+                let source = MetaSource::MatchResultType { range };
+                let r#type = self.push_unsolved_type(source);
+                let expr = self.check_match_expr(range, scrut, cases, &r#type)?;
+                Ok((expr, r#type))
             }
             surface::Expr::FunArrow { plicity, lhs, rhs } => {
                 let param_type = self.check_expr_is_type(lhs)?;
@@ -469,7 +476,10 @@ where
                 let then = self.check_expr(then, &expected)?;
                 let r#else = self.check_expr(r#else, &expected)?;
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Ok(Expr::If { cond, then, r#else })
+                Ok(Expr::MatchBool { cond, then, r#else })
+            }
+            surface::Expr::Match { scrut, cases } => {
+                self.check_match_expr(surface_expr.range, scrut, cases, &expected)
             }
             surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, &expected),
 

@@ -272,18 +272,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 (Elim::BoolCases(left_cases), Elim::BoolCases(right_cases)) => {
                     let left_then = self
                         .elim_env()
-                        .apply_bool_elim(left_cases.clone(), Value::Lit(Lit::Bool(true)));
+                        .apply_bool_cases(left_cases.clone(), Value::Lit(Lit::Bool(true)));
                     let right_then = self
                         .elim_env()
-                        .apply_bool_elim(right_cases.clone(), Value::Lit(Lit::Bool(true)));
+                        .apply_bool_cases(right_cases.clone(), Value::Lit(Lit::Bool(true)));
                     self.unify(&left_then, &right_then)?;
 
                     let left_else = self
                         .elim_env()
-                        .apply_bool_elim(left_cases.clone(), Value::Lit(Lit::Bool(false)));
+                        .apply_bool_cases(left_cases.clone(), Value::Lit(Lit::Bool(false)));
                     let right_else = self
                         .elim_env()
-                        .apply_bool_elim(right_cases.clone(), Value::Lit(Lit::Bool(false)));
+                        .apply_bool_cases(right_cases.clone(), Value::Lit(Lit::Bool(false)));
                     self.unify(&left_else, &right_else)?;
                 }
                 (Elim::RecordProj(left_field), Elim::RecordProj(right_field))
@@ -371,6 +371,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     _ => return Err(SpineError::NonLocalFunApp),
                 },
                 Elim::BoolCases(..) => return Err(SpineError::BoolCases),
+                Elim::IntCases(_) => return Err(SpineError::IntCases),
                 Elim::RecordProj(_) => return Err(SpineError::RecordProj),
             }
         }
@@ -385,7 +386,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 param: FunParam::new(Plicity::Explicit, None, &Expr::Error),
                 body: self.bump.alloc(expr),
             },
-            Elim::BoolCases(..) | Elim::RecordProj(_) => {
+            Elim::BoolCases(..) | Elim::IntCases(..) | Elim::RecordProj(_) => {
                 unreachable!("should have been caught by `init_renaming`")
             }
         })
@@ -431,17 +432,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Elim::BoolCases(cases) => {
                         let then = self
                             .elim_env()
-                            .apply_bool_elim(cases.clone(), Value::Lit(Lit::Bool(false)));
+                            .apply_bool_cases(cases.clone(), Value::Lit(Lit::Bool(false)));
                         let then = self.rename(meta_var, &then)?;
 
                         let r#else = self
                             .elim_env()
-                            .apply_bool_elim(cases.clone(), Value::Lit(Lit::Bool(false)));
+                            .apply_bool_cases(cases.clone(), Value::Lit(Lit::Bool(false)));
                         let r#else = self.rename(meta_var, &r#else)?;
 
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
-                        Ok(Expr::If { cond, then, r#else })
+                        Ok(Expr::MatchBool { cond, then, r#else })
                     }
+                    Elim::IntCases(_) => todo!(),
                 })
             }
             Value::FunType { param, body } => {
@@ -611,6 +613,7 @@ pub enum SpineError {
     /// variable.
     NonLocalFunApp,
     BoolCases,
+    IntCases,
     RecordProj,
 }
 

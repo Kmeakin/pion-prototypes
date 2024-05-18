@@ -60,6 +60,7 @@ pub enum Elim<'core> {
     FunApp(FunArg<Value<'core>>),
     RecordProj(Symbol),
     BoolCases(BoolCases<'core>),
+    IntCases(IntCases<'core>),
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +82,36 @@ impl<'core> BoolCases<'core> {
             r#else,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct IntCases<'core> {
+    pub local_values: LocalValues<'core>,
+    pub cases: &'core [(u32, Expr<'core>)],
+    pub default: &'core Expr<'core>,
+}
+
+impl<'core> IntCases<'core> {
+    pub fn new(
+        local_values: LocalValues<'core>,
+        cases: &'core [(u32, Expr<'core>)],
+        default: &'core Expr<'core>,
+    ) -> Self {
+        Self {
+            local_values,
+            cases,
+            default,
+        }
+    }
+
+    fn case_for(&self, value: u32) -> Option<&'core Expr<'core>> {
+        self.cases
+            .iter()
+            .find(|(int, _)| *int == value)
+            .map(|(_, expr)| expr)
+    }
+
+    fn len(&self) -> usize { self.cases.len() }
 }
 
 #[derive(Debug, Clone)]
@@ -191,7 +222,11 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         EvalEnv::new(self.bump, self.opts, &mut local_values, self.meta_values).eval(body)
     }
 
-    pub fn apply_bool_elim(&self, mut cases: BoolCases<'core>, cond: Value<'core>) -> Value<'core> {
+    pub fn apply_bool_cases(
+        &self,
+        mut cases: BoolCases<'core>,
+        cond: Value<'core>,
+    ) -> Value<'core> {
         match cond {
             Value::Error => Value::Error,
             Value::Neutral(head, mut spine) => {
@@ -203,6 +238,21 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 self.eval_env(&mut cases.local_values).eval(cases.r#else)
             }
             _ => panic!("Invalid if-then-else"),
+        }
+    }
+
+    pub fn apply_int_cases(&self, mut cases: IntCases<'core>, scrut: Value<'core>) -> Value<'core> {
+        match scrut {
+            Value::Error => Value::Error,
+            Value::Neutral(head, mut spine) => {
+                spine.push(Elim::IntCases(cases));
+                Value::Neutral(head, spine)
+            }
+            Value::Lit(Lit::Int(value)) => match cases.case_for(value) {
+                Some(expr) => self.eval_env(&mut cases.local_values).eval(expr),
+                None => self.eval_env(&mut cases.local_values).eval(cases.default),
+            },
+            _ => panic!("Invalid int cases"),
         }
     }
 
@@ -240,7 +290,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 Some(Some(head)) => {
                     value = (spine.into_iter()).fold(head.clone(), |head, elim| match elim {
                         Elim::FunApp(arg) => self.fun_app(head, arg),
-                        Elim::BoolCases(cases) => self.apply_bool_elim(cases, head),
+                        Elim::BoolCases(cases) => self.apply_bool_cases(cases, head),
+                        Elim::IntCases(cases) => self.apply_int_cases(cases, head),
                         Elim::RecordProj(name) => self.record_proj(head, name),
                     });
                 }
@@ -527,11 +578,6 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 self.local_values.pop();
                 body
             }
-            Expr::If { cond, then, r#else } => {
-                let cond = self.eval(cond);
-                let cases = BoolCases::new(self.local_values.clone(), then, r#else);
-                self.elim_env().apply_bool_elim(cases, cond)
-            }
 
             Expr::FunType { param, body } => {
                 let r#type = self.eval(param.r#type);
@@ -569,6 +615,21 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 self.elim_env().record_proj(scrut, *name)
             }
             Expr::ListLit(elems) => Value::List(elems.iter().map(|expr| self.eval(expr)).collect()),
+
+            Expr::MatchBool { cond, then, r#else } => {
+                let cond = self.eval(cond);
+                let cases = BoolCases::new(self.local_values.clone(), then, r#else);
+                self.elim_env().apply_bool_cases(cases, cond)
+            }
+            Expr::MatchInt {
+                scrut,
+                cases,
+                default,
+            } => {
+                let scrut = self.eval(scrut);
+                let cases = IntCases::new(self.local_values.clone(), cases, default);
+                self.elim_env().apply_int_cases(cases, scrut)
+            }
         }
     }
 }
@@ -633,7 +694,27 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                         let r#else = self.quote(&r#else);
 
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
-                        Expr::If { cond, then, r#else }
+                        Expr::MatchBool { cond, then, r#else }
+                    }
+                    Elim::IntCases(cases) => {
+                        let mut cases = cases.clone();
+                        let mut pattern_cases = SliceVec::new(self.bump, cases.len());
+
+                        for (int, case_expr) in cases.cases {
+                            let value = self.eval_env(&mut cases.local_values).eval(case_expr);
+                            let expr = self.quote(&value);
+                            pattern_cases.push((*int, expr));
+                        }
+
+                        let default = self.eval_env(&mut cases.local_values).eval(cases.default);
+                        let default = self.quote(&default);
+
+                        let (scrut, default) = self.bump.alloc((head, default));
+                        Expr::MatchInt {
+                            scrut,
+                            cases: pattern_cases.into(),
+                            default,
+                        }
                     }
                     Elim::RecordProj(name) => Expr::RecordProj(self.bump.alloc(head), *name),
                 })
@@ -780,15 +861,17 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                 }
             }
 
-            Expr::MetaVar(..) | Expr::FunApp { .. } | Expr::If { .. } | Expr::RecordProj(..) => {
-                match self.zonk_meta_var_spines(expr) {
-                    Left(expr) => expr,
-                    Right(value) => {
-                        let expr = self.quote_env().quote(&value);
-                        self.zonk(&expr)
-                    }
+            Expr::MetaVar(..)
+            | Expr::FunApp { .. }
+            | Expr::MatchBool { .. }
+            | Expr::MatchInt { .. }
+            | Expr::RecordProj(..) => match self.zonk_meta_var_spines(expr) {
+                Left(expr) => expr,
+                Right(value) => {
+                    let expr = self.quote_env().quote(&value);
+                    self.zonk(&expr)
                 }
-            }
+            },
             Expr::RecordType(type_fields) => {
                 let local_len = self.local_values.len();
                 let expr_fields =
@@ -860,16 +943,38 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                     Right(scrut_value) => Right(self.elim_env().record_proj(scrut_value, *name)),
                 }
             }
-            Expr::If { cond, then, r#else } => match self.zonk_meta_var_spines(cond) {
+            Expr::MatchBool { cond, then, r#else } => match self.zonk_meta_var_spines(cond) {
                 Left(cond) => {
                     let then = self.zonk(then);
                     let r#else = self.zonk(r#else);
                     let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                    Left(Expr::If { cond, then, r#else })
+                    Left(Expr::MatchBool { cond, then, r#else })
                 }
                 Right(cond) => {
                     let cases = BoolCases::new(self.local_values.clone(), then, r#else);
-                    Right(self.elim_env().apply_bool_elim(cases, cond))
+                    Right(self.elim_env().apply_bool_cases(cases, cond))
+                }
+            },
+            Expr::MatchInt {
+                scrut,
+                cases,
+                default,
+            } => match self.zonk_meta_var_spines(scrut) {
+                Left(scrut_expr) => {
+                    let cases = self.bump.alloc_slice_fill_iter(
+                        cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
+                    );
+                    let default = self.zonk(&default);
+                    let (scrut, default) = self.bump.alloc((scrut_expr, default));
+                    Left(Expr::MatchInt {
+                        scrut,
+                        cases,
+                        default,
+                    })
+                }
+                Right(scrut_value) => {
+                    let cases = IntCases::new(self.local_values.clone(), cases, default);
+                    Right(self.elim_env().apply_int_cases(cases, scrut_value))
                 }
             },
             expr => Left(self.zonk(expr)),

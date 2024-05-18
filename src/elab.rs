@@ -9,8 +9,8 @@ use crate::plicity::Plicity;
 use crate::symbol::Symbol;
 
 mod expr;
+mod r#match;
 mod pat;
-
 mod unify;
 
 pub struct Elaborator<'core, 'text, H, E>
@@ -136,6 +136,9 @@ pub enum MetaSource {
     ListElemType {
         range: TextRange,
     },
+    MatchResultType {
+        range: TextRange,
+    },
 }
 
 impl MetaSource {
@@ -145,7 +148,8 @@ impl MetaSource {
             | Self::HoleType { range, .. }
             | Self::HoleExpr { range, .. }
             | Self::ImplicitArg { range, .. }
-            | Self::ListElemType { range, .. } => *range,
+            | Self::ListElemType { range, .. }
+            | Self::MatchResultType { range, .. } => *range,
         }
     }
 }
@@ -189,6 +193,9 @@ where
                     } => format!("implicit argument `{name}`"),
                     MetaSource::ImplicitArg { name: None, .. } => "implicit argument".to_string(),
                     MetaSource::ListElemType { .. } => "element type of empty list".to_string(),
+                    MetaSource::MatchResultType { .. } => {
+                        "result type of match expression".to_string()
+                    }
                 };
 
                 self.report_diagnostic(

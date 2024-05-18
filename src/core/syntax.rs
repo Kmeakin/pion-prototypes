@@ -17,11 +17,6 @@ pub enum Expr<'core> {
         init: &'core Self,
         body: &'core Self,
     },
-    If {
-        cond: &'core Self,
-        then: &'core Self,
-        r#else: &'core Self,
-    },
 
     FunType {
         param: FunParam<&'core Self>,
@@ -40,6 +35,17 @@ pub enum Expr<'core> {
     RecordType(&'core [(Symbol, Self)]),
     RecordLit(&'core [(Symbol, Self)]),
     RecordProj(&'core Self, Symbol),
+
+    MatchBool {
+        cond: &'core Self,
+        then: &'core Self,
+        r#else: &'core Self,
+    },
+    MatchInt {
+        scrut: &'core Self,
+        cases: &'core [(u32, Self)],
+        default: &'core Self,
+    },
 }
 
 impl<'core> Expr<'core> {
@@ -61,11 +67,6 @@ impl<'core> Expr<'core> {
                     || init.references_local(var)
                     || body.references_local(var.succ())
             }
-            Expr::If { cond, then, r#else } => {
-                cond.references_local(var)
-                    || then.references_local(var)
-                    || r#else.references_local(var)
-            }
             Expr::FunType { param, body } | Expr::FunLit { param, body } => {
                 param.r#type.references_local(var) || body.references_local(var.succ())
             }
@@ -78,6 +79,21 @@ impl<'core> Expr<'core> {
             Expr::RecordLit(fields) => fields.iter().any(|(_, expr)| expr.references_local(var)),
             Expr::RecordProj(scrut, _) => scrut.references_local(var),
             Expr::ListLit(elems) => elems.iter().any(|expr| expr.references_local(var)),
+
+            Expr::MatchBool { cond, then, r#else } => {
+                cond.references_local(var)
+                    || then.references_local(var)
+                    || r#else.references_local(var)
+            }
+            Expr::MatchInt {
+                scrut,
+                cases,
+                default,
+            } => {
+                scrut.references_local(var)
+                    || cases.iter().any(|(_, expr)| expr.references_local(var))
+                    || default.references_local(var)
+            }
         }
     }
 
@@ -167,17 +183,35 @@ impl<'core> Expr<'core> {
             Expr::RecordProj(scrut, label) => {
                 Expr::RecordProj(bump.alloc(scrut.shift_inner(bump, min, amount)), *label)
             }
+            Expr::ListLit(elems) => Expr::ListLit(bump.alloc_slice_fill_iter(
+                elems.iter().map(|expr| expr.shift_inner(bump, min, amount)),
+            )),
 
-            Expr::If { cond, then, r#else } => {
+            Expr::MatchBool { cond, then, r#else } => {
                 let cond = cond.shift_inner(bump, min, amount);
                 let then = then.shift_inner(bump, min, amount);
                 let r#else = r#else.shift_inner(bump, min, amount);
                 let (cond, then, r#else) = bump.alloc((cond, then, r#else));
-                Expr::If { cond, then, r#else }
+                Expr::MatchBool { cond, then, r#else }
             }
-            Expr::ListLit(elems) => Expr::ListLit(bump.alloc_slice_fill_iter(
-                elems.iter().map(|expr| expr.shift_inner(bump, min, amount)),
-            )),
+            Expr::MatchInt {
+                scrut,
+                cases,
+                default,
+            } => {
+                let scrut = scrut.shift_inner(bump, min, amount);
+                let cases = cases
+                    .iter()
+                    .map(|(int, expr)| (*int, expr.shift_inner(bump, min, amount)));
+                let cases = bump.alloc_slice_fill_iter(cases);
+                let default = default.shift_inner(bump, min, amount);
+                let (scrut, cases, default) = bump.alloc((scrut, cases, default));
+                Expr::MatchInt {
+                    scrut,
+                    cases,
+                    default,
+                }
+            }
         }
     }
 }
@@ -253,6 +287,17 @@ impl<'core> Pat<'core> {
         match self {
             Pat::Ident(symbol) => Some(*symbol),
             _ => None,
+        }
+    }
+
+    pub fn is_wildcard(&self) -> bool {
+        matches!(self, Self::Error | Self::Underscore | Self::Ident(_))
+    }
+
+    pub fn is_wildcard_deep(&self) -> bool {
+        match self {
+            Pat::Error | Pat::Underscore | Pat::Ident(_) => true,
+            Pat::Lit(_) | Pat::RecordLit(_) => false,
         }
     }
 }
