@@ -6,7 +6,7 @@ use crate::symbol::Symbol;
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'core> {
     Error,
-    Const(Const),
+    Lit(Lit),
     Prim(Prim),
     LocalVar(RelativeVar),
     MetaVar(AbsoluteVar),
@@ -47,13 +47,13 @@ impl<'core> Expr<'core> {
     pub const BOOL: Self = Self::Prim(Prim::Bool);
     pub const INT: Self = Self::Prim(Prim::Int);
 
-    pub const TRUE: Self = Self::Const(Const::Bool(true));
-    pub const FALSE: Self = Self::Const(Const::Bool(false));
+    pub const TRUE: Self = Self::Lit(Lit::Bool(true));
+    pub const FALSE: Self = Self::Lit(Lit::Bool(false));
 
     pub fn references_local(&self, var: RelativeVar) -> bool {
         match self {
             Expr::LocalVar(v) => var == *v,
-            Expr::Error | Expr::Const(..) | Expr::Prim(..) | Expr::MetaVar(..) => false,
+            Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::MetaVar(..) => false,
             Expr::Let {
                 r#type, init, body, ..
             } => {
@@ -101,7 +101,7 @@ impl<'core> Expr<'core> {
             Expr::LocalVar(var) if *var >= min => Expr::LocalVar(*var + amount),
 
             Expr::Error
-            | Expr::Const(..)
+            | Expr::Lit(..)
             | Expr::Prim(..)
             | Expr::LocalVar(..)
             | Expr::MetaVar(..) => *self,
@@ -257,7 +257,7 @@ impl<'core> Pat<'core> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Const {
+pub enum Lit {
     Bool(bool),
     Int(u32),
 }

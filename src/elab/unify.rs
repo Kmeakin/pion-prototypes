@@ -2,7 +2,7 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use text_size::TextRange;
 
 use crate::core::semantics::{self, Closure, Elim, EvalOpts, Head, MetaValues, Value};
-use crate::core::syntax::{Const, Expr, FunArg, FunParam};
+use crate::core::syntax::{Expr, FunArg, FunParam, Lit};
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use crate::plicity::Plicity;
 use crate::slice_vec::SliceVec;
@@ -124,7 +124,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         let right = self.elim_env().update_metas(right);
 
         match (left, right) {
-            (Value::Const(left), Value::Const(right)) if left == right => Ok(()),
+            (Value::Lit(left), Value::Lit(right)) if left == right => Ok(()),
 
             (Value::Neutral(left_head, left_spine), Value::Neutral(right_head, right_spine))
                 if left_head == right_head =>
@@ -272,18 +272,18 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                 (Elim::BoolCases(left_cases), Elim::BoolCases(right_cases)) => {
                     let left_then = self
                         .elim_env()
-                        .apply_bool_elim(left_cases.clone(), Value::Const(Const::Bool(true)));
+                        .apply_bool_elim(left_cases.clone(), Value::Lit(Lit::Bool(true)));
                     let right_then = self
                         .elim_env()
-                        .apply_bool_elim(right_cases.clone(), Value::Const(Const::Bool(true)));
+                        .apply_bool_elim(right_cases.clone(), Value::Lit(Lit::Bool(true)));
                     self.unify(&left_then, &right_then)?;
 
                     let left_else = self
                         .elim_env()
-                        .apply_bool_elim(left_cases.clone(), Value::Const(Const::Bool(false)));
+                        .apply_bool_elim(left_cases.clone(), Value::Lit(Lit::Bool(false)));
                     let right_else = self
                         .elim_env()
-                        .apply_bool_elim(right_cases.clone(), Value::Const(Const::Bool(false)));
+                        .apply_bool_elim(right_cases.clone(), Value::Lit(Lit::Bool(false)));
                     self.unify(&left_else, &right_else)?;
                 }
                 (Elim::RecordProj(left_field), Elim::RecordProj(right_field))
@@ -407,7 +407,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         let value = self.elim_env().update_metas(value);
         match value {
             Value::Error => Ok(Expr::Error),
-            Value::Const(r#const) => Ok(Expr::Const(r#const)),
+            Value::Lit(lit) => Ok(Expr::Lit(lit)),
             Value::Neutral(head, spine) => {
                 let head = match head {
                     Head::Prim(prim) => Expr::Prim(prim),
@@ -431,12 +431,12 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Elim::BoolCases(cases) => {
                         let then = self
                             .elim_env()
-                            .apply_bool_elim(cases.clone(), Value::Const(Const::Bool(false)));
+                            .apply_bool_elim(cases.clone(), Value::Lit(Lit::Bool(false)));
                         let then = self.rename(meta_var, &then)?;
 
                         let r#else = self
                             .elim_env()
-                            .apply_bool_elim(cases.clone(), Value::Const(Const::Bool(false)));
+                            .apply_bool_elim(cases.clone(), Value::Lit(Lit::Bool(false)));
                         let r#else = self.rename(meta_var, &r#else)?;
 
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));

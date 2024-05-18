@@ -4,7 +4,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
 ## Features
 * [x] dependent lambda calculus
     * [x] local variables
-    * [x] integer and boolean constants
+    * [x] integer and boolean literals
     * [x] `let` expressions
     * [x] `fun` expressions
     * [x] `forall` expressions

@@ -34,7 +34,7 @@ impl<T> Located<T> {
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'surface> {
     Error,
-    Const(Const),
+    Lit(Lit),
     LocalVar(Located<Symbol>),
     Hole,
 
@@ -133,7 +133,7 @@ pub struct PatField<'surface> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Const {
+pub enum Lit {
     Bool(bool),
     DecInt,
     BinInt,

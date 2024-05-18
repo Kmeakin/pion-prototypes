@@ -1,7 +1,7 @@
 use text_size::{TextRange, TextSize};
 use codespan_reporting::diagnostic::Diagnostic;
 
-use crate::surface::{Const, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg, Rec, ExprField, TypeField, PatField};
+use crate::surface::{Lit, Expr, Located, Pat, Token, TokenKind, FunParam, FunArg, Rec, ExprField, TypeField, PatField};
 use crate::surface::LalrpopError;
 use crate::plicity::Plicity;
 use crate::symbol::Symbol;
@@ -150,7 +150,7 @@ AtomExpr: Located<Expr<'surface>> = {
         errors.push(recovery.error);
         Located::new(range, Expr::Error)
     },
-    <start: @L> <r#const: Const> <end: @R> => Located::new(TextRange::new(start, end), Expr::Const(r#const)),
+    <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Expr::Lit(lit)),
     <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar(ident)),
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Expr::Hole),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren(bump.alloc(expr))),
@@ -192,12 +192,12 @@ PatField: Located<PatField<'surface>> = {
     <start: @L> <name: Ident> "=" <pat: Pat> <end: @R> => Located::new(TextRange::new(start, end), PatField { name, pat }),
 }
 
-Const: Const = {
-    "true" => Const::Bool(true),
-    "false" => Const::Bool(false),
-    "DecInt" => Const::DecInt,
-    "BinInt" => Const::BinInt,
-    "HexInt" => Const::HexInt,
+Lit: Lit = {
+    "true" => Lit::Bool(true),
+    "false" => Lit::Bool(false),
+    "DecInt" => Lit::DecInt,
+    "BinInt" => Lit::BinInt,
+    "HexInt" => Lit::HexInt,
 }
 
 Ident: Located<Symbol> = {

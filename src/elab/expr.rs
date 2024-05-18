@@ -5,7 +5,7 @@ use text_size::TextRange;
 use super::{Elaborator, MetaSource};
 use crate::core::prim::Prim;
 use crate::core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
-use crate::core::syntax::{Const, Expr, FunArg, FunParam};
+use crate::core::syntax::{Expr, FunArg, FunParam, Lit};
 use crate::env::RelativeVar;
 use crate::plicity::Plicity;
 use crate::slice_vec::SliceVec;
@@ -22,11 +22,11 @@ where
     ) -> Result<(Expr<'core>, Type<'core>), E> {
         match surface_expr.data {
             surface::Expr::Error => Ok((Expr::Error, Type::Error)),
-            surface::Expr::Const(r#const) => {
+            surface::Expr::Lit(lit) => {
                 let mut parse_int = |base| {
                     let text = &self.text[surface_expr.range];
                     match u32::from_str_radix(text, base) {
-                        Ok(int) => Ok(Expr::Const(Const::Int(int))),
+                        Ok(int) => Ok(Expr::Lit(Lit::Int(int))),
                         Err(error) => {
                             self.report_diagnostic(
                                 Diagnostic::error()
@@ -40,11 +40,11 @@ where
                         }
                     }
                 };
-                let (expr, r#type) = match r#const {
-                    surface::Const::Bool(b) => (Expr::Const(Const::Bool(b)), Type::BOOL),
-                    surface::Const::DecInt => (parse_int(10)?, Type::INT),
-                    surface::Const::BinInt => (parse_int(2)?, Type::INT),
-                    surface::Const::HexInt => (parse_int(16)?, Type::INT),
+                let (expr, r#type) = match lit {
+                    surface::Lit::Bool(b) => (Expr::Lit(Lit::Bool(b)), Type::BOOL),
+                    surface::Lit::DecInt => (parse_int(10)?, Type::INT),
+                    surface::Lit::BinInt => (parse_int(2)?, Type::INT),
+                    surface::Lit::HexInt => (parse_int(16)?, Type::INT),
                 };
                 Ok((expr, r#type))
             }
@@ -527,7 +527,7 @@ where
 
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
             // new expression variants are added
-            surface::Expr::Const(..)
+            surface::Expr::Lit(..)
             | surface::Expr::LocalVar { .. }
             | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }

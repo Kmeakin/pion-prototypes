@@ -2,7 +2,7 @@ use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 
 use super::prim::Prim;
-use super::syntax::{Const, Expr, FunArg, FunParam};
+use super::syntax::{Expr, FunArg, FunParam, Lit};
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::plicity::Plicity;
 use crate::slice_vec::SliceVec;
@@ -13,7 +13,7 @@ pub type Type<'core> = Value<'core>;
 #[derive(Debug, Clone)]
 pub enum Value<'core> {
     Error,
-    Const(Const),
+    Lit(Lit),
     Neutral(Head, EcoVec<Elim<'core>>),
     FunLit {
         param: FunParam<&'core Self>,
@@ -198,10 +198,8 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
                 spine.push(Elim::BoolCases(cases));
                 Value::Neutral(head, spine)
             }
-            Value::Const(Const::Bool(true)) => {
-                self.eval_env(&mut cases.local_values).eval(cases.then)
-            }
-            Value::Const(Const::Bool(false)) => {
+            Value::Lit(Lit::Bool(true)) => self.eval_env(&mut cases.local_values).eval(cases.then),
+            Value::Lit(Lit::Bool(false)) => {
                 self.eval_env(&mut cases.local_values).eval(cases.r#else)
             }
             _ => panic!("Invalid if-then-else"),
@@ -334,7 +332,7 @@ fn prim_app2<'core>(
 
     fn len<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![_, Value::List(list)] => Ok(Value::Const(Const::Int(list.len() as u32))),
+            args![_, Value::List(list)] => Ok(Value::Lit(Lit::Int(list.len() as u32))),
             _ => Err(spine),
         }
     }
@@ -388,16 +386,16 @@ fn prim_app2<'core>(
 
     fn bool_rec<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![_, Value::Const(Const::Bool(true)), then, _] => Ok(then.clone()),
-            args![_, Value::Const(Const::Bool(false)), _, r#else] => Ok(r#else.clone()),
+            args![_, Value::Lit(Lit::Bool(true)), then, _] => Ok(then.clone()),
+            args![_, Value::Lit(Lit::Bool(false)), _, r#else] => Ok(r#else.clone()),
             _ => Err(spine),
         }
     }
 
     fn add<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Int(lhs.wrapping_add(*rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Int(lhs.wrapping_add(*rhs))))
             }
             _ => Err(spine),
         }
@@ -405,8 +403,8 @@ fn prim_app2<'core>(
 
     fn sub<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Int(lhs.wrapping_sub(*rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Int(lhs.wrapping_sub(*rhs))))
             }
             _ => Err(spine),
         }
@@ -414,8 +412,8 @@ fn prim_app2<'core>(
 
     fn mul<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Int(lhs.wrapping_mul(*rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Int(lhs.wrapping_mul(*rhs))))
             }
             _ => Err(spine),
         }
@@ -423,8 +421,8 @@ fn prim_app2<'core>(
 
     fn eq<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.eq(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.eq(rhs))))
             }
             _ => Err(spine),
         }
@@ -432,8 +430,8 @@ fn prim_app2<'core>(
 
     fn ne<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.ne(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.ne(rhs))))
             }
             _ => Err(spine),
         }
@@ -441,8 +439,8 @@ fn prim_app2<'core>(
 
     fn lt<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.lt(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.lt(rhs))))
             }
             _ => Err(spine),
         }
@@ -450,8 +448,8 @@ fn prim_app2<'core>(
 
     fn gt<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.gt(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.gt(rhs))))
             }
             _ => Err(spine),
         }
@@ -459,8 +457,8 @@ fn prim_app2<'core>(
 
     fn lte<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.le(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.le(rhs))))
             }
             _ => Err(spine),
         }
@@ -468,8 +466,8 @@ fn prim_app2<'core>(
 
     fn gte<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![Value::Const(Const::Int(lhs)), Value::Const(Const::Int(rhs))] => {
-                Ok(Value::Const(Const::Bool(lhs.ge(rhs))))
+            args![Value::Lit(Lit::Int(lhs)), Value::Lit(Lit::Int(rhs))] => {
+                Ok(Value::Lit(Lit::Bool(lhs.ge(rhs))))
             }
             _ => Err(spine),
         }
@@ -510,7 +508,7 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
     pub fn eval(&mut self, expr: &Expr<'core>) -> Value<'core> {
         match expr {
             Expr::Error => Value::Error,
-            Expr::Const(r#const) => Value::Const(*r#const),
+            Expr::Lit(lit) => Value::Lit(*lit),
             Expr::Prim(prim) => Value::prim(*prim),
             Expr::LocalVar(var) => match self.local_values.get_relative(*var) {
                 None => panic!("Unbound local var: {var:?}"),
@@ -648,7 +646,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                 let (param, body) = self.quote_fun(param, body);
                 Expr::FunType { param, body }
             }
-            Value::Const(r#const) => Expr::Const(r#const),
+            Value::Lit(lit) => Expr::Lit(lit),
             Value::RecordType(mut telescope) => {
                 let local_len = self.local_len;
                 let mut expr_fields = SliceVec::new(self.bump, telescope.fields.len());
@@ -742,7 +740,7 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
     pub fn zonk(&mut self, expr: &Expr<'core>) -> Expr<'core> {
         match expr {
             Expr::Error => Expr::Error,
-            Expr::Const(r#const) => Expr::Const(*r#const),
+            Expr::Lit(lit) => Expr::Lit(*lit),
             Expr::Prim(prim) => Expr::Prim(*prim),
             Expr::LocalVar(var) => Expr::LocalVar(*var),
 

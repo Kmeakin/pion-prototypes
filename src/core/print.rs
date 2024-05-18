@@ -1,6 +1,6 @@
 use pretty::{Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-use super::syntax::{Const, Expr, FunArg, FunParam};
+use super::syntax::{Expr, FunArg, FunParam, Lit};
 use crate::env::{RelativeVar, UniqueEnv};
 use crate::plicity::Plicity;
 use crate::symbol::{self, Symbol};
@@ -25,7 +25,7 @@ impl Prec {
         match expr {
             Expr::Error
             | Expr::Prim(..)
-            | Expr::Const(..)
+            | Expr::Lit(..)
             | Expr::LocalVar(..)
             | Expr::MetaVar(..)
             | Expr::ListLit(_)
@@ -153,7 +153,7 @@ impl<'bump> Printer<'bump> {
     fn expr_prec(&'bump self, names: &mut NameEnv, expr: &Expr, prec: Prec) -> DocBuilder<'bump> {
         let doc = match expr {
             Expr::Error => self.text("#error"),
-            Expr::Const(r#const) => self.r#const(*r#const),
+            Expr::Lit(lit) => self.lit(*lit),
             Expr::LocalVar(var) if self.config.print_names => match names.get_relative(*var) {
                 Some(Some(name)) => self.text(name.to_string()),
                 Some(None) => self.text(format!("_#{var}")),
@@ -407,11 +407,11 @@ impl<'bump> Printer<'bump> {
 
 /// Misc
 impl<'bump> Printer<'bump> {
-    fn r#const(&'bump self, r#const: Const) -> DocBuilder<'bump> {
-        match r#const {
-            Const::Bool(true) => self.text("true"),
-            Const::Bool(false) => self.text("false"),
-            Const::Int(i) => self.text(i.to_string()),
+    fn lit(&'bump self, lit: Lit) -> DocBuilder<'bump> {
+        match lit {
+            Lit::Bool(true) => self.text("true"),
+            Lit::Bool(false) => self.text("false"),
+            Lit::Int(i) => self.text(i.to_string()),
         }
     }
 

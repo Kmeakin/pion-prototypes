@@ -77,7 +77,7 @@ error: Syntax error: unexpected end of file
 }
 
 #[test]
-fn consts() {
+fn literals() {
     check("true", expect!["true : Bool"]);
     check("false", expect!["false : Bool"]);
     check("5", expect!["5 : Int"]);
