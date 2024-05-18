@@ -34,7 +34,7 @@ impl<T> Located<T> {
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'surface> {
     Error,
-    Lit(Lit),
+    Lit(Located<Lit>),
     LocalVar(Located<Symbol>),
     Hole,
 
@@ -122,6 +122,7 @@ pub enum Pat<'surface> {
     Underscore,
     Ident(Located<Symbol>),
     Paren(&'surface Located<Self>),
+    Lit(Located<Lit>),
     TupleLit(&'surface [Located<Self>]),
     RecordLit(&'surface [Located<PatField<'surface>>]),
 }

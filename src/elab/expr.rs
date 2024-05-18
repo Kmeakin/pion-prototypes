@@ -16,6 +16,33 @@ impl<'core, 'text, 'surface, H, E> Elaborator<'core, 'text, H, E>
 where
     H: FnMut(Diagnostic<usize>) -> Result<(), E>,
 {
+    pub fn synth_lit(
+        &mut self,
+        surface_lit: &Located<surface::Lit>,
+    ) -> Result<(Result<Lit, ()>, Type<'core>), E> {
+        let mut parse_int = |base| {
+            let text = &self.text[surface_lit.range];
+            match u32::from_str_radix(text, base) {
+                Ok(int) => Ok(Ok(Lit::Int(int))),
+                Err(error) => {
+                    self.report_diagnostic(
+                        Diagnostic::error()
+                            .with_message(format!("Invalid integer literal: {error}"))
+                            .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
+                    )?;
+                    Ok(Err(()))
+                }
+            }
+        };
+        let (lit, r#type) = match surface_lit.data {
+            surface::Lit::Bool(b) => (Ok(Lit::Bool(b)), Type::BOOL),
+            surface::Lit::DecInt => (parse_int(10)?, Type::INT),
+            surface::Lit::BinInt => (parse_int(2)?, Type::INT),
+            surface::Lit::HexInt => (parse_int(16)?, Type::INT),
+        };
+        Ok((lit, r#type))
+    }
+
     pub fn synth_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
@@ -23,28 +50,10 @@ where
         match surface_expr.data {
             surface::Expr::Error => Ok((Expr::Error, Type::Error)),
             surface::Expr::Lit(lit) => {
-                let mut parse_int = |base| {
-                    let text = &self.text[surface_expr.range];
-                    match u32::from_str_radix(text, base) {
-                        Ok(int) => Ok(Expr::Lit(Lit::Int(int))),
-                        Err(error) => {
-                            self.report_diagnostic(
-                                Diagnostic::error()
-                                    .with_message(format!("Invalid integer literal: {error}"))
-                                    .with_labels(vec![Label::primary(
-                                        self.file_id,
-                                        surface_expr.range,
-                                    )]),
-                            )?;
-                            Ok(Expr::Error)
-                        }
-                    }
-                };
-                let (expr, r#type) = match lit {
-                    surface::Lit::Bool(b) => (Expr::Lit(Lit::Bool(b)), Type::BOOL),
-                    surface::Lit::DecInt => (parse_int(10)?, Type::INT),
-                    surface::Lit::BinInt => (parse_int(2)?, Type::INT),
-                    surface::Lit::HexInt => (parse_int(16)?, Type::INT),
+                let (lit, r#type) = self.synth_lit(&lit)?;
+                let expr = match lit {
+                    Ok(lit) => Expr::Lit(lit),
+                    Err(()) => Expr::Error,
                 };
                 Ok((expr, r#type))
             }

@@ -244,6 +244,7 @@ pub enum Pat<'core> {
     Error,
     Underscore,
     Ident(Symbol),
+    Lit(Lit),
     RecordLit(&'core [(Symbol, Self)]),
 }
 

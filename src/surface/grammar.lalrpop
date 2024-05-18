@@ -183,6 +183,7 @@ Pat: Located<Pat<'surface>> = {
     },
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
     <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident(ident)),
+    <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Pat::Lit(lit)),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => Located::new(TextRange::new(start, end), Pat::Paren(bump.alloc(pat))),
     <start: @L> <pats: Tuple<Pat>> <end: @R> => Located::new(TextRange::new(start, end), Pat::TupleLit(pats)),
     <start: @L> "{" <fields: Sep0<PatField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Pat::RecordLit(fields)),
@@ -192,12 +193,12 @@ PatField: Located<PatField<'surface>> = {
     <start: @L> <name: Ident> "=" <pat: Pat> <end: @R> => Located::new(TextRange::new(start, end), PatField { name, pat }),
 }
 
-Lit: Lit = {
-    "true" => Lit::Bool(true),
-    "false" => Lit::Bool(false),
-    "DecInt" => Lit::DecInt,
-    "BinInt" => Lit::BinInt,
-    "HexInt" => Lit::HexInt,
+Lit: Located<Lit> = {
+    <start: @L> "true" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(true)),
+    <start: @L> "false" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(false)),
+    <start: @L> "DecInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::DecInt),
+    <start: @L> "BinInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::BinInt),
+    <start: @L> "HexInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::HexInt),
 }
 
 Ident: Located<Symbol> = {

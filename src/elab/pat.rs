@@ -99,6 +99,14 @@ where
                 Ok((Pat::Ident(name), r#type))
             }
             surface::Pat::Paren(pat) => self.synth_pat(pat),
+            surface::Pat::Lit(lit) => {
+                let (lit, r#type) = self.synth_lit(&lit)?;
+                let pat = match lit {
+                    Ok(lit) => Pat::Lit(lit),
+                    Err(()) => Pat::Error,
+                };
+                Ok((pat, r#type))
+            }
             surface::Pat::TupleLit(pats) => {
                 let mut pat_fields = SliceVec::new(self.bump, pats.len());
                 let mut type_fields = SliceVec::new(self.bump, pats.len());
@@ -188,6 +196,7 @@ where
 
                 Ok(Pat::RecordLit(pat_fields.into()))
             }
+            surface::Pat::Lit(_) => self.synth_and_convert_pat(surface_pat, expected),
         }
     }
 
@@ -242,7 +251,7 @@ where
             H: FnMut(Diagnostic<usize>) -> Result<(), E>,
         {
             match pat {
-                Pat::Error | Pat::Underscore => {}
+                Pat::Error | Pat::Underscore | Pat::Lit(_) => {}
                 Pat::Ident(..) if toplevel_param => {}
                 Pat::Ident(..) => {
                     let name = pat.name();

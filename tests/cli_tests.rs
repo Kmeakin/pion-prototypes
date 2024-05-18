@@ -71,7 +71,7 @@ error: Syntax error: unexpected end of file
   ┌─ <stdin>:1:4
   │
 1 │ fun
-  │    ^ expected one of "(", "@", "Ident", "_" or "{"
+  │    ^ expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
 "##]],
     );
 }
