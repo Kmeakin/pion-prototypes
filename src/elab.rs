@@ -188,7 +188,7 @@ where
                         name: Some(name), ..
                     } => format!("implicit argument `{name}`"),
                     MetaSource::ImplicitArg { name: None, .. } => "implicit argument".to_string(),
-                    MetaSource::ListElemType { .. } => "type of list elements".to_string(),
+                    MetaSource::ListElemType { .. } => "element type of empty list".to_string(),
                 };
 
                 self.report_diagnostic(

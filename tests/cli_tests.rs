@@ -475,7 +475,7 @@ error: Unsolved metavariable: ?0
   ┌─ <stdin>:1:1
   │
 1 │ []
-  │ ^^ could not infer type of list elements
+  │ ^^ could not infer element type of empty list
 "#]],
     );
 
