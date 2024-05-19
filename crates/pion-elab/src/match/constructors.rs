@@ -76,7 +76,7 @@ impl<'core> Constructors<'core> {
         match self {
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => *bools == Bools::Both,
-            Constructors::Ints(ints) => (ints.len() as u64) >= (u32::MAX as u64),
+            Constructors::Ints(ints) => (ints.len() as u64) >= u64::from(u32::MAX),
         }
     }
 }
@@ -117,57 +117,57 @@ impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
     #[allow(clippy::items_after_statements)]
     pub fn column_constructors(&self, index: usize) -> Option<Constructors<'core>> {
-        let mut column = self.column(index).map(|(pat, _)| *pat);
-        return empty(&mut column);
+        let column = self.column(index).map(|(pat, _)| *pat);
+        return start(column);
 
-        fn empty<'core>(
-            column: &mut dyn Iterator<Item = Pat<'core>>,
+        fn start<'core>(
+            mut column: impl Iterator<Item = Pat<'core>>,
         ) -> Option<Constructors<'core>> {
-            match column.next() {
-                None => None,
-                Some(pat) => match pat {
-                    Pat::Error | Pat::Underscore | Pat::Ident(..) => empty(column),
-                    Pat::RecordLit(.., fields) => Some(Constructors::Record(fields)),
-                    Pat::Lit(.., Lit::Bool(value)) => Some(bools(column, value)),
-                    Pat::Lit(.., Lit::Int(value)) => Some(ints(column, smallvec![value])),
-                },
+            while let Some(pat) = column.next() {
+                match pat {
+                    Pat::Error | Pat::Underscore | Pat::Ident(_) => continue,
+                    Pat::RecordLit(fields) => return Some(Constructors::Record(fields)),
+                    Pat::Lit(Lit::Bool(value)) => return Some(bools(column, value)),
+                    Pat::Lit(Lit::Int(value)) => return Some(ints(column, smallvec![value])),
+                }
             }
+            None
         }
 
         fn bools<'core>(
-            column: &mut dyn Iterator<Item = Pat<'core>>,
+            column: impl Iterator<Item = Pat<'core>>,
             value: bool,
         ) -> Constructors<'core> {
-            match column.next() {
-                None => Constructors::Bools(Bools::from(value)),
-                Some(pat) => match pat {
-                    Pat::Error | Pat::Underscore | Pat::Ident(..) => bools(column, value),
+            for pat in column {
+                match pat {
+                    Pat::Error | Pat::Underscore | Pat::Ident(..) => continue,
                     Pat::Lit(.., Lit::Bool(other_value)) if other_value == value => {
-                        bools(column, value)
+                        continue;
                     }
-                    Pat::Lit(.., Lit::Bool(_)) => Constructors::Bools(Bools::Both),
+                    Pat::Lit(.., Lit::Bool(_)) => return Constructors::Bools(Bools::Both),
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
-                },
+                }
             }
+            Constructors::Bools(Bools::from(value))
         }
 
         fn ints<'core>(
-            column: &mut dyn Iterator<Item = Pat<'core>>,
+            column: impl Iterator<Item = Pat<'core>>,
             mut values: SmallVec<[u32; 4]>,
         ) -> Constructors<'core> {
-            match column.next() {
-                None => Constructors::Ints(values),
-                Some(pat) => match pat {
-                    Pat::Error | Pat::Underscore | Pat::Ident(..) => ints(column, values),
+            for pat in column {
+                match pat {
+                    Pat::Error | Pat::Underscore | Pat::Ident(..) => continue,
                     Pat::Lit(.., Lit::Int(value)) => {
                         if let Err(index) = values.binary_search(&value) {
                             values.insert(index, value);
                         }
-                        ints(column, values)
+                        continue;
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
-                },
+                }
             }
+            Constructors::Ints(values)
         }
     }
 }
