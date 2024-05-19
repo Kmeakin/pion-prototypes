@@ -2,7 +2,7 @@ use pion_core::Pat;
 
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;
-use super::*;
+use super::{Expr, PatMatrix, PatRow};
 
 impl<'core> PatMatrix<'core> {
     /// Specialize `self` with respect to the constructor `ctor`.  This is the
@@ -20,6 +20,7 @@ impl<'core> PatMatrix<'core> {
             let ((pat, expr), rest) = row.split_first().unwrap();
             recur(bump, *pat, *expr, rest, ctor, &mut matrix);
 
+            #[allow(clippy::items_after_statements)]
             fn recur<'core>(
                 bump: &'core bumpalo::Bump,
                 pat: Pat<'core>,
@@ -66,6 +67,7 @@ impl<'core> PatMatrix<'core> {
             let ((pat, _), rest) = row.split_first().unwrap();
             recur(*pat, rest, &mut matrix);
 
+            #[allow(clippy::items_after_statements)]
             fn recur<'core>(
                 pat: Pat<'core>,
                 rest: BorrowedPatRow<'core, '_>,

@@ -1,6 +1,6 @@
 use pion_surface::{self as surface, Located};
 
-use super::*;
+use super::{Diagnostic, Elaborator, EnvLen, Expr, Symbol, TextRange, Type};
 
 mod compile;
 mod constructors;

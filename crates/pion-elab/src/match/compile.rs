@@ -30,7 +30,7 @@ use smallvec::{smallvec, SmallVec};
 
 use super::constructors::{Constructor, Constructors};
 use super::matrix::PatMatrix;
-use super::*;
+use super::{Body, Diagnostic, Elaborator, EnvLen, Expr};
 use crate::r#match::constructors::has_constructors;
 
 struct PatternCompiler<'core> {

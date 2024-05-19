@@ -90,7 +90,7 @@ pub struct IntCases<'core> {
 }
 
 impl<'core> IntCases<'core> {
-    pub fn new(
+    pub const fn new(
         local_values: LocalValues<'core>,
         cases: &'core [(u32, Expr<'core>)],
         default: &'core Expr<'core>,
@@ -102,14 +102,16 @@ impl<'core> IntCases<'core> {
         }
     }
 
-    fn case_for(&self, value: u32) -> Option<&'core Expr<'core>> {
+    pub fn case_for(&self, value: u32) -> Option<&'core Expr<'core>> {
         self.cases
             .iter()
             .find(|(int, _)| *int == value)
             .map(|(_, expr)| expr)
     }
 
-    fn len(&self) -> usize { self.cases.len() }
+    pub const fn len(&self) -> usize { self.cases.len() }
+
+    pub const fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 #[derive(Debug, Clone)]
@@ -962,7 +964,7 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                     let cases = self.bump.alloc_slice_fill_iter(
                         cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
                     );
-                    let default = self.zonk(&default);
+                    let default = self.zonk(default);
                     let (scrut, default) = self.bump.alloc((scrut_expr, default));
                     Left(Expr::MatchInt {
                         scrut,

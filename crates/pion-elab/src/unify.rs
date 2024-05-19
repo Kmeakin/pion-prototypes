@@ -1,7 +1,7 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, SliceEnv, UniqueEnv};
 use pion_core::semantics::{self, Closure, Elim, EvalOpts, Head, MetaValues, Value};
-use pion_core::*;
+use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
 

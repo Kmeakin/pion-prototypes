@@ -3,7 +3,7 @@
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
-use pion_core::*;
+use pion_core::{Expr, FunArg, Plicity};
 use pion_symbol::Symbol;
 use text_size::TextRange;
 

@@ -118,7 +118,7 @@ pub struct PatRow<P> {
 }
 
 impl<P> PatRow<P> {
-    pub fn new(pairs: P, body: usize) -> Self { Self { pairs, body } }
+    pub const fn new(pairs: P, body: usize) -> Self { Self { pairs, body } }
 }
 
 pub type BorrowedPatRow<'core, 'row> = PatRow<&'row [PatPair<'core>]>;

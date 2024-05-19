@@ -23,7 +23,7 @@ pub struct SliceVec<'bump, Elem> {
 }
 
 impl<'bump, Elem> SliceVec<'bump, Elem> {
-    /// Allocates a new slice builder to the scope.
+    /// Allocates a new slice vec to the scope.
     ///
     /// # Panics
     ///
@@ -44,11 +44,11 @@ impl<'bump, Elem> SliceVec<'bump, Elem> {
 
     pub const fn is_empty(&self) -> bool { self.len() == 0 }
 
-    pub fn capacity(&self) -> usize { self.elems.len() }
+    pub const fn capacity(&self) -> usize { self.elems.len() }
 
-    pub fn is_full(&self) -> bool { self.len() >= self.capacity() }
+    pub const fn is_full(&self) -> bool { self.len() >= self.capacity() }
 
-    /// Push an element to the slice builder.
+    /// Push an element to the slice vec.
     ///
     /// # Panics
     ///

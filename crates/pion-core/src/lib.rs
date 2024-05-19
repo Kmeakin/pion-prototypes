@@ -254,8 +254,8 @@ impl Plicity {
     pub const fn is_explicit(&self) -> bool { matches!(self, Self::Explicit) }
     pub const fn description(&self) -> &'static str {
         match self {
-            Plicity::Implicit => "implicit",
-            Plicity::Explicit => "explicit",
+            Self::Implicit => "implicit",
+            Self::Explicit => "explicit",
         }
     }
 }
@@ -329,11 +329,11 @@ impl<'core> Pat<'core> {
         }
     }
 
-    pub fn is_wildcard(&self) -> bool {
+    pub const fn is_wildcard(&self) -> bool {
         matches!(self, Self::Error | Self::Underscore | Self::Ident(_))
     }
 
-    pub fn is_wildcard_deep(&self) -> bool {
+    pub const fn is_wildcard_deep(&self) -> bool {
         match self {
             Pat::Error | Pat::Underscore | Pat::Ident(_) => true,
             Pat::Lit(_) | Pat::RecordLit(_) => false,

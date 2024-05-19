@@ -30,7 +30,7 @@ impl<'core> Eq for Constructor<'core> {}
 
 impl<'core> Constructor<'core> {
     /// Return number of fields `self` carries
-    pub fn arity(&self) -> usize {
+    pub const fn arity(&self) -> usize {
         match self {
             Constructor::Lit(_) => 0,
             Constructor::Record(labels) => labels.len(),
@@ -54,12 +54,11 @@ pub enum Bools {
 }
 
 impl Bools {
-    pub(crate) fn contains(&self, b: bool) -> bool {
-        match (self, b) {
-            (Self::Both, _) => true,
-            (Self::False, false) => true,
-            (Self::True, true) => true,
-            _ => false,
+    pub const fn contains(self, b: bool) -> bool {
+        match self {
+            Self::False => !b,
+            Self::True => b,
+            Self::Both => true,
         }
     }
 }
@@ -89,7 +88,7 @@ pub struct PatConstructors<'core> {
 }
 
 impl<'core> PatConstructors<'core> {
-    pub fn new(pat: Pat<'core>) -> Self { Self { pat } }
+    pub const fn new(pat: Pat<'core>) -> Self { Self { pat } }
 }
 
 impl<'core> InternalIterator for PatConstructors<'core> {
@@ -118,6 +117,7 @@ pub fn has_constructors(pat: &Pat) -> bool { PatConstructors::new(*pat).next().i
 
 impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
+    #[allow(clippy::items_after_statements)]
     pub fn column_constructors(&self, index: usize) -> Constructors<'core> {
         let mut column = self.column(index).map(|(pat, _)| *pat);
         return empty(&mut column);

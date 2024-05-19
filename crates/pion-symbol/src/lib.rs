@@ -97,10 +97,10 @@ impl Symbol {
         }
     }
 
-    pub fn are_tuple_field_names(names: impl Iterator<Item = Symbol>) -> bool {
+    pub fn are_tuple_field_names(names: impl Iterator<Item = Self>) -> bool {
         names
             .enumerate()
-            .all(|(index, name)| name == Symbol::tuple_index(index))
+            .all(|(index, name)| name == Self::tuple_index(index))
     }
 }
 
