@@ -2,7 +2,7 @@ use ecow::eco_vec;
 use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
-use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
+use pion_core::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_surface::{self as surface, Located};
 use pion_symbol::Symbol;
@@ -725,12 +725,8 @@ where
         };
 
         let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
-        let core_expr = Expr::Let {
-            name,
-            r#type,
-            init,
-            body,
-        };
+        let binding = LetBinding::new(name, r#type as &_, init as &_);
+        let core_expr = Expr::Let { binding, body };
         Ok((core_expr, body_type))
     }
 

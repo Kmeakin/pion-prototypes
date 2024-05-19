@@ -1,6 +1,6 @@
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
-use pion_core::{Expr, FunParam, Pat};
+use pion_core::{Expr, FunParam, LetBinding, Pat};
 use pion_diagnostic::DiagnosticHandler;
 use pion_surface::{self as surface, Located};
 use pion_symbol::{self, Symbol};
@@ -243,13 +243,13 @@ where
         expr: &Expr<'core>,
         r#type: &Type<'core>,
         toplevel_param: bool,
-    ) -> Vec<(Option<Symbol>, Expr<'core>, Expr<'core>)> {
+    ) -> Vec<LetBinding<Expr<'core>, Expr<'core>>> {
         fn recur<'core, H>(
             ctx: &mut Elaborator<'core, '_, H>,
             pat: &Pat<'core>,
             expr: &Expr<'core>,
             r#type: &Type<'core>,
-            bindings: &mut Vec<(Option<Symbol>, Expr<'core>, Expr<'core>)>,
+            bindings: &mut Vec<LetBinding<Expr<'core>, Expr<'core>>>,
             toplevel_param: bool,
         ) where
             H: DiagnosticHandler,
@@ -261,7 +261,7 @@ where
                     let name = pat.name();
                     let r#type = ctx.quote_env().quote_at(r#type, bindings.len());
                     let expr = expr.shift(ctx.bump, EnvLen::from(bindings.len()));
-                    bindings.push((name, r#type, expr));
+                    bindings.push(LetBinding::new(name, r#type, expr));
                 }
                 Pat::RecordLit(pat_fields) => {
                     let r#type = ctx.elim_env().update_metas(r#type);

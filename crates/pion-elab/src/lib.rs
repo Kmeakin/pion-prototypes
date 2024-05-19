@@ -2,7 +2,7 @@
 
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
-use pion_core::{Expr, FunArg, Plicity};
+use pion_core::{Expr, FunArg, LetBinding, Plicity};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_symbol::Symbol;
 use text_size::TextRange;
@@ -274,9 +274,9 @@ where
         doc.pretty(usize::MAX).to_string()
     }
 
-    fn push_let_bindings(&mut self, bindings: &[(Option<Symbol>, Expr<'core>, Expr<'core>)]) {
-        for (name, r#type, init) in bindings {
-            let value = self.eval_env().eval(init);
+    fn push_let_bindings(&mut self, bindings: &[LetBinding<Expr<'core>, Expr<'core>>]) {
+        for LetBinding { name, r#type, expr } in bindings {
+            let value = self.eval_env().eval(expr);
             let r#type = self.eval_env().eval(r#type);
             self.local_env.push_let(*name, r#type, value);
         }

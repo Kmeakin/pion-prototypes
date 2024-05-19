@@ -17,9 +17,7 @@ pub enum Expr<'core> {
     MetaVar(AbsoluteVar),
 
     Let {
-        name: Option<Symbol>,
-        r#type: &'core Self,
-        init: &'core Self,
+        binding: LetBinding<&'core Self, &'core Self>,
         body: &'core Self,
     },
 
@@ -53,6 +51,19 @@ pub enum Expr<'core> {
     },
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct LetBinding<Type, Expr> {
+    pub name: Option<Symbol>,
+    pub r#type: Type,
+    pub expr: Expr,
+}
+
+impl<Type, Expr> LetBinding<Type, Expr> {
+    pub const fn new(name: Option<Symbol>, r#type: Type, expr: Expr) -> Self {
+        Self { name, r#type, expr }
+    }
+}
+
 impl<'core> Expr<'core> {
     pub const TYPE: Self = Self::Prim(Prim::Type);
     pub const BOOL: Self = Self::Prim(Prim::Bool);
@@ -65,11 +76,9 @@ impl<'core> Expr<'core> {
         match self {
             Expr::LocalVar(v) => var == *v,
             Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::MetaVar(..) => false,
-            Expr::Let {
-                r#type, init, body, ..
-            } => {
-                r#type.references_local(var)
-                    || init.references_local(var)
+            Expr::Let { binding, body, .. } => {
+                binding.r#type.references_local(var)
+                    || binding.expr.references_local(var)
                     || body.references_local(var.succ())
             }
             Expr::FunType { param, body } | Expr::FunLit { param, body } => {
@@ -127,22 +136,13 @@ impl<'core> Expr<'core> {
             | Expr::LocalVar(..)
             | Expr::MetaVar(..) => *self,
 
-            Expr::Let {
-                name,
-                r#type,
-                init,
-                body,
-            } => {
-                let r#type = r#type.shift_inner(bump, min, amount);
-                let init = init.shift_inner(bump, min, amount);
+            Expr::Let { binding, body } => {
+                let r#type = binding.r#type.shift_inner(bump, min, amount);
+                let init = binding.expr.shift_inner(bump, min, amount);
                 let body = body.shift_inner(bump, min.succ(), amount);
                 let (r#type, init, body) = bump.alloc((r#type, init, body));
-                Expr::Let {
-                    name: *name,
-                    r#type,
-                    init,
-                    body,
-                }
+                let binding = LetBinding::new(binding.name, r#type as &_, init as &_);
+                Expr::Let { binding, body }
             }
 
             Expr::FunLit { param, body } => {
@@ -224,21 +224,17 @@ impl<'core> Expr<'core> {
 impl<'core> Expr<'core> {
     pub fn lets(
         bump: &'core bumpalo::Bump,
-        bindings: &[(Option<Symbol>, Self, Self)],
+        bindings: &[LetBinding<Self, Self>],
         body: Self,
     ) -> Self {
         bindings
             .iter()
             .copied()
             .rev()
-            .fold(body, |body, (name, r#type, init)| {
-                let (r#type, init, body) = bump.alloc((r#type, init, body));
-                Expr::Let {
-                    name,
-                    r#type,
-                    init,
-                    body,
-                }
+            .fold(body, |body, LetBinding { name, r#type, expr }| {
+                let (r#type, init, body) = bump.alloc((r#type, expr, body));
+                let binding = LetBinding::new(name, r#type as &_, init as &_);
+                Expr::Let { binding, body }
             })
     }
 }

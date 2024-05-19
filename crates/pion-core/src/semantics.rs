@@ -4,7 +4,7 @@ use pion_symbol::Symbol;
 use pion_util::slice_vec::SliceVec;
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
-use crate::{Expr, FunArg, FunParam, Lit, Plicity, Prim};
+use crate::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity, Prim};
 
 pub type Type<'core> = Value<'core>;
 
@@ -571,8 +571,8 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
                 Some(Some(value)) => value.clone(),
             },
 
-            Expr::Let { init, body, .. } => {
-                let init = self.eval(init);
+            Expr::Let { binding, body, .. } => {
+                let init = self.eval(binding.expr);
                 self.local_values.push(init);
                 let body = self.eval(body);
                 self.local_values.pop();
@@ -825,22 +825,13 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
             Expr::Prim(prim) => Expr::Prim(*prim),
             Expr::LocalVar(var) => Expr::LocalVar(*var),
 
-            Expr::Let {
-                name,
-                r#type,
-                init,
-                body,
-            } => {
-                let r#type = self.zonk(r#type);
-                let init = self.zonk(init);
+            Expr::Let { binding, body } => {
+                let r#type = self.zonk(binding.r#type);
+                let init = self.zonk(binding.expr);
                 let body = self.zonk_with_local(body);
                 let (r#type, init, body) = self.bump.alloc((r#type, init, body));
-                Expr::Let {
-                    name: *name,
-                    r#type,
-                    init,
-                    body,
-                }
+                let binding = LetBinding::new(binding.name, r#type as &_, init as &_);
+                Expr::Let { binding, body }
             }
             Expr::FunType { param, body } => {
                 let r#type = self.zonk(param.r#type);

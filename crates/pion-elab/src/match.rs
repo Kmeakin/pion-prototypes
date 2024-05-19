@@ -1,7 +1,8 @@
+use pion_core::LetBinding;
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_surface::{self as surface, Located};
 
-use super::{Elaborator, EnvLen, Expr, Symbol, TextRange, Type};
+use super::{Elaborator, EnvLen, Expr, TextRange, Type};
 
 mod compile;
 mod constructors;
@@ -83,7 +84,7 @@ pub enum Body<'core> {
     GuardIf {
         /// The variables to be let-bound before `guard` and `expr` are
         /// evaluated
-        let_vars: &'core [(Option<Symbol>, Expr<'core>, Expr<'core>)],
+        let_vars: &'core [LetBinding<Expr<'core>, Expr<'core>>],
 
         guard_expr: Expr<'core>,
 

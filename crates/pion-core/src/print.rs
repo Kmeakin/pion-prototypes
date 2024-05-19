@@ -107,20 +107,14 @@ impl<'bump> Printer<'bump> {
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
         // transform `(let x : A = e; b): t` into `let x: A = e; b: t`
-        if let Expr::Let {
-            name,
-            r#type: init_type,
-            init,
-            body,
-        } = expr
-        {
-            let init_type = self.expr_prec(names, init_type, Prec::MAX);
-            let init = self.expr_prec(names, init, Prec::MAX);
-            names.push(*name);
+        if let Expr::Let { binding, body } = expr {
+            let init_type = self.expr_prec(names, binding.r#type, Prec::MAX);
+            let init = self.expr_prec(names, binding.expr, Prec::MAX);
+            names.push(binding.name);
             let body = self.ann_expr(names, body, r#type);
             names.pop();
 
-            return self.let_expr(*name, init_type, init, body);
+            return self.let_expr(binding.name, init_type, init, body);
         }
 
         let expr = self.expr_prec(names, expr, Prec::Proj);
@@ -162,19 +156,14 @@ impl<'bump> Printer<'bump> {
             },
             Expr::LocalVar(var) => self.text(format!("_#{var}")),
             Expr::MetaVar(var) => self.text(format!("?{var}")),
-            Expr::Let {
-                name,
-                r#type,
-                init,
-                body,
-            } => {
-                let r#type = self.expr_prec(names, r#type, Prec::MAX);
-                let init = self.expr_prec(names, init, Prec::MAX);
-                names.push(*name);
+            Expr::Let { binding, body } => {
+                let r#type = self.expr_prec(names, binding.r#type, Prec::MAX);
+                let init = self.expr_prec(names, binding.expr, Prec::MAX);
+                names.push(binding.name);
                 let body = self.expr_prec(names, body, Prec::MAX);
                 names.pop();
 
-                self.let_expr(*name, r#type, init, body)
+                self.let_expr(binding.name, r#type, init, body)
             }
             Expr::MatchBool { cond, then, r#else } => self.match_bool(names, cond, then, r#else),
             Expr::MatchInt {
