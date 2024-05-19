@@ -26,11 +26,12 @@
 // matching*
 
 use pion_core::Lit;
+use pion_diagnostic::DiagnosticHandler;
 use smallvec::{smallvec, SmallVec};
 
 use super::constructors::{Constructor, Constructors};
 use super::matrix::PatMatrix;
-use super::{Body, Diagnostic, Elaborator, EnvLen, Expr};
+use super::{Body, Elaborator, EnvLen, Expr};
 use crate::r#match::constructors::has_constructors;
 
 struct PatternCompiler<'core> {
@@ -42,9 +43,9 @@ struct PatternCompiler<'core> {
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
-impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, H> Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     pub fn compile_match(
         &self,

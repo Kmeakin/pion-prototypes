@@ -1,9 +1,9 @@
 #![feature(allocator_api)]
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::{Expr, FunArg, Plicity};
+use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_symbol::Symbol;
 use text_size::TextRange;
 
@@ -14,14 +14,14 @@ mod r#match;
 mod pat;
 mod unify;
 
-pub struct Elaborator<'core, 'text, H, E>
+pub struct Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     bump: &'core bumpalo::Bump,
     text: &'text str,
     file_id: usize,
-    handler: H,
+    diagnostic_handler: H,
 
     local_env: LocalEnv<'core>,
     meta_env: MetaEnv<'core>,
@@ -155,16 +155,16 @@ impl MetaSource {
     }
 }
 
-impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, H> Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     pub fn new(bump: &'core bumpalo::Bump, text: &'text str, file_id: usize, handler: H) -> Self {
         Self {
             bump,
             text,
             file_id,
-            handler,
+            diagnostic_handler: handler,
 
             local_env: LocalEnv::default(),
             meta_env: MetaEnv::default(),
@@ -172,11 +172,11 @@ where
         }
     }
 
-    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), E> {
-        (self.handler)(diagnostic)
+    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), H::Error> {
+        self.diagnostic_handler.handle_diagnostic(diagnostic)
     }
 
-    pub fn report_unsolved_metas(&mut self) -> Result<(), E> {
+    pub fn report_unsolved_metas(&mut self) -> Result<(), H::Error> {
         let meta_env = std::mem::take(&mut self.meta_env);
         for (id, (source, _, value)) in meta_env.iter().enumerate() {
             if value.is_none() {

@@ -1,7 +1,7 @@
 #![feature(iter_intersperse)]
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lalrpop_util::lalrpop_mod;
+use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_lexer::TokenKind;
 use pion_surface::{Expr, Located};
 use text_size::{TextRange, TextSize};
@@ -75,12 +75,12 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
     }
 }
 
-pub fn parse_expr<'surface, E>(
+pub fn parse_expr<'surface, H: DiagnosticHandler>(
     bump: &'surface bumpalo::Bump,
-    handler: &mut impl FnMut(Diagnostic<usize>) -> Result<(), E>,
+    mut handler: H,
     file_id: usize,
     text: &str,
-) -> Result<Located<Expr<'surface>>, E> {
+) -> Result<Located<Expr<'surface>>, H::Error> {
     let tokens = pion_lexer::lex(text)
         .filter(|token| !token.kind.is_trivia())
         .map(|token| (token.range.start(), token.kind, token.range.end()));
@@ -95,7 +95,7 @@ pub fn parse_expr<'surface, E>(
     };
     for error in errors {
         let range = error_range(&error);
-        handler(error_to_diagnostic(file_id, range, error))?;
+        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error))?;
     }
     Ok(expr)
 }

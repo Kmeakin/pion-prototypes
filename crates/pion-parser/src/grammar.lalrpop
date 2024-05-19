@@ -1,8 +1,8 @@
 use text_size::{TextRange, TextSize};
 
+use pion_lexer::TokenKind;
 use pion_surface::*;
 use pion_symbol::Symbol;
-use pion_lexer::TokenKind;
 
 use crate::LalrpopError;
 

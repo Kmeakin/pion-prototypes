@@ -8,15 +8,15 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-pion-lexer   = { path = "../pion-lexer" }
-pion-surface = { path = "../pion-surface" }
-pion-symbol  = { path = "../pion-symbol" }
+pion-diagnostic = { path = "../pion-diagnostic" }
+pion-lexer      = { path = "../pion-lexer" }
+pion-surface    = { path = "../pion-surface" }
+pion-symbol     = { path = "../pion-symbol" }
 
 bumpalo   = { workspace = true }
 text-size = { workspace = true }
 
-codespan-reporting = { version = "0.11.1" }
-lalrpop-util       = { version = "0.20.2", default-features = false }
+lalrpop-util = { version = "0.20.2", default-features = false }
 
 [build-dependencies]
 lalrpop = { version = "0.20.2", default-features = false }

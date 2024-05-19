@@ -1,9 +1,9 @@
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use ecow::eco_vec;
 use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
+use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_surface::{self as surface, Located};
 use pion_symbol::Symbol;
 use pion_util::slice_vec::SliceVec;
@@ -11,14 +11,14 @@ use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
 
-impl<'core, 'text, 'surface, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     pub fn synth_lit(
         &mut self,
         surface_lit: &Located<surface::Lit>,
-    ) -> Result<(Result<Lit, ()>, Type<'core>), E> {
+    ) -> Result<(Result<Lit, ()>, Type<'core>), H::Error> {
         let mut parse_int = |base| {
             let text = &self.text[surface_lit.range];
             match u32::from_str_radix(text, base) {
@@ -45,7 +45,7 @@ where
     pub fn synth_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), E> {
+    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
         match surface_expr.data {
             surface::Expr::Error => Ok((Expr::Error, Type::Error)),
             surface::Expr::Lit(lit) => {
@@ -351,7 +351,7 @@ where
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), E> {
+    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
         match surface_params.split_first() {
             None => {
                 let body = self.check_expr_is_type(surface_body)?;
@@ -386,7 +386,7 @@ where
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), E> {
+    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
         match surface_params.split_first() {
             None => self.synth_expr(surface_body),
             Some((surface_param, surface_params)) => {
@@ -426,7 +426,7 @@ where
     pub fn check_expr_is_type(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         self.check_expr(surface_expr, &Type::TYPE)
     }
 
@@ -434,7 +434,7 @@ where
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         let expected = self.elim_env().update_metas(expected);
         match surface_expr.data {
             surface::Expr::Error => Ok(Expr::Error),
@@ -564,7 +564,7 @@ where
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         let [surface_param, rest_params @ ..] = surface_params else {
             return self.check_expr(surface_body, expected);
         };
@@ -640,8 +640,8 @@ where
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
-        ) -> Result<(Expr<'core>, T), E>,
-    ) -> Result<(Expr<'core>, T), E> {
+        ) -> Result<(Expr<'core>, T), H::Error>,
+    ) -> Result<(Expr<'core>, T), H::Error> {
         let (pat, r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
         let init_expr = self.check_expr(surface_init, &r#type)?;
 
@@ -668,8 +668,8 @@ where
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
-        ) -> Result<(Expr<'core>, T), E>,
-    ) -> Result<(Expr<'core>, T), E> {
+        ) -> Result<(Expr<'core>, T), H::Error>,
+    ) -> Result<(Expr<'core>, T), H::Error> {
         let (pat, mut r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
         let name = pat.name();
 
@@ -738,7 +738,7 @@ where
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         let range = surface_expr.range;
         let (expr, r#type) = self.synth_expr(surface_expr)?;
         self.convert_expr(range, expr, r#type, expected)
@@ -750,7 +750,7 @@ where
         expr: Expr<'core>,
         from: Type<'core>,
         to: &Type<'core>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         // Attempt to specialize exprs with freshly inserted implicit
         // arguments if an explicit function was expected.
         let (expr, from) = match (expr, to) {

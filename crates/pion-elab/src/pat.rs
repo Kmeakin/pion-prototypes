@@ -1,7 +1,7 @@
-use codespan_reporting::diagnostic::Diagnostic;
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
 use pion_core::{Expr, FunParam, Pat};
+use pion_diagnostic::DiagnosticHandler;
 use pion_surface::{self as surface, Located};
 use pion_symbol::{self, Symbol};
 use pion_util::slice_vec::SliceVec;
@@ -9,14 +9,14 @@ use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
 
-impl<'core, 'text, 'surface, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     pub(super) fn synth_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
-    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>, Type<'core>), E> {
+    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>, Type<'core>), H::Error> {
         let surface_param = surface_param.data;
         let (pat, r#type_value) =
             self.synth_ann_pat(&surface_param.pat, surface_param.r#type.as_ref())?;
@@ -33,7 +33,7 @@ where
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>), E> {
+    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>), H::Error> {
         let surface_param = surface_param.data;
         let pat =
             self.check_ann_pat(&surface_param.pat, surface_param.r#type.as_ref(), expected)?;
@@ -51,7 +51,7 @@ where
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
-    ) -> Result<(Pat<'core>, Type<'core>), E> {
+    ) -> Result<(Pat<'core>, Type<'core>), H::Error> {
         match surface_ann {
             None => self.synth_pat(surface_pat),
             Some(surface_ann) => {
@@ -68,7 +68,7 @@ where
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, E> {
+    ) -> Result<Pat<'core>, H::Error> {
         match surface_ann {
             None => self.check_pat(surface_pat, expected),
             Some(surface_ann) => {
@@ -84,7 +84,7 @@ where
     fn synth_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
-    ) -> Result<(Pat<'core>, Type<'core>), E> {
+    ) -> Result<(Pat<'core>, Type<'core>), H::Error> {
         match surface_pat.data {
             surface::Pat::Error => Ok((Pat::Error, Type::Error)),
             surface::Pat::Underscore => {
@@ -147,7 +147,7 @@ where
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, E> {
+    ) -> Result<Pat<'core>, H::Error> {
         match surface_pat.data {
             surface::Pat::Error => Ok(Pat::Error),
             surface::Pat::Underscore => Ok(Pat::Underscore),
@@ -208,7 +208,7 @@ where
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, E> {
+    ) -> Result<Pat<'core>, H::Error> {
         let range = surface_pat.range;
         let (pat, r#type) = self.synth_pat(surface_pat)?;
         self.convert_pat(range, pat, &r#type, expected)
@@ -220,7 +220,7 @@ where
         pat: Pat<'core>,
         from: &Type<'core>,
         to: &Type<'core>,
-    ) -> Result<Pat<'core>, E> {
+    ) -> Result<Pat<'core>, H::Error> {
         match self.unify_env().unify(from, to) {
             Ok(()) => Ok(pat),
             Err(error) => {
@@ -244,15 +244,15 @@ where
         r#type: &Type<'core>,
         toplevel_param: bool,
     ) -> Vec<(Option<Symbol>, Expr<'core>, Expr<'core>)> {
-        fn recur<'core, H, E>(
-            ctx: &mut Elaborator<'core, '_, H, E>,
+        fn recur<'core, H>(
+            ctx: &mut Elaborator<'core, '_, H>,
             pat: &Pat<'core>,
             expr: &Expr<'core>,
             r#type: &Type<'core>,
             bindings: &mut Vec<(Option<Symbol>, Expr<'core>, Expr<'core>)>,
             toplevel_param: bool,
         ) where
-            H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+            H: DiagnosticHandler,
         {
             match pat {
                 Pat::Error | Pat::Underscore | Pat::Lit(_) => {}

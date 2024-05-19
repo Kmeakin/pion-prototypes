@@ -1,6 +1,7 @@
+use pion_diagnostic::DiagnosticHandler;
 use pion_surface::{self as surface, Located};
 
-use super::{Diagnostic, Elaborator, EnvLen, Expr, Symbol, TextRange, Type};
+use super::{Elaborator, EnvLen, Expr, Symbol, TextRange, Type};
 
 mod compile;
 mod constructors;
@@ -9,9 +10,9 @@ mod matrix;
 
 use self::matrix::{PatMatrix, PatRow};
 
-impl<'core, 'text, H, E> Elaborator<'core, 'text, H, E>
+impl<'core, 'text, H> Elaborator<'core, 'text, H>
 where
-    H: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    H: DiagnosticHandler,
 {
     pub(super) fn check_match_expr(
         &mut self,
@@ -19,7 +20,7 @@ where
         surface_scrut: &Located<surface::Expr>,
         surface_cases: &[surface::MatchCase],
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, E> {
+    ) -> Result<Expr<'core>, H::Error> {
         let (scrut_expr, scrut_type) = self.synth_expr(surface_scrut)?;
 
         let mut matrix = PatMatrix::with_capacity(
