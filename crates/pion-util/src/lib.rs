@@ -1,3 +1,5 @@
+#![feature(maybe_uninit_slice)]
+
 pub mod slice_vec;
 
 pub fn slice_eq_by_key<T, V: PartialEq>(

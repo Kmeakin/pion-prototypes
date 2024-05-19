@@ -71,7 +71,7 @@ impl<'a, Elem> Deref for SliceVec<'a, Elem> {
         // - `self.len` is always initialized to `0` in `SliceVec::new`
         // - `self.len` is only incremented in `SliceVec::push`, and in that case we
         //   make sure `self.elems[self.len]` has been initialized before hand.
-        unsafe { slice_assume_init_ref(&self.elems[..self.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.elems[..self.len]) }
     }
 }
 
@@ -84,18 +84,6 @@ impl<'a, Elem> From<SliceVec<'a, Elem>> for &'a [Elem] {
         // - `self.len` is always initialized to `0` in `SliceVec::new`
         // - `self.len` is only incremented in `SliceVec::push`, and in that case we
         //   make sure `self.elems[self.len]` has been initialized before hand.
-        unsafe { slice_assume_init_ref(&slice.elems[..slice.len]) }
+        unsafe { MaybeUninit::slice_assume_init_ref(slice.elems) }
     }
-}
-
-// NOTE: This is the same implementation as
-// `MaybeUninit::slice_assume_init_ref`, which is currently unstable (see https://github.com/rust-lang/rust/issues/63569).
-#[allow(clippy::needless_lifetimes)] // These serve as important documentation
-pub const unsafe fn slice_assume_init_ref<'a, T>(slice: &'a [MaybeUninit<T>]) -> &'a [T] {
-    // SAFETY: casting slice to a `*const [T]` is safe since the caller guarantees
-    // that `slice` is initialized, and`MaybeUninit` is guaranteed to have the
-    // same layout as `T`. The pointer obtained is valid since it refers to
-    // memory owned by `slice` which is a reference and thus guaranteed to be
-    // valid for reads.
-    &*(std::ptr::from_ref::<[MaybeUninit<T>]>(slice) as *const [T])
 }
