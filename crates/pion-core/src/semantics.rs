@@ -191,7 +191,7 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
         }
     }
 
-    fn eval_env(&self, local_values: &'env mut LocalValues<'core>) -> EvalEnv<'core, 'env> {
+    pub fn eval_env(&self, local_values: &'env mut LocalValues<'core>) -> EvalEnv<'core, 'env> {
         EvalEnv::new(self.bump, self.opts, local_values, self.meta_values)
     }
 

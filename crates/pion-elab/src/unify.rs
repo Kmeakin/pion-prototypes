@@ -441,7 +441,31 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                         let (cond, then, r#else) = self.bump.alloc((head, then, r#else));
                         Ok(Expr::MatchBool { cond, then, r#else })
                     }
-                    Elim::IntCases(_) => todo!(),
+                    Elim::IntCases(cases) => {
+                        let mut cases = cases.clone();
+
+                        let mut int_cases = SliceVec::new(self.bump, cases.len());
+                        for (int, case_expr) in cases.cases {
+                            let mut eval_env = self.elim_env().eval_env(&mut cases.local_values);
+                            let value = eval_env.eval(case_expr);
+                            let expr = self.rename(meta_var, &value)?;
+                            int_cases.push((*int, expr));
+                        }
+
+                        let default = {
+                            let mut eval_env = self.elim_env().eval_env(&mut cases.local_values);
+                            let default = eval_env.eval(cases.default);
+                            self.rename(meta_var, &default)?
+                        };
+
+                        let (scrut, default) = self.bump.alloc((head, default));
+
+                        Ok(Expr::MatchInt {
+                            scrut,
+                            cases: int_cases.into(),
+                            default,
+                        })
+                    }
                 })
             }
             Value::FunType { param, body } => {
