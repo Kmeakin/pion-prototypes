@@ -1,16 +1,19 @@
 [package]
 name = "pion-core"
+
 edition.workspace = true
 version.workspace = true
 
-[dependencies]
-bumpalo.workspace = true
-ecow.workspace = true
-either.workspace = true
-pion-surface = { version = "0.1.0", path = "../pion-surface" }
-pion-symbol = { version = "0.1.0", path = "../pion-symbol" }
-pion-util = { version = "0.1.0", path = "../pion-util" }
-pretty.workspace = true
-
 [lints]
 workspace = true
+
+[dependencies]
+pion-surface = { path = "../pion-surface" }
+pion-symbol  = { path = "../pion-symbol" }
+pion-util    = { path = "../pion-util" }
+
+bumpalo = { workspace = true }
+ecow    = { workspace = true }
+
+either = { version = "1.10.0" }
+pretty = { version = "0.12.3" }

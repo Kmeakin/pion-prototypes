@@ -1,28 +1,31 @@
 [package]
+name = "pion"
+
 edition.workspace = true
-name              = "pion"
 version.workspace = true
 
+[lints]
+workspace = true
+
 [dependencies]
-bumpalo.workspace            = true
-camino.workspace             = true
-clap.workspace               = true
-codespan-reporting.workspace = true
-pion-core                    = { version = "0.1.0", path = "../pion-core" }
-pion-elab                    = { version = "0.1.0", path = "../pion-elab" }
-pion-lexer                   = { version = "0.1.0", path = "../pion-lexer" }
-pion-parser                  = { version = "0.1.0", path = "../pion-parser" }
-pion-surface                 = { version = "0.1.0", path = "../pion-surface" }
+pion-core    = { path = "../pion-core" }
+pion-elab    = { path = "../pion-elab" }
+pion-lexer   = { path = "../pion-lexer" }
+pion-parser  = { path = "../pion-parser" }
+pion-surface = { path = "../pion-surface" }
+
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+
+camino = { version = "1.1.6" }
+clap   = { version = "4.5.4", features = ["derive"] }
+
+[dev-dependencies]
+libtest-mimic   = { version = "0.7.3" }
+similar-asserts = { version = "1.5.0" }
+walkdir         = { version = "2.5.0" }
 
 [[test]]
 name = "integration_tests"
 
 harness = false
-
-[lints]
-workspace = true
-
-[dev-dependencies]
-libtest-mimic = "0.7.3"
-similar-asserts = "1.5.0"
-walkdir = "2.5.0"

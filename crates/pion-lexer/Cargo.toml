@@ -4,9 +4,10 @@ name = "pion-lexer"
 edition.workspace = true
 version.workspace = true
 
-[dependencies]
-logos.workspace = true
-text-size.workspace = true
-
 [lints]
 workspace = true
+
+[dependencies]
+text-size = { workspace = true }
+
+logos = { version = "0.14.0" }
