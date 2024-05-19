@@ -40,6 +40,12 @@ struct PatternCompiler<'core> {
     inexhaustive: bool,
 }
 
+pub struct MatchResult<'core> {
+    pub expr: Expr<'core>,
+    pub inexhaustive: bool,
+    pub reachable_rows: SmallVec<[bool; 16]>,
+}
+
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
@@ -51,21 +57,10 @@ where
         &self,
         matrix: &mut PatMatrix<'core>,
         bodies: &[Body<'core>],
-    ) -> Expr<'core> {
+    ) -> MatchResult<'core> {
         let mut compiler = PatternCompiler::new(self.bump, bodies.len());
         let expr = compiler.compile_match(matrix, bodies);
-
-        let PatternCompiler {
-            bump: _,
-            reachable_rows: _,
-            inexhaustive,
-        } = compiler;
-
-        if inexhaustive {
-            Expr::Error
-        } else {
-            expr
-        }
+        compiler.finish(expr)
     }
 }
 
@@ -75,6 +70,14 @@ impl<'core> PatternCompiler<'core> {
             bump,
             reachable_rows: smallvec![false; rows],
             inexhaustive: false,
+        }
+    }
+
+    fn finish(self, expr: Expr<'core>) -> MatchResult {
+        MatchResult {
+            expr,
+            inexhaustive: self.inexhaustive,
+            reachable_rows: self.reachable_rows,
         }
     }
 

@@ -1,4 +1,4 @@
-use pion_diagnostic::DiagnosticHandler;
+use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_surface::{self as surface, Located};
 
 use super::{Elaborator, EnvLen, Expr, Symbol, TextRange, Type};
@@ -8,6 +8,7 @@ mod constructors;
 mod decompose;
 mod matrix;
 
+use self::compile::MatchResult;
 use self::matrix::{PatMatrix, PatRow};
 
 impl<'core, 'text, H> Elaborator<'core, 'text, H>
@@ -43,7 +44,31 @@ where
             bodies.push(Body::Success { expr });
         }
 
-        let expr = self.compile_match(&mut matrix, &bodies);
+        let MatchResult {
+            expr,
+            inexhaustive,
+            reachable_rows,
+        } = self.compile_match(&mut matrix, &bodies);
+
+        for (idx, is_reachable) in reachable_rows.iter().enumerate() {
+            if !is_reachable {
+                let range = surface_cases[idx].expr.range;
+                self.report_diagnostic(
+                    Diagnostic::warning()
+                        .with_message("Unreachable match case")
+                        .with_labels(vec![Label::primary(self.file_id, range)]),
+                )?;
+            }
+        }
+
+        if inexhaustive {
+            self.report_diagnostic(
+                Diagnostic::error()
+                    .with_message("Inexhaustive match")
+                    .with_labels(vec![Label::primary(self.file_id, range)]),
+            )?;
+        }
+
         Ok(expr)
     }
 }

@@ -11,5 +11,9 @@ let foo : Bool -> Int
 """
 
 stderr = """
-
+warning: Unreachable match case
+  ┌─ test-data/elab/match/unreachable-pat.pion:4:13
+  │
+4 │     true => 3,
+  │             ^
 """
