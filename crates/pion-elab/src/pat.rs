@@ -140,6 +140,7 @@ where
                 let r#type = Type::RecordType(telescope);
                 Ok((Pat::RecordLit(pat_fields.into()), r#type))
             }
+            surface::Pat::Or(_) => todo!(),
         }
     }
 
@@ -201,6 +202,7 @@ where
                 Ok(Pat::RecordLit(pat_fields.into()))
             }
             surface::Pat::Lit(_) => self.synth_and_convert_pat(surface_pat, expected),
+            surface::Pat::Or(_) => todo!(),
         }
     }
 

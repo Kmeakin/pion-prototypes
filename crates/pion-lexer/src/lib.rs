@@ -36,8 +36,10 @@ pub enum TokenKind {
     #[token(".")] Dot,
     #[token("@")] At,
     #[token("=")] Eq,
+    #[token("|")] Pipe,
     #[token("=>")] DoubleArrow,
     #[token("->")] SingleArrow,
+
 
     #[regex("[0-9][0-9_]*")] DecInt,
     #[regex("0(b|B)[0-1][0-1_]*")] BinInt,
@@ -80,6 +82,7 @@ impl fmt::Display for TokenKind {
             Self::Dot => "`.`",
             Self::At => "`@`",
             Self::Eq => "`=`",
+            Self::Pipe => "`|`",
             Self::DoubleArrow => "`=>`",
             Self::SingleArrow => "`->`",
             Self::DecInt | Self::BinInt | Self::HexInt => "integer",

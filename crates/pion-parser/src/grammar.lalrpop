@@ -42,6 +42,7 @@ extern {
         "." => TokenKind::Dot,
         "@" => TokenKind::At,
         "=" => TokenKind::Eq,
+        "|" => TokenKind::Pipe,
         "=>" => TokenKind::DoubleArrow,
         "->" => TokenKind::SingleArrow,
 
@@ -185,7 +186,17 @@ ExprField: Located<ExprField<'surface>> = {
     <start: @L> <name: Ident> "=" <expr: Expr> <end: @R> => Located::new(TextRange::new(start, end), ExprField { name, expr }),
 }
 
+
 Pat: Located<Pat<'surface>> = {
+    <start: @L> <mut pats: (<AtomPat> "|")+> <last: AtomPat> <end: @R> => {
+        pats.push(last);
+        let pats = bump.alloc_slice_copy(&pats);
+        Located::new(TextRange::new(start, end), Pat::Or(pats))
+    },
+    AtomPat => <>,
+}
+
+AtomPat: Located<Pat<'surface>> = {
     <start: @L> <recovery: !> <end: @R> => {
         let range = TextRange::new(start, end);
         errors.push(recovery.error);

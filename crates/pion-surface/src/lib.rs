@@ -141,6 +141,7 @@ pub enum Pat<'surface> {
     Lit(Located<Lit>),
     TupleLit(&'surface [Located<Self>]),
     RecordLit(&'surface [Located<PatField<'surface>>]),
+    Or(&'surface [Located<Self>]),
 }
 
 #[derive(Debug, Copy, Clone)]
