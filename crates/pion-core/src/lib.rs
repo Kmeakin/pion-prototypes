@@ -121,8 +121,8 @@ impl<'core> Expr<'core> {
         mut min: RelativeVar,
         amount: EnvLen,
     ) -> Self {
-        // Skip traversing and rebuilding the term if it would make no change. Increases
-        // sharing.
+        // Skip traversing and rebuilding the term if it would make no change.
+        // Increases sharing.
         if amount == EnvLen::new() {
             return *self;
         }
