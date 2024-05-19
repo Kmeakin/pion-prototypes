@@ -113,134 +113,137 @@ pub fn lex(text: &str) -> impl Iterator<Item = Token> + '_ {
 
 #[cfg(test)]
 mod tests {
-    use TokenKind::*;
+    use std::fmt::Write;
+
+    use expect_test::{expect, Expect};
 
     use super::*;
 
-    fn range(range: Range<u32>) -> TextRange {
-        TextRange::new(TextSize::from(range.start), TextSize::from(range.end))
-    }
+    #[track_caller]
+    #[allow(clippy::needless_pass_by_value)]
+    fn check(text: &str, expected: Expect) {
+        let tokens: Vec<_> = lex(text).collect();
+        let mut output = String::with_capacity(text.len());
 
-    fn check(text: &str, expected: &[Token]) {
-        let actual: Vec<_> = lex(text).collect();
-        assert_eq!(actual, expected);
+        for token in tokens {
+            let kind = token.kind;
+            let range = token.range;
+            let text = &text[range];
+            writeln!(&mut output, "{range:?}: {kind:?}({text:?})").unwrap();
+        }
+
+        expected.assert_eq(&output);
     }
 
     #[test]
-    fn empty() { check("", &[]); }
+    fn empty() { check("", expect![""]); }
 
     #[test]
     fn unknown() {
         #[rustfmt::skip]
         check(
             "🦀🦞",
-            &[
-                Token { kind: Unknown, range: range(0..4) },
-                Token { kind: Unknown, range: range(4..8) },
-            ],
+            expect![[r#"
+                0..4: Unknown("🦀")
+                4..8: Unknown("🦞")
+            "#]],
         );
     }
 
     #[test]
     fn line_comments() {
-        #[rustfmt::skip]
         check(
             "// line 1\n // line 2",
-            &[
-                Token { kind: LineComment,  range: range(0..9) },
-                Token { kind: Whitespace,   range: range(9..11) },
-                Token { kind: LineComment,  range: range(11..20) },
-            ]
+            expect![[r#"
+        0..9: LineComment("// line 1")
+        9..11: Whitespace("\n ")
+        11..20: LineComment("// line 2")
+    "#]],
         );
     }
 
     #[test]
     fn keywords() {
-        #[rustfmt::skip]
         check(
             "else false forall fun if let then true",
-            &[
-                Token { kind: KwElse,       range: range(0..4) },
-                Token { kind: Whitespace,   range: range(4..5) },
-                Token { kind: KwFalse,      range: range(5..10) },
-                Token { kind: Whitespace,   range: range(10..11) },
-                Token { kind: KwForall,     range: range(11..17) },
-                Token { kind: Whitespace,   range: range(17..18) },
-                Token { kind: KwFun,        range: range(18..21) },
-                Token { kind: Whitespace,   range: range(21..22) },
-                Token { kind: KwIf,         range: range(22..24) },
-                Token { kind: Whitespace,   range: range(24..25) },
-                Token { kind: KwLet,        range: range(25..28) },
-                Token { kind: Whitespace,   range: range(28..29) },
-                Token { kind: KwThen,       range: range(29..33) },
-                Token { kind: Whitespace,   range: range(33..34) },
-                Token { kind: KwTrue,       range: range(34..38) },
-            ],
+            expect![[r#"
+        0..4: KwElse("else")
+        4..5: Whitespace(" ")
+        5..10: KwFalse("false")
+        10..11: Whitespace(" ")
+        11..17: KwForall("forall")
+        17..18: Whitespace(" ")
+        18..21: KwFun("fun")
+        21..22: Whitespace(" ")
+        22..24: KwIf("if")
+        24..25: Whitespace(" ")
+        25..28: KwLet("let")
+        28..29: Whitespace(" ")
+        29..33: KwThen("then")
+        33..34: Whitespace(" ")
+        34..38: KwTrue("true")
+    "#]],
         );
     }
 
     #[test]
     fn delimiters() {
-        #[rustfmt::skip]
         check(
             "(){}[]",
-            &[
-                Token { kind: LParen, range: range(0..1) },
-                Token { kind: RParen, range: range(1..2) },
-                Token { kind: LCurly, range: range(2..3) },
-                Token { kind: RCurly, range: range(3..4) },
-                Token { kind: LSquare, range: range(4..5) },
-                Token { kind: RSquare, range: range(5..6) },
-            ],
+            expect![[r#"
+        0..1: LParen("(")
+        1..2: RParen(")")
+        2..3: LCurly("{")
+        3..4: RCurly("}")
+        4..5: LSquare("[")
+        5..6: RSquare("]")
+    "#]],
         );
     }
 
     #[test]
     fn punctuation() {
-        #[rustfmt::skip]
         check(
             "_,;:==>->",
-            &[
-                Token { kind: Underscore,   range: range(0..1) },
-                Token { kind: Comma,        range: range(1..2) },
-                Token { kind: Semicolon,    range: range(2..3) },
-                Token { kind: Colon,        range: range(3..4) },
-                Token { kind: Eq,           range: range(4..5) },
-                Token { kind: DoubleArrow,  range: range(5..7) },
-                Token { kind: SingleArrow,  range: range(7..9) },
-            ],
+            expect![[r#"
+        0..1: Underscore("_")
+        1..2: Comma(",")
+        2..3: Semicolon(";")
+        3..4: Colon(":")
+        4..5: Eq("=")
+        5..7: DoubleArrow("=>")
+        7..9: SingleArrow("->")
+    "#]],
         );
     }
 
     #[test]
     fn integers() {
-        #[rustfmt::skip]
         check(
             "0123456789_ 0b01_ 0x0123456789abcdef_",
-            &[
-                Token { kind: DecInt,       range: range(0..11) },
-                Token { kind: Whitespace,   range: range(11..12) },
-                Token { kind: BinInt,       range: range(12..17) },
-                Token { kind: Whitespace,   range: range(17..18) },
-                Token { kind: HexInt,       range: range(18..37) },
-            ],
+            expect![[r#"
+        0..11: DecInt("0123456789_")
+        11..12: Whitespace(" ")
+        12..17: BinInt("0b01_")
+        17..18: Whitespace(" ")
+        18..37: HexInt("0x0123456789abcdef_")
+    "#]],
         );
     }
 
     #[test]
     fn identifiers() {
-        #[rustfmt::skip]
         check(
             "abcDEF_ _hello λ hello-world",
-            &[
-                Token { kind: Ident,        range: range(0..7) },
-                Token { kind: Whitespace,   range: range(7..8) },
-                Token { kind: Ident,        range: range(8..14) },
-                Token { kind: Whitespace,   range: range(14..15) },
-                Token { kind: Ident,        range: range(15..17) },
-                Token { kind: Whitespace,   range: range(17..18) },
-                Token { kind: Ident,        range: range(18..29) },
-            ],
+            expect![[r#"
+        0..7: Ident("abcDEF_")
+        7..8: Whitespace(" ")
+        8..14: Ident("_hello")
+        14..15: Whitespace(" ")
+        15..17: Ident("λ")
+        17..18: Whitespace(" ")
+        18..29: Ident("hello-world")
+    "#]],
         );
     }
 }
