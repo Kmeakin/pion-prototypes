@@ -41,28 +41,39 @@ impl<'core> Constructor<'core> {
 #[derive(Debug, Clone)]
 pub enum Constructors<'core> {
     Record(&'core [(Symbol, Pat<'core>)]),
-    Bools(Bools),
+    Bools(BoolSet),
     Ints(SmallVec<[u32; 4]>),
 }
 
+/// Non-empty set of `bool`s.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Bools {
+pub enum BoolSet {
     False = 0,
     True = 1,
     Both = 2,
 }
 
-impl Bools {
+impl BoolSet {
     pub const fn contains(self, b: bool) -> bool {
-        match self {
-            Self::False => !b,
-            Self::True => b,
-            Self::Both => true,
+        #[allow(clippy::match_like_matches_macro)]
+        match (self, b) {
+            (Self::False, false) => true,
+            (Self::True, true) => true,
+            (Self::Both, _) => true,
+            _ => false,
         }
     }
+
+    pub fn insert(&mut self, b: bool) {
+        if !self.contains(b) {
+            *self = Self::Both;
+        }
+    }
+
+    pub const fn is_full(self) -> bool { matches!(self, Self::Both) }
 }
 
-impl From<bool> for Bools {
+impl From<bool> for BoolSet {
     fn from(value: bool) -> Self {
         match value {
             true => Self::True,
@@ -75,7 +86,7 @@ impl<'core> Constructors<'core> {
     pub fn is_exhaustive(&self) -> bool {
         match self {
             Constructors::Record(_) => true,
-            Constructors::Bools(bools) => *bools == Bools::Both,
+            Constructors::Bools(bools) => bools.is_full(),
             Constructors::Ints(ints) => (ints.len() as u64) >= u64::from(u32::MAX),
         }
     }
@@ -92,7 +103,7 @@ impl<'core> PatConstructors<'core> {
 impl<'core> InternalIterator for PatConstructors<'core> {
     type Item = Constructor<'core>;
 
-    fn try_for_each<R, F>(self, mut f: F) -> ControlFlow<R>
+    fn try_for_each<R, F>(self, mut on_ctor: F) -> ControlFlow<R>
     where
         F: FnMut(Self::Item) -> ControlFlow<R>,
     {
@@ -107,7 +118,7 @@ impl<'core> InternalIterator for PatConstructors<'core> {
             }
         }
 
-        recur(self.pat, &mut f)
+        recur(self.pat, &mut on_ctor)
     }
 }
 
@@ -127,34 +138,37 @@ impl<'core> PatMatrix<'core> {
                 match pat {
                     Pat::Error | Pat::Underscore | Pat::Ident(_) => continue,
                     Pat::RecordLit(fields) => return Some(Constructors::Record(fields)),
-                    Pat::Lit(Lit::Bool(value)) => return Some(bools(column, value)),
-                    Pat::Lit(Lit::Int(value)) => return Some(ints(column, smallvec![value])),
+                    Pat::Lit(Lit::Bool(value)) => {
+                        return Some(Constructors::Bools(bools(column, BoolSet::from(value))))
+                    }
+                    Pat::Lit(Lit::Int(value)) => {
+                        return Some(Constructors::Ints(ints(column, smallvec![value])))
+                    }
                 }
             }
             None
         }
 
-        fn bools<'core>(
-            column: impl Iterator<Item = Pat<'core>>,
-            value: bool,
-        ) -> Constructors<'core> {
+        fn bools<'core>(column: impl Iterator<Item = Pat<'core>>, mut values: BoolSet) -> BoolSet {
             for pat in column {
                 match pat {
                     Pat::Error | Pat::Underscore | Pat::Ident(..) => continue,
-                    Pat::Lit(.., Lit::Bool(other_value)) if other_value == value => {
-                        continue;
+                    Pat::Lit(.., Lit::Bool(value)) => {
+                        values.insert(value);
+                        if values.is_full() {
+                            break;
+                        }
                     }
-                    Pat::Lit(.., Lit::Bool(_)) => return Constructors::Bools(Bools::Both),
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
                 }
             }
-            Constructors::Bools(Bools::from(value))
+            values
         }
 
         fn ints<'core>(
             column: impl Iterator<Item = Pat<'core>>,
             mut values: SmallVec<[u32; 4]>,
-        ) -> Constructors<'core> {
+        ) -> SmallVec<[u32; 4]> {
             for pat in column {
                 match pat {
                     Pat::Error | Pat::Underscore | Pat::Ident(..) => continue,
@@ -162,12 +176,11 @@ impl<'core> PatMatrix<'core> {
                         if let Err(index) = values.binary_search(&value) {
                             values.insert(index, value);
                         }
-                        continue;
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
                 }
             }
-            Constructors::Ints(values)
+            values
         }
     }
 }
