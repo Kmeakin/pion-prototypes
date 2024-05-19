@@ -1,0 +1,12 @@
+[package]
+name = "pion-lexer"
+
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+logos.workspace = true
+text-size.workspace = true
+
+[lints]
+workspace = true

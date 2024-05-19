@@ -1,0 +1,12 @@
+[package]
+name = "pion-symbol"
+
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+lasso     = { version = "0.7.2", features = ["multi-threaded"] }
+once_cell = { version = "1.19.0", features = ["parking_lot"] }
+
+[lints]
+workspace = true

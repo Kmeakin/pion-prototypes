@@ -1,0 +1,12 @@
+[package]
+name = "pion-surface"
+
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+pion-symbol = { version = "0.1.0", path = "../pion-symbol" }
+text-size.workspace = true
+
+[lints]
+workspace = true

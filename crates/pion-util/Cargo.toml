@@ -1,0 +1,10 @@
+[package]
+name = "pion-util"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+bumpalo.workspace = true
+
+[lints]
+workspace = true

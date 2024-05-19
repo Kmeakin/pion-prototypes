@@ -1,0 +1,20 @@
+[package]
+name = "pion-parser"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo            = { version = "3.15.4", features = ["allocator_api"] }
+codespan-reporting = { version = "0.11.1" }
+lalrpop-util       = { version = "0.20.2", default-features = false }
+pion-lexer = { version = "0.1.0", path = "../pion-lexer" }
+pion-surface = { version = "0.1.0", path = "../pion-surface" }
+pion-symbol = { version = "0.1.0", path = "../pion-symbol" }
+text-size.workspace = true
+
+[build-dependencies]
+lalrpop = { version = "0.20.2", default-features = false }

@@ -1,0 +1,20 @@
+[package]
+name = "pion-elab"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo.workspace = true
+codespan-reporting.workspace = true
+ecow.workspace = true
+internal-iterator.workspace = true
+pion-core = { version = "0.1.0", path = "../pion-core" }
+pion-surface = { version = "0.1.0", path = "../pion-surface" }
+pion-symbol = { version = "0.1.0", path = "../pion-symbol" }
+pion-util = { version = "0.1.0", path = "../pion-util" }
+smallvec = { workspace = true, features = ["union"] }
+text-size.workspace = true

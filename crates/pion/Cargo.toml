@@ -1,0 +1,28 @@
+[package]
+edition.workspace = true
+name              = "pion"
+version.workspace = true
+
+[dependencies]
+bumpalo.workspace            = true
+camino.workspace             = true
+clap.workspace               = true
+codespan-reporting.workspace = true
+pion-core                    = { version = "0.1.0", path = "../pion-core" }
+pion-elab                    = { version = "0.1.0", path = "../pion-elab" }
+pion-lexer                   = { version = "0.1.0", path = "../pion-lexer" }
+pion-parser                  = { version = "0.1.0", path = "../pion-parser" }
+pion-surface                 = { version = "0.1.0", path = "../pion-surface" }
+
+[[test]]
+name = "integration_tests"
+
+harness = false
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+libtest-mimic = "0.7.3"
+similar-asserts = "1.5.0"
+walkdir = "2.5.0"

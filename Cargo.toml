@@ -1,16 +1,18 @@
-[package]
-name = "pion"
+[workspace]
+members  = ["crates/*"]
+resolver = "2"
 
+[workspace.package]
 edition = "2021"
 version = "0.1.0"
 
-[lints.rust]
+[workspace.lints.rust]
 unused_qualifications = { level = "warn", priority = 100 }
 
-[lints.rustdoc]
+[workspace.lints.rustdoc]
 all = { level = "warn", priority = 0 }
 
-[lints.clippy]
+[workspace.lints.clippy]
 all      = { level = "warn", priority = 0 }
 nursery  = { level = "warn", priority = 0 }
 pedantic = { level = "warn", priority = 0 }
@@ -24,7 +26,7 @@ option_if_let_else       = { level = "allow", priority = 100 }
 return_self_not_must_use = { level = "allow", priority = 100 }
 too_many_lines           = { level = "allow", priority = 100 }
 
-[dependencies]
+[workspace.dependencies]
 bumpalo            = { version = "3.15.4", features = ["allocator_api"] }
 camino             = { version = "1.1.6" }
 clap               = { version = "4.5.4", features = ["derive"] }
@@ -40,19 +42,10 @@ pretty             = { version = "0.12.3" }
 smallvec           = { version = "1.13.2", features = ["union"] }
 text-size          = { version = "1.1.1" }
 
-[build-dependencies]
-lalrpop = { version = "0.20.2", default-features = false }
-
-[dev-dependencies]
+[workspace.dev-dependencies]
 libtest-mimic   = { version = "0.7.3" }
 similar-asserts = { version = "1.5.0" }
 walkdir         = { version = "2.5.0" }
-
-[[test]]
-name = "integration"
-path = "tests/integration_tests.rs"
-
-harness = false
 
 [profile.dev]
 opt-level = 0
