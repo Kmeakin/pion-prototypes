@@ -134,9 +134,8 @@ impl<'core> PatternCompiler<'core> {
         matrix.swap_columns(0, column);
         let (_, scrut) = &matrix.row(0).pairs[0];
 
-        let ctors = matrix.column_constructors(0);
+        let ctors = matrix.column_constructors(0).unwrap();
         match ctors {
-            Constructors::Empty => unreachable!(),
             Constructors::Record(fields) => {
                 let mut matrix = matrix.specialize(self.bump, Constructor::Record(fields));
                 return self.compile_match(&mut matrix, bodies);

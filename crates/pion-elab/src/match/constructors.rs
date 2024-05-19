@@ -40,7 +40,6 @@ impl<'core> Constructor<'core> {
 
 #[derive(Debug, Clone)]
 pub enum Constructors<'core> {
-    Empty,
     Record(&'core [(Symbol, Pat<'core>)]),
     Bools(Bools),
     Ints(SmallVec<[u32; 4]>),
@@ -75,7 +74,6 @@ impl From<bool> for Bools {
 impl<'core> Constructors<'core> {
     pub fn is_exhaustive(&self) -> bool {
         match self {
-            Constructors::Empty => false,
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => *bools == Bools::Both,
             Constructors::Ints(ints) => (ints.len() as u64) >= (u32::MAX as u64),
@@ -118,18 +116,20 @@ pub fn has_constructors(pat: &Pat) -> bool { PatConstructors::new(*pat).next().i
 impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
     #[allow(clippy::items_after_statements)]
-    pub fn column_constructors(&self, index: usize) -> Constructors<'core> {
+    pub fn column_constructors(&self, index: usize) -> Option<Constructors<'core>> {
         let mut column = self.column(index).map(|(pat, _)| *pat);
         return empty(&mut column);
 
-        fn empty<'core>(column: &mut dyn Iterator<Item = Pat<'core>>) -> Constructors<'core> {
+        fn empty<'core>(
+            column: &mut dyn Iterator<Item = Pat<'core>>,
+        ) -> Option<Constructors<'core>> {
             match column.next() {
-                None => Constructors::Empty,
+                None => None,
                 Some(pat) => match pat {
                     Pat::Error | Pat::Underscore | Pat::Ident(..) => empty(column),
-                    Pat::RecordLit(.., fields) => Constructors::Record(fields),
-                    Pat::Lit(.., Lit::Bool(value)) => bools(column, value),
-                    Pat::Lit(.., Lit::Int(value)) => ints(column, smallvec![value]),
+                    Pat::RecordLit(.., fields) => Some(Constructors::Record(fields)),
+                    Pat::Lit(.., Lit::Bool(value)) => Some(bools(column, value)),
+                    Pat::Lit(.., Lit::Int(value)) => Some(ints(column, smallvec![value])),
                 },
             }
         }
