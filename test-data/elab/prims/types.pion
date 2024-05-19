@@ -1,0 +1,5 @@
+let _ = Type;
+let _ = Bool;
+let _ = Int;
+let _ = List;
+()

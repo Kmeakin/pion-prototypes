@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+refl : forall (@A : Type) (a : A) -> Eq @A a a
+"""
+
+stderr = """
+
+"""

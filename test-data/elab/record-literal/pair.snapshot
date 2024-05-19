@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+{x = 1, y = false} : {x : Int, y : Bool}
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+match true {
+    true => 1,
+    false => 0,
+} : Int
+"""
+
+stderr = """
+
+"""

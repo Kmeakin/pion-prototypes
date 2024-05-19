@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+(fun (x : ?0) => x) : ?0 -> ?0
+"""
+
+stderr = """
+error: Unsolved metavariable: ?0
+  ┌─ test-data/elab/fun-lit/ambigious-param.pion:1:5
+  │
+1 │ fun x => x
+  │     ^ could not infer type of variable `x`
+"""

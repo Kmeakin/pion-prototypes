@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+{A = Int, a = 5}.a : Int
+"""
+
+stderr = """
+
+"""

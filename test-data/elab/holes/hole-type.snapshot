@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+let x : Int = 5;
+() : ()
+"""
+
+stderr = """
+
+"""

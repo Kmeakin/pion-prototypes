@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+let fact : Int -> Int
+    = fix
+        @Int
+        @Int
+        (fun (fact : Int -> Int) (n : Int) =>
+            match (eq n 0) {
+                true => 1,
+                false => mul n (fact (sub n 1)),
+            });
+() : ()
+"""
+
+stderr = """
+
+"""

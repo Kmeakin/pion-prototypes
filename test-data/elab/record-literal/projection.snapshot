@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+let x : Int = {x = 1, y = false}.x;
+let y : Bool = {x = 1, y = false}.y;
+() : ()
+"""
+
+stderr = """
+
+"""

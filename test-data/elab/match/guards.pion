@@ -1,0 +1,23 @@
+let foo = fun (x: Int) (y: Bool) (z: Bool) => match x {
+    1 if y => 1,
+    2 if z => 2,
+    3 if y => 3,
+    4 if z => 4,
+    5 => 5,
+    _ => 6,
+};
+
+let bar = fun (x: Bool) (f: Bool -> Bool) (y: Int) => match x {
+    true => 0,
+    z if f(z) => y,
+    _ => 3,
+};
+
+let baz = fun (x) (y: Int) (f: Int -> Bool) => match (x, y) {
+    (0, a) if f(a) => a,
+    (0, b) if f(b) => b,
+    (0, c) if f(c) => c,
+    (0, d) if f(d) => d,
+    (aa, bb) => bb,
+};
+()

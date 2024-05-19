@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+(append @Int [1, 2, 3] [4, 5, 6]) : List Int
+"""
+
+stderr = """
+
+"""

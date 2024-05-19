@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+(push @Int [1, 2, 3] 4) : List Int
+"""
+
+stderr = """
+
+"""

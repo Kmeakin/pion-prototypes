@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+((fun (@x : Int) => x) @5) : Int
+"""
+
+stderr = """
+
+"""

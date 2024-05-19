@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+#error : #error
+"""
+
+stderr = """
+error: Expected function, found `Int`
+  ┌─ test-data/elab/fun-app/too-many-args.pion:1:1
+  │
+1 │ (fun x => x) 1 2 3
+  │ ^^^^^^^^^^^^^^
+"""

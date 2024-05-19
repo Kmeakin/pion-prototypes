@@ -1,0 +1,8 @@
+let trans: forall (@A: Type) (@a: A) (@b: A) (@c: A) -> Eq a b -> Eq b c -> Eq a c
+    = fun a_eq_b b_eq_c =>
+        let p = fun x => Eq @A a x;
+        let p_b  : p b = a_eq_b;
+        let goal : p c = subst @A @p b c b_eq_c p_b;
+        goal
+        ;
+()

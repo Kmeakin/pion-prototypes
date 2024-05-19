@@ -1,0 +1,35 @@
+exit status: 0
+
+stdout = """
+let foo : Int -> Bool -> Bool -> Int
+    = fun (x : Int) (y : Bool) (z : Bool) =>
+        match x {
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            4 => 4,
+            5 => 5,
+            _ => 6,
+        };
+let bar : Bool -> (Bool -> Bool) -> Int -> Int
+    = fun (x : Bool) (f : Bool -> Bool) (y : Int) =>
+        match x {
+            true => 0,
+            false => let z : Bool = x;
+            y,
+        };
+let baz : Int -> Int -> (Int -> Bool) -> Int
+    = fun (x : Int) (y : Int) (f : Int -> Bool) =>
+        match (x, y)._0 {
+            0 => let a : Int = (x, y)._1;
+            a,
+            _ => let aa : Int = (x, y)._0;
+            let bb : Int = (x, y)._1;
+            bb,
+        };
+() : ()
+"""
+
+stderr = """
+
+"""

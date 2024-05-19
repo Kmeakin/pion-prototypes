@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+(1, 2) : (Int, Int)
+"""
+
+stderr = """
+
+"""

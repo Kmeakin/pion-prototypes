@@ -1,0 +1,15 @@
+exit status: 0
+
+stdout = """
+let foo : Bool -> Int
+    = fun (x : Bool) =>
+        match x {
+            true => 1,
+            false => 2,
+        };
+() : ()
+"""
+
+stderr = """
+
+"""

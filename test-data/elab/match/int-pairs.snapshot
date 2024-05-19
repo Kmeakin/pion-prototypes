@@ -1,0 +1,32 @@
+exit status: 0
+
+stdout = """
+let foo : Int -> Int -> Int
+    = fun (x : Int) (y : Int) =>
+        match (x, y)._0 {
+            0 => let a : Int = (x, y)._1;
+            a,
+            1 => match (x, y)._1 {
+                0 => let b : Int = (x, y)._0;
+                b,
+                1 => let c : Int = (x, y)._1;
+                c,
+                _ => let c : Int = (x, y)._1;
+                c,
+            },
+            _ => match (x, y)._1 {
+                0 => let b : Int = (x, y)._0;
+                b,
+                1 => let d : Int = (x, y)._0;
+                d,
+                _ => let xx : Int = (x, y)._0;
+                let yy : Int = (x, y)._1;
+                xx,
+            },
+        };
+() : ()
+"""
+
+stderr = """
+
+"""

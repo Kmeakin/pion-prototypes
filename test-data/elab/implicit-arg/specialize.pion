@@ -1,0 +1,2 @@
+let id: forall (@A: Type) -> A -> A = fun x => x;
+id 5

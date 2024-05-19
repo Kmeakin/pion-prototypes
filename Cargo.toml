@@ -44,7 +44,15 @@ text-size          = { version = "1.1.1" }
 lalrpop = { version = "0.20.2", default-features = false }
 
 [dev-dependencies]
-expect-test = { version = "1.4.1" }
+libtest-mimic   = { version = "0.7.3" }
+similar-asserts = { version = "1.5.0" }
+walkdir         = { version = "2.5.0" }
+
+[[test]]
+name = "integration"
+path = "tests/integration_tests.rs"
+
+harness = false
 
 [profile.dev]
 opt-level = 0

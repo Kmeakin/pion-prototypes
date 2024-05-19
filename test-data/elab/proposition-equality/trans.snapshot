@@ -1,0 +1,17 @@
+exit status: 0
+
+stdout = """
+let trans : forall (@A : Type) (@a : A) (@b : A) (@c : A) ->
+    Eq @A a b -> Eq @A b c -> Eq @A a c
+    = fun (@A : Type) (@a : A) (@b : A) (@c : A) (a_eq_b : Eq @A a b)
+    (b_eq_c : Eq @A b c) =>
+        let p : A -> Type = fun (x : A) => Eq @A a x;
+        let p_b : Eq @A a b = a_eq_b;
+        let goal : Eq @A a c = subst @A @p b c b_eq_c p_b;
+        goal;
+() : ()
+"""
+
+stderr = """
+
+"""

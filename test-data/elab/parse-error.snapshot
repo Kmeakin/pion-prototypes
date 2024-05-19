@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+#error : #error
+"""
+
+stderr = """
+error: Syntax error: unexpected end of file
+  ┌─ test-data/elab/parse-error.pion:1:4
+  │
+1 │ fun
+  │    ^ expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
+"""

@@ -1,0 +1,7 @@
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
+= fun @A1 @B1 @A2 @B2 =>
+fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) f => (
+   (fun x => (f (fix2 f))._0 x),
+   (fun x => (f (fix2 f))._1 x)
+));
+()

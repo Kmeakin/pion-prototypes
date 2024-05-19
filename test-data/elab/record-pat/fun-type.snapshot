@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+(forall (_ : (Int, Bool)) ->
+    let x : Int = _#0._0;
+    let y : Bool = _#1._1;
+    Int) : Type
+"""
+
+stderr = """
+
+"""

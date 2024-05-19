@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+[] : List ?0
+"""
+
+stderr = """
+error: Unsolved metavariable: ?0
+  ┌─ test-data/elab/list/empty-list-ambigious.pion:1:1
+  │
+1 │ []
+  │ ^^ could not infer element type of empty list
+"""

@@ -1,0 +1,15 @@
+let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) -> ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
+= fun @A1 @B1 @A2 @B2 =>
+fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)) f => (
+   (fun x => (f (fix2 f))._0 x),
+   (fun x => (f (fix2 f))._1 x)
+));
+
+let evenodd : (Int -> Bool, Int -> Bool)
+= fix2 (fun evenodd => (
+    fun n => if eq n 0 then true else evenodd._1 (sub n 1),
+    fun n => if eq n 0 then false else evenodd._0 (sub n 1)
+));
+let even = evenodd._0;
+let odd = evenodd._1;
+even 2
