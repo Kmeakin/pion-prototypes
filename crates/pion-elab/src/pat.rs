@@ -140,7 +140,22 @@ where
                 let r#type = Type::RecordType(telescope);
                 Ok((Pat::RecordLit(pat_fields.into()), r#type))
             }
-            surface::Pat::Or(_) => todo!(),
+            surface::Pat::Or(pats) => {
+                // TODO: check all alts bind the same set of variables
+                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                let [first, rest @ ..] = pats else {
+                    unreachable!()
+                };
+
+                let (pat, r#type) = self.synth_pat(first)?;
+                core_pats.push(pat);
+                for pat in rest {
+                    let pat = self.check_pat(pat, &r#type)?;
+                    core_pats.push(pat);
+                }
+
+                Ok((Pat::Or(core_pats.into()), r#type))
+            }
         }
     }
 
@@ -201,8 +216,16 @@ where
 
                 Ok(Pat::RecordLit(pat_fields.into()))
             }
+            surface::Pat::Or(pats) => {
+                // TODO: check all alts bind the same set of variables
+                let mut core_pats = SliceVec::new(self.bump, pats.len());
+                for pat in pats {
+                    let pat = self.check_pat(pat, expected)?;
+                    core_pats.push(pat);
+                }
+                Ok(Pat::Or(core_pats.into()))
+            }
             surface::Pat::Lit(_) => self.synth_and_convert_pat(surface_pat, expected),
-            surface::Pat::Or(_) => todo!(),
         }
     }
 
@@ -280,6 +303,9 @@ where
                         recur(ctx, pat, &expr, &r#type, bindings, false);
                         update_telescope(ctx.local_env.next_var());
                     }
+                }
+                Pat::Or(pats) => {
+                    recur(ctx, &pats[0], expr, r#type, bindings, toplevel_param);
                 }
             }
         }

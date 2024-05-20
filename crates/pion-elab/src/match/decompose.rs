@@ -46,6 +46,9 @@ impl<'core> PatMatrix<'core> {
                         matrix.extend_row(PatRow::new(pairs, rest.body));
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
+                    Pat::Or(pats) => pats
+                        .iter()
+                        .for_each(|pat| recur(bump, *pat, expr, rest, ctor, matrix)),
                 }
             }
         }
@@ -76,6 +79,7 @@ impl<'core> PatMatrix<'core> {
                 match pat {
                     Pat::Error | Pat::Underscore | Pat::Ident(..) => matrix.push_row(rest),
                     Pat::Lit(..) | Pat::RecordLit(..) => {}
+                    Pat::Or(pats) => pats.iter().for_each(|pat| recur(*pat, rest, matrix)),
                 }
             }
         }

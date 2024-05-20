@@ -115,6 +115,7 @@ impl<'core> InternalIterator for PatConstructors<'core> {
                 Pat::Error | Pat::Underscore | Pat::Ident(..) => ControlFlow::Continue(()),
                 Pat::Lit(.., lit) => on_ctor(Constructor::Lit(lit)),
                 Pat::RecordLit(.., fields) => on_ctor(Constructor::Record(fields)),
+                Pat::Or(pats) => pats.iter().try_for_each(|pat| recur(*pat, on_ctor)),
             }
         }
 
@@ -144,6 +145,27 @@ impl<'core> PatMatrix<'core> {
                     Pat::Lit(Lit::Int(value)) => {
                         return Some(Constructors::Ints(ints(column, smallvec![value])))
                     }
+                    Pat::Or(alts) => {
+                        let mut alts = alts.iter().copied();
+                        while let Some(pat) = alts.next() {
+                            match start(std::iter::once(pat)) {
+                                None => continue,
+                                Some(ctors) => match ctors {
+                                    Constructors::Record(_) => return Some(ctors),
+                                    Constructors::Bools(mut values) => {
+                                        if !values.is_full() {
+                                            values = bools(alts, values);
+                                        }
+                                        return Some(Constructors::Bools(bools(column, values)));
+                                    }
+                                    Constructors::Ints(mut values) => {
+                                        values = ints(alts, values);
+                                        return Some(Constructors::Ints(ints(column, values)));
+                                    }
+                                },
+                            }
+                        }
+                    }
                 }
             }
             None
@@ -160,6 +182,12 @@ impl<'core> PatMatrix<'core> {
                         }
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
+                    Pat::Or(alts) => {
+                        values = bools(alts.iter().copied(), values);
+                        if values.is_full() {
+                            break;
+                        }
+                    }
                 }
             }
             values
@@ -178,6 +206,9 @@ impl<'core> PatMatrix<'core> {
                         }
                     }
                     Pat::Lit(..) | Pat::RecordLit(..) => unreachable!(),
+                    Pat::Or(alts) => {
+                        values = ints(alts.iter().copied(), values);
+                    }
                 }
             }
             values

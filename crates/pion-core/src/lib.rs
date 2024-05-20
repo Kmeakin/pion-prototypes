@@ -315,6 +315,7 @@ pub enum Pat<'core> {
     Ident(Symbol),
     Lit(Lit),
     RecordLit(&'core [(Symbol, Self)]),
+    Or(&'core [Self]),
 }
 
 impl<'core> Pat<'core> {
@@ -329,10 +330,11 @@ impl<'core> Pat<'core> {
         matches!(self, Self::Error | Self::Underscore | Self::Ident(_))
     }
 
-    pub const fn is_wildcard_deep(&self) -> bool {
+    pub fn is_wildcard_deep(&self) -> bool {
         match self {
             Pat::Error | Pat::Underscore | Pat::Ident(_) => true,
             Pat::Lit(_) | Pat::RecordLit(_) => false,
+            Pat::Or(pats) => pats.iter().all(Pat::is_wildcard_deep),
         }
     }
 }
