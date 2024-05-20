@@ -94,7 +94,7 @@ impl<'core> PatternCompiler<'core> {
         }
 
         // Base case 2:
-        // If the first row is all wildcards, matching always suceeds.
+        // If the first row is all wildcards, matching always succeeds.
         // Bind all the variables in scope with `let`, and either
         // a) if there is no guard, continue to the RHS
         // b) if there is a guard, branch on the guard:
@@ -184,7 +184,7 @@ impl<'core> PatternCompiler<'core> {
 impl<'core> PatMatrix<'core> {
     /// Return the index of any column in the matrix with at least one
     /// non-wildcard pattern. At the moment, we simply select the leftmost
-    /// column, but more advanced splitting heuristcs can be used to minimize
+    /// column, but more advanced splitting heuristics can be used to minimize
     /// the size of the decision tree and potentially skip some tests altogether
     /// (see section 8 of *Compiling pattern matching to good decision trees*)
     pub fn column_to_split_on(&self) -> Option<usize> {
