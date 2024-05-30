@@ -66,15 +66,13 @@ fn main() -> std::io::Result<()> {
 
             let mut handler = pion_diagnostic::Handler::new(|diagnostic| {
                 let config = codespan_reporting::term::Config::default();
-                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
-                    .map_err(std::io::Error::other)?;
-                Ok::<(), std::io::Error>(())
+                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic);
             });
 
-            let expr = pion_parser::parse_expr(&bump, &mut handler, file_id, &text)?;
+            let expr = pion_parser::parse_expr(&bump, &mut handler, file_id, &text);
             let mut elaborator = pion_elab::Elaborator::new(&bump, &text, file_id, &mut handler);
-            let (mut expr, r#type) = elaborator.synth_expr(&expr)?;
-            elaborator.report_unsolved_metas()?;
+            let (mut expr, r#type) = elaborator.synth_expr(&expr);
+            elaborator.report_unsolved_metas();
             let r#type = elaborator.quote_env().quote(&r#type);
 
             if let Cli::Eval { .. } = command {

@@ -22,8 +22,8 @@ where
         surface_scrut: &Located<surface::Expr>,
         surface_cases: &[surface::MatchCase],
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, H::Error> {
-        let (scrut_expr, scrut_type) = self.synth_expr(surface_scrut)?;
+    ) -> Expr<'core> {
+        let (scrut_expr, scrut_type) = self.synth_expr(surface_scrut);
 
         let mut matrix = PatMatrix::with_capacity(
             self.bump,
@@ -34,10 +34,10 @@ where
 
         for (index, surface_case) in surface_cases.iter().enumerate() {
             let len = self.local_env.len();
-            let pat = self.check_pat(&surface_case.pat, &scrut_type)?;
+            let pat = self.check_pat(&surface_case.pat, &scrut_type);
             let bindings = self.destruct_pat(&pat, &scrut_expr, &scrut_type, false);
             self.push_let_bindings(&bindings);
-            let expr = self.check_expr(&surface_case.expr, expected)?;
+            let expr = self.check_expr(&surface_case.expr, expected);
             let expr = Expr::lets(self.bump, &bindings, expr);
             self.local_env.truncate(len);
 
@@ -58,7 +58,7 @@ where
                     Diagnostic::warning()
                         .with_message("Unreachable match case")
                         .with_labels(vec![Label::primary(self.file_id, range)]),
-                )?;
+                );
             }
         }
 
@@ -67,10 +67,10 @@ where
                 Diagnostic::error()
                     .with_message("Inexhaustive match")
                     .with_labels(vec![Label::primary(self.file_id, range)]),
-            )?;
+            );
         }
 
-        Ok(expr)
+        expr
     }
 }
 

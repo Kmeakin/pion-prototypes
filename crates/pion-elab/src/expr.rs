@@ -18,74 +18,74 @@ where
     pub fn synth_lit(
         &mut self,
         surface_lit: &Located<surface::Lit>,
-    ) -> Result<(Result<Lit, ()>, Type<'core>), H::Error> {
+    ) -> (Result<Lit, ()>, Type<'core>) {
         let mut parse_int = |base| {
             let text = &self.text[surface_lit.range];
             match u32::from_str_radix(text, base) {
-                Ok(int) => Ok(Ok(Lit::Int(int))),
+                Ok(int) => Ok(Lit::Int(int)),
                 Err(error) => {
                     self.report_diagnostic(
                         Diagnostic::error()
                             .with_message(format!("Invalid integer literal: {error}"))
                             .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
-                    )?;
-                    Ok(Err(()))
+                    );
+                    Err(())
                 }
             }
         };
         let (lit, r#type) = match surface_lit.data {
             surface::Lit::Bool(b) => (Ok(Lit::Bool(b)), Type::BOOL),
-            surface::Lit::DecInt => (parse_int(10)?, Type::INT),
-            surface::Lit::BinInt => (parse_int(2)?, Type::INT),
-            surface::Lit::HexInt => (parse_int(16)?, Type::INT),
+            surface::Lit::DecInt => (parse_int(10), Type::INT),
+            surface::Lit::BinInt => (parse_int(2), Type::INT),
+            surface::Lit::HexInt => (parse_int(16), Type::INT),
         };
-        Ok((lit, r#type))
+        (lit, r#type)
     }
 
     pub fn synth_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
+    ) -> (Expr<'core>, Type<'core>) {
         match surface_expr.data {
-            surface::Expr::Error => Ok((Expr::Error, Type::Error)),
+            surface::Expr::Error => (Expr::Error, Type::Error),
             surface::Expr::Lit(lit) => {
-                let (lit, r#type) = self.synth_lit(&lit)?;
+                let (lit, r#type) = self.synth_lit(&lit);
                 let expr = match lit {
                     Ok(lit) => Expr::Lit(lit),
                     Err(()) => Expr::Error,
                 };
-                Ok((expr, r#type))
+                (expr, r#type)
             }
             surface::Expr::LocalVar(Located { data: name, .. }) => {
                 if let Some(var) = self.local_env.lookup(name) {
                     let r#type = self.local_env.types.get_relative(var).unwrap().clone();
-                    return Ok((Expr::LocalVar(var), r#type));
+                    return (Expr::LocalVar(var), r#type);
                 }
 
                 if let Some(prim) = Prim::from_symbol(name) {
                     let r#type = prim.r#type();
-                    return Ok((Expr::Prim(prim), r#type));
+                    return (Expr::Prim(prim), r#type);
                 }
 
                 self.report_diagnostic(
                     Diagnostic::error()
                         .with_message(format!("Unbound variable: {name}"))
                         .with_labels(vec![Label::primary(self.file_id, surface_expr.range)]),
-                )?;
-                Ok((Expr::Error, Type::Error))
+                );
+                (Expr::Error, Type::Error)
             }
             surface::Expr::Hole => {
                 let range = surface_expr.range;
                 let r#type = self.push_unsolved_type(MetaSource::HoleType { range });
                 let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, r#type.clone());
-                Ok((expr, r#type))
+                (expr, r#type)
             }
             surface::Expr::Paren(expr) => self.synth_expr(expr),
             surface::Expr::Ann { expr, r#type } => {
-                let r#type = self.check_expr_is_type(r#type)?;
+                let r#type = self.check_expr_is_type(r#type);
                 let r#type = self.eval_env().eval(&r#type);
-                let expr = self.check_expr(expr, &r#type)?;
-                Ok((expr, r#type))
+                let expr = self.check_expr(expr, &r#type);
+                (expr, r#type)
             }
             #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
@@ -104,25 +104,25 @@ where
                 body,
             } => self.elab_letrec(pat, r#type, init, body, |this, body| this.synth_expr(body)),
             surface::Expr::If { cond, then, r#else } => {
-                let cond = self.check_expr(cond, &Type::BOOL)?;
-                let (then, then_type) = self.synth_expr(then)?;
-                let r#else = self.check_expr(r#else, &then_type)?;
+                let cond = self.check_expr(cond, &Type::BOOL);
+                let (then, then_type) = self.synth_expr(then);
+                let r#else = self.check_expr(r#else, &then_type);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Ok((Expr::MatchBool { cond, then, r#else }, then_type))
+                (Expr::MatchBool { cond, then, r#else }, then_type)
             }
             surface::Expr::Match { scrut, cases } => {
                 let range = surface_expr.range;
                 let source = MetaSource::MatchResultType { range };
                 let r#type = self.push_unsolved_type(source);
-                let expr = self.check_match_expr(range, scrut, cases, &r#type)?;
-                Ok((expr, r#type))
+                let expr = self.check_match_expr(range, scrut, cases, &r#type);
+                (expr, r#type)
             }
             surface::Expr::FunArrow { plicity, lhs, rhs } => {
-                let param_type = self.check_expr_is_type(lhs)?;
+                let param_type = self.check_expr_is_type(lhs);
                 let body = {
                     let param_type_value = self.eval_env().eval(&param_type);
                     self.local_env.push_param(None, param_type_value);
-                    let body = self.check_expr_is_type(rhs)?;
+                    let body = self.check_expr_is_type(rhs);
                     self.local_env.pop();
                     body
                 };
@@ -131,12 +131,12 @@ where
                     param: FunParam::new(plicity.into(), None, param_type),
                     body,
                 };
-                Ok((core_expr, Type::TYPE))
+                (core_expr, Type::TYPE)
             }
             surface::Expr::FunType { params, body } => self.synth_fun_type(params, body),
             surface::Expr::FunLit { params, body } => self.synth_fun_lit(params, body),
             surface::Expr::FunApp { fun, arg } => {
-                let (mut fun_expr, mut fun_type) = self.synth_expr(fun)?;
+                let (mut fun_expr, mut fun_type) = self.synth_expr(fun);
                 if arg.data.plicity == Plicity::Explicit {
                     (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
                 }
@@ -163,10 +163,10 @@ where
                                 Label::secondary(self.file_id, fun.range)
                                     .with_message(format!("function has type {fun_type}")),
                             ]);
-                        self.report_diagnostic(diagnostic)?;
-                        return Ok((Expr::Error, Type::Error));
+                        self.report_diagnostic(diagnostic);
+                        return (Expr::Error, Type::Error);
                     }
-                    Value::Error => return Ok((Expr::Error, Type::Error)),
+                    Value::Error => return (Expr::Error, Type::Error),
                     _ => {
                         let fun_type = self.quote_env().quote(&fun_type);
                         let fun_type = self.pretty(&fun_type);
@@ -174,19 +174,19 @@ where
                             Diagnostic::error()
                                 .with_message(format!("Expected function, found `{fun_type}`"))
                                 .with_labels(vec![Label::primary(self.file_id, fun.range)]),
-                        )?;
-                        return Ok((Expr::Error, Type::Error));
+                        );
+                        return (Expr::Error, Type::Error);
                     }
                 };
 
-                let arg_expr = self.check_expr(arg.data.expr, param.r#type)?;
+                let arg_expr = self.check_expr(arg.data.expr, param.r#type);
                 let arg = self.eval_env().eval(&arg_expr);
                 let output_type = self.elim_env().apply_closure(body, arg);
 
                 let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
                 let arg = FunArg::new(param.plicity, arg_expr as &_);
                 let core_expr = Expr::FunApp { fun, arg };
-                Ok((core_expr, output_type))
+                (core_expr, output_type)
             }
             surface::Expr::ListLit(surface_exprs) => {
                 let Some((first_surface_expr, rest_surface_exprs)) = surface_exprs.split_first()
@@ -194,48 +194,48 @@ where
                     let elem_type = self.push_unsolved_type(MetaSource::ListElemType {
                         range: surface_expr.range,
                     });
-                    return Ok((
+                    return (
                         Expr::ListLit(&[]),
                         Type::Neutral(
                             Head::Prim(Prim::List),
                             eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
                         ),
-                    ));
+                    );
                 };
 
                 let mut exprs = SliceVec::new(self.bump, surface_exprs.len());
-                let (expr, elem_type) = self.synth_expr(first_surface_expr)?;
+                let (expr, elem_type) = self.synth_expr(first_surface_expr);
                 exprs.push(expr);
 
                 for surface_expr in rest_surface_exprs {
-                    let expr = self.check_expr(surface_expr, &elem_type)?;
+                    let expr = self.check_expr(surface_expr, &elem_type);
                     exprs.push(expr);
                 }
 
-                Ok((
+                (
                     Expr::ListLit(exprs.into()),
                     Type::Neutral(
                         Head::Prim(Prim::List),
                         eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
                     ),
-                ))
+                )
             }
             surface::Expr::TupleLit(surface_exprs) => {
                 let mut expr_fields = SliceVec::new(self.bump, surface_exprs.len());
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());
 
                 for (index, surface_expr) in surface_exprs.iter().enumerate() {
-                    let (expr, r#type) = self.synth_expr(surface_expr)?;
+                    let (expr, r#type) = self.synth_expr(surface_expr);
                     let name = Symbol::tuple_index(index);
                     expr_fields.push((name, expr));
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
-                Ok((
+                (
                     Expr::RecordLit(expr_fields.into()),
                     Type::RecordType(telescope),
-                ))
+                )
             }
             surface::Expr::RecordType(surface_fields) => {
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
@@ -243,34 +243,34 @@ where
 
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
-                    let r#type = self.check_expr_is_type(&surface_field.data.r#type)?;
+                    let r#type = self.check_expr_is_type(&surface_field.data.r#type);
                     let r#type_value = self.eval_env().eval(&r#type);
                     type_fields.push((name, r#type));
                     self.local_env.push_param(Some(name), r#type_value);
                 }
                 self.local_env.truncate(local_len);
 
-                Ok((Expr::RecordType(type_fields.into()), Type::TYPE))
+                (Expr::RecordType(type_fields.into()), Type::TYPE)
             }
             surface::Expr::RecordLit(surface_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, surface_fields.len());
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
 
                 for (index, surface_field) in surface_fields.iter().enumerate() {
-                    let (expr, r#type) = self.synth_expr(&surface_field.data.expr)?;
+                    let (expr, r#type) = self.synth_expr(&surface_field.data.expr);
                     let name = surface_field.data.name.data;
                     expr_fields.push((name, expr));
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
-                Ok((
+                (
                     Expr::RecordLit(expr_fields.into()),
                     Type::RecordType(telescope),
-                ))
+                )
             }
             surface::Expr::RecordProj { scrut, name } => {
-                let (scrut_expr, scrut_type) = self.synth_expr(scrut)?;
+                let (scrut_expr, scrut_type) = self.synth_expr(scrut);
 
                 let scrut_type = self.elim_env().update_metas(&scrut_type);
 
@@ -281,8 +281,8 @@ where
                                 Diagnostic::error()
                                     .with_message(format!("Field `{}` not found", name.data))
                                     .with_labels(vec![Label::primary(self.file_id, name.range)]),
-                            )?;
-                            return Ok((Expr::Error, Type::Error));
+                            );
+                            return (Expr::Error, Type::Error);
                         };
 
                         let scrut_value = self.eval_env().eval(&scrut_expr);
@@ -291,7 +291,7 @@ where
                         {
                             if n == name.data {
                                 let expr = Expr::RecordProj(self.bump.alloc(scrut_expr), name.data);
-                                return Ok((expr, r#type));
+                                return (expr, r#type);
                             }
 
                             let projected = self.elim_env().record_proj(scrut_value.clone(), n);
@@ -300,7 +300,7 @@ where
 
                         unreachable!()
                     }
-                    Value::Error => Ok((Expr::Error, Type::Error)),
+                    Value::Error => (Expr::Error, Type::Error),
                     _ => {
                         let scrut_type = self.quote_env().quote(&scrut_type);
                         let scrut_type = self.pretty(&scrut_type);
@@ -308,8 +308,8 @@ where
                             Diagnostic::error()
                                 .with_message(format!("Expected record, found `{scrut_type}`"))
                                 .with_labels(vec![Label::primary(self.file_id, name.range)]),
-                        )?;
-                        Ok((Expr::Error, Type::Error))
+                        );
+                        (Expr::Error, Type::Error)
                     }
                 }
             }
@@ -351,14 +351,14 @@ where
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
+    ) -> (Expr<'core>, Type<'core>) {
         match surface_params.split_first() {
             None => {
-                let body = self.check_expr_is_type(surface_body)?;
-                Ok((body, Type::TYPE))
+                let body = self.check_expr_is_type(surface_body);
+                (body, Type::TYPE)
             }
             Some((surface_param, surface_params)) => {
-                let (pat, param, param_type) = self.synth_param(surface_param)?;
+                let (pat, param, param_type) = self.synth_param(surface_param);
 
                 let body_expr = {
                     let local_len = self.local_env.len();
@@ -367,7 +367,7 @@ where
 
                     self.local_env.push_param(param.name, param_type);
                     self.push_let_bindings(&bindings);
-                    let (body_expr, _) = self.synth_fun_type(surface_params, surface_body)?;
+                    let (body_expr, _) = self.synth_fun_type(surface_params, surface_body);
                     self.local_env.truncate(local_len);
 
                     Expr::lets(self.bump, &bindings, body_expr)
@@ -377,7 +377,7 @@ where
                     param,
                     body: self.bump.alloc(body_expr),
                 };
-                Ok((core_expr, Type::TYPE))
+                (core_expr, Type::TYPE)
             }
         }
     }
@@ -386,11 +386,11 @@ where
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<(Expr<'core>, Type<'core>), H::Error> {
+    ) -> (Expr<'core>, Type<'core>) {
         match surface_params.split_first() {
             None => self.synth_expr(surface_body),
             Some((surface_param, surface_params)) => {
-                let (pat, param, param_type) = self.synth_param(surface_param)?;
+                let (pat, param, param_type) = self.synth_param(surface_param);
 
                 let (body_expr, body_type) = {
                     let local_len = self.local_env.len();
@@ -399,8 +399,7 @@ where
 
                     self.local_env.push_param(param.name, param_type.clone());
                     self.push_let_bindings(&bindings);
-                    let (body_expr, body_type) =
-                        self.synth_fun_lit(surface_params, surface_body)?;
+                    let (body_expr, body_type) = self.synth_fun_lit(surface_params, surface_body);
                     let body_type = self.quote_env().quote(&body_type);
                     self.local_env.truncate(local_len);
 
@@ -418,7 +417,7 @@ where
                     param: FunParam::new(param.plicity, param.name, self.bump.alloc(param_type)),
                     body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
                 };
-                Ok((core_expr, core_type))
+                (core_expr, core_type)
             }
         }
     }
@@ -426,7 +425,7 @@ where
     pub fn check_expr_is_type(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
-    ) -> Result<Expr<'core>, H::Error> {
+    ) -> Expr<'core> {
         self.check_expr(surface_expr, &Type::TYPE)
     }
 
@@ -434,14 +433,14 @@ where
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, H::Error> {
+    ) -> Expr<'core> {
         let expected = self.elim_env().update_metas(expected);
         match surface_expr.data {
-            surface::Expr::Error => Ok(Expr::Error),
+            surface::Expr::Error => Expr::Error,
             surface::Expr::Hole => {
                 let range = surface_expr.range;
                 let expr = self.push_unsolved_expr(MetaSource::HoleExpr { range }, expected);
-                Ok(expr)
+                expr
             }
             surface::Expr::Paren(expr) => self.check_expr(expr, &expected),
             surface::Expr::Let {
@@ -452,10 +451,10 @@ where
                 body,
             } => {
                 let (expr, ()) = self.elab_let(pat, r#type, init, body, |this, body| {
-                    let body = this.check_expr(body, &expected)?;
-                    Ok((body, ()))
-                })?;
-                Ok(expr)
+                    let body = this.check_expr(body, &expected);
+                    (body, ())
+                });
+                expr
             }
             surface::Expr::Let {
                 rec: surface::Rec::Rec,
@@ -465,17 +464,17 @@ where
                 body,
             } => {
                 let (expr, ()) = self.elab_letrec(pat, r#type, init, body, |this, body| {
-                    let body = this.check_expr(body, &expected)?;
-                    Ok((body, ()))
-                })?;
-                Ok(expr)
+                    let body = this.check_expr(body, &expected);
+                    (body, ())
+                });
+                expr
             }
             surface::Expr::If { cond, then, r#else } => {
-                let cond = self.check_expr(cond, &Type::BOOL)?;
-                let then = self.check_expr(then, &expected)?;
-                let r#else = self.check_expr(r#else, &expected)?;
+                let cond = self.check_expr(cond, &Type::BOOL);
+                let then = self.check_expr(then, &expected);
+                let r#else = self.check_expr(r#else, &expected);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
-                Ok(Expr::MatchBool { cond, then, r#else })
+                Expr::MatchBool { cond, then, r#else }
             }
             surface::Expr::Match { scrut, cases } => {
                 self.check_match_expr(surface_expr.range, scrut, cases, &expected)
@@ -496,25 +495,24 @@ where
 
                 let mut exprs = SliceVec::new(self.bump, surface_exprs.len());
                 for surface_expr in surface_exprs {
-                    let expr = self.check_expr(surface_expr, elem_type)?;
+                    let expr = self.check_expr(surface_expr, elem_type);
                     exprs.push(expr);
                 }
 
-                Ok(Expr::ListLit(exprs.into()))
+                Expr::ListLit(exprs.into())
             }
             surface::Expr::TupleLit(surface_exprs) if expected.is_type() => {
                 let len = self.local_env.len();
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());
                 for (index, expr) in surface_exprs.iter().enumerate() {
                     let name = Symbol::tuple_index(index);
-                    let r#type = self.check_expr_is_type(expr)?;
+                    let r#type = self.check_expr_is_type(expr);
                     let r#type_value = self.eval_env().eval(&r#type);
                     self.local_env.push_param(None, type_value);
                     type_fields.push((name, r#type));
                 }
                 self.local_env.truncate(len);
-                let expr = Expr::RecordType(r#type_fields.into());
-                Ok(expr)
+                Expr::RecordType(r#type_fields.into())
             }
             surface::Expr::RecordLit(surface_fields) => {
                 let Value::RecordType(telescope) = &expected else {
@@ -535,12 +533,12 @@ where
                 for surface_field in surface_fields {
                     let (name, r#type, update_telescope) =
                         self.elim_env().split_telescope(&mut telescope).unwrap();
-                    let expr = self.check_expr(&surface_field.data.expr, &r#type)?;
+                    let expr = self.check_expr(&surface_field.data.expr, &r#type);
                     let value = self.eval_env().eval(&expr);
                     update_telescope(value);
                     expr_fields.push((name, expr));
                 }
-                Ok(Expr::RecordLit(expr_fields.into()))
+                Expr::RecordLit(expr_fields.into())
             }
 
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
@@ -564,7 +562,7 @@ where
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
         surface_body: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, H::Error> {
+    ) -> Expr<'core> {
         let [surface_param, rest_params @ ..] = surface_params else {
             return self.check_expr(surface_body, expected);
         };
@@ -584,19 +582,19 @@ where
                 self.local_env
                     .push_param(expected_param.name, expected_param.r#type.clone());
                 let expected = self.elim_env().apply_closure(expected_body.clone(), var);
-                let body = self.check_fun_lit(surface_params, surface_body, &expected)?;
+                let body = self.check_fun_lit(surface_params, surface_body, &expected);
                 self.local_env.pop();
 
                 let (r#type, body) = self.bump.alloc((r#type, body));
                 let param =
                     FunParam::new(expected_param.plicity, expected_param.name, r#type as &_);
-                Ok(Expr::FunLit { param, body })
+                Expr::FunLit { param, body }
             }
             Value::FunType {
                 param: expected_param,
                 body: expected_body,
             } if surface_param.data.plicity == expected_param.plicity => {
-                let (pat, param) = self.check_param(surface_param, expected_param.r#type)?;
+                let (pat, param) = self.check_param(surface_param, expected_param.r#type);
 
                 let body_expr = {
                     let local_len = self.local_env.len();
@@ -610,7 +608,7 @@ where
                     let expected = self
                         .elim_env()
                         .apply_closure(expected_body.clone(), arg_value);
-                    let body_expr = self.check_fun_lit(rest_params, surface_body, &expected)?;
+                    let body_expr = self.check_fun_lit(rest_params, surface_body, &expected);
                     self.local_env.truncate(local_len);
 
                     Expr::lets(self.bump, &bindings, body_expr)
@@ -620,13 +618,12 @@ where
                     param,
                     body: self.bump.alloc(body_expr),
                 };
-                Ok(core_expr)
+                core_expr
             }
             _ => {
-                let (expr, r#type) = self.synth_fun_lit(surface_params, surface_body)?;
+                let (expr, r#type) = self.synth_fun_lit(surface_params, surface_body);
                 let range = surface_param.range.cover(surface_body.range);
-                self.convert_expr(range, expr, r#type, expected)?;
-                Ok(expr)
+                self.convert_expr(range, expr, r#type, expected)
             }
         }
     }
@@ -640,23 +637,23 @@ where
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
-        ) -> Result<(Expr<'core>, T), H::Error>,
-    ) -> Result<(Expr<'core>, T), H::Error> {
-        let (pat, r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
-        let init_expr = self.check_expr(surface_init, &r#type)?;
+        ) -> (Expr<'core>, T),
+    ) -> (Expr<'core>, T) {
+        let (pat, r#type) = self.synth_ann_pat(surface_pat, surface_type);
+        let init_expr = self.check_expr(surface_init, &r#type);
 
         let bindings = self.destruct_pat(&pat, &init_expr, &r#type, false);
 
         let (body_expr, body_type) = {
             let local_len = self.local_env.len();
             self.push_let_bindings(&bindings);
-            let (body_expr, body_type) = elab_body(self, surface_body)?;
+            let (body_expr, body_type) = elab_body(self, surface_body);
             self.local_env.truncate(local_len);
             (body_expr, body_type)
         };
 
         let expr = Expr::lets(self.bump, &bindings, body_expr);
-        Ok((expr, body_type))
+        (expr, body_type)
     }
 
     fn elab_letrec<T>(
@@ -668,15 +665,15 @@ where
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
-        ) -> Result<(Expr<'core>, T), H::Error>,
-    ) -> Result<(Expr<'core>, T), H::Error> {
-        let (pat, mut r#type) = self.synth_ann_pat(surface_pat, surface_type)?;
+        ) -> (Expr<'core>, T),
+    ) -> (Expr<'core>, T) {
+        let (pat, mut r#type) = self.synth_ann_pat(surface_pat, surface_type);
         let name = pat.name();
 
         let init_expr = {
             let var = self.local_env.next_var();
             self.local_env.push_let(name, r#type.clone(), var);
-            let init_expr = self.check_expr(surface_init, &r#type)?;
+            let init_expr = self.check_expr(surface_init, &r#type);
             self.local_env.pop();
             init_expr
         };
@@ -711,7 +708,7 @@ where
                 let diagnostic = Diagnostic::error()
                     .with_message("recursive bindings must be function literals")
                     .with_labels(vec![Label::primary(self.file_id, surface_pat.range)]);
-                self.report_diagnostic(diagnostic)?;
+                self.report_diagnostic(diagnostic);
                 Expr::Error
             }
         };
@@ -719,7 +716,7 @@ where
         let (body_expr, body_type) = {
             let init_value = self.eval_env().eval(&init_expr);
             self.local_env.push_let(name, r#type.clone(), init_value);
-            let (body_expr, body_type) = elab_body(self, surface_body)?;
+            let (body_expr, body_type) = elab_body(self, surface_body);
             self.local_env.pop();
             (body_expr, body_type)
         };
@@ -727,16 +724,16 @@ where
         let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
         let binding = LetBinding::new(name, r#type as &_, init as &_);
         let core_expr = Expr::Let { binding, body };
-        Ok((core_expr, body_type))
+        (core_expr, body_type)
     }
 
     fn synth_and_convert_expr(
         &mut self,
         surface_expr: &'surface Located<surface::Expr<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Expr<'core>, H::Error> {
+    ) -> Expr<'core> {
         let range = surface_expr.range;
-        let (expr, r#type) = self.synth_expr(surface_expr)?;
+        let (expr, r#type) = self.synth_expr(surface_expr);
         self.convert_expr(range, expr, r#type, expected)
     }
 
@@ -746,7 +743,7 @@ where
         expr: Expr<'core>,
         from: Type<'core>,
         to: &Type<'core>,
-    ) -> Result<Expr<'core>, H::Error> {
+    ) -> Expr<'core> {
         // Attempt to specialize exprs with freshly inserted implicit
         // arguments if an explicit function was expected.
         let (expr, from) = match (expr, to) {
@@ -758,7 +755,7 @@ where
         };
 
         match self.unify_env().unify(&from, to) {
-            Ok(()) => Ok(expr),
+            Ok(()) => expr,
             Err(error) => {
                 let from = self.quote_env().quote(&from);
                 let to = self.quote_env().quote(to);
@@ -767,8 +764,8 @@ where
                 let expected = self.pretty(&to);
 
                 let diagnostic = error.to_diagnostic(self.file_id, range, &expected, &found);
-                self.report_diagnostic(diagnostic)?;
-                Ok(Expr::Error)
+                self.report_diagnostic(diagnostic);
+                Expr::Error
             }
         }
     }

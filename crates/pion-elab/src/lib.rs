@@ -172,11 +172,11 @@ where
         }
     }
 
-    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), H::Error> {
-        self.diagnostic_handler.handle_diagnostic(diagnostic)
+    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) {
+        self.diagnostic_handler.handle_diagnostic(diagnostic);
     }
 
-    pub fn report_unsolved_metas(&mut self) -> Result<(), H::Error> {
+    pub fn report_unsolved_metas(&mut self) {
         let meta_env = std::mem::take(&mut self.meta_env);
         for (id, (source, _, value)) in meta_env.iter().enumerate() {
             if value.is_none() {
@@ -204,11 +204,10 @@ where
                         .with_message(format!("Unsolved metavariable: ?{id}"))
                         .with_labels(vec![Label::primary(self.file_id, source.range())
                             .with_message(format!("could not infer {message}"))]),
-                )?;
+                );
             }
         }
         self.meta_env = meta_env;
-        Ok(())
     }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {

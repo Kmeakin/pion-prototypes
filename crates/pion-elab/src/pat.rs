@@ -16,27 +16,26 @@ where
     pub(super) fn synth_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
-    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>, Type<'core>), H::Error> {
+    ) -> (Pat<'core>, FunParam<&'core Expr<'core>>, Type<'core>) {
         let surface_param = surface_param.data;
         let (pat, r#type_value) =
-            self.synth_ann_pat(&surface_param.pat, surface_param.r#type.as_ref())?;
+            self.synth_ann_pat(&surface_param.pat, surface_param.r#type.as_ref());
         let name = pat.name();
         let r#type = self.quote_env().quote(&r#type_value);
-        Ok((
+        (
             pat,
             FunParam::new(surface_param.plicity.into(), name, self.bump.alloc(r#type)),
             type_value,
-        ))
+        )
     }
 
     pub(super) fn check_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<(Pat<'core>, FunParam<&'core Expr<'core>>), H::Error> {
+    ) -> (Pat<'core>, FunParam<&'core Expr<'core>>) {
         let surface_param = surface_param.data;
-        let pat =
-            self.check_ann_pat(&surface_param.pat, surface_param.r#type.as_ref(), expected)?;
+        let pat = self.check_ann_pat(&surface_param.pat, surface_param.r#type.as_ref(), expected);
         let name = pat.name();
         let r#type = self.quote_env().quote(expected);
         let param = FunParam::new(
@@ -44,21 +43,21 @@ where
             name,
             self.bump.alloc(r#type) as &_,
         );
-        Ok((pat, param))
+        (pat, param)
     }
 
     pub(super) fn synth_ann_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
-    ) -> Result<(Pat<'core>, Type<'core>), H::Error> {
+    ) -> (Pat<'core>, Type<'core>) {
         match surface_ann {
             None => self.synth_pat(surface_pat),
             Some(surface_ann) => {
-                let ann_expr = self.check_expr_is_type(surface_ann)?;
+                let ann_expr = self.check_expr_is_type(surface_ann);
                 let ann_value = self.eval_env().eval(&ann_expr);
-                let name = self.check_pat(surface_pat, &ann_value)?;
-                Ok((name, ann_value))
+                let name = self.check_pat(surface_pat, &ann_value);
+                (name, ann_value)
             }
         }
     }
@@ -68,15 +67,15 @@ where
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         surface_ann: Option<&'surface Located<surface::Expr<'surface>>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, H::Error> {
+    ) -> Pat<'core> {
         match surface_ann {
             None => self.check_pat(surface_pat, expected),
             Some(surface_ann) => {
-                let type_expr = self.check_expr_is_type(surface_ann)?;
+                let type_expr = self.check_expr_is_type(surface_ann);
                 let type_value = self.eval_env().eval(&type_expr);
-                let pat = self.check_pat(surface_pat, &type_value)?;
-                self.convert_pat(surface_pat.range, pat, &type_value, expected)?;
-                Ok(pat)
+                let pat = self.check_pat(surface_pat, &type_value);
+                self.convert_pat(surface_pat.range, pat, &type_value, expected);
+                pat
             }
         }
     }
@@ -84,15 +83,15 @@ where
     fn synth_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
-    ) -> Result<(Pat<'core>, Type<'core>), H::Error> {
+    ) -> (Pat<'core>, Type<'core>) {
         match surface_pat.data {
-            surface::Pat::Error => Ok((Pat::Error, Type::Error)),
+            surface::Pat::Error => (Pat::Error, Type::Error),
             surface::Pat::Underscore => {
                 let range = surface_pat.range;
                 let name = None;
                 let source = MetaSource::PatType { range, name };
                 let r#type = self.push_unsolved_type(source);
-                Ok((Pat::Underscore, r#type))
+                (Pat::Underscore, r#type)
             }
             surface::Pat::Ident(Located { range, data: name }) => {
                 let source = MetaSource::PatType {
@@ -100,30 +99,30 @@ where
                     name: Some(name),
                 };
                 let r#type = self.push_unsolved_type(source);
-                Ok((Pat::Ident(name), r#type))
+                (Pat::Ident(name), r#type)
             }
             surface::Pat::Paren(pat) => self.synth_pat(pat),
             surface::Pat::Lit(lit) => {
-                let (lit, r#type) = self.synth_lit(&lit)?;
+                let (lit, r#type) = self.synth_lit(&lit);
                 let pat = match lit {
                     Ok(lit) => Pat::Lit(lit),
                     Err(()) => Pat::Error,
                 };
-                Ok((pat, r#type))
+                (pat, r#type)
             }
             surface::Pat::TupleLit(pats) => {
                 let mut pat_fields = SliceVec::new(self.bump, pats.len());
                 let mut type_fields = SliceVec::new(self.bump, pats.len());
                 for (index, pat) in pats.iter().enumerate() {
                     let name = Symbol::tuple_index(index);
-                    let (pat, r#type) = self.synth_pat(pat)?;
+                    let (pat, r#type) = self.synth_pat(pat);
                     pat_fields.push((name, pat));
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
-                Ok((Pat::RecordLit(pat_fields.into()), r#type))
+                (Pat::RecordLit(pat_fields.into()), r#type)
             }
             surface::Pat::RecordLit(fields) => {
                 let mut pat_fields = SliceVec::new(self.bump, fields.len());
@@ -131,14 +130,14 @@ where
 
                 for (index, field) in fields.iter().enumerate() {
                     let surface::PatField { name, pat } = field.data;
-                    let (pat, r#type) = self.synth_pat(&pat)?;
+                    let (pat, r#type) = self.synth_pat(&pat);
                     pat_fields.push((name.data, pat));
                     type_fields.push((name.data, self.quote_env().quote_at(&r#type, index)));
                 }
 
                 let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
-                Ok((Pat::RecordLit(pat_fields.into()), r#type))
+                (Pat::RecordLit(pat_fields.into()), r#type)
             }
             surface::Pat::Or(pats) => {
                 // TODO: check all alts bind the same set of variables
@@ -147,14 +146,14 @@ where
                     unreachable!()
                 };
 
-                let (pat, r#type) = self.synth_pat(first)?;
+                let (pat, r#type) = self.synth_pat(first);
                 core_pats.push(pat);
                 for pat in rest {
-                    let pat = self.check_pat(pat, &r#type)?;
+                    let pat = self.check_pat(pat, &r#type);
                     core_pats.push(pat);
                 }
 
-                Ok((Pat::Or(core_pats.into()), r#type))
+                (Pat::Or(core_pats.into()), r#type)
             }
         }
     }
@@ -163,11 +162,11 @@ where
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, H::Error> {
+    ) -> Pat<'core> {
         match surface_pat.data {
-            surface::Pat::Error => Ok(Pat::Error),
-            surface::Pat::Underscore => Ok(Pat::Underscore),
-            surface::Pat::Ident(Located { data: name, .. }) => Ok(Pat::Ident(name)),
+            surface::Pat::Error => Pat::Error,
+            surface::Pat::Underscore => Pat::Underscore,
+            surface::Pat::Ident(Located { data: name, .. }) => Pat::Ident(name),
             surface::Pat::Paren(pat) => self.check_pat(pat, expected),
             surface::Pat::TupleLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
@@ -183,12 +182,12 @@ where
                 for surface_field in surface_fields {
                     let (name, r#type, update_telescope) =
                         self.elim_env().split_telescope(&mut telescope).unwrap();
-                    let pat = self.check_pat(surface_field, &r#type)?;
+                    let pat = self.check_pat(surface_field, &r#type);
                     pat_fields.push((name, pat));
                     update_telescope(self.local_env.next_var());
                 }
 
-                Ok(Pat::RecordLit(pat_fields.into()))
+                Pat::RecordLit(pat_fields.into())
             }
             surface::Pat::RecordLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
@@ -209,21 +208,21 @@ where
                 for surface_field in surface_fields {
                     let (name, r#type, update_telescope) =
                         self.elim_env().split_telescope(&mut telescope).unwrap();
-                    let pat = self.check_pat(&surface_field.data.pat, &r#type)?;
+                    let pat = self.check_pat(&surface_field.data.pat, &r#type);
                     pat_fields.push((name, pat));
                     update_telescope(self.local_env.next_var());
                 }
 
-                Ok(Pat::RecordLit(pat_fields.into()))
+                Pat::RecordLit(pat_fields.into())
             }
             surface::Pat::Or(pats) => {
                 // TODO: check all alts bind the same set of variables
                 let mut core_pats = SliceVec::new(self.bump, pats.len());
                 for pat in pats {
-                    let pat = self.check_pat(pat, expected)?;
+                    let pat = self.check_pat(pat, expected);
                     core_pats.push(pat);
                 }
-                Ok(Pat::Or(core_pats.into()))
+                Pat::Or(core_pats.into())
             }
             surface::Pat::Lit(_) => self.synth_and_convert_pat(surface_pat, expected),
         }
@@ -233,9 +232,9 @@ where
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
         expected: &Type<'core>,
-    ) -> Result<Pat<'core>, H::Error> {
+    ) -> Pat<'core> {
         let range = surface_pat.range;
-        let (pat, r#type) = self.synth_pat(surface_pat)?;
+        let (pat, r#type) = self.synth_pat(surface_pat);
         self.convert_pat(range, pat, &r#type, expected)
     }
 
@@ -245,9 +244,9 @@ where
         pat: Pat<'core>,
         from: &Type<'core>,
         to: &Type<'core>,
-    ) -> Result<Pat<'core>, H::Error> {
+    ) -> Pat<'core> {
         match self.unify_env().unify(from, to) {
-            Ok(()) => Ok(pat),
+            Ok(()) => pat,
             Err(error) => {
                 let from = self.quote_env().quote(from);
                 let to = self.quote_env().quote(to);
@@ -256,8 +255,8 @@ where
                 let expected = self.pretty(&to);
 
                 let diagnostic = error.to_diagnostic(self.file_id, range, &expected, &found);
-                self.report_diagnostic(diagnostic)?;
-                Ok(Pat::Error)
+                self.report_diagnostic(diagnostic);
+                Pat::Error
             }
         }
     }

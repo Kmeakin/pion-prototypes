@@ -80,7 +80,7 @@ pub fn parse_expr<'surface, H: DiagnosticHandler>(
     mut handler: H,
     file_id: usize,
     text: &str,
-) -> Result<Located<Expr<'surface>>, H::Error> {
+) -> Located<Expr<'surface>> {
     let tokens = pion_lexer::lex(text)
         .filter(|token| !token.kind.is_trivia())
         .map(|token| (token.range.start(), token.kind, token.range.end()));
@@ -95,7 +95,7 @@ pub fn parse_expr<'surface, H: DiagnosticHandler>(
     };
     for error in errors {
         let range = error_range(&error);
-        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error))?;
+        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error));
     }
-    Ok(expr)
+    expr
 }

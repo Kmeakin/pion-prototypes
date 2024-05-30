@@ -1,49 +1,35 @@
-use std::marker::PhantomData;
-
 pub use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 pub trait DiagnosticHandler {
-    type Error;
-    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), Self::Error>;
+    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>);
 }
 
-pub struct Handler<F, E>
+pub struct Handler<F>
 where
-    F: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    F: FnMut(Diagnostic<usize>),
 {
     handle_fn: F,
-    error: PhantomData<E>,
 }
 
-impl<F, E> Handler<F, E>
+impl<F> Handler<F>
 where
-    F: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    F: FnMut(Diagnostic<usize>),
 {
-    pub const fn new(handle_fn: F) -> Self {
-        Self {
-            handle_fn,
-            error: PhantomData,
-        }
-    }
+    pub const fn new(handle_fn: F) -> Self { Self { handle_fn } }
 }
 
-impl<F, E> DiagnosticHandler for Handler<F, E>
+impl<F> DiagnosticHandler for Handler<F>
 where
-    F: FnMut(Diagnostic<usize>) -> Result<(), E>,
+    F: FnMut(Diagnostic<usize>),
 {
-    type Error = E;
-    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), Self::Error> {
-        (self.handle_fn)(diagnostic)
-    }
+    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>) { (self.handle_fn)(diagnostic) }
 }
 
 impl<H> DiagnosticHandler for &mut H
 where
     H: DiagnosticHandler,
 {
-    type Error = H::Error;
-
-    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>) -> Result<(), Self::Error> {
-        H::handle_diagnostic(self, diagnostic)
+    fn handle_diagnostic(&mut self, diagnostic: Diagnostic<usize>) {
+        H::handle_diagnostic(self, diagnostic);
     }
 }
