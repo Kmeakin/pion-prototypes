@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use internal_iterator::InternalIterator;
 use pion_core::{Lit, Pat};
 use pion_symbol::Symbol;
+use pion_util::numeric_conversions::ZeroExtendFrom;
 use smallvec::{smallvec, SmallVec};
 
 use super::matrix::PatMatrix;
@@ -87,7 +88,7 @@ impl<'core> Constructors<'core> {
         match self {
             Constructors::Record(_) => true,
             Constructors::Bools(bools) => bools.is_full(),
-            Constructors::Ints(ints) => (ints.len() as u64) >= u64::from(u32::MAX),
+            Constructors::Ints(ints) => (u64::zext_from(ints.len())) >= u64::from(u32::MAX),
         }
     }
 }

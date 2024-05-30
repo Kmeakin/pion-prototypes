@@ -77,7 +77,7 @@ pub Expr: Located<Expr<'surface>> = {
 }
 
 Block: Block<'surface> = {
-    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), expr: expr.map(|expr| bump.alloc(expr) as &_) },
+    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), expr: expr.map(|expr| &*bump.alloc(expr)) },
 }
 
 Stmt: Located<Stmt<'surface>> = {
@@ -94,7 +94,7 @@ Rec: Rec = {
 
 LetBinding: LetBinding<'surface> = {
     <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> => {
-        let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
+        let r#type = r#type.map(|r#type| &*bump.alloc(r#type));
         let (pat, init) = bump.alloc((pat, init));
         LetBinding { pat, r#type, init }
     },

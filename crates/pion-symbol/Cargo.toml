@@ -8,5 +8,7 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+pion-util = { path = "../pion-util" }
+
 lasso     = { version = "0.7.2", features = ["multi-threaded"] }
 once_cell = { version = "1.19.0", features = ["parking_lot"] }

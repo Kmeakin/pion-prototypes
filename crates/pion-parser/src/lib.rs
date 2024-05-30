@@ -11,6 +11,7 @@ lalrpop_mod!(
         clippy::all,
         clippy::pedantic,
         clippy::nursery,
+        clippy::as_conversions,
         unused_imports,
         unused_qualifications
     )]

@@ -223,7 +223,7 @@ where
                     let var = self.local_env.len().absolute_to_relative(var).unwrap();
                     let arg = Expr::LocalVar(var);
                     let (fun, arg) = self.bump.alloc((expr, arg));
-                    let arg = FunArg::new(Plicity::Explicit, arg as &_);
+                    let arg = FunArg::new(Plicity::Explicit, &*arg);
                     expr = Expr::FunApp { fun, arg };
                 }
             }

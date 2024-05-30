@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 
 use lasso::Key;
 use once_cell::sync::Lazy;
+use pion_util::numeric_conversions::{TruncateFrom, ZeroExtendFrom};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(NonZeroU32);
@@ -14,6 +15,8 @@ impl Symbol {
     }
 
     const fn as_u32(self) -> u32 { self.0.get() - 1 }
+
+    fn as_usize(self) -> usize { usize::zext_from(self.as_u32()) }
 }
 
 macro_rules! symbols {
@@ -79,7 +82,7 @@ impl Symbol {
     pub fn get(sym: impl AsRef<str>) -> Option<Self> { INTERNER.get(sym).map(Self::from) }
 
     pub fn as_str(self) -> &'static str {
-        INTERNER.resolve(&lasso::Spur::try_from_usize((self.as_u32()) as usize).unwrap())
+        INTERNER.resolve(&lasso::Spur::try_from_usize(self.as_usize()).unwrap())
     }
 
     pub const fn is_keyword(self) -> bool {
@@ -91,7 +94,7 @@ impl Symbol {
 
     pub fn tuple_index(index: usize) -> Self {
         if index <= 32 {
-            Self::from_u32(Self::_0.as_u32() + index as u32)
+            Self::from_u32(Self::_0.as_u32() + u32::truncate_from(index))
         } else {
             Self::intern(format!("_{index}"))
         }

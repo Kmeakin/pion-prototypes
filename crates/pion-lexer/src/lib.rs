@@ -1,5 +1,6 @@
 use core::fmt;
 
+use pion_util::numeric_conversions::TruncateFrom;
 use text_size::{TextRange, TextSize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -147,7 +148,8 @@ impl<'text> Lexer<'text> {
             b'=' => Some(Ok(self.emit_token(TokenKind::Eq, 1))),
 
             b'/' if self.peek_byte_at(1) == Some(b'/') => {
-                let len = memchr::memchr(b'\n', self.remainder()).unwrap_or(self.remainder().len());
+                let len = self.remainder().len();
+                let len = memchr::memchr(b'\n', self.remainder()).unwrap_or(len);
                 Some(Ok(self.emit_token(TokenKind::LineComment, len)))
             }
             b'/' if self.peek_byte_at(1) == Some(b'*') => todo!("block comment"),
@@ -183,11 +185,12 @@ impl<'text> Lexer<'text> {
             }
 
             c if is_dec_int_start(c) => {
+                let len = self.remainder().len();
                 let len = self
                     .remainder()
                     .iter()
                     .position(|c| !is_dec_int_continue(*c))
-                    .unwrap_or(self.remainder().len());
+                    .unwrap_or(len);
                 Some(Ok(self.emit_token(TokenKind::DecInt, len)))
             }
 
@@ -281,13 +284,13 @@ fn test_len_utf8_branchless() {
     check('🍆', 4);
 }
 
-#[allow(clippy::cast_possible_truncation)]
 pub fn lex(text: &str) -> impl Iterator<Item = Token> + '_ {
     Lexer::new(text).map(|result| match result {
-        Ok((kind, start, end)) => Token::new(
-            kind,
-            TextRange::new(TextSize::from(start as u32), TextSize::from(end as u32)),
-        ),
+        Ok((kind, start, end)) => {
+            let start = TextSize::truncate_from(start);
+            let end = TextSize::truncate_from(end);
+            Token::new(kind, TextRange::new(start, end))
+        }
         Err(error) => match error {},
     })
 }

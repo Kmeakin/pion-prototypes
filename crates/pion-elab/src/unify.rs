@@ -423,7 +423,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
                     Elim::FunApp(arg) => {
                         let arg_expr = self.rename(meta_var, &arg.expr)?;
                         let (fun, arg_expr) = self.bump.alloc((head, arg_expr));
-                        let arg = FunArg::new(arg.plicity, arg_expr as &_);
+                        let arg = FunArg::new(arg.plicity, &*arg_expr);
                         Ok(Expr::FunApp { fun, arg })
                     }
                     Elim::RecordProj(name) => Ok(Expr::RecordProj(self.bump.alloc(head), *name)),
@@ -537,7 +537,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
         self.renaming.pop_local();
 
         let (r#type, body) = self.bump.alloc((r#type, body?));
-        let param = FunParam::new(param.plicity, param.name, r#type as &_);
+        let param = FunParam::new(param.plicity, param.name, &*r#type);
 
         Ok((param, body))
     }

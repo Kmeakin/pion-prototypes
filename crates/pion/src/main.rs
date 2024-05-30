@@ -3,6 +3,7 @@ use std::io::{IsTerminal, Read};
 use camino::Utf8PathBuf;
 use clap::Parser;
 use pion_core::env::UniqueEnv;
+use pion_util::numeric_conversions::ZeroExtendFrom;
 
 #[derive(Parser)]
 pub enum Cli {
@@ -59,7 +60,7 @@ fn main() -> std::io::Result<()> {
 
             let bump = bumpalo::Bump::new();
             let text = path.read()?;
-            if text.len() >= u32::MAX as usize {
+            if text.len() >= usize::zext_from(u32::MAX) {
                 return Err(std::io::Error::other("input too big"));
             }
             let file_id = files.add(path.name(), text.clone());

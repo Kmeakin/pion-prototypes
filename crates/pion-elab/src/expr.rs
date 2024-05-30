@@ -169,7 +169,7 @@ where
                 let output_type = self.elim_env().apply_closure(body, arg);
 
                 let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
-                let arg = FunArg::new(param.plicity, arg_expr as &_);
+                let arg = FunArg::new(param.plicity, &*arg_expr);
                 let core_expr = Expr::FunApp { fun, arg };
                 (core_expr, output_type)
             }
@@ -322,7 +322,7 @@ where
 
                     let (fun, arg_expr) = self.bump.alloc((expr, arg_expr));
 
-                    let arg = FunArg::new(param.plicity, arg_expr as &_);
+                    let arg = FunArg::new(param.plicity, &*arg_expr);
                     expr = Expr::FunApp { fun, arg };
                     r#type = self.elim_env().apply_closure(body, arg_value);
                 }
@@ -546,8 +546,7 @@ where
                 self.local_env.pop();
 
                 let (r#type, body) = self.bump.alloc((r#type, body));
-                let param =
-                    FunParam::new(expected_param.plicity, expected_param.name, r#type as &_);
+                let param = FunParam::new(expected_param.plicity, expected_param.name, &*r#type);
                 Expr::FunLit { param, body }
             }
             Value::FunType {

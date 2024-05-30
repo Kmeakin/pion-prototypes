@@ -559,6 +559,7 @@ dependencies = [
  "pion-lexer",
  "pion-parser",
  "pion-surface",
+ "pion-util",
  "similar-asserts",
  "walkdir",
 ]
@@ -605,6 +606,7 @@ version = "0.1.0"
 dependencies = [
  "expect-test",
  "memchr",
+ "pion-util",
  "text-size",
 ]
 
@@ -636,6 +638,7 @@ version = "0.1.0"
 dependencies = [
  "lasso",
  "once_cell",
+ "pion-util",
 ]
 
 [[package]]
@@ -643,6 +646,7 @@ name = "pion-util"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
+ "text-size",
 ]
 
 [[package]]

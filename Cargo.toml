@@ -17,6 +17,9 @@ all      = { level = "warn", priority = 0 }
 nursery  = { level = "warn", priority = 0 }
 pedantic = { level = "warn", priority = 0 }
 
+# Use methods from `pion_util::numeric_conversion` instead
+as_conversions = { level = "deny", priority = 100 }
+
 items_after_statements   = { level = "allow", priority = 100 }
 match_bool               = { level = "allow", priority = 100 }
 missing_errors_doc       = { level = "allow", priority = 100 }
@@ -25,6 +28,7 @@ module_name_repetitions  = { level = "allow", priority = 100 }
 must_use_candidate       = { level = "allow", priority = 100 }
 option_if_let_else       = { level = "allow", priority = 100 }
 return_self_not_must_use = { level = "allow", priority = 100 }
+single_match_else        = { level = "allow", priority = 100 }
 too_many_lines           = { level = "allow", priority = 100 }
 
 [workspace.dependencies]

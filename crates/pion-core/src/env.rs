@@ -220,6 +220,7 @@ impl<'a, T> IntoIterator for &'a mut SliceEnv<T> {
 }
 
 impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
+    #[allow(clippy::as_conversions)]
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
@@ -228,6 +229,7 @@ impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
 }
 
 impl<'a, T> From<&'a mut [T]> for &'a mut SliceEnv<T> {
+    #[allow(clippy::as_conversions)]
     fn from(slice: &'a mut [T]) -> &'a mut SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally

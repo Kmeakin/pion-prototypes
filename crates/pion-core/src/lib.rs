@@ -141,7 +141,7 @@ impl<'core> Expr<'core> {
                 let init = binding.expr.shift_inner(bump, min, amount);
                 let body = body.shift_inner(bump, min.succ(), amount);
                 let (r#type, init, body) = bump.alloc((r#type, init, body));
-                let binding = LetBinding::new(binding.name, r#type as &_, init as &_);
+                let binding = LetBinding::new(binding.name, &*r#type, &*init);
                 Expr::Let { binding, body }
             }
 
@@ -149,14 +149,14 @@ impl<'core> Expr<'core> {
                 let r#type = param.r#type.shift_inner(bump, min, amount);
                 let body = body.shift_inner(bump, min.succ(), amount);
                 let (r#type, body) = bump.alloc((r#type, body));
-                let param = FunParam::new(param.plicity, param.name, r#type as &_);
+                let param = FunParam::new(param.plicity, param.name, &*r#type);
                 Expr::FunLit { param, body }
             }
             Expr::FunType { param, body } => {
                 let r#type = param.r#type.shift_inner(bump, min, amount);
                 let body = body.shift_inner(bump, min.succ(), amount);
                 let (r#type, body) = bump.alloc((r#type, body));
-                let param = FunParam::new(param.plicity, param.name, r#type as &_);
+                let param = FunParam::new(param.plicity, param.name, &*r#type);
                 Expr::FunType { param, body }
             }
             Expr::FunApp { fun, arg } => {
@@ -233,7 +233,7 @@ impl<'core> Expr<'core> {
             .rev()
             .fold(body, |body, LetBinding { name, r#type, expr }| {
                 let (r#type, init, body) = bump.alloc((r#type, expr, body));
-                let binding = LetBinding::new(name, r#type as &_, init as &_);
+                let binding = LetBinding::new(name, &*r#type, &*init);
                 Expr::Let { binding, body }
             })
     }

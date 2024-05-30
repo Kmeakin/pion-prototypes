@@ -41,7 +41,7 @@ where
         let param = FunParam::new(
             surface_param.plicity.into(),
             name,
-            self.bump.alloc(r#type) as &_,
+            &*self.bump.alloc(r#type),
         );
         (pat, param)
     }

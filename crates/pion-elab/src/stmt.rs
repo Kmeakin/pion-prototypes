@@ -180,7 +180,7 @@ where
         };
 
         let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
-        let binding = LetBinding::new(name, r#type as &_, init as &_);
+        let binding = LetBinding::new(name, &*r#type, &*init);
         let core_expr = Expr::Let { binding, body };
         (core_expr, body_type)
     }

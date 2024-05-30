@@ -14,6 +14,7 @@ pion-elab       = { path = "../pion-elab" }
 pion-lexer      = { path = "../pion-lexer" }
 pion-parser     = { path = "../pion-parser" }
 pion-surface    = { path = "../pion-surface" }
+pion-util       = { path = "../pion-util" }
 
 bumpalo            = { workspace = true }
 codespan-reporting = { workspace = true }

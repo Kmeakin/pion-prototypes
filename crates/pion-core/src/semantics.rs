@@ -1,6 +1,7 @@
 use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 use pion_symbol::Symbol;
+use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
@@ -384,7 +385,7 @@ fn prim_app2<'core>(
 
     fn len<'core>(_: &ElimEnv<'core, '_>, spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
-            args![_, Value::List(list)] => Ok(Value::Lit(Lit::Int(list.len() as u32))),
+            args![_, Value::List(list)] => Ok(Value::Lit(Lit::Int(u32::truncate_from(list.len())))),
             _ => Err(spine),
         }
     }
@@ -682,7 +683,7 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                     Elim::FunApp(arg) => {
                         let arg_expr = self.quote(&arg.expr);
                         let (fun, arg_expr) = self.bump.alloc((head, arg_expr));
-                        let (fun, arg_expr) = (fun as &_, arg_expr as &_);
+                        let (fun, arg_expr) = (&*fun, &*arg_expr);
                         let arg = FunArg::new(arg.plicity, arg_expr);
                         Expr::FunApp { fun, arg }
                     }
@@ -831,7 +832,7 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                 let init = self.zonk(binding.expr);
                 let body = self.zonk_with_local(body);
                 let (r#type, init, body) = self.bump.alloc((r#type, init, body));
-                let binding = LetBinding::new(binding.name, r#type as &_, init as &_);
+                let binding = LetBinding::new(binding.name, &*r#type, &*init);
                 Expr::Let { binding, body }
             }
             Expr::FunType { param, body } => {
@@ -912,7 +913,7 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                     Left(fun_expr) => {
                         let arg_expr = self.zonk(arg.expr);
                         let (fun_expr, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
-                        let arg = FunArg::new(arg.plicity, arg_expr as &_);
+                        let arg = FunArg::new(arg.plicity, &*arg_expr);
                         Left(Expr::FunApp { fun: fun_expr, arg })
                     }
                     Right(fun_value) => {
