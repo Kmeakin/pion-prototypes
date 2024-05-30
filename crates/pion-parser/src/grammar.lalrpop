@@ -58,11 +58,10 @@ pub Expr: Located<Expr<'surface>> = {
 }
 
 LetExpr: Located<Expr<'surface>> = {
-    <start: @L> "let" <rec: Rec> <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> ";" <body: Expr> <end: @R> => {
+    <start: @L> "let" <rec: Rec>  <binding: LetBinding> ";" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
-        let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
-        let (pat, init, body) = bump.alloc((pat, init, body));
-        Located::new(range, Expr::Let { rec, pat, r#type, init, body })
+        let body = bump.alloc(body);
+        Located::new(range, Expr::Let { rec, binding, body })
     },
     <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
@@ -80,6 +79,14 @@ LetExpr: Located<Expr<'surface>> = {
 Rec: Rec = {
     () => Rec::Nonrec,
     "rec" => Rec::Rec,
+}
+
+LetBinding: LetBinding<'surface> = {
+    <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> => {
+        let r#type = r#type.map(|r#type| bump.alloc(r#type) as &_);
+        let (pat, init) = bump.alloc((pat, init));
+        LetBinding { pat, r#type, init }
+    },
 }
 
 FunExpr: Located<Expr<'surface>> = {

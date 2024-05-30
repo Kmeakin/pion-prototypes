@@ -26,9 +26,7 @@ pub enum Expr<'surface> {
 
     Let {
         rec: Rec,
-        pat: &'surface Located<Pat<'surface>>,
-        r#type: Option<&'surface Located<Self>>,
-        init: &'surface Located<Self>,
+        binding: LetBinding<'surface>,
         body: &'surface Located<Self>,
     },
     If {
@@ -67,6 +65,13 @@ pub enum Expr<'surface> {
         scrut: &'surface Located<Self>,
         name: Located<Symbol>,
     },
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct LetBinding<'surface> {
+    pub pat: &'surface Located<Pat<'surface>>,
+    pub r#type: Option<&'surface Located<Expr<'surface>>>,
+    pub init: &'surface Located<Expr<'surface>>,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

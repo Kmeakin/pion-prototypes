@@ -90,19 +90,15 @@ where
             #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
                 rec: surface::Rec::Nonrec,
-                pat,
-                r#type,
-                init,
+                binding,
                 body,
-            } => self.elab_let(pat, r#type, init, body, |this, body| this.synth_expr(body)),
+            } => self.elab_let(&binding, body, |this, body| this.synth_expr(body)),
             #[allow(clippy::redundant_closure_for_method_calls)]
             surface::Expr::Let {
                 rec: surface::Rec::Rec,
-                pat,
-                r#type,
-                init,
+                binding,
                 body,
-            } => self.elab_letrec(pat, r#type, init, body, |this, body| this.synth_expr(body)),
+            } => self.elab_letrec(&binding, body, |this, body| this.synth_expr(body)),
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL);
                 let (then, then_type) = self.synth_expr(then);
@@ -445,12 +441,10 @@ where
             surface::Expr::Paren(expr) => self.check_expr(expr, &expected),
             surface::Expr::Let {
                 rec: surface::Rec::Nonrec,
-                pat,
-                r#type,
-                init,
+                binding,
                 body,
             } => {
-                let (expr, ()) = self.elab_let(pat, r#type, init, body, |this, body| {
+                let (expr, ()) = self.elab_let(&binding, body, |this, body| {
                     let body = this.check_expr(body, &expected);
                     (body, ())
                 });
@@ -458,12 +452,10 @@ where
             }
             surface::Expr::Let {
                 rec: surface::Rec::Rec,
-                pat,
-                r#type,
-                init,
+                binding,
                 body,
             } => {
-                let (expr, ()) = self.elab_letrec(pat, r#type, init, body, |this, body| {
+                let (expr, ()) = self.elab_letrec(&binding, body, |this, body| {
                     let body = this.check_expr(body, &expected);
                     (body, ())
                 });
@@ -630,16 +622,19 @@ where
 
     fn elab_let<T>(
         &mut self,
-        surface_pat: &'surface Located<surface::Pat<'surface>>,
-        surface_type: Option<&'surface Located<surface::Expr<'surface>>>,
-        surface_init: &'surface Located<surface::Expr<'surface>>,
+        surface_binding: &'surface surface::LetBinding<'surface>,
         surface_body: &'surface Located<surface::Expr<'surface>>,
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
         ) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
-        let (pat, r#type) = self.synth_ann_pat(surface_pat, surface_type);
+        let surface::LetBinding {
+            pat: surface_pat,
+            r#type: surface_type,
+            init: surface_init,
+        } = surface_binding;
+        let (pat, r#type) = self.synth_ann_pat(surface_pat, *surface_type);
         let init_expr = self.check_expr(surface_init, &r#type);
 
         let bindings = self.destruct_pat(&pat, &init_expr, &r#type, false);
@@ -658,16 +653,19 @@ where
 
     fn elab_letrec<T>(
         &mut self,
-        surface_pat: &'surface Located<surface::Pat<'surface>>,
-        surface_type: Option<&'surface Located<surface::Expr<'surface>>>,
-        surface_init: &'surface Located<surface::Expr<'surface>>,
+        surface_binding: &'surface surface::LetBinding<'surface>,
         surface_body: &'surface Located<surface::Expr<'surface>>,
         mut elab_body: impl FnMut(
             &mut Self,
             &'surface Located<surface::Expr<'surface>>,
         ) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
-        let (pat, mut r#type) = self.synth_ann_pat(surface_pat, surface_type);
+        let surface::LetBinding {
+            pat: surface_pat,
+            r#type: surface_type,
+            init: surface_init,
+        } = surface_binding;
+        let (pat, mut r#type) = self.synth_ann_pat(surface_pat, *surface_type);
         let name = pat.name();
 
         let init_expr = {
