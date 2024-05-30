@@ -12,6 +12,7 @@ use self::unify::{PartialRenaming, UnifyCtx};
 mod expr;
 mod r#match;
 mod pat;
+mod stmt;
 mod unify;
 
 pub struct Elaborator<'core, 'text, H>
