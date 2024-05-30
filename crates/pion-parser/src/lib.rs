@@ -3,7 +3,7 @@
 use lalrpop_util::lalrpop_mod;
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_lexer::TokenKind;
-use pion_surface::{Expr, Located};
+use pion_surface::{Block, Expr, File, Located};
 use text_size::{TextRange, TextSize};
 
 lalrpop_mod!(
@@ -73,6 +73,32 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
             .with_labels(vec![Label::primary(file_id, range)]),
         lalrpop_util::ParseError::User { error } => match error {},
     }
+}
+
+pub fn parse_file<'surface, H: DiagnosticHandler>(
+    bump: &'surface bumpalo::Bump,
+    mut handler: H,
+    file_id: usize,
+    text: &str,
+) -> File<'surface> {
+    let tokens = pion_lexer::lex(text)
+        .filter(|token| !token.kind.is_trivia())
+        .map(|token| (token.range.start(), token.kind, token.range.end()));
+    let mut errors = Vec::new();
+    let file = match grammar::FileParser::new().parse(bump, text, &mut errors, tokens) {
+        Ok(expr) => expr,
+        Err(error) => {
+            errors.push(error);
+            File {
+                contents: Block::default(),
+            }
+        }
+    };
+    for error in errors {
+        let range = error_range(&error);
+        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error));
+    }
+    file
 }
 
 pub fn parse_expr<'surface, H: DiagnosticHandler>(

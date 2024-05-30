@@ -12,6 +12,11 @@ impl<T> Located<T> {
 }
 
 #[derive(Debug, Copy, Clone)]
+pub struct File<'surface> {
+    pub contents: Block<'surface>,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum Expr<'surface> {
     Error,
     Lit(Located<Lit>),
@@ -24,11 +29,7 @@ pub enum Expr<'surface> {
         r#type: &'surface Located<Self>,
     },
 
-    Let {
-        rec: Rec,
-        binding: LetBinding<'surface>,
-        body: &'surface Located<Self>,
-    },
+    Do(Block<'surface>),
     If {
         cond: &'surface Located<Self>,
         then: &'surface Located<Self>,
@@ -64,6 +65,20 @@ pub enum Expr<'surface> {
     RecordProj {
         scrut: &'surface Located<Self>,
         name: Located<Symbol>,
+    },
+}
+
+#[derive(Debug, Copy, Clone, Default)]
+pub struct Block<'surface> {
+    pub stmts: &'surface [Located<Stmt<'surface>>],
+    pub expr: Option<&'surface Located<Expr<'surface>>>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Stmt<'surface> {
+    Let {
+        rec: Rec,
+        binding: LetBinding<'surface>,
     },
 }
 

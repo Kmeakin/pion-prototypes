@@ -1,8 +1,8 @@
 let cong: forall (@A: Type) (@B: Type) (@a: A) (@b: A) (f: A -> B) -> Eq a b -> Eq (f a) (f b)
-    = fun f a_eq_b =>
+    = fun f a_eq_b => do {
         let p = fun x => Eq @B (f a) (f x);
         let p_a:  p a = refl (f a);
         let goal: p b = subst @A @p a b a_eq_b p_a;
         goal
-        ;
+    };
 ()

@@ -17,6 +17,7 @@ extern {
     type Error = std::convert::Infallible;
 
     enum TokenKind {
+        "do" => TokenKind::KwDo,
         "else" => TokenKind::KwElse,
         "false" => TokenKind::KwFalse,
         "forall" => TokenKind::KwForall,
@@ -53,15 +54,14 @@ extern {
     }
 }
 
-pub Expr: Located<Expr<'surface>> = {
-    LetExpr => <>,
-}
+pub File: File<'surface> = {
+    <contents: Block> => File { contents }
+};
 
-LetExpr: Located<Expr<'surface>> = {
-    <start: @L> "let" <rec: Rec>  <binding: LetBinding> ";" <body: Expr> <end: @R> => {
+pub Expr: Located<Expr<'surface>> = {
+    <start: @L> "do" "{" <block: Block> "}" <end: @R> => {
         let range = TextRange::new(start, end);
-        let body = bump.alloc(body);
-        Located::new(range, Expr::Let { rec, binding, body })
+        Located::new(range, Expr::Do(block))
     },
     <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
@@ -75,6 +75,17 @@ LetExpr: Located<Expr<'surface>> = {
     },
     FunExpr => <>,
 }
+
+Block: Block<'surface> = {
+    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), expr: expr.map(|expr| bump.alloc(expr) as &_) },
+}
+
+Stmt: Located<Stmt<'surface>> = {
+    <start: @L> "let" <rec: Rec>  <binding: LetBinding> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Stmt::Let { rec, binding })
+    },
+};
 
 Rec: Rec = {
     () => Rec::Nonrec,

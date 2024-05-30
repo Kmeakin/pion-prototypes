@@ -69,9 +69,9 @@ fn main() -> std::io::Result<()> {
                 codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic);
             });
 
-            let expr = pion_parser::parse_expr(&bump, &mut handler, file_id, &text);
+            let file = pion_parser::parse_file(&bump, &mut handler, file_id, &text);
             let mut elaborator = pion_elab::Elaborator::new(&bump, &text, file_id, &mut handler);
-            let (mut expr, r#type) = elaborator.synth_expr(&expr);
+            let (mut expr, r#type) = elaborator.synth_block(&file.contents);
             elaborator.report_unsolved_metas();
             let r#type = elaborator.quote_env().quote(&r#type);
 

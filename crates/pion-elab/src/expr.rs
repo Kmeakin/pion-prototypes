@@ -87,16 +87,7 @@ where
                 let expr = self.check_expr(expr, &r#type);
                 (expr, r#type)
             }
-            surface::Expr::Let {
-                rec: surface::Rec::Nonrec,
-                binding,
-                body,
-            } => self.elab_let(&binding, body, Elaborator::synth_expr),
-            surface::Expr::Let {
-                rec: surface::Rec::Rec,
-                binding,
-                body,
-            } => self.elab_letrec(&binding, body, Elaborator::synth_expr),
+            surface::Expr::Do(block) => self.synth_block(&block),
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL);
                 let (then, then_type) = self.synth_expr(then);
@@ -437,28 +428,7 @@ where
                 expr
             }
             surface::Expr::Paren(expr) => self.check_expr(expr, &expected),
-            surface::Expr::Let {
-                rec: surface::Rec::Nonrec,
-                binding,
-                body,
-            } => {
-                let (expr, ()) = self.elab_let(&binding, body, |this, body| {
-                    let body = this.check_expr(body, &expected);
-                    (body, ())
-                });
-                expr
-            }
-            surface::Expr::Let {
-                rec: surface::Rec::Rec,
-                binding,
-                body,
-            } => {
-                let (expr, ()) = self.elab_letrec(&binding, body, |this, body| {
-                    let body = this.check_expr(body, &expected);
-                    (body, ())
-                });
-                expr
-            }
+            surface::Expr::Do(block) => self.check_block(surface_expr.range, &block, &expected),
             surface::Expr::If { cond, then, r#else } => {
                 let cond = self.check_expr(cond, &Type::BOOL);
                 let then = self.check_expr(then, &expected);
@@ -628,7 +598,7 @@ where
         self.convert_expr(range, expr, r#type, expected)
     }
 
-    fn convert_expr(
+    pub(super) fn convert_expr(
         &mut self,
         range: TextRange,
         expr: Expr<'core>,

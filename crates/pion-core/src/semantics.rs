@@ -135,6 +135,8 @@ pub struct Telescope<'core> {
 }
 
 impl<'core> Telescope<'core> {
+    pub const fn empty() -> Self { Self::new(LocalValues::new(), &[]) }
+
     pub const fn new(
         local_values: LocalValues<'core>,
         fields: &'core [(Symbol, Expr<'core>)],

@@ -1,8 +1,9 @@
 use pion_core::prim::Prim;
-use pion_core::semantics::Value;
+use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, LetBinding};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
-use pion_surface::{self as surface, Located};
+use pion_surface::{self as surface, Located, Rec};
+use text_size::TextRange;
 
 use super::Elaborator;
 
@@ -10,14 +11,89 @@ impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
 where
     H: DiagnosticHandler,
 {
-    pub(super) fn elab_let<T>(
+    pub fn synth_block(&mut self, block: &surface::Block<'surface>) -> (Expr<'core>, Type<'core>) {
+        return recur(self, block.stmts, block.expr);
+
+        #[allow(clippy::items_after_statements)]
+        fn recur<'surface, 'core, H: DiagnosticHandler>(
+            this: &mut Elaborator<'core, '_, H>,
+            stmts: &[Located<surface::Stmt<'surface>>],
+            expr: Option<&'surface Located<surface::Expr<'surface>>>,
+        ) -> (Expr<'core>, Type<'core>) {
+            let [stmt, stmts @ ..] = stmts else {
+                return match expr {
+                    None => (Expr::RecordLit(&[]), Type::RecordType(Telescope::empty())),
+                    Some(expr) => this.synth_expr(expr),
+                };
+            };
+
+            match stmt.data {
+                pion_surface::Stmt::Let {
+                    rec: Rec::Nonrec,
+                    binding,
+                } => this.elab_let(&binding, |this| recur(this, stmts, expr)),
+                pion_surface::Stmt::Let {
+                    rec: Rec::Rec,
+                    binding,
+                } => this.elab_letrec(&binding, |this| recur(this, stmts, expr)),
+            }
+        }
+    }
+
+    pub(super) fn check_block(
+        &mut self,
+        range: TextRange,
+        block: &surface::Block<'surface>,
+        expected: &Type<'core>,
+    ) -> Expr<'core> {
+        return match block.expr {
+            Some(expr) => recur(self, block.stmts, expr, expected),
+            None => {
+                let (expr, r#type) = self.synth_block(block);
+                self.convert_expr(range, expr, r#type, expected)
+            }
+        };
+
+        #[allow(clippy::items_after_statements)]
+        fn recur<'surface, 'core, H: DiagnosticHandler>(
+            this: &mut Elaborator<'core, '_, H>,
+            stmts: &[Located<surface::Stmt<'surface>>],
+            expr: &'surface Located<surface::Expr<'surface>>,
+            expected: &Type<'core>,
+        ) -> Expr<'core> {
+            let [stmt, stmts @ ..] = stmts else {
+                return this.check_expr(expr, expected);
+            };
+
+            match stmt.data {
+                pion_surface::Stmt::Let {
+                    rec: Rec::Nonrec,
+                    binding,
+                } => {
+                    let (expr, ()) = this.elab_let(&binding, |this| {
+                        let expr = recur(this, stmts, expr, expected);
+                        (expr, ())
+                    });
+                    expr
+                }
+                pion_surface::Stmt::Let {
+                    rec: Rec::Rec,
+                    binding,
+                } => {
+                    let (expr, ()) = this.elab_letrec(&binding, |this| {
+                        let expr = recur(this, stmts, expr, expected);
+                        (expr, ())
+                    });
+                    expr
+                }
+            }
+        }
+    }
+
+    fn elab_let<T>(
         &mut self,
         surface_binding: &'surface surface::LetBinding<'surface>,
-        surface_body: &'surface Located<surface::Expr<'surface>>,
-        mut elab_body: impl FnMut(
-            &mut Self,
-            &'surface Located<surface::Expr<'surface>>,
-        ) -> (Expr<'core>, T),
+        mut elab_body: impl FnMut(&mut Self) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
         let surface::LetBinding {
             pat: surface_pat,
@@ -32,7 +108,7 @@ where
         let (body_expr, body_type) = {
             let local_len = self.local_env.len();
             self.push_let_bindings(&bindings);
-            let (body_expr, body_type) = elab_body(self, surface_body);
+            let (body_expr, body_type) = elab_body(self);
             self.local_env.truncate(local_len);
             (body_expr, body_type)
         };
@@ -41,14 +117,10 @@ where
         (expr, body_type)
     }
 
-    pub(super) fn elab_letrec<T>(
+    fn elab_letrec<T>(
         &mut self,
         surface_binding: &'surface surface::LetBinding<'surface>,
-        surface_body: &'surface Located<surface::Expr<'surface>>,
-        mut elab_body: impl FnMut(
-            &mut Self,
-            &'surface Located<surface::Expr<'surface>>,
-        ) -> (Expr<'core>, T),
+        mut elab_body: impl FnMut(&mut Self) -> (Expr<'core>, T),
     ) -> (Expr<'core>, T) {
         let surface::LetBinding {
             pat: surface_pat,
@@ -104,7 +176,7 @@ where
         let (body_expr, body_type) = {
             let init_value = self.eval_env().eval(&init_expr);
             self.local_env.push_let(name, r#type.clone(), init_value);
-            let (body_expr, body_type) = elab_body(self, surface_body);
+            let (body_expr, body_type) = elab_body(self);
             self.local_env.pop();
             (body_expr, body_type)
         };

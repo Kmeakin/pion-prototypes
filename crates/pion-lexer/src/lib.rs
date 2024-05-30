@@ -8,6 +8,7 @@ pub enum TokenKind {
     Whitespace,
     LineComment,
 
+    KwDo,
     KwElse,
     KwFalse,
     KwForall,
@@ -55,6 +56,7 @@ impl fmt::Display for TokenKind {
             Self::Unknown => "unknown character",
             Self::Whitespace => "whitespace",
             Self::LineComment => "line comment",
+            Self::KwDo => "keyword `do`",
             Self::KwElse => "keyword `else`",
             Self::KwFalse => "keyword `false`",
             Self::KwForall => "keyword `forall`",
@@ -233,6 +235,7 @@ const fn is_id_continue(c: u8) -> bool {
 const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
     match bytes {
         b"_" => TokenKind::Underscore,
+        b"do" => TokenKind::KwDo,
         b"else" => TokenKind::KwElse,
         b"false" => TokenKind::KwFalse,
         b"forall" => TokenKind::KwForall,
