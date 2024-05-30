@@ -1,4 +1,5 @@
 use pion_symbol::Symbol;
+use pion_util::collect_in::CollectIn;
 
 use crate::env::{AbsoluteVar, EnvLen, RelativeVar};
 use crate::prim::Prim;
@@ -169,28 +170,33 @@ impl<'core> Expr<'core> {
                 }
             }
 
-            Expr::RecordType(fields) => Expr::RecordType(bump.alloc_slice_fill_iter(
-                fields.iter().map(|(name, r#type)| {
-                    let r#type = r#type.shift_inner(bump, min, amount);
-                    min = min.succ();
-                    (*name, r#type)
-                }),
-            )),
+            Expr::RecordType(fields) => Expr::RecordType(
+                fields
+                    .iter()
+                    .map(|(name, r#type)| {
+                        let r#type = r#type.shift_inner(bump, min, amount);
+                        min = min.succ();
+                        (*name, r#type)
+                    })
+                    .collect_in(bump),
+            ),
 
             Expr::RecordLit(fields) => Expr::RecordLit(
-                bump.alloc_slice_fill_iter(
-                    fields
-                        .iter()
-                        .map(|(name, r#type)| (*name, r#type.shift_inner(bump, min, amount))),
-                ),
+                fields
+                    .iter()
+                    .map(|(name, r#type)| (*name, r#type.shift_inner(bump, min, amount)))
+                    .collect_in(bump),
             ),
 
             Expr::RecordProj(scrut, label) => {
                 Expr::RecordProj(bump.alloc(scrut.shift_inner(bump, min, amount)), *label)
             }
-            Expr::ListLit(elems) => Expr::ListLit(bump.alloc_slice_fill_iter(
-                elems.iter().map(|expr| expr.shift_inner(bump, min, amount)),
-            )),
+            Expr::ListLit(elems) => Expr::ListLit(
+                elems
+                    .iter()
+                    .map(|expr| expr.shift_inner(bump, min, amount))
+                    .collect_in(bump),
+            ),
 
             Expr::MatchBool { cond, then, r#else } => {
                 let cond = cond.shift_inner(bump, min, amount);
@@ -207,8 +213,8 @@ impl<'core> Expr<'core> {
                 let scrut = scrut.shift_inner(bump, min, amount);
                 let cases = cases
                     .iter()
-                    .map(|(int, expr)| (*int, expr.shift_inner(bump, min, amount)));
-                let cases = bump.alloc_slice_fill_iter(cases);
+                    .map(|(int, expr)| (*int, expr.shift_inner(bump, min, amount)))
+                    .collect_in(bump);
                 let default = default.shift_inner(bump, min, amount);
                 let (scrut, cases, default) = bump.alloc((scrut, cases, default));
                 Expr::MatchInt {

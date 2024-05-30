@@ -1,6 +1,7 @@
 use ecow::EcoVec;
 use either::Either::{self, Left, Right};
 use pion_symbol::Symbol;
+use pion_util::collect_in::CollectIn;
 use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 
@@ -605,13 +606,15 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
             Expr::RecordType(type_fields) => {
                 Value::RecordType(Telescope::new(self.local_values.clone(), type_fields))
             }
-            Expr::RecordLit(expr_fields) => Value::RecordLit(
-                self.bump.alloc_slice_fill_iter(
+            Expr::RecordLit(expr_fields) => {
+                let bump = self.bump;
+                Value::RecordLit(
                     expr_fields
                         .iter()
-                        .map(|(symbol, expr)| (*symbol, self.eval(expr))),
-                ),
-            ),
+                        .map(|(symbol, expr)| (*symbol, self.eval(expr)))
+                        .collect_in(bump),
+                )
+            }
             Expr::RecordProj(scrut, name) => {
                 let scrut = self.eval(scrut);
                 self.elim_env().record_proj(scrut, *name)
@@ -745,17 +748,24 @@ impl<'core, 'env> QuoteEnv<'core, 'env> {
                 self.local_len.truncate(local_len);
                 Expr::RecordType(expr_fields.into())
             }
-            Value::RecordLit(expr_fields) => Expr::RecordLit(
-                self.bump.alloc_slice_fill_iter(
+            Value::RecordLit(expr_fields) => {
+                let bump = self.bump;
+                Expr::RecordLit(
                     expr_fields
                         .iter()
-                        .map(|(name, value)| (*name, self.quote(value))),
-                ),
-            ),
-            Value::List(values) => Expr::ListLit(
-                self.bump
-                    .alloc_slice_fill_iter(values.iter().map(|value| self.quote(value))),
-            ),
+                        .map(|(name, value)| (*name, self.quote(value)))
+                        .collect_in(bump),
+                )
+            }
+            Value::List(values) => {
+                let bump = self.bump;
+                Expr::ListLit(
+                    values
+                        .iter()
+                        .map(|value| self.quote(value))
+                        .collect_in(bump),
+                )
+            }
         }
     }
 
@@ -867,28 +877,32 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
             },
             Expr::RecordType(type_fields) => {
                 let local_len = self.local_values.len();
-                let expr_fields =
-                    self.bump
-                        .alloc_slice_fill_iter(type_fields.iter().map(|(name, expr)| {
-                            let r#type = self.zonk(expr);
-                            let var = Value::local_var(self.local_values.len().to_absolute());
-                            self.local_values.push(var);
-                            (*name, r#type)
-                        }));
+                let bump = self.bump;
+                let expr_fields = type_fields
+                    .iter()
+                    .map(|(name, expr)| {
+                        let r#type = self.zonk(expr);
+                        let var = Value::local_var(self.local_values.len().to_absolute());
+                        self.local_values.push(var);
+                        (*name, r#type)
+                    })
+                    .collect_in(bump);
                 self.local_values.truncate(local_len);
                 Expr::RecordType(expr_fields)
             }
-            Expr::RecordLit(expr_fields) => Expr::RecordLit(
-                self.bump.alloc_slice_fill_iter(
+            Expr::RecordLit(expr_fields) => {
+                let bump = self.bump;
+                Expr::RecordLit(
                     expr_fields
                         .iter()
-                        .map(|(name, expr)| (*name, self.zonk(expr))),
-                ),
-            ),
-            Expr::ListLit(elems) => Expr::ListLit(
-                self.bump
-                    .alloc_slice_fill_iter(elems.iter().map(|expr| self.zonk(expr))),
-            ),
+                        .map(|(name, expr)| (*name, self.zonk(expr)))
+                        .collect_in(bump),
+                )
+            }
+            Expr::ListLit(elems) => {
+                let bump = self.bump;
+                Expr::ListLit(elems.iter().map(|expr| self.zonk(expr)).collect_in(bump))
+            }
         }
     }
 
@@ -954,9 +968,11 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
                 default,
             } => match self.zonk_meta_var_spines(scrut) {
                 Left(scrut_expr) => {
-                    let cases = self.bump.alloc_slice_fill_iter(
-                        cases.iter().map(|(lit, expr)| (*lit, self.zonk(expr))),
-                    );
+                    let bump = self.bump;
+                    let cases = cases
+                        .iter()
+                        .map(|(lit, expr)| (*lit, self.zonk(expr)))
+                        .collect_in(bump);
                     let default = self.zonk(default);
                     let (scrut, default) = self.bump.alloc((scrut_expr, default));
                     Left(Expr::MatchInt {

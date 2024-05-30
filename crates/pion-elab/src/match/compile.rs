@@ -27,6 +27,7 @@
 
 use pion_core::Lit;
 use pion_diagnostic::DiagnosticHandler;
+use pion_util::collect_in::CollectIn;
 use smallvec::{smallvec, SmallVec};
 
 use super::constructors::{Constructor, Constructors};
@@ -160,12 +161,15 @@ impl<'core> PatternCompiler<'core> {
             }
             Constructors::Ints(ref ints) => {
                 let bump = self.bump;
-                let cases = ints.iter().map(|int| {
-                    let mut matrix = matrix.specialize(self.bump, Constructor::Lit(Lit::Int(*int)));
-                    let expr = self.compile_match(&mut matrix, bodies);
-                    (*int, expr)
-                });
-                let cases = bump.alloc_slice_fill_iter(cases);
+                let cases = ints
+                    .iter()
+                    .map(|int| {
+                        let mut matrix =
+                            matrix.specialize(self.bump, Constructor::Lit(Lit::Int(*int)));
+                        let expr = self.compile_match(&mut matrix, bodies);
+                        (*int, expr)
+                    })
+                    .collect_in(bump);
                 let default = {
                     let mut matrix = matrix.default(self.bump);
                     self.compile_match(&mut matrix, bodies)
