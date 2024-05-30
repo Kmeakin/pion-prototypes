@@ -127,7 +127,6 @@ pub fn has_constructors(pat: &Pat) -> bool { PatConstructors::new(*pat).next().i
 
 impl<'core> PatMatrix<'core> {
     /// Collect all the `Constructor`s in the `index`th column
-    #[allow(clippy::items_after_statements)]
     pub fn column_constructors(&self, index: usize) -> Option<Constructors<'core>> {
         let column = self.column(index).map(|(pat, _)| *pat);
         return start(column);

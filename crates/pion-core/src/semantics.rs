@@ -308,7 +308,6 @@ impl<'core, 'env> ElimEnv<'core, 'env> {
 type Spine<'core> = EcoVec<Elim<'core>>;
 type PrimAppResult<'core> = Result<Value<'core>, Spine<'core>>;
 
-#[allow(clippy::items_after_statements)]
 fn prim_app2<'core>(
     env: &ElimEnv<'core, '_>,
     head: Head,

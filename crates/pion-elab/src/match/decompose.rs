@@ -70,7 +70,6 @@ impl<'core> PatMatrix<'core> {
             let ((pat, _), rest) = row.split_first().unwrap();
             recur(*pat, rest, &mut matrix);
 
-            #[allow(clippy::items_after_statements)]
             fn recur<'core>(
                 pat: Pat<'core>,
                 rest: BorrowedPatRow<'core, '_>,

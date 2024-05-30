@@ -14,7 +14,6 @@ where
     pub fn synth_block(&mut self, block: &surface::Block<'surface>) -> (Expr<'core>, Type<'core>) {
         return recur(self, block.stmts, block.expr);
 
-        #[allow(clippy::items_after_statements)]
         fn recur<'surface, 'core, H: DiagnosticHandler>(
             this: &mut Elaborator<'core, '_, H>,
             stmts: &[Located<surface::Stmt<'surface>>],
@@ -54,7 +53,6 @@ where
             }
         };
 
-        #[allow(clippy::items_after_statements)]
         fn recur<'surface, 'core, H: DiagnosticHandler>(
             this: &mut Elaborator<'core, '_, H>,
             stmts: &[Located<surface::Stmt<'surface>>],
