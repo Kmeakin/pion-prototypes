@@ -53,6 +53,41 @@ impl TokenKind {
     }
 }
 
+pub trait ClassifyChar {
+    fn is_whitespace(&self) -> bool;
+
+    fn is_dec_int_start(&self) -> bool;
+    fn is_dec_int_continue(&self) -> bool;
+
+    fn is_bin_int_start(&self) -> bool;
+    fn is_bin_int_continue(&self) -> bool;
+
+    fn is_hex_int_start(&self) -> bool;
+    fn is_hex_int_continue(&self) -> bool;
+
+    fn is_identifier_start(&self) -> bool;
+    fn is_identifier_continue(&self) -> bool;
+}
+
+#[allow(clippy::manual_is_ascii_check)]
+impl ClassifyChar for u8 {
+    fn is_whitespace(&self) -> bool { matches!(self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ') }
+
+    fn is_dec_int_start(&self) -> bool { matches!(self, b'0'..=b'9') }
+    fn is_dec_int_continue(&self) -> bool { *self == b'_' || self.is_dec_int_start() }
+
+    fn is_bin_int_start(&self) -> bool { matches!(self, b'0'..=b'1') }
+    fn is_bin_int_continue(&self) -> bool { *self == b'_' || self.is_bin_int_start() }
+
+    fn is_hex_int_start(&self) -> bool { matches!(self, b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F') }
+    fn is_hex_int_continue(&self) -> bool { *self == b'_' || self.is_hex_int_start() }
+
+    fn is_identifier_start(&self) -> bool {
+        matches!(self, b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9')
+    }
+    fn is_identifier_continue(&self) -> bool { *self == b'-' || self.is_identifier_start() }
+}
+
 impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
@@ -155,7 +190,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             let len = bytes
                 .iter()
                 .skip(1)
-                .position(|c| !c.is_ascii_whitespace())
+                .position(|c| !c.is_whitespace())
                 .map(|len| len + 1)
                 .unwrap_or(bytes.len());
             (TokenKind::Whitespace, len)
@@ -164,7 +199,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             let len = bytes
                 .iter()
                 .skip(2)
-                .position(|c| !is_bin_int_continue(*c))
+                .position(|c| !c.is_bin_int_continue())
                 .map(|len| len + 2)
                 .unwrap_or(bytes.len());
             (TokenKind::BinInt, len)
@@ -173,27 +208,27 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             let len = bytes
                 .iter()
                 .skip(2)
-                .position(|c| !is_hex_int_continue(*c))
+                .position(|c| !c.is_hex_int_continue())
                 .map(|len| len + 2)
                 .unwrap_or(bytes.len());
             (TokenKind::HexInt, len)
         }
 
-        c if is_dec_int_start(c) => {
+        c if c.is_dec_int_start() => {
             let len = bytes
                 .iter()
                 .skip(1)
-                .position(|c| !is_dec_int_continue(*c))
+                .position(|c| !c.is_dec_int_continue())
                 .map(|len| len + 1)
                 .unwrap_or(bytes.len());
             (TokenKind::DecInt, len)
         }
 
-        c if is_id_start(c) => {
+        c if c.is_identifier_start() => {
             let len = bytes
                 .iter()
                 .skip(1)
-                .position(|c| !is_id_continue(*c))
+                .position(|c| !c.is_identifier_continue())
                 .map(|len| len + 1)
                 .unwrap_or(bytes.len());
             let kind = keyword_or_ident(&bytes[..len]);
@@ -211,22 +246,6 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
 impl<'text> Iterator for Lexer<'text> {
     type Item = Result<(TokenKind, usize, usize), LexError>;
     fn next(&mut self) -> Option<Self::Item> { self.next_token() }
-}
-
-const fn is_bin_int_continue(c: u8) -> bool { matches!(c, b'_' | b'0'..=b'1') }
-
-const fn is_hex_int_continue(c: u8) -> bool {
-    matches!(c, b'_' | b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F')
-}
-
-const fn is_dec_int_start(c: u8) -> bool { c.is_ascii_digit() }
-
-const fn is_dec_int_continue(c: u8) -> bool { matches!(c, b'_' | b'0'..=b'9') }
-
-const fn is_id_start(c: u8) -> bool { matches!(c, b'_' | b'a'..=b'z' | b'A'..=b'Z') }
-
-const fn is_id_continue(c: u8) -> bool {
-    matches!(c, b'_' | b'-' | b'a'..=b'z' | b'A'..=b'Z'|b'0'..=b'9')
 }
 
 const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
