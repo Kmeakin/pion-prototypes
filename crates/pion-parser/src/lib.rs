@@ -64,13 +64,13 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
             expected,
             ..
         } => Diagnostic::error()
-            .with_message(format!("Syntax error: unexpected {token}"))
+            .with_message(format!("Syntax error: unexpected {}", token.description()))
             .with_labels(vec![Label::primary(file_id, range)])
             .with_message(format_expected(expected)),
         lalrpop_util::ParseError::ExtraToken {
             token: (_, token, _),
         } => Diagnostic::error()
-            .with_message(format!("Syntax error: unexpected {token}"))
+            .with_message(format!("Syntax error: unexpected {}", token.description()))
             .with_labels(vec![Label::primary(file_id, range)]),
         lalrpop_util::ParseError::User { error } => match error {},
     }

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use text_size::TextRange;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -62,11 +60,9 @@ impl TokenKind {
             Self::Unknown | Self::Whitespace | Self::LineComment | Self::BlockComment
         )
     }
-}
 
-impl fmt::Display for TokenKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
+    pub const fn description(&self) -> &'static str {
+        match self {
             Self::Unknown => "unknown character",
             Self::Whitespace => "whitespace",
             Self::LineComment => "line comment",
@@ -100,6 +96,6 @@ impl fmt::Display for TokenKind {
             Self::SingleArrow => "`->`",
             Self::DecInt | Self::BinInt | Self::HexInt => "integer",
             Self::Ident => "identifier",
-        })
+        }
     }
 }
