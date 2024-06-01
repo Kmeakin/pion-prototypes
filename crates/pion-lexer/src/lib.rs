@@ -4,7 +4,7 @@ mod lexer;
 mod token;
 
 pub use self::lexer::{lex, next_token};
-pub use self::token::{LexError, Token, TokenKind};
+pub use self::token::{Token, TokenKind};
 
 #[cfg(test)]
 mod tests {
