@@ -86,50 +86,25 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         }
 
         c if c.is_ascii_whitespace() => {
-            let len = bytes
-                .iter()
-                .skip(1)
-                .position(|c| !c.is_whitespace())
-                .map(|len| len + 1)
-                .unwrap_or(bytes.len());
+            let len = position_or_end(&bytes[1..], u8::is_whitespace) + 1;
             (TokenKind::Whitespace, len)
         }
         b'0' if let Some(b'b' | b'B') = bytes.get(1) => {
-            let len = bytes
-                .iter()
-                .skip(2)
-                .position(|c| !c.is_bin_int_continue())
-                .map(|len| len + 2)
-                .unwrap_or(bytes.len());
+            let len = position_or_end(&bytes[2..], u8::is_bin_int_continue) + 2;
             (TokenKind::BinInt, len)
         }
         b'0' if let Some(b'x' | b'X') = bytes.get(1) => {
-            let len = bytes
-                .iter()
-                .skip(2)
-                .position(|c| !c.is_hex_int_continue())
-                .map(|len| len + 2)
-                .unwrap_or(bytes.len());
+            let len = position_or_end(&bytes[2..], u8::is_hex_int_continue) + 2;
             (TokenKind::HexInt, len)
         }
 
         c if c.is_dec_int_start() => {
-            let len = bytes
-                .iter()
-                .skip(1)
-                .position(|c| !c.is_dec_int_continue())
-                .map(|len| len + 1)
-                .unwrap_or(bytes.len());
+            let len = position_or_end(&bytes[1..], u8::is_dec_int_continue) + 1;
             (TokenKind::DecInt, len)
         }
 
         c if c.is_identifier_start() => {
-            let len = bytes
-                .iter()
-                .skip(1)
-                .position(|c| !c.is_identifier_continue())
-                .map(|len| len + 1)
-                .unwrap_or(bytes.len());
+            let len = position_or_end(&bytes[1..], u8::is_identifier_continue) + 1;
             let kind = keyword_or_ident(&bytes[..len]);
             (kind, len)
         }
@@ -140,6 +115,10 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         }
     };
     Some((kind, len))
+}
+
+fn position_or_end(bytes: &[u8], pred: impl Fn(&u8) -> bool) -> usize {
+    bytes.iter().position(|c| !pred(c)).unwrap_or(bytes.len())
 }
 
 trait ClassifyChar {
