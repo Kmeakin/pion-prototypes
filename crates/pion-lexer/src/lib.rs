@@ -137,26 +137,8 @@ impl Token {
     pub const fn new(kind: TokenKind, range: TextRange) -> Self { Self { kind, range } }
 }
 
-pub struct Lexer<'text> {
-    text: &'text str,
-    pos: usize,
-}
-
 #[derive(Debug, Copy, Clone)]
 pub enum LexError {}
-
-impl<'text> Lexer<'text> {
-    pub const fn new(text: &'text str) -> Self { Self { text, pos: 0 } }
-
-    pub fn next_token(&mut self) -> Option<Result<(TokenKind, usize, usize), LexError>> {
-        let (kind, len) = next_token(self.text)?;
-        let start = self.pos;
-        let end = start + len;
-        self.pos = end;
-        self.text = &self.text[len..];
-        Some(Ok((kind, start, end)))
-    }
-}
 
 /// Lex the next token from `text`.
 ///  Returns the kind of token and its length, or `None` if `text` is empty.
@@ -243,11 +225,6 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
     Some((kind, len))
 }
 
-impl<'text> Iterator for Lexer<'text> {
-    type Item = Result<(TokenKind, usize, usize), LexError>;
-    fn next(&mut self) -> Option<Self::Item> { self.next_token() }
-}
-
 const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
     match bytes {
         b"_" => TokenKind::Underscore,
@@ -297,14 +274,21 @@ fn test_len_utf8_branchless() {
     check('🍆', 4);
 }
 
-pub fn lex(text: &str) -> impl Iterator<Item = Token> + '_ {
-    Lexer::new(text).map(|result| match result {
-        Ok((kind, start, end)) => {
-            let start = TextSize::truncate_from(start);
-            let end = TextSize::truncate_from(end);
-            Token::new(kind, TextRange::new(start, end))
-        }
-        Err(error) => match error {},
+pub fn lex(mut text: &str) -> impl Iterator<Item = Token> + '_ {
+    let mut pos = 0;
+    std::iter::from_fn(move || {
+        let (kind, len) = next_token(text)?;
+        let start = pos;
+        let end = start + len;
+
+        pos += len;
+        text = &text[len..];
+        Some((kind, start, end))
+    })
+    .map(|(kind, start, end)| {
+        let start = TextSize::truncate_from(start);
+        let end = TextSize::truncate_from(end);
+        Token::new(kind, TextRange::new(start, end))
     })
 }
 
