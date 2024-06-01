@@ -1,3 +1,5 @@
+#![feature(if_let_guard)]
+
 use core::fmt;
 
 use pion_util::numeric_conversions::TruncateFrom;
@@ -111,107 +113,99 @@ pub enum LexError {}
 impl<'text> Lexer<'text> {
     pub const fn new(text: &'text str) -> Self { Self { text, pos: 0 } }
 
-    fn remainder(&self) -> &[u8] { &self.text.as_bytes()[self.pos..] }
-
-    fn peek_byte_at(&self, n: usize) -> Option<u8> { self.remainder().get(n).copied() }
-    fn peek_byte(&self) -> Option<u8> { self.peek_byte_at(0) }
-
-    fn emit_token(&mut self, kind: TokenKind, len: usize) -> (TokenKind, usize, usize) {
+    pub fn next_token(&mut self) -> Option<Result<(TokenKind, usize, usize), LexError>> {
+        let (kind, len) = next_token(self.text)?;
         let start = self.pos;
         let end = start + len;
-        self.pos += len;
-        (kind, start, end)
+        self.pos = end;
+        self.text = &self.text[len..];
+        Some(Ok((kind, start, end)))
     }
+}
 
-    pub fn next_token(&mut self) -> Option<Result<(TokenKind, usize, usize), LexError>> {
-        let byte = self.peek_byte()?;
-        match byte {
-            b'(' => Some(Ok(self.emit_token(TokenKind::LParen, 1))),
-            b')' => Some(Ok(self.emit_token(TokenKind::RParen, 1))),
-            b'[' => Some(Ok(self.emit_token(TokenKind::LSquare, 1))),
-            b']' => Some(Ok(self.emit_token(TokenKind::RSquare, 1))),
-            b'{' => Some(Ok(self.emit_token(TokenKind::LCurly, 1))),
-            b'}' => Some(Ok(self.emit_token(TokenKind::RCurly, 1))),
-            b',' => Some(Ok(self.emit_token(TokenKind::Comma, 1))),
-            b';' => Some(Ok(self.emit_token(TokenKind::Semicolon, 1))),
-            b':' => Some(Ok(self.emit_token(TokenKind::Colon, 1))),
-            b'.' => Some(Ok(self.emit_token(TokenKind::Dot, 1))),
-            b'@' => Some(Ok(self.emit_token(TokenKind::At, 1))),
-            b'|' => Some(Ok(self.emit_token(TokenKind::Pipe, 1))),
+/// Lex the next token from `text`.
+///  Returns the kind of token and its length, or `None` if `text` is empty.
+pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
+    let bytes = text.as_bytes();
+    let byte = bytes.first()?;
+    let (kind, len) = match *byte {
+        b'(' => (TokenKind::LParen, 1),
+        b')' => (TokenKind::RParen, 1),
+        b'[' => (TokenKind::LSquare, 1),
+        b']' => (TokenKind::RSquare, 1),
+        b'{' => (TokenKind::LCurly, 1),
+        b'}' => (TokenKind::RCurly, 1),
+        b',' => (TokenKind::Comma, 1),
+        b';' => (TokenKind::Semicolon, 1),
+        b':' => (TokenKind::Colon, 1),
+        b'.' => (TokenKind::Dot, 1),
+        b'@' => (TokenKind::At, 1),
+        b'|' => (TokenKind::Pipe, 1),
 
-            b'-' if self.peek_byte_at(1) == Some(b'>') => {
-                Some(Ok(self.emit_token(TokenKind::SingleArrow, 2)))
-            }
-            b'=' if self.peek_byte_at(1) == Some(b'>') => {
-                Some(Ok(self.emit_token(TokenKind::DoubleArrow, 2)))
-            }
-            b'=' => Some(Ok(self.emit_token(TokenKind::Eq, 1))),
+        b'-' if bytes.get(1) == Some(&b'>') => (TokenKind::SingleArrow, 2),
+        b'=' if bytes.get(1) == Some(&b'>') => (TokenKind::DoubleArrow, 2),
+        b'=' => (TokenKind::Eq, 1),
 
-            b'/' if self.peek_byte_at(1) == Some(b'/') => {
-                let len = self.remainder().len();
-                let len = memchr::memchr(b'\n', self.remainder()).unwrap_or(len);
-                Some(Ok(self.emit_token(TokenKind::LineComment, len)))
-            }
-            b'/' if self.peek_byte_at(1) == Some(b'*') => todo!("block comment"),
-
-            c if c.is_ascii_whitespace() => {
-                let mut len = 1;
-                loop {
-                    match self.peek_byte_at(len) {
-                        Some(c) if c.is_ascii_whitespace() => len += 1,
-                        _ => break,
-                    }
-                }
-                Some(Ok(self.emit_token(TokenKind::Whitespace, len)))
-            }
-
-            b'0' if self.peek_byte_at(1) == Some(b'b') || self.peek_byte_at(1) == Some(b'B') => {
-                let len = self
-                    .remainder()
-                    .iter()
-                    .skip(2)
-                    .position(|c| !is_bin_int_continue(*c))
-                    .map_or(self.remainder().len(), |len| len + 2);
-                Some(Ok(self.emit_token(TokenKind::BinInt, len)))
-            }
-            b'0' if self.peek_byte_at(1) == Some(b'x') || self.peek_byte_at(1) == Some(b'X') => {
-                let len = self
-                    .remainder()
-                    .iter()
-                    .skip(2)
-                    .position(|c| !is_hex_int_continue(*c))
-                    .map_or(self.remainder().len(), |len| len + 2);
-                Some(Ok(self.emit_token(TokenKind::HexInt, len)))
-            }
-
-            c if is_dec_int_start(c) => {
-                let len = self.remainder().len();
-                let len = self
-                    .remainder()
-                    .iter()
-                    .position(|c| !is_dec_int_continue(*c))
-                    .unwrap_or(len);
-                Some(Ok(self.emit_token(TokenKind::DecInt, len)))
-            }
-
-            c if is_id_start(c) => {
-                let mut len = 1;
-                loop {
-                    match self.peek_byte_at(len) {
-                        Some(c) if is_id_continue(c) => len += 1,
-                        _ => break,
-                    }
-                }
-                let bytes = &self.remainder()[..len];
-                let kind = keyword_or_ident(bytes);
-                Some(Ok(self.emit_token(kind, len)))
-            }
-            c => {
-                let len = len_utf8(c);
-                Some(Ok(self.emit_token(TokenKind::Unknown, len)))
-            }
+        b'/' if bytes.get(1) == Some(&b'/') => {
+            let len = memchr::memchr(b'\n', bytes).unwrap_or(bytes.len());
+            (TokenKind::LineComment, len)
         }
-    }
+
+        c if c.is_ascii_whitespace() => {
+            let len = bytes
+                .iter()
+                .skip(1)
+                .position(|c| !c.is_ascii_whitespace())
+                .map(|len| len + 1)
+                .unwrap_or(bytes.len());
+            (TokenKind::Whitespace, len)
+        }
+        b'0' if let Some(b'b' | b'B') = bytes.get(1) => {
+            let len = bytes
+                .iter()
+                .skip(2)
+                .position(|c| !is_bin_int_continue(*c))
+                .map(|len| len + 2)
+                .unwrap_or(bytes.len());
+            (TokenKind::BinInt, len)
+        }
+        b'0' if let Some(b'x' | b'X') = bytes.get(1) => {
+            let len = bytes
+                .iter()
+                .skip(2)
+                .position(|c| !is_hex_int_continue(*c))
+                .map(|len| len + 2)
+                .unwrap_or(bytes.len());
+            (TokenKind::HexInt, len)
+        }
+
+        c if is_dec_int_start(c) => {
+            let len = bytes
+                .iter()
+                .skip(1)
+                .position(|c| !is_dec_int_continue(*c))
+                .map(|len| len + 1)
+                .unwrap_or(bytes.len());
+            (TokenKind::DecInt, len)
+        }
+
+        c if is_id_start(c) => {
+            let len = bytes
+                .iter()
+                .skip(1)
+                .position(|c| !is_id_continue(*c))
+                .map(|len| len + 1)
+                .unwrap_or(bytes.len());
+            let kind = keyword_or_ident(&bytes[..len]);
+            (kind, len)
+        }
+
+        c => {
+            let len = len_utf8(c);
+            (TokenKind::Unknown, len)
+        }
+    };
+    Some((kind, len))
 }
 
 impl<'text> Iterator for Lexer<'text> {

@@ -21,6 +21,7 @@ pedantic = { level = "warn", priority = 0 }
 as_conversions = { level = "deny", priority = 100 }
 
 items_after_statements   = { level = "allow", priority = 100 }
+map_unwrap_or            = { level = "allow", priority = 100 }
 match_bool               = { level = "allow", priority = 100 }
 missing_errors_doc       = { level = "allow", priority = 100 }
 missing_panics_doc       = { level = "allow", priority = 100 }
