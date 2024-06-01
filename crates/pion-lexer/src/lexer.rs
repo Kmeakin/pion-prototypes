@@ -49,6 +49,40 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             (TokenKind::LineComment, len)
         }
 
+        b'/' if bytes.get(1) == Some(&b'*') => {
+            let mut len = 2;
+            let mut depth: u32 = 1;
+            loop {
+                let remainder = &bytes[len..];
+                match memchr::memchr(b'/', remainder) {
+                    None => {
+                        len = bytes.len();
+                        break;
+                    }
+                    Some(0) => len += 1,
+
+                    // `*/`: close current level of nesting
+                    Some(n) if remainder.get(n - 1) == Some(&b'*') => {
+                        len += n + 1;
+                        depth -= 1;
+                        if depth == 0 {
+                            break;
+                        }
+                    }
+
+                    // `/*`: open another level of nesting
+                    Some(n) if remainder.get(n + 1) == Some(&b'*') => {
+                        len += n + 2;
+                        depth += 1;
+                    }
+
+                    // lone `/`: continue
+                    Some(n) => len += n + 1,
+                }
+            }
+            (TokenKind::BlockComment, len)
+        }
+
         c if c.is_ascii_whitespace() => {
             let len = bytes
                 .iter()

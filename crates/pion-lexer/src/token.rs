@@ -20,6 +20,7 @@ pub enum TokenKind {
     Unknown,
     Whitespace,
     LineComment,
+    BlockComment,
 
     KwDo,
     KwElse,
@@ -59,7 +60,10 @@ pub enum TokenKind {
 
 impl TokenKind {
     pub const fn is_trivia(self) -> bool {
-        matches!(self, Self::Unknown | Self::Whitespace | Self::LineComment)
+        matches!(
+            self,
+            Self::Unknown | Self::Whitespace | Self::LineComment | Self::BlockComment
+        )
     }
 }
 
@@ -69,6 +73,7 @@ impl fmt::Display for TokenKind {
             Self::Unknown => "unknown character",
             Self::Whitespace => "whitespace",
             Self::LineComment => "line comment",
+            Self::BlockComment => "block comment",
             Self::KwDo => "keyword `do`",
             Self::KwElse => "keyword `else`",
             Self::KwFalse => "keyword `false`",

@@ -57,6 +57,48 @@ mod tests {
     }
 
     #[test]
+    fn block_comments() {
+        check(
+            "/*",
+            expect![[r#"
+        0..2: BlockComment("/*")
+    "#]],
+        );
+        check(
+            "/**",
+            expect![[r#"
+                0..3: BlockComment("/**")
+            "#]],
+        );
+        check(
+            "/*/",
+            expect![[r#"
+                0..3: BlockComment("/*/")
+            "#]],
+        );
+        check(
+            "/**/",
+            expect![[r#"
+                0..4: BlockComment("/**/")
+            "#]],
+        );
+        check(
+            "/* /* */ */",
+            expect![[r#"
+                0..11: BlockComment("/* /* */ */")
+            "#]],
+        );
+        check(
+            "/* */ /* */",
+            expect![[r#"
+                0..5: BlockComment("/* */")
+                5..6: Whitespace(" ")
+                6..11: BlockComment("/* */")
+            "#]],
+        );
+    }
+
+    #[test]
     fn delimiters() {
         check(
             "(){}[]",
