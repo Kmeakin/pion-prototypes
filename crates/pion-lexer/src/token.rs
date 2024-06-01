@@ -12,9 +12,6 @@ impl Token {
     pub const fn new(kind: TokenKind, range: TextRange) -> Self { Self { kind, range } }
 }
 
-#[derive(Debug, Copy, Clone)]
-pub enum LexError {}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     Unknown,
