@@ -3,6 +3,8 @@ use text_size::{TextRange, TextSize};
 
 use crate::{Token, TokenKind};
 
+/// Lex `text`.
+/// Returns an iterator of tokens.
 pub fn lex(mut text: &str) -> impl Iterator<Item = Token> + '_ {
     let mut pos = 0;
     std::iter::from_fn(move || {
@@ -21,8 +23,8 @@ pub fn lex(mut text: &str) -> impl Iterator<Item = Token> + '_ {
     })
 }
 
-/// Lex the next token from `text`.
-///  Returns the kind of token and its length, or `None` if `text` is empty.
+/// Read the next token from `text`.
+/// Returns the kind of token and its length, or `None` if `text` is empty.
 pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
     let bytes = text.as_bytes();
     let byte = bytes.first()?;
