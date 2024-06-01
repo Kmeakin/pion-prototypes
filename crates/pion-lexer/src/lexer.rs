@@ -52,36 +52,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         }
 
         b'/' if bytes.get(1) == Some(&b'*') => {
-            let mut len = 2;
-            let mut depth: u32 = 1;
-            loop {
-                let remainder = &bytes[len..];
-                match memchr::memchr(b'/', remainder) {
-                    None => {
-                        len = bytes.len();
-                        break;
-                    }
-                    Some(0) => len += 1,
-
-                    // `*/`: close current level of nesting
-                    Some(n) if remainder.get(n - 1) == Some(&b'*') => {
-                        len += n + 1;
-                        depth -= 1;
-                        if depth == 0 {
-                            break;
-                        }
-                    }
-
-                    // `/*`: open another level of nesting
-                    Some(n) if remainder.get(n + 1) == Some(&b'*') => {
-                        len += n + 2;
-                        depth += 1;
-                    }
-
-                    // lone `/`: continue
-                    Some(n) => len += n + 1,
-                }
-            }
+            let len = block_comment(bytes);
             (TokenKind::BlockComment, len)
         }
 
@@ -115,6 +86,40 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         }
     };
     Some((kind, len))
+}
+
+fn block_comment(bytes: &[u8]) -> usize {
+    let mut len = 2;
+    let mut depth: u32 = 1;
+    loop {
+        let remainder = &bytes[len..];
+        match memchr::memchr(b'/', remainder) {
+            None => {
+                len = bytes.len();
+                break;
+            }
+            Some(0) => len += 1,
+
+            // `*/`: close current level of nesting
+            Some(n) if remainder.get(n - 1) == Some(&b'*') => {
+                len += n + 1;
+                depth -= 1;
+                if depth == 0 {
+                    break;
+                }
+            }
+
+            // `/*`: open another level of nesting
+            Some(n) if remainder.get(n + 1) == Some(&b'*') => {
+                len += n + 2;
+                depth += 1;
+            }
+
+            // lone `/`: continue
+            Some(n) => len += n + 1,
+        }
+    }
+    len
 }
 
 fn position_or_end(bytes: &[u8], pred: impl Fn(&u8) -> bool) -> usize {
