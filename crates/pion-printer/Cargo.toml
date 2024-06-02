@@ -1,0 +1,15 @@
+[package]
+name = "pion-printer"
+
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+bumpalo = { workspace = true }
+pion-surface = { version = "0.1.0", path = "../pion-surface" }
+pion-symbol = { version = "0.1.0", path = "../pion-symbol" }
+
+pretty = { version = "0.12.3" }
+
+[lints]
+workspace = true

@@ -625,6 +625,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pion-printer"
+version = "0.1.0"
+dependencies = [
+ "bumpalo",
+ "pion-surface",
+ "pion-symbol",
+ "pretty",
+]
+
+[[package]]
 name = "pion-surface"
 version = "0.1.0"
 dependencies = [
