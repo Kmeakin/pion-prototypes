@@ -1,0 +1,9 @@
+exit status: 0
+
+stdout = """
+3735928559 : Int
+"""
+
+stderr = """
+
+"""

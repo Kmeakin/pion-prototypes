@@ -19,25 +19,23 @@ where
         &mut self,
         surface_lit: &Located<surface::Lit>,
     ) -> (Result<Lit, ()>, Type<'core>) {
-        let mut parse_int = |base| {
-            let text = &self.text[surface_lit.range];
-            match u32::from_str_radix(text, base) {
-                Ok(int) => Ok(Lit::Int(int)),
-                Err(error) => {
-                    self.report_diagnostic(
-                        Diagnostic::error()
-                            .with_message(format!("Invalid integer literal: {error}"))
-                            .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
-                    );
-                    Err(())
-                }
+        let text = &self.text[surface_lit.range];
+        let mut parse_int = |base, text| match u32::from_str_radix(text, base) {
+            Ok(int) => Ok(Lit::Int(int)),
+            Err(error) => {
+                self.report_diagnostic(
+                    Diagnostic::error()
+                        .with_message(format!("Invalid integer literal: {error}"))
+                        .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
+                );
+                Err(())
             }
         };
         let (lit, r#type) = match surface_lit.data {
             surface::Lit::Bool(b) => (Ok(Lit::Bool(b)), Type::BOOL),
-            surface::Lit::DecInt => (parse_int(10), Type::INT),
-            surface::Lit::BinInt => (parse_int(2), Type::INT),
-            surface::Lit::HexInt => (parse_int(16), Type::INT),
+            surface::Lit::DecInt => (parse_int(10, text), Type::INT),
+            surface::Lit::BinInt => (parse_int(2, &text[2..]), Type::INT),
+            surface::Lit::HexInt => (parse_int(16, &text[2..]), Type::INT),
         };
         (lit, r#type)
     }
