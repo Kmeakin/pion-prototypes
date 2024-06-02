@@ -84,9 +84,9 @@ fn main() -> std::io::Result<()> {
             let expr = elaborator.zonk_env().zonk(&expr);
             let r#type = elaborator.zonk_env().zonk(&r#type);
 
-            let printer =
-                pion_core::print::Printer::new(&bump, pion_core::print::Config::default());
-            let doc = printer
+            let printer = pion_printer::Printer::new(&bump, Default::default());
+            let unelaborator = pion_core::unelab::Unelaborator::new(printer, Default::default());
+            let doc = unelaborator
                 .ann_expr(&mut UniqueEnv::default(), &expr, &r#type)
                 .into_doc();
             let doc = doc.pretty(80);

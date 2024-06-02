@@ -1,9 +1,7 @@
-use pion_surface::{Block, Expr, FunParam, Lit, MatchGuard, Pat, Plicity, Stmt};
-use pion_symbol::Symbol;
-use pretty::{Doc, DocAllocator, DocPtr, RefDoc};
+use pretty::{docs, Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
 pub struct Config {
-    indent: usize,
+    indent: isize,
 }
 
 impl Default for Config {
@@ -15,7 +13,7 @@ pub struct Printer<'bump> {
     config: Config,
 }
 
-type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
+pub type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
 
 /// Construction
 impl<'bump> Printer<'bump> {
@@ -24,215 +22,210 @@ impl<'bump> Printer<'bump> {
 
 /// Exprs
 impl<'bump> Printer<'bump> {
-    pub fn expr(&'bump self, expr: &Expr) -> DocBuilder<'bump> {
-        match expr {
-            Expr::Error => self.text("#error"),
-            Expr::Lit(lit) => self.lit(lit.data),
-            Expr::LocalVar(name) => self.symbol(name.data),
-            Expr::Hole => self.text("_"),
-            Expr::Paren(expr) => self.text("(").append(self.expr(&expr.data)).append(")"),
-            Expr::Ann { expr, r#type } => {
-                let expr = self.expr(&expr.data);
-                let r#type = self.expr(&r#type.data);
-                expr.append(" : ").append(r#type)
-            }
-            Expr::Do(block) => {
-                let block = self.block(block);
-                self.text("do {").append(block).append("}")
-            }
-            Expr::If { cond, then, r#else } => {
-                let cond = self.expr(&cond.data);
-                let then = self.expr(&then.data);
-                let r#else = self.expr(&r#else.data);
-                self.text("if ")
-                    .append(cond)
-                    .append(" then ")
-                    .append(then)
-                    .append(" else ")
-                    .append(r#else)
-            }
-            Expr::Match { scrut, cases } => {
-                let scrut = self.expr(&scrut.data);
-                let cases = cases.iter().map(|case| {
-                    let pat = self.pat(&case.pat.data);
-                    let guard = match case.guard {
-                        None => self.nil(),
-                        Some(MatchGuard::If { cond }) => {
-                            let cond = self.expr(&cond.data);
-                            self.text("if ").append(cond)
-                        }
-                    };
-                    let expr = self.expr(&case.expr.data);
-                    pat.append(guard).append(" => ").append(expr)
-                });
-                let cases = self.intersperse(cases, self.line());
+    pub fn paren_expr(&'bump self, expr: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
+        docs![self, "(", expr, ")"]
+    }
 
-                self.text("match ")
-                    .append(scrut)
-                    .append("{")
-                    .append(cases)
-                    .append("}")
-            }
-            Expr::FunArrow { plicity, lhs, rhs } => {
-                let plicity = self.plicity(*plicity);
-                let lhs = self.expr(&lhs.data);
-                let rhs = self.expr(&rhs.data);
-                plicity.append(lhs).append("->").append(rhs)
-            }
-            Expr::FunType { params, body } => {
-                let params = params.iter().map(|param| self.fun_param(&param.data));
-                let params = self.intersperse(params, self.space());
-                let body = self.expr(&body.data);
-                self.text("forall").append(params).append("->").append(body)
-            }
-            Expr::FunLit { params, body } => {
-                let params = params.iter().map(|param| self.fun_param(&param.data));
-                let params = self.intersperse(params, self.space());
-                let body = self.expr(&body.data);
-                self.text("fun").append(params).append("=>").append(body)
-            }
-            Expr::FunApp { fun, arg } => {
-                let fun = self.expr(&fun.data);
-                let arg = {
-                    let plicity = self.plicity(arg.data.plicity);
-                    let expr = self.expr(&arg.data.expr.data);
-                    plicity.append(expr)
-                };
-                fun.append(self.space()).append(arg)
-            }
-            Expr::ListLit(exprs) => {
-                let exprs = exprs.iter().map(|expr| self.expr(&expr.data));
-                let exprs = self.intersperse(exprs, ", ");
-                self.text("[").append(exprs).append("]")
-            }
-            Expr::TupleLit(exprs) => {
-                let exprs = exprs.iter().map(|expr| self.expr(&expr.data));
-                let exprs = self.intersperse(exprs, ", ");
-                self.text("(").append(exprs).append(")")
-            }
-            Expr::RecordType(fields) => {
-                let fields = fields.iter().map(|field| {
-                    let name = self.symbol(field.data.name.data);
-                    let expr = self.expr(&field.data.r#type.data);
-                    name.append(" : ").append(expr)
-                });
-                let fields = self.intersperse(fields, ", ");
-                self.text("{").append(fields).append("}")
-            }
-            Expr::RecordLit(fields) => {
-                let fields = fields.iter().map(|field| {
-                    let name = self.symbol(field.data.name.data);
-                    let expr = self.expr(&field.data.expr.data);
-                    name.append(" = ").append(expr)
-                });
-                let fields = self.intersperse(fields, ", ");
-                self.text("{").append(fields).append("}")
-            }
-            Expr::RecordProj { scrut, name } => {
-                let scrut = self.expr(&scrut.data);
-                let name = self.symbol(name.data);
-                scrut.append(".").append(name)
-            }
-        }
+    pub fn ann_expr(
+        &'bump self,
+        expr: impl Pretty<'bump, Self>,
+        r#type: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, expr, " : ", r#type]
+    }
+
+    pub fn do_expr(&'bump self, block: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
+        docs![self, "do", "{", block, "}"]
+    }
+
+    pub fn let_expr(
+        &'bump self,
+        pat: impl Pretty<'bump, Self>,
+        r#type: Option<impl Pretty<'bump, Self>>,
+        init: impl Pretty<'bump, Self>,
+        body: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        let r#type = match r#type {
+            None => self.nil(),
+            Some(r#type) => docs![self, " : ", r#type],
+        };
+
+        docs![
+            self,
+            "let ",
+            pat,
+            r#type,
+            docs![self, self.line(), "= ", init, ";"]
+                .group()
+                .nest(self.config.indent),
+            docs![self, self.hardline(), body]
+        ]
+    }
+
+    pub fn if_expr(
+        &'bump self,
+        cond: impl Pretty<'bump, Self>,
+        then: impl Pretty<'bump, Self>,
+        r#else: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, "if ", cond, " then ", then, " else ", r#else]
+    }
+
+    pub fn match_expr(
+        &'bump self,
+        scrut: impl Pretty<'bump, Self>,
+        cases: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        let cases = cases
+            .into_iter()
+            .map(|case| self.hardline().append(case).append(","));
+        let cases = self.concat(cases).nest(self.config.indent);
+        docs![self, "match ", scrut, " {", cases, self.line_(), "}"].group()
+    }
+
+    pub fn match_case(
+        &'bump self,
+        pat: impl Pretty<'bump, Self>,
+        guard: impl Pretty<'bump, Self>,
+        expr: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs! {self,pat, guard, " => ",expr}
+    }
+
+    pub fn arrow_expr(
+        &'bump self,
+        plicity: impl Pretty<'bump, Self>,
+        lhs: impl Pretty<'bump, Self>,
+        rhs: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, plicity, lhs, " -> ", rhs]
+    }
+
+    pub fn fun_type_expr(
+        &'bump self,
+        params: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+        body: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        let params = self.intersperse(params, self.space());
+        docs![
+            self,
+            "forall ",
+            params,
+            " ->",
+            self.line().append(body).group().nest(self.config.indent)
+        ]
+    }
+
+    pub fn fun_lit_expr(
+        &'bump self,
+        params: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+        body: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        let params = self.intersperse(params, self.space());
+        docs![
+            self,
+            "fun ",
+            params,
+            " =>",
+            self.line().append(body).group().nest(self.config.indent)
+        ]
+    }
+
+    pub fn fun_app_expr(
+        &'bump self,
+        fun: impl Pretty<'bump, Self>,
+        args: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        let args = self.intersperse(args, self.space());
+        docs![self, fun, self.space(), args]
+    }
+
+    pub fn list_lit_expr(
+        &'bump self,
+        exprs: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        let exprs = self.intersperse(exprs, ", ");
+        docs![self, "[", exprs, "]"]
+    }
+
+    pub fn tuple_expr<I>(&'bump self, exprs: I) -> DocBuilder<'bump>
+    where
+        I: IntoIterator,
+        I::Item: Pretty<'bump, Self>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        let exprs = exprs.into_iter();
+        let trailing_comma = if exprs.len() == 1 {
+            self.text(",")
+        } else {
+            self.nil()
+        };
+
+        let exprs = self.intersperse(exprs, self.text(",").append(self.line()));
+        docs![self, "(", exprs, trailing_comma, ")"].group()
+    }
+
+    pub fn record_expr(
+        &'bump self,
+        fields: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        let exprs = self.intersperse(fields, self.text(",").append(self.line()));
+        docs![self, "{", self.line(), exprs, self.line(), "}"].group()
+    }
+
+    pub fn record_type_field(
+        &'bump self,
+        name: impl Pretty<'bump, Self>,
+        r#type: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, name, " : ", r#type]
+    }
+
+    pub fn record_lit_field(
+        &'bump self,
+        name: impl Pretty<'bump, Self>,
+        expr: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, name, " = ", expr]
+    }
+
+    pub fn record_proj_expr(
+        &'bump self,
+        scrut: impl Pretty<'bump, Self>,
+        field: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, scrut, ".", field]
     }
 }
 
-/// Stmts
+/// Function arguments and parameters
 impl<'bump> Printer<'bump> {
-    pub fn block(&'bump self, block: &Block) -> DocBuilder<'bump> {
-        let stmts = block.stmts.iter().map(|stmt| self.stmt(&stmt.data));
-        let stmts = self.intersperse(stmts, self.line());
-        let expr = block.expr.map(|expr| self.expr(&expr.data));
-        stmts.append(expr)
+    pub fn fun_arg(
+        &'bump self,
+        plicity: impl Pretty<'bump, Self>,
+        expr: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        docs![self, plicity, expr]
     }
 
-    pub fn stmt(&'bump self, stmt: &Stmt) -> DocBuilder<'bump> {
-        match stmt {
-            Stmt::Let { rec, binding } => {
-                let rec = match rec {
-                    pion_surface::Rec::Rec => self.text("rec "),
-                    pion_surface::Rec::Nonrec => self.nil(),
-                };
-                let pat = self.pat(&binding.pat.data);
-                let r#type = binding
-                    .r#type
-                    .map(|r#type| self.text(": ").append(self.expr(&r#type.data)));
-                let init = self.expr(&binding.init.data);
-                self.text("let ")
-                    .append(rec)
-                    .append(pat)
-                    .append(r#type)
-                    .append(init)
-            }
-        }
-    }
-}
-
-/// Pats
-impl<'bump> Printer<'bump> {
-    pub fn pat(&'bump self, pat: &Pat) -> DocBuilder<'bump> {
-        match pat {
-            Pat::Error => self.text("#error"),
-            Pat::Underscore => self.text("_"),
-            Pat::Ident(name) => self.symbol(name.data),
-            Pat::Paren(pat) => self.text("(").append(self.pat(&pat.data)).append(")"),
-            Pat::Lit(lit) => self.lit(lit.data),
-            Pat::TupleLit(pats) => {
-                let pats = pats.iter().map(|pat| self.pat(&pat.data));
-                let pats = self.intersperse(pats, ", ");
-                self.text("(").append(pats).append(")")
-            }
-            Pat::RecordLit(fields) => {
-                let fields = fields.iter().map(|field| {
-                    let name = self.symbol(field.data.name.data);
-                    let pat = self.pat(&field.data.pat.data);
-                    name.append(" = ").append(pat)
-                });
-                let fields = self.intersperse(fields, ", ");
-                self.text("{").append(fields).append("}")
-            }
-            Pat::Or(pats) => {
-                let pats = pats.iter().map(|pat| self.pat(&pat.data));
-                self.intersperse(pats, " | ")
-            }
-        }
-    }
-
-    fn fun_param(&'bump self, param: &FunParam) -> DocBuilder<'bump> {
-        let plicity = self.plicity(param.plicity);
-        let pat = self.pat(&param.pat.data);
-        let r#type = param.r#type.map(|r#type| self.expr(&r#type.data));
+    pub fn fun_param(
+        &'bump self,
+        plicity: impl Pretty<'bump, Self>,
+        pat: impl Pretty<'bump, Self>,
+        r#type: Option<impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
         match r#type {
-            None => plicity.append(pat),
-            Some(r#type) => self
-                .text("(")
-                .append(plicity)
-                .append(pat)
-                .append(" : ")
-                .append(r#type)
-                .append(")"),
-        }
-    }
-}
-
-/// Misc
-impl<'bump> Printer<'bump> {
-    fn lit(&'bump self, lit: Lit) -> DocBuilder<'bump> {
-        match lit {
-            Lit::Bool(true) => self.text("true"),
-            Lit::Bool(false) => self.text("false"),
-            _ => todo!(),
+            None => docs![self, plicity, pat],
+            Some(r#type) => docs![self, "(", plicity, pat, " : ", r#type, ")"],
         }
     }
 
-    fn plicity(&'bump self, plicity: Plicity) -> DocBuilder<'bump> {
-        match plicity {
-            Plicity::Implicit => self.text("@"),
-            Plicity::Explicit => self.nil(),
+    pub fn bool(&'bump self, value: bool) -> DocBuilder<'bump> {
+        match value {
+            true => self.text("true"),
+            false => self.text("false"),
         }
     }
-
-    fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> { self.text(symbol.as_str()) }
 }
 
 impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {

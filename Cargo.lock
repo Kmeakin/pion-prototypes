@@ -558,6 +558,7 @@ dependencies = [
  "pion-elab",
  "pion-lexer",
  "pion-parser",
+ "pion-printer",
  "pion-surface",
  "pion-util",
  "similar-asserts",
@@ -571,6 +572,7 @@ dependencies = [
  "bumpalo",
  "ecow",
  "either",
+ "pion-printer",
  "pion-surface",
  "pion-symbol",
  "pion-util",
@@ -593,6 +595,7 @@ dependencies = [
  "internal-iterator",
  "pion-core",
  "pion-diagnostic",
+ "pion-printer",
  "pion-surface",
  "pion-symbol",
  "pion-util",
@@ -629,8 +632,6 @@ name = "pion-printer"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
- "pion-surface",
- "pion-symbol",
  "pretty",
 ]
 

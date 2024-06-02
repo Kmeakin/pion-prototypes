@@ -268,9 +268,11 @@ where
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
         let expr = self.zonk_env().zonk(expr);
-        let printer =
-            pion_core::print::Printer::new(self.bump, pion_core::print::Config::default());
-        let doc = printer.expr(&mut self.local_env.names, &expr).into_doc();
+        let printer = pion_printer::Printer::new(self.bump, Default::default());
+        let unelaborator = pion_core::unelab::Unelaborator::new(printer, Default::default());
+        let doc = unelaborator
+            .expr(&mut self.local_env.names, &expr)
+            .into_doc();
         doc.pretty(usize::MAX).to_string()
     }
 

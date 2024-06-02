@@ -4,31 +4,24 @@ stdout = """
 let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) ->
     ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
     = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) =>
-        fix
-            @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2))
-            @(A1 -> B1, A2 -> B2)
-            (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1,
-            A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1,
-            A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
-                (fun (x : A1) => (f (fix2 f))._0 x,
-                fun (x : A2) => (f (fix2 f))._1 x));
+        fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1,
+        A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1,
+        A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1,
+        A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
+            (fun (x : A1) => (f (fix2 f))._0 x,
+            fun (x : A2) => (f (fix2 f))._1 x));
 let evenodd : (Int -> Bool, Int -> Bool)
-    = fix2
-        @Int
-        @Bool
-        @Int
-        @Bool
-        (fun (evenodd : (Int -> Bool, Int -> Bool)) =>
-            (fun (n : Int) =>
-                match (eq n 0) {
-                    true => true,
-                    false => evenodd._1 (sub n 1),
-                },
-            fun (n : Int) =>
-                match (eq n 0) {
-                    true => false,
-                    false => evenodd._0 (sub n 1),
-                }));
+    = fix2 @Int @Bool @Int @Bool (fun (evenodd : (Int -> Bool, Int -> Bool)) =>
+        (fun (n : Int) =>
+            match (eq n 0) {
+                true => true,
+                false => evenodd._1 (sub n 1),
+            },
+        fun (n : Int) =>
+            match (eq n 0) {
+                true => false,
+                false => evenodd._0 (sub n 1),
+            }));
 let even : Int -> Bool = evenodd._0;
 let odd : Int -> Bool = evenodd._1;
 (even 2) : Bool

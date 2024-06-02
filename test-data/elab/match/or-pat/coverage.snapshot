@@ -14,14 +14,14 @@ let is_true_or_false : Bool -> Bool
             true => true,
             false => true,
         };
-let is_true_or_false_record : {b : Bool} -> Bool
-    = fun (x : {b : Bool}) =>
+let is_true_or_false_record : { b : Bool } -> Bool
+    = fun (x : { b : Bool }) =>
         match x.b {
             true => true,
             false => true,
         };
-let is_true_or_false_record2 : {b : Bool} -> Bool
-    = fun (x : {b : Bool}) =>
+let is_true_or_false_record2 : { b : Bool } -> Bool
+    = fun (x : { b : Bool }) =>
         match x.b {
             true => true,
             false => true,

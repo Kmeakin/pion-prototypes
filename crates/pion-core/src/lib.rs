@@ -6,8 +6,8 @@ use crate::prim::Prim;
 
 pub mod env;
 pub mod prim;
-pub mod print;
 pub mod semantics;
+pub mod unelab;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Expr<'core> {

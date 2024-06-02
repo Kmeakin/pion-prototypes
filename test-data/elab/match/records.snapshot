@@ -1,8 +1,8 @@
 exit status: 0
 
 stdout = """
-let fst1 : forall (A : Type) (B : Type) -> {x : A, y : B} -> A
-    = fun (A : Type) (B : Type) (p : {x : A, y : B}) =>
+let fst1 : forall (A : Type) (B : Type) -> { x : A, y : B } -> A
+    = fun (A : Type) (B : Type) (p : { x : A, y : B }) =>
         let x : A = p.x;
         let y : B = p.y;
         x;

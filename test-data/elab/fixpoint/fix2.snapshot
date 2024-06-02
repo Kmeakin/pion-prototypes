@@ -4,14 +4,12 @@ stdout = """
 let fix2 : forall (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) ->
     ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2 -> B2)
     = fun (@A1 : Type) (@B1 : Type) (@A2 : Type) (@B2 : Type) =>
-        fix
-            @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2))
-            @(A1 -> B1, A2 -> B2)
-            (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1,
-            A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1,
-            A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
-                (fun (x : A1) => (f (fix2 f))._0 x,
-                fun (x : A2) => (f (fix2 f))._1 x));
+        fix @((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) @(A1 -> B1,
+        A2 -> B2) (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1,
+        A2 -> B2)) -> (A1 -> B1, A2 -> B2)) (f : (A1 -> B1,
+        A2 -> B2) -> (A1 -> B1, A2 -> B2)) =>
+            (fun (x : A1) => (f (fix2 f))._0 x,
+            fun (x : A2) => (f (fix2 f))._1 x));
 () : ()
 """
 
