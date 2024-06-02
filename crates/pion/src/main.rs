@@ -67,7 +67,8 @@ fn main() -> std::io::Result<()> {
 
             let mut handler = pion_diagnostic::Handler::new(|diagnostic| {
                 let config = codespan_reporting::term::Config::default();
-                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic);
+                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
+                    .expect("Could not print diagnostic");
             });
 
             let file = pion_parser::parse_file(&bump, &mut handler, file_id, &text);

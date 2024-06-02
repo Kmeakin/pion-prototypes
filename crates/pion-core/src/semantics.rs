@@ -350,6 +350,7 @@ fn prim_app2<'core>(
     }
 
     // fix @A @B f x  = f (fix @A @B f) x
+    #[allow(clippy::similar_names)]
     fn fix<'core>(env: &ElimEnv<'core, '_>, mut spine: Spine<'core>) -> PrimAppResult<'core> {
         match spine.as_ref() {
             args![_a, _b, _f, _x] => {}
