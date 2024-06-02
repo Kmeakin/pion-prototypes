@@ -38,11 +38,16 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
         * [ ] dependent `if` expressions
     * [x] single-layer pattern matching over integers and booleans
     * [x] multi-layer pattern matching compilation w/ coverage checking
+    * [x] or-patterns
+    * [ ] and-patterns
+    * [ ] as-patterns
+    * [x] pattern guards
 
 * [ ] user interface
     * [x] `pion check`
     * [x] `pion eval`
     * [ ] `pion repl`
+    * [ ] `pion fmt`
     * [ ] "commands" a la Lean4/Rocq (eg `#check term`, `#print metavars`)
 
 * [ ] documentation
