@@ -2,9 +2,11 @@ exit status: 0
 
 stdout = """
 (fun (_ : (Int, Bool)) =>
-    let x : Int = _#0._0;
-    let y : Bool = _#1._1;
-    (y, x)) : (Int, Bool) -> (Bool, Int)
+    do {
+        let x : Int = _#0._0;
+        let y : Bool = _#1._1;
+        (y, x)
+    }) : (Int, Bool) -> (Bool, Int)
 """
 
 stderr = """

@@ -17,8 +17,10 @@ let apply : Bool -> (Bool -> Int) -> Int
     = fun (x : Bool) (f : Bool -> Int) =>
         match x {
             true => 1,
-            false => let z : Bool = x;
-            f z,
+            false => do {
+                let z : Bool = x;
+                f z
+            },
         };
 () : ()
 """

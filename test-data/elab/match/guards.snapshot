@@ -15,17 +15,23 @@ let bar : Bool -> (Bool -> Bool) -> Int -> Int
     = fun (x : Bool) (f : Bool -> Bool) (y : Int) =>
         match x {
             true => 0,
-            false => let z : Bool = x;
-            y,
+            false => do {
+                let z : Bool = x;
+                y
+            },
         };
 let baz : Int -> Int -> (Int -> Bool) -> Int
     = fun (x : Int) (y : Int) (f : Int -> Bool) =>
         match (x, y)._0 {
-            0 => let a : Int = (x, y)._1;
-            a,
-            _ => let aa : Int = (x, y)._0;
-            let bb : Int = (x, y)._1;
-            bb,
+            0 => do {
+                let a : Int = (x, y)._1;
+                a
+            },
+            _ => do {
+                let aa : Int = (x, y)._0;
+                let bb : Int = (x, y)._1;
+                bb
+            },
         };
 () : ()
 """

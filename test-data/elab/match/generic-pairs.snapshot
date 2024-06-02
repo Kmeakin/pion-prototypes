@@ -3,27 +3,37 @@ exit status: 0
 stdout = """
 let fst1 : forall (A : Type) (B : Type) -> (A, B) -> A
     = fun (A : Type) (B : Type) (p : (A, B)) =>
-        let x : A = p._0;
-        let y : B = p._1;
-        x;
+        do {
+            let x : A = p._0;
+            let y : B = p._1;
+            x
+        };
 let fst2 : forall (A : Type) (B : Type) -> (A, B) -> A
     = fun (A : Type) (B : Type) (p : (A, B)) =>
-        let x : A = p._0;
-        x;
+        do {
+            let x : A = p._0;
+            x
+        };
 let snd1 : forall (A : Type) (B : Type) -> (A, B) -> B
     = fun (A : Type) (B : Type) (p : (A, B)) =>
-        let x : A = p._0;
-        let y : B = p._1;
-        y;
+        do {
+            let x : A = p._0;
+            let y : B = p._1;
+            y
+        };
 let snd2 : forall (A : Type) (B : Type) -> (A, B) -> B
     = fun (A : Type) (B : Type) (p : (A, B)) =>
-        let y : B = p._1;
-        y;
+        do {
+            let y : B = p._1;
+            y
+        };
 let swap : forall (A : Type) (B : Type) -> (A, B) -> (B, A)
     = fun (A : Type) (B : Type) (p : (A, B)) =>
-        let x : A = p._0;
-        let y : B = p._1;
-        (y, x);
+        do {
+            let x : A = p._0;
+            let y : B = p._1;
+            (y, x)
+        };
 () : ()
 """
 

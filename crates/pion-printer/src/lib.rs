@@ -35,7 +35,60 @@ impl<'bump> Printer<'bump> {
     }
 
     pub fn do_expr(&'bump self, block: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
-        docs![self, "do", "{", block, "}"]
+        let block = block.pretty(self).nest(self.config.indent);
+        docs![self, "do", " {", block, "}"].group()
+    }
+
+    pub fn block<I>(
+        &'bump self,
+        stmts: I,
+        expr: Option<impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump>
+    where
+        I: IntoIterator,
+        I::IntoIter: ExactSizeIterator,
+        I::Item: Pretty<'bump, Self>,
+    {
+        let stmts = stmts.into_iter();
+        match (stmts.len(), expr) {
+            (0, Some(expr)) => expr.pretty(self),
+            (_, Some(expr)) => {
+                let stmts = self.intersperse(stmts, self.hardline());
+                docs![
+                    self,
+                    self.hardline(),
+                    stmts,
+                    self.hardline(),
+                    expr,
+                    self.hardline()
+                ]
+            }
+
+            (0, None) => self.nil(),
+            (_, None) => self.intersperse(stmts, self.hardline()),
+        }
+    }
+
+    pub fn let_stmt(
+        &'bump self,
+        pat: impl Pretty<'bump, Self>,
+        r#type: Option<impl Pretty<'bump, Self>>,
+        init: impl Pretty<'bump, Self>,
+    ) -> DocBuilder<'bump> {
+        let r#type = match r#type {
+            None => self.nil(),
+            Some(r#type) => docs![self, " : ", r#type],
+        };
+
+        docs![
+            self,
+            "let ",
+            pat,
+            r#type,
+            docs![self, self.line(), "= ", init, ";"]
+                .group()
+                .nest(self.config.indent),
+        ]
     }
 
     pub fn let_expr(

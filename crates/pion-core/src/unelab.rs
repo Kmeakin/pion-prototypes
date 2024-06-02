@@ -3,7 +3,7 @@ use pion_symbol::Symbol;
 use pretty::{Doc, DocAllocator, Pretty};
 
 use crate::env::{RelativeVar, UniqueEnv};
-use crate::{Expr, FunArg, FunParam, Lit, Plicity};
+use crate::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity};
 
 pub struct Config {
     /// print local variables as names rather than de bruijn indices
@@ -113,14 +113,24 @@ impl<'bump> Unelaborator<'bump> {
             },
             Expr::LocalVar(var) => self.printer.text(format!("_#{var}")),
             Expr::MetaVar(var) => self.printer.text(format!("?{var}")),
-            Expr::Let { binding, body } => {
-                let pat = self.name(binding.name);
-                let r#type = self.expr_prec(names, binding.r#type, Prec::MAX);
-                let init = self.expr_prec(names, binding.expr, Prec::MAX);
-                names.push(binding.name);
-                let body = self.expr_prec(names, body, Prec::MAX);
-                names.pop();
-                self.printer.let_expr(pat, Some(r#type), init, body)
+            Expr::Let { .. } => {
+                let mut expr = expr;
+                let mut stmts = Vec::new();
+
+                let names_len = names.len();
+                while let Expr::Let { binding, body } = expr {
+                    let pat = self.name(binding.name);
+                    let r#type = self.expr_prec(names, binding.r#type, Prec::MAX);
+                    let init = self.expr_prec(names, binding.expr, Prec::MAX);
+                    stmts.push(self.printer.let_stmt(pat, Some(r#type), init));
+
+                    names.push(binding.name);
+                    expr = body;
+                }
+                let expr = self.expr_prec(names, expr, Prec::MAX);
+                names.truncate(names_len);
+
+                self.printer.do_expr(self.printer.block(stmts, Some(expr)))
             }
             Expr::MatchBool { cond, then, r#else } => {
                 let cond = self.expr_prec(names, cond, Prec::Proj);
