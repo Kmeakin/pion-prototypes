@@ -56,26 +56,26 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             (TokenKind::BlockComment, len)
         }
 
-        c if c.is_ascii_whitespace() => {
-            let len = position_or_end(&bytes[1..], u8::is_whitespace) + 1;
+        c if c.is_whitespace() => {
+            let len = count_while(&bytes[1..], u8::is_whitespace) + 1;
             (TokenKind::Whitespace, len)
         }
         b'0' if let Some(b'b' | b'B') = bytes.get(1) => {
-            let len = position_or_end(&bytes[2..], u8::is_identifier_continue) + 2;
+            let len = count_while(&bytes[2..], u8::is_identifier_continue) + 2;
             (TokenKind::BinInt, len)
         }
         b'0' if let Some(b'x' | b'X') = bytes.get(1) => {
-            let len = position_or_end(&bytes[2..], u8::is_identifier_continue) + 2;
+            let len = count_while(&bytes[2..], u8::is_identifier_continue) + 2;
             (TokenKind::HexInt, len)
         }
 
         b'0'..=b'9' => {
-            let len = position_or_end(&bytes[1..], u8::is_identifier_continue) + 1;
+            let len = count_while(&bytes[1..], u8::is_identifier_continue) + 1;
             (TokenKind::DecInt, len)
         }
 
         c if c.is_identifier_start() => {
-            let len = position_or_end(&bytes[1..], u8::is_identifier_continue) + 1;
+            let len = count_while(&bytes[1..], u8::is_identifier_continue) + 1;
             let kind = keyword_or_ident(&bytes[..len]);
             (kind, len)
         }
@@ -122,8 +122,8 @@ fn block_comment(bytes: &[u8]) -> usize {
     len
 }
 
-fn position_or_end(bytes: &[u8], pred: impl Fn(&u8) -> bool) -> usize {
-    bytes.iter().position(|c| !pred(c)).unwrap_or(bytes.len())
+fn count_while(bytes: &[u8], pred: impl Fn(&u8) -> bool) -> usize {
+    bytes.iter().take_while(|c| pred(c)).count()
 }
 
 trait ClassifyChar {
