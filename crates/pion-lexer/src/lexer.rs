@@ -80,10 +80,12 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             (kind, len)
         }
 
-        c => {
-            let len = len_utf8(c);
-            (TokenKind::Unknown, len)
-        }
+        // The length of the character can be inferred from the first byte, see
+        // https://en.wikipedia.org/wiki/UTF-8#Codepage_layout
+        0x00..=0xBF => (TokenKind::Unknown, 1),
+        0xC0..=0xDF => (TokenKind::Unknown, 2),
+        0xE0..=0xEF => (TokenKind::Unknown, 3),
+        0xF0..=0xFF => (TokenKind::Unknown, 4),
     };
     Some((kind, len))
 }
@@ -159,35 +161,4 @@ const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
         b"true" => TokenKind::KwTrue,
         _ => TokenKind::Ident,
     }
-}
-
-#[allow(clippy::useless_let_if_seq)]
-const fn len_utf8(c: u8) -> usize {
-    let mut ret = 1;
-    if (c & 0b1100_0000) == 0b1100_0000 {
-        ret = 2;
-    }
-    if (c & 0b1110_0000) == 0b1110_0000 {
-        ret = 3;
-    }
-    if (c & 0b1111_0000) == 0b1111_0000 {
-        ret = 4;
-    }
-    ret
-}
-
-#[test]
-fn test_len_utf8_branchless() {
-    fn check(c: char, len: usize) {
-        assert_eq!(c.len_utf8(), len);
-        let mut dst = [0; 4];
-        let bytes = c.encode_utf8(&mut dst);
-        let first_byte = bytes.as_bytes()[0];
-        assert_eq!(len_utf8(first_byte), len);
-    }
-
-    check('~', 1);
-    check('λ', 2);
-    check('字', 3);
-    check('🍆', 4);
 }

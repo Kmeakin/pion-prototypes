@@ -36,10 +36,12 @@ mod tests {
     #[test]
     fn unknown() {
         check(
-            "🦀🦞",
+            "~字🦀🦞",
             expect![[r#"
-                0..4: Unknown("🦀")
-                4..8: Unknown("🦞")
+                0..1: Unknown("~")
+                1..4: Unknown("字")
+                4..8: Unknown("🦀")
+                8..12: Unknown("🦞")
             "#]],
         );
     }
