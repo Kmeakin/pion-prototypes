@@ -66,24 +66,24 @@ pub Expr: Located<Expr<'surface>> = {
     <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (cond, then, r#else) = bump.alloc((cond, then, r#else));
-        Located::new(range, Expr::If { cond, then, r#else })
+        Located::new(range, Expr::If(cond, then, r#else))
     },
     <start: @L> <expr: AtomExpr> ":" <r#type: FunExpr> <end:@R> => {
         let range = TextRange::new(start, end);
         let (expr, r#type) = bump.alloc((expr, r#type));
-        Located::new(range, Expr::Ann { expr, r#type })
+        Located::new(range, Expr::Ann(expr, r#type))
     },
     FunExpr => <>,
 }
 
 Block: Block<'surface> = {
-    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), expr: expr.map(|expr| &*bump.alloc(expr)) },
+    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), result_expr: expr.map(|expr| &*bump.alloc(expr)) },
 }
 
 Stmt: Located<Stmt<'surface>> = {
     <start: @L> "let" <rec: Rec>  <binding: LetBinding> ";" <end: @R> => {
         let range = TextRange::new(start, end);
-        Located::new(range, Stmt::Let { rec, binding })
+        Located::new(range, Stmt::Let(rec, binding))
     },
 };
 
@@ -95,8 +95,8 @@ Rec: Rec = {
 LetBinding: LetBinding<'surface> = {
     <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> => {
         let r#type = r#type.map(|r#type| &*bump.alloc(r#type));
-        let (pat, init) = bump.alloc((pat, init));
-        LetBinding { pat, r#type, init }
+        let (pat, rhs) = bump.alloc((pat, init));
+        LetBinding { pat, r#type, rhs }
     },
 }
 
@@ -105,18 +105,18 @@ FunExpr: Located<Expr<'surface>> = {
         let range = TextRange::new(start, end);
         let params = bump.alloc_slice_copy(&params);
         let body = bump.alloc(body);
-        Located::new(range, Expr::FunLit { params, body })
+        Located::new(range, Expr::FunLit(params, body))
     },
     <start: @L> "forall" <params: FunParam+> "->" <body: Expr> <end: @R> => {
         let range = TextRange::new(start, end);
         let params = bump.alloc_slice_copy(&params);
         let body = bump.alloc(body);
-        Located::new(range, Expr::FunType { params, body })
+        Located::new(range, Expr::FunType(params, body))
     },
     <start: @L> <plicity: Plicity> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
         let range = TextRange::new(start, end);
         let (lhs, rhs) = bump.alloc((lhs, rhs));
-        Located::new(range, Expr::FunArrow { plicity, lhs, rhs })
+        Located::new(range, Expr::FunArrow(plicity, lhs, rhs))
     },
     AppExpr => <>,
 }
@@ -136,7 +136,7 @@ AppExpr: Located<Expr<'surface>> = {
     <start: @L> <fun: AppExpr> <arg: FunArg> <end: @R> => {
         let range = TextRange::new(start, end);
         let (fun, ) = bump.alloc((fun, ));
-        Located::new(range, Expr::FunApp { fun, arg })
+        Located::new(range, Expr::FunApp(fun, arg))
     },
     ProjExpr => <>,
 }
@@ -144,8 +144,8 @@ AppExpr: Located<Expr<'surface>> = {
 ProjExpr: Located<Expr<'surface>> = {
     <start: @L> <scrut: ProjExpr> "." <name: Ident> <end: @R> => {
         let range = TextRange::new(start, end);
-        let (scrut, ) = bump.alloc((scrut, ));
-        Located::new(range, Expr::RecordProj { scrut, name })
+        let scrut = bump.alloc(scrut);
+        Located::new(range, Expr::RecordProj(scrut, name))
     },
     AtomExpr => <>,
 }
@@ -171,7 +171,7 @@ AtomExpr: Located<Expr<'surface>> = {
         Located::new(range, Expr::Error)
     },
     <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Expr::Lit(lit)),
-    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Expr::LocalVar(ident)),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Expr::VarRef(ident)),
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Expr::Hole),
     <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren(bump.alloc(expr))),
     <start: @L> <exprs: Tuple<Expr>> <end: @R> => Located::new(TextRange::new(start, end), Expr::TupleLit(exprs)),
@@ -179,7 +179,7 @@ AtomExpr: Located<Expr<'surface>> = {
     <start: @L> "{" <fields: Sep1<TypeField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordType(fields)),
     <start: @L> "{" <fields: Sep1<ExprField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordLit(fields)),
     <start: @L> "[" <exprs: Sep0<Expr, ",">> "]" <end: @R> => Located::new(TextRange::new(start, end), Expr::ListLit(exprs)),
-    <start: @L> "match" <scrut: ProjExpr> "{" <cases: Sep0<MatchCase, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::Match { scrut: bump.alloc(scrut), cases }),
+    <start: @L> "match" <scrut: ProjExpr> "{" <cases: Sep0<MatchCase, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::Match(bump.alloc(scrut), cases)),
 }
 
 MatchCase: MatchCase<'surface> = {
@@ -187,7 +187,7 @@ MatchCase: MatchCase<'surface> = {
 }
 
 MatchGuard: MatchGuard<'surface> = {
-    "if" <cond: Expr> => MatchGuard::If { cond },
+    "if" <cond: Expr> => MatchGuard::If(cond),
 }
 
 Tuple<Elem>: &'surface [Elem] = {
@@ -221,7 +221,7 @@ AtomPat: Located<Pat<'surface>> = {
         Located::new(range, Pat::Error)
     },
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
-    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Pat::Ident(ident)),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Pat::Var(ident)),
     <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Pat::Lit(lit)),
     <start: @L> "(" <pat: Pat> ")" <end: @R> => Located::new(TextRange::new(start, end), Pat::Paren(bump.alloc(pat))),
     <start: @L> <pats: Tuple<Pat>> <end: @R> => Located::new(TextRange::new(start, end), Pat::TupleLit(pats)),

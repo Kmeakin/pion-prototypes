@@ -12,7 +12,7 @@ where
     H: DiagnosticHandler,
 {
     pub fn synth_block(&mut self, block: &surface::Block<'surface>) -> (Expr<'core>, Type<'core>) {
-        return recur(self, block.stmts, block.expr);
+        return recur(self, block.stmts, block.result_expr);
 
         fn recur<'surface, 'core, H: DiagnosticHandler>(
             this: &mut Elaborator<'core, '_, H>,
@@ -27,14 +27,12 @@ where
             };
 
             match stmt.data {
-                pion_surface::Stmt::Let {
-                    rec: Rec::Nonrec,
-                    binding,
-                } => this.elab_let(&binding, |this| recur(this, stmts, expr)),
-                pion_surface::Stmt::Let {
-                    rec: Rec::Rec,
-                    binding,
-                } => this.elab_letrec(&binding, |this| recur(this, stmts, expr)),
+                pion_surface::Stmt::Let(Rec::Nonrec, binding) => {
+                    this.elab_let(&binding, |this| recur(this, stmts, expr))
+                }
+                pion_surface::Stmt::Let(Rec::Rec, binding) => {
+                    this.elab_letrec(&binding, |this| recur(this, stmts, expr))
+                }
             }
         }
     }
@@ -45,7 +43,7 @@ where
         block: &surface::Block<'surface>,
         expected: &Type<'core>,
     ) -> Expr<'core> {
-        return match block.expr {
+        return match block.result_expr {
             Some(expr) => recur(self, block.stmts, expr, expected),
             None => {
                 let (expr, r#type) = self.synth_block(block);
@@ -64,20 +62,14 @@ where
             };
 
             match stmt.data {
-                pion_surface::Stmt::Let {
-                    rec: Rec::Nonrec,
-                    binding,
-                } => {
+                pion_surface::Stmt::Let(Rec::Nonrec, binding) => {
                     let (expr, ()) = this.elab_let(&binding, |this| {
                         let expr = recur(this, stmts, expr, expected);
                         (expr, ())
                     });
                     expr
                 }
-                pion_surface::Stmt::Let {
-                    rec: Rec::Rec,
-                    binding,
-                } => {
+                pion_surface::Stmt::Let(Rec::Rec, binding) => {
                     let (expr, ()) = this.elab_letrec(&binding, |this| {
                         let expr = recur(this, stmts, expr, expected);
                         (expr, ())
@@ -96,7 +88,7 @@ where
         let surface::LetBinding {
             pat: surface_pat,
             r#type: surface_type,
-            init: surface_init,
+            rhs: surface_init,
         } = surface_binding;
         let (pat, r#type) = self.synth_ann_pat(surface_pat, *surface_type);
         let init_expr = self.check_expr(surface_init, &r#type);
@@ -123,7 +115,7 @@ where
         let surface::LetBinding {
             pat: surface_pat,
             r#type: surface_type,
-            init: surface_init,
+            rhs: surface_init,
         } = surface_binding;
         let (pat, mut r#type) = self.synth_ann_pat(surface_pat, *surface_type);
         let name = pat.name();
@@ -173,9 +165,7 @@ where
 
         let (body_expr, body_type) = {
             let init_value = self.eval_env().eval(&init_expr);
-            self.env
-                .locals
-                .push_let(name, r#type.clone(), init_value);
+            self.env.locals.push_let(name, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self);
             self.env.locals.pop();
             (body_expr, body_type)

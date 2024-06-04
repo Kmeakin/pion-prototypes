@@ -85,7 +85,7 @@ where
                 };
                 (expr, r#type)
             }
-            surface::Expr::LocalVar(Located { data: name, .. }) => {
+            surface::Expr::VarRef(Located { data: name, .. }) => {
                 if let Some(var) = self.env.locals.lookup(name) {
                     let r#type = self.env.locals.types.get_relative(var).unwrap().clone();
                     return (Expr::LocalVar(var), r#type);
@@ -110,28 +110,28 @@ where
                 (expr, r#type)
             }
             surface::Expr::Paren(expr) => self.synth_expr(expr),
-            surface::Expr::Ann { expr, r#type } => {
+            surface::Expr::Ann(expr, r#type) => {
                 let r#type = self.check_expr_is_type(r#type);
                 let r#type = self.eval_env().eval(&r#type);
                 let expr = self.check_expr(expr, &r#type);
                 (expr, r#type)
             }
             surface::Expr::Do(block) => self.synth_block(&block),
-            surface::Expr::If { cond, then, r#else } => {
+            surface::Expr::If(cond, then, r#else) => {
                 let cond = self.check_expr(cond, &Type::BOOL);
                 let (then, then_type) = self.synth_expr(then);
                 let r#else = self.check_expr(r#else, &then_type);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 (Expr::MatchBool { cond, then, r#else }, then_type)
             }
-            surface::Expr::Match { scrut, cases } => {
+            surface::Expr::Match(scrut, cases) => {
                 let range = surface_expr.range;
                 let source = MetaSource::MatchResultType { range };
                 let r#type = self.push_unsolved_type(source);
                 let expr = self.check_match_expr(range, scrut, cases, &r#type);
                 (expr, r#type)
             }
-            surface::Expr::FunArrow { plicity, lhs, rhs } => {
+            surface::Expr::FunArrow(plicity, lhs, rhs) => {
                 let param_type = self.check_expr_is_type(lhs);
                 let body = {
                     let param_type_value = self.eval_env().eval(&param_type);
@@ -147,9 +147,9 @@ where
                 };
                 (core_expr, Type::TYPE)
             }
-            surface::Expr::FunType { params, body } => self.synth_fun_type(params, body),
-            surface::Expr::FunLit { params, body } => self.synth_fun_lit(params, body),
-            surface::Expr::FunApp { fun, arg } => {
+            surface::Expr::FunType(params, body) => self.synth_fun_type(params, body),
+            surface::Expr::FunLit(params, body) => self.synth_fun_lit(params, body),
+            surface::Expr::FunApp(fun, arg) => {
                 let (mut fun_expr, mut fun_type) = self.synth_expr(fun);
                 if arg.data.plicity == Plicity::Explicit {
                     (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
@@ -283,7 +283,7 @@ where
                     Type::RecordType(telescope),
                 )
             }
-            surface::Expr::RecordProj { scrut, name } => {
+            surface::Expr::RecordProj(scrut, name) => {
                 let (scrut_expr, scrut_type) = self.synth_expr(scrut);
 
                 let scrut_type = self.elim_env().update_metas(&scrut_type);
@@ -458,17 +458,17 @@ where
             }
             surface::Expr::Paren(expr) => self.check_expr(expr, &expected),
             surface::Expr::Do(block) => self.check_block(surface_expr.range, &block, &expected),
-            surface::Expr::If { cond, then, r#else } => {
+            surface::Expr::If(cond, then, r#else) => {
                 let cond = self.check_expr(cond, &Type::BOOL);
                 let then = self.check_expr(then, &expected);
                 let r#else = self.check_expr(r#else, &expected);
                 let (cond, then, r#else) = self.bump.alloc((cond, then, r#else));
                 Expr::MatchBool { cond, then, r#else }
             }
-            surface::Expr::Match { scrut, cases } => {
+            surface::Expr::Match(scrut, cases) => {
                 self.check_match_expr(surface_expr.range, scrut, cases, &expected)
             }
-            surface::Expr::FunLit { params, body } => self.check_fun_lit(params, body, &expected),
+            surface::Expr::FunLit(params, body) => self.check_fun_lit(params, body, &expected),
 
             surface::Expr::ListLit(surface_exprs) => {
                 let Type::Neutral(Head::Prim(Prim::List), args) = &expected else {
@@ -533,7 +533,7 @@ where
             // list cases explicitly instead of using `_` so that new cases are not forgotten when
             // new expression variants are added
             surface::Expr::Lit(..)
-            | surface::Expr::LocalVar { .. }
+            | surface::Expr::VarRef { .. }
             | surface::Expr::Ann { .. }
             | surface::Expr::FunArrow { .. }
             | surface::Expr::FunType { .. }

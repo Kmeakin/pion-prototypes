@@ -93,7 +93,7 @@ where
                 let r#type = self.push_unsolved_type(source);
                 (Pat::Underscore, r#type)
             }
-            surface::Pat::Ident(Located { range, data: name }) => {
+            surface::Pat::Var(Located { range, data: name }) => {
                 let source = MetaSource::PatType {
                     range,
                     name: Some(name),
@@ -120,8 +120,7 @@ where
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope =
-                    Telescope::new(self.env.locals.values.clone(), type_fields.into());
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
@@ -136,8 +135,7 @@ where
                     type_fields.push((name.data, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope =
-                    Telescope::new(self.env.locals.values.clone(), type_fields.into());
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
@@ -168,7 +166,7 @@ where
         match surface_pat.data {
             surface::Pat::Error => Pat::Error,
             surface::Pat::Underscore => Pat::Underscore,
-            surface::Pat::Ident(Located { data: name, .. }) => Pat::Ident(name),
+            surface::Pat::Var(Located { data: name, .. }) => Pat::Ident(name),
             surface::Pat::Paren(pat) => self.check_pat(pat, expected),
             surface::Pat::TupleLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
