@@ -33,13 +33,13 @@ where
         let mut bodies = Vec::with_capacity_in(surface_cases.len(), self.bump);
 
         for (index, surface_case) in surface_cases.iter().enumerate() {
-            let len = self.local_env.len();
+            let len = self.env.locals.len();
             let pat = self.check_pat(&surface_case.pat, &scrut_type);
             let bindings = self.destruct_pat(&pat, &scrut_expr, &scrut_type, false);
             self.push_let_bindings(&bindings);
             let expr = self.check_expr(&surface_case.expr, expected);
             let expr = Expr::lets(self.bump, &bindings, expr);
-            self.local_env.truncate(len);
+            self.env.locals.truncate(len);
 
             matrix.push_row(PatRow::new(&[(pat, scrut_expr)], index));
             bodies.push(Body::Success { expr });

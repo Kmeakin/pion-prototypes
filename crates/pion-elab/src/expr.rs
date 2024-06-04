@@ -86,8 +86,8 @@ where
                 (expr, r#type)
             }
             surface::Expr::LocalVar(Located { data: name, .. }) => {
-                if let Some(var) = self.local_env.lookup(name) {
-                    let r#type = self.local_env.types.get_relative(var).unwrap().clone();
+                if let Some(var) = self.env.locals.lookup(name) {
+                    let r#type = self.env.locals.types.get_relative(var).unwrap().clone();
                     return (Expr::LocalVar(var), r#type);
                 }
 
@@ -135,9 +135,9 @@ where
                 let param_type = self.check_expr_is_type(lhs);
                 let body = {
                     let param_type_value = self.eval_env().eval(&param_type);
-                    self.local_env.push_param(None, param_type_value);
+                    self.env.locals.push_param(None, param_type_value);
                     let body = self.check_expr_is_type(rhs);
-                    self.local_env.pop();
+                    self.env.locals.pop();
                     body
                 };
                 let (param_type, body) = self.bump.alloc((param_type, body));
@@ -245,7 +245,7 @@ where
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 (
                     Expr::RecordLit(expr_fields.into()),
                     Type::RecordType(telescope),
@@ -253,16 +253,16 @@ where
             }
             surface::Expr::RecordType(surface_fields) => {
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
-                let local_len = self.local_env.len();
+                let local_len = self.env.locals.len();
 
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     let r#type = self.check_expr_is_type(&surface_field.data.r#type);
                     let r#type_value = self.eval_env().eval(&r#type);
                     type_fields.push((name, r#type));
-                    self.local_env.push_param(Some(name), r#type_value);
+                    self.env.locals.push_param(Some(name), r#type_value);
                 }
-                self.local_env.truncate(local_len);
+                self.env.locals.truncate(local_len);
 
                 (Expr::RecordType(type_fields.into()), Type::TYPE)
             }
@@ -277,7 +277,7 @@ where
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 (
                     Expr::RecordLit(expr_fields.into()),
                     Type::RecordType(telescope),
@@ -375,14 +375,14 @@ where
                 let (pat, param, param_type) = self.synth_param(surface_param);
 
                 let body_expr = {
-                    let local_len = self.local_env.len();
+                    let local_len = self.env.locals.len();
                     let var = Expr::LocalVar(RelativeVar::default());
                     let bindings = self.destruct_pat(&pat, &var, &param_type, true);
 
-                    self.local_env.push_param(param.name, param_type);
+                    self.env.locals.push_param(param.name, param_type);
                     self.push_let_bindings(&bindings);
                     let (body_expr, _) = self.synth_fun_type(surface_params, surface_body);
-                    self.local_env.truncate(local_len);
+                    self.env.locals.truncate(local_len);
 
                     Expr::lets(self.bump, &bindings, body_expr)
                 };
@@ -407,15 +407,15 @@ where
                 let (pat, param, param_type) = self.synth_param(surface_param);
 
                 let (body_expr, body_type) = {
-                    let local_len = self.local_env.len();
+                    let local_len = self.env.locals.len();
                     let var = Expr::LocalVar(RelativeVar::default());
                     let bindings = self.destruct_pat(&pat, &var, &param_type, true);
 
-                    self.local_env.push_param(param.name, param_type.clone());
+                    self.env.locals.push_param(param.name, param_type.clone());
                     self.push_let_bindings(&bindings);
                     let (body_expr, body_type) = self.synth_fun_lit(surface_params, surface_body);
                     let body_type = self.quote_env().quote(&body_type);
-                    self.local_env.truncate(local_len);
+                    self.env.locals.truncate(local_len);
 
                     let body_expr = Expr::lets(self.bump, &bindings, body_expr);
                     let body_type = Expr::lets(self.bump, &bindings, body_type);
@@ -429,7 +429,7 @@ where
                 };
                 let core_type = Value::FunType {
                     param: FunParam::new(param.plicity, param.name, self.bump.alloc(param_type)),
-                    body: Closure::new(self.local_env.values.clone(), self.bump.alloc(body_type)),
+                    body: Closure::new(self.env.locals.values.clone(), self.bump.alloc(body_type)),
                 };
                 (core_expr, core_type)
             }
@@ -491,16 +491,16 @@ where
                 Expr::ListLit(exprs.into())
             }
             surface::Expr::TupleLit(surface_exprs) if expected.is_type() => {
-                let len = self.local_env.len();
+                let len = self.env.locals.len();
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());
                 for (index, expr) in surface_exprs.iter().enumerate() {
                     let name = Symbol::tuple_index(index);
                     let r#type = self.check_expr_is_type(expr);
                     let r#type_value = self.eval_env().eval(&r#type);
-                    self.local_env.push_param(None, type_value);
+                    self.env.locals.push_param(None, type_value);
                     type_fields.push((name, r#type));
                 }
-                self.local_env.truncate(len);
+                self.env.locals.truncate(len);
                 Expr::RecordType(r#type_fields.into())
             }
             surface::Expr::RecordLit(surface_fields) => {
@@ -567,12 +567,13 @@ where
             {
                 let r#type = self.quote_env().quote(expected_param.r#type);
 
-                let var = self.local_env.next_var();
-                self.local_env
+                let var = self.env.locals.next_var();
+                self.env
+                    .locals
                     .push_param(expected_param.name, expected_param.r#type.clone());
                 let expected = self.elim_env().apply_closure(expected_body.clone(), var);
                 let body = self.check_fun_lit(surface_params, surface_body, &expected);
-                self.local_env.pop();
+                self.env.locals.pop();
 
                 let (r#type, body) = self.bump.alloc((r#type, body));
                 let param = FunParam::new(expected_param.plicity, expected_param.name, &*r#type);
@@ -585,19 +586,20 @@ where
                 let (pat, param) = self.check_param(surface_param, expected_param.r#type);
 
                 let body_expr = {
-                    let local_len = self.local_env.len();
+                    let local_len = self.env.locals.len();
                     let var = Expr::LocalVar(RelativeVar::default());
                     let bindings = self.destruct_pat(&pat, &var, expected_param.r#type, true);
 
-                    let arg_value = self.local_env.next_var();
-                    self.local_env
+                    let arg_value = self.env.locals.next_var();
+                    self.env
+                        .locals
                         .push_param(param.name, expected_param.r#type.clone());
                     self.push_let_bindings(&bindings);
                     let expected = self
                         .elim_env()
                         .apply_closure(expected_body.clone(), arg_value);
                     let body_expr = self.check_fun_lit(rest_params, surface_body, &expected);
-                    self.local_env.truncate(local_len);
+                    self.env.locals.truncate(local_len);
 
                     Expr::lets(self.bump, &bindings, body_expr)
                 };

@@ -120,7 +120,8 @@ where
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                let telescope =
+                    Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
@@ -135,7 +136,8 @@ where
                     type_fields.push((name.data, self.quote_env().quote_at(&r#type, index)));
                 }
 
-                let telescope = Telescope::new(self.local_env.values.clone(), type_fields.into());
+                let telescope =
+                    Telescope::new(self.env.locals.values.clone(), type_fields.into());
                 let r#type = Type::RecordType(telescope);
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
@@ -184,7 +186,7 @@ where
                         self.elim_env().split_telescope(&mut telescope).unwrap();
                     let pat = self.check_pat(surface_field, &r#type);
                     pat_fields.push((name, pat));
-                    update_telescope(self.local_env.next_var());
+                    update_telescope(self.env.locals.next_var());
                 }
 
                 Pat::RecordLit(pat_fields.into())
@@ -210,7 +212,7 @@ where
                         self.elim_env().split_telescope(&mut telescope).unwrap();
                     let pat = self.check_pat(&surface_field.data.pat, &r#type);
                     pat_fields.push((name, pat));
-                    update_telescope(self.local_env.next_var());
+                    update_telescope(self.env.locals.next_var());
                 }
 
                 Pat::RecordLit(pat_fields.into())
@@ -300,7 +302,7 @@ where
                         let expr = Expr::RecordProj(ctx.bump.alloc(*expr), *pat_name);
 
                         recur(ctx, pat, &expr, &r#type, bindings, false);
-                        update_telescope(ctx.local_env.next_var());
+                        update_telescope(ctx.env.locals.next_var());
                     }
                 }
                 Pat::Or(pats) => {

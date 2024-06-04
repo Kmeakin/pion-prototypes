@@ -104,10 +104,10 @@ where
         let bindings = self.destruct_pat(&pat, &init_expr, &r#type, false);
 
         let (body_expr, body_type) = {
-            let local_len = self.local_env.len();
+            let local_len = self.env.locals.len();
             self.push_let_bindings(&bindings);
             let (body_expr, body_type) = elab_body(self);
-            self.local_env.truncate(local_len);
+            self.env.locals.truncate(local_len);
             (body_expr, body_type)
         };
 
@@ -129,10 +129,10 @@ where
         let name = pat.name();
 
         let init_expr = {
-            let var = self.local_env.next_var();
-            self.local_env.push_let(name, r#type.clone(), var);
+            let var = self.env.locals.next_var();
+            self.env.locals.push_let(name, r#type.clone(), var);
             let init_expr = self.check_expr(surface_init, &r#type);
-            self.local_env.pop();
+            self.env.locals.pop();
             init_expr
         };
 
@@ -173,9 +173,11 @@ where
 
         let (body_expr, body_type) = {
             let init_value = self.eval_env().eval(&init_expr);
-            self.local_env.push_let(name, r#type.clone(), init_value);
+            self.env
+                .locals
+                .push_let(name, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self);
-            self.local_env.pop();
+            self.env.locals.pop();
             (body_expr, body_type)
         };
 

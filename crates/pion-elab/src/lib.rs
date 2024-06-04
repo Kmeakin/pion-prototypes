@@ -24,8 +24,13 @@ where
     file_id: usize,
     diagnostic_handler: H,
 
-    local_env: LocalEnv<'core>,
-    meta_env: MetaEnv<'core>,
+    env: ElabEnv<'core>,
+}
+
+#[derive(Default)]
+pub struct ElabEnv<'core> {
+    locals: LocalEnv<'core>,
+    metas: MetaEnv<'core>,
     renaming: PartialRenaming,
 }
 
@@ -167,9 +172,7 @@ where
             file_id,
             diagnostic_handler: handler,
 
-            local_env: LocalEnv::default(),
-            meta_env: MetaEnv::default(),
-            renaming: PartialRenaming::default(),
+            env: ElabEnv::default(),
         }
     }
 
@@ -178,7 +181,7 @@ where
     }
 
     pub fn report_unsolved_metas(&mut self) {
-        let meta_env = std::mem::take(&mut self.meta_env);
+        let meta_env = std::mem::take(&mut self.env.metas);
         for (id, (source, _, value)) in meta_env.iter().enumerate() {
             if value.is_none() {
                 let message = match source {
@@ -208,19 +211,19 @@ where
                 );
             }
         }
-        self.meta_env = meta_env;
+        self.env.metas = meta_env;
     }
 
     fn push_unsolved_expr(&mut self, source: MetaSource, r#type: Type<'core>) -> Expr<'core> {
-        let var = self.meta_env.len().to_absolute();
-        self.meta_env.push(source, r#type);
+        let var = self.env.metas.len().to_absolute();
+        self.env.metas.push(source, r#type);
 
         let mut expr = Expr::MetaVar(var);
-        for (var, info) in AbsoluteVar::iter().zip(self.local_env.infos.iter()) {
+        for (var, info) in AbsoluteVar::iter().zip(self.env.locals.infos.iter()) {
             match info {
                 LocalInfo::Let => {}
                 LocalInfo::Param => {
-                    let var = self.local_env.len().absolute_to_relative(var).unwrap();
+                    let var = self.env.locals.len().absolute_to_relative(var).unwrap();
                     let arg = Expr::LocalVar(var);
                     let (fun, arg) = self.bump.alloc((expr, arg));
                     let arg = FunArg::new(Plicity::Explicit, &*arg);
@@ -237,41 +240,46 @@ where
     }
 
     pub fn elim_env(&self) -> semantics::ElimEnv<'core, '_> {
-        semantics::ElimEnv::new(self.bump, EvalOpts::default(), &self.meta_env.values)
+        semantics::ElimEnv::new(self.bump, EvalOpts::default(), &self.env.metas.values)
     }
 
     pub fn eval_env(&mut self) -> semantics::EvalEnv<'core, '_> {
         semantics::EvalEnv::new(
             self.bump,
             EvalOpts::default(),
-            &mut self.local_env.values,
-            &self.meta_env.values,
+            &mut self.env.locals.values,
+            &self.env.metas.values,
         )
     }
 
     pub fn quote_env(&self) -> semantics::QuoteEnv<'core, '_> {
-        semantics::QuoteEnv::new(self.bump, self.local_env.len(), &self.meta_env.values)
+        semantics::QuoteEnv::new(self.bump, self.env.locals.len(), &self.env.metas.values)
     }
 
     pub fn zonk_env(&mut self) -> semantics::ZonkEnv<'core, '_> {
-        semantics::ZonkEnv::new(self.bump, &mut self.local_env.values, &self.meta_env.values)
+        semantics::ZonkEnv::new(
+            self.bump,
+            &mut self.env.locals.values,
+            &self.env.metas.values,
+        )
     }
 
     pub fn unify_env(&mut self) -> UnifyCtx<'core, '_> {
         UnifyCtx::new(
             self.bump,
-            &mut self.renaming,
-            self.local_env.len(),
-            &mut self.meta_env.values,
+            &mut self.env.renaming,
+            self.env.locals.len(),
+            &mut self.env.metas.values,
         )
     }
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
         let expr = self.zonk_env().zonk(expr);
         let printer = pion_printer::Printer::new(self.bump, pion_printer::Config::default());
-        let unelaborator = pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
+        let unelaborator =
+            pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
         let doc = unelaborator
-            .expr(&mut self.local_env.names, &expr)
+            .expr(&mut self.env.locals.names, &expr)
             .into_doc();
         doc.pretty(usize::MAX).to_string()
     }
@@ -280,7 +288,7 @@ where
         for LetBinding { name, r#type, expr } in bindings {
             let value = self.eval_env().eval(expr);
             let r#type = self.eval_env().eval(r#type);
-            self.local_env.push_let(*name, r#type, value);
+            self.env.locals.push_let(*name, r#type, value);
         }
     }
 }
