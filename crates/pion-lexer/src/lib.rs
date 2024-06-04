@@ -1,4 +1,11 @@
+//! The lexer, converts text into tokens. See `doc/spec/lexical-syntax.md`.
+
+// TODO: reject byte order mark
+// TODO: reject low ASCII control chars
+// TODO: accept unicode identifiers
+
 #![feature(if_let_guard)]
+#![deny(missing_docs)]
 
 mod lexer;
 mod token;
