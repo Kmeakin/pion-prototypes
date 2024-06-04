@@ -1,4 +1,7 @@
+use std::num::NonZero;
+
 use ecow::eco_vec;
+use lexical_parse_integer::{FromLexicalWithOptions, NumberFormatBuilder};
 use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
@@ -19,25 +22,53 @@ where
         &mut self,
         surface_lit: &Located<surface::Lit>,
     ) -> (Result<Lit, ()>, Type<'core>) {
-        let text = &self.text[surface_lit.range];
-        let mut parse_int = |base, text| match u32::from_str_radix(text, base) {
-            Ok(int) => Ok(Lit::Int(int)),
-            Err(error) => {
-                self.report_diagnostic(
-                    Diagnostic::error()
-                        .with_message(format!("Invalid integer literal: {error}"))
-                        .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
-                );
-                Err(())
-            }
-        };
+        let range = surface_lit.range;
         let (lit, r#type) = match surface_lit.data {
             surface::Lit::Bool(b) => (Ok(Lit::Bool(b)), Type::BOOL),
-            surface::Lit::DecInt => (parse_int(10, text), Type::INT),
-            surface::Lit::BinInt => (parse_int(2, &text[2..]), Type::INT),
-            surface::Lit::HexInt => (parse_int(16, &text[2..]), Type::INT),
+            surface::Lit::Int(int) => match self.synth_int_lit(Located::new(range, int)) {
+                Ok(value) => (Ok(Lit::Int(value)), Type::INT),
+                Err(error) => {
+                    self.report_diagnostic(
+                        Diagnostic::error()
+                            .with_message(format!("Invalid integer literal: {error}"))
+                            .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
+                    );
+                    (Err(()), Type::INT)
+                }
+            },
         };
         (lit, r#type)
+    }
+
+    fn synth_int_lit(
+        &self,
+        int: Located<surface::IntLit>,
+    ) -> Result<u32, lexical_parse_integer::Error> {
+        const COMMON_OPTS: NumberFormatBuilder = NumberFormatBuilder::new()
+            .digit_separator(NonZero::new(b'_'))
+            .integer_internal_digit_separator(true);
+
+        const DEC_OPTS: u128 = COMMON_OPTS.radix(10).build();
+        const BIN_OPTS: u128 = COMMON_OPTS
+            .radix(2)
+            .base_prefix(NonZero::new(b'b'))
+            .case_sensitive_base_prefix(false)
+            .build();
+        const HEX_OPTS: u128 = COMMON_OPTS
+            .radix(16)
+            .base_prefix(NonZero::new(b'x'))
+            .case_sensitive_base_prefix(false)
+            .build();
+
+        let text = &self.text[int.range];
+        let bytes = text.as_bytes();
+        let opts = Default::default();
+
+        match int.data {
+            pion_surface::IntLit::Dec => u32::from_lexical_with_options::<DEC_OPTS>(bytes, &opts),
+            pion_surface::IntLit::Bin => u32::from_lexical_with_options::<BIN_OPTS>(bytes, &opts),
+            pion_surface::IntLit::Hex => u32::from_lexical_with_options::<HEX_OPTS>(bytes, &opts),
+        }
     }
 
     pub fn synth_expr(

@@ -235,9 +235,9 @@ PatField: Located<PatField<'surface>> = {
 Lit: Located<Lit> = {
     <start: @L> "true" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(true)),
     <start: @L> "false" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(false)),
-    <start: @L> "DecInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::DecInt),
-    <start: @L> "BinInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::BinInt),
-    <start: @L> "HexInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::HexInt),
+    <start: @L> "DecInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Dec)),
+    <start: @L> "BinInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Bin)),
+    <start: @L> "HexInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Hex)),
 }
 
 Ident: Located<Symbol> = {

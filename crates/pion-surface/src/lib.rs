@@ -173,7 +173,12 @@ pub struct PatField<'surface> {
 #[derive(Debug, Copy, Clone)]
 pub enum Lit {
     Bool(bool),
-    DecInt,
-    BinInt,
-    HexInt,
+    Int(IntLit),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum IntLit {
+    Dec,
+    Bin,
+    Hex,
 }
