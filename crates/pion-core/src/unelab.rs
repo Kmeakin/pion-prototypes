@@ -3,7 +3,7 @@ use pion_symbol::Symbol;
 use pretty::{Doc, DocAllocator, Pretty};
 
 use crate::env::{RelativeVar, UniqueEnv};
-use crate::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity};
+use crate::{Expr, FunArg, FunParam, Lit, Plicity};
 
 pub struct Config {
     /// print local variables as names rather than de bruijn indices
