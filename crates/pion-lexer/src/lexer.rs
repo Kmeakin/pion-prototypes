@@ -61,16 +61,16 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             (TokenKind::Whitespace, len)
         }
         b'0' if let Some(b'b' | b'B') = bytes.get(1) => {
-            let len = position_or_end(&bytes[2..], u8::is_bin_int_continue) + 2;
+            let len = position_or_end(&bytes[2..], u8::is_identifier_continue) + 2;
             (TokenKind::BinInt, len)
         }
         b'0' if let Some(b'x' | b'X') = bytes.get(1) => {
-            let len = position_or_end(&bytes[2..], u8::is_hex_int_continue) + 2;
+            let len = position_or_end(&bytes[2..], u8::is_identifier_continue) + 2;
             (TokenKind::HexInt, len)
         }
 
-        c if c.is_dec_int_start() => {
-            let len = position_or_end(&bytes[1..], u8::is_dec_int_continue) + 1;
+        b'0'..=b'9' => {
+            let len = position_or_end(&bytes[1..], u8::is_identifier_continue) + 1;
             (TokenKind::DecInt, len)
         }
 
@@ -129,15 +129,6 @@ fn position_or_end(bytes: &[u8], pred: impl Fn(&u8) -> bool) -> usize {
 trait ClassifyChar {
     fn is_whitespace(&self) -> bool;
 
-    fn is_dec_int_start(&self) -> bool;
-    fn is_dec_int_continue(&self) -> bool;
-
-    fn is_bin_int_start(&self) -> bool;
-    fn is_bin_int_continue(&self) -> bool;
-
-    fn is_hex_int_start(&self) -> bool;
-    fn is_hex_int_continue(&self) -> bool;
-
     fn is_identifier_start(&self) -> bool;
     fn is_identifier_continue(&self) -> bool;
 }
@@ -145,15 +136,6 @@ trait ClassifyChar {
 #[allow(clippy::manual_is_ascii_check)]
 impl ClassifyChar for u8 {
     fn is_whitespace(&self) -> bool { matches!(self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ') }
-
-    fn is_dec_int_start(&self) -> bool { matches!(self, b'0'..=b'9') }
-    fn is_dec_int_continue(&self) -> bool { *self == b'_' || self.is_dec_int_start() }
-
-    fn is_bin_int_start(&self) -> bool { matches!(self, b'0'..=b'1') }
-    fn is_bin_int_continue(&self) -> bool { *self == b'_' || self.is_bin_int_start() }
-
-    fn is_hex_int_start(&self) -> bool { matches!(self, b'0'..=b'9' | b'a'..=b'f' | b'A'..=b'F') }
-    fn is_hex_int_continue(&self) -> bool { *self == b'_' || self.is_hex_int_start() }
 
     fn is_identifier_start(&self) -> bool {
         matches!(self, b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9')
