@@ -1,3 +1,5 @@
+//! Interned strings for constant-time equality comparisons
+
 use std::fmt;
 use std::num::NonZeroU32;
 
