@@ -107,6 +107,16 @@ pub struct Block<'surface> {
 pub enum Stmt<'surface> {
     /// Let-statement, `let <rec> <binding>;`.
     Let(Rec, LetBinding<'surface>),
+    /// An interactive command, `#<command>`.
+    Command(Located<Command<'surface>>),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Command<'surface> {
+    /// Check command, `#check <expr>`.
+    Check(Located<Expr<'surface>>),
+    /// Eval command, `#eval <expr>`.
+    Eval(Located<Expr<'surface>>),
 }
 
 /// Recursive or non-recursive binding.

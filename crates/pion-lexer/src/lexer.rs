@@ -140,7 +140,7 @@ impl ClassifyChar for u8 {
     fn is_whitespace(&self) -> bool { matches!(self, b'\t' | b'\n' | b'\x0C' | b'\r' | b' ') }
 
     fn is_identifier_start(&self) -> bool {
-        matches!(self, b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9')
+        matches!(self, b'#' | b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9')
     }
     fn is_identifier_continue(&self) -> bool { *self == b'-' || self.is_identifier_start() }
 }
@@ -159,6 +159,9 @@ const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
         b"rec" => TokenKind::KwRec,
         b"then" => TokenKind::KwThen,
         b"true" => TokenKind::KwTrue,
+
+        b"#check" => TokenKind::KwCheck,
+        b"#eval" => TokenKind::KwEval,
         _ => TokenKind::Ident,
     }
 }

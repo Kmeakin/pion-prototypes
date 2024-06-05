@@ -1,5 +1,6 @@
 #![feature(allocator_api)]
 
+use command::CommandHandler;
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::{Expr, FunArg, LetBinding, Plicity};
@@ -15,11 +16,14 @@ mod pat;
 mod stmt;
 mod unify;
 
+pub mod command;
+
 pub struct Elaborator<'handler, 'core, 'text> {
     bump: &'core bumpalo::Bump,
     text: &'text str,
     file_id: usize,
     diagnostic_handler: &'handler mut dyn DiagnosticHandler,
+    command_handler: &'handler mut dyn CommandHandler,
 
     env: ElabEnv<'core>,
 }
@@ -163,13 +167,15 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         bump: &'core bumpalo::Bump,
         text: &'text str,
         file_id: usize,
-        handler: &'handler mut dyn DiagnosticHandler,
+        diagnostic_handler: &'handler mut dyn DiagnosticHandler,
+        command_handler: &'handler mut dyn CommandHandler,
     ) -> Self {
         Self {
             bump,
             text,
             file_id,
-            diagnostic_handler: handler,
+            diagnostic_handler,
+            command_handler,
 
             env: ElabEnv::default(),
         }

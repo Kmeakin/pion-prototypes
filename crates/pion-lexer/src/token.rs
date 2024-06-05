@@ -50,6 +50,11 @@ pub enum TokenKind {
     /// The `true` keyword.
     KwTrue,
 
+    /// The `#check` keyword.
+    KwCheck,
+    /// The `#eval` keyword.
+    KwEval,
+
     /// A left parenthesis `(`.
     LParen,
     /// A right parenthesis `)`.
@@ -121,6 +126,8 @@ impl TokenKind {
             Self::KwRec => "keyword `rec`",
             Self::KwThen => "keyword `then`",
             Self::KwTrue => "keyword `true`",
+            Self::KwCheck => "keyword `#check`",
+            Self::KwEval => "keyword `#eval`",
             Self::LParen => "`(`",
             Self::RParen => "`)`",
             Self::LCurly => "`{`",

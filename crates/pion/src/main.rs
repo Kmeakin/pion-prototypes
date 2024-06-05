@@ -65,14 +65,24 @@ fn main() -> std::io::Result<()> {
             }
             let file_id = files.add(path.name(), text.clone());
 
-            let mut handler = |diagnostic| {
+            let mut diagnostic_handler = |diagnostic| {
                 let config = codespan_reporting::term::Config::default();
                 codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
                     .expect("Could not print diagnostic");
             };
 
-            let file = pion_parser::parse_file(&bump, &mut handler, file_id, &text);
-            let mut elaborator = pion_elab::Elaborator::new(&bump, &text, file_id, &mut handler);
+            let mut command_handler = |text| {
+                println!("{text}");
+            };
+
+            let file = pion_parser::parse_file(&bump, &mut diagnostic_handler, file_id, &text);
+            let mut elaborator = pion_elab::Elaborator::new(
+                &bump,
+                &text,
+                file_id,
+                &mut diagnostic_handler,
+                &mut command_handler,
+            );
             let (mut expr, r#type) = elaborator.synth_block(&file.contents);
             elaborator.report_unsolved_metas();
             let r#type = elaborator.quote_env().quote(&r#type);
@@ -85,7 +95,8 @@ fn main() -> std::io::Result<()> {
             let r#type = elaborator.zonk_env().zonk(&r#type);
 
             let printer = pion_printer::Printer::new(&bump, pion_printer::Config::default());
-            let unelaborator = pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
+            let unelaborator =
+                pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
             let doc = unelaborator
                 .ann_expr(&mut UniqueEnv::default(), &expr, &r#type)
                 .into_doc();

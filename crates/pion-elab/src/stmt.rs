@@ -8,6 +8,49 @@ use text_size::TextRange;
 use super::Elaborator;
 
 impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
+    fn elab_command(&mut self, command: Located<surface::Command<'surface>>) {
+        match command.data {
+            pion_surface::Command::Check(expr) => {
+                let (expr, r#type) = self.synth_expr(&expr);
+                let r#type = self.quote_env().quote(&r#type);
+
+                let expr = self.zonk_env().zonk(&expr);
+                let r#type = self.zonk_env().zonk(&r#type);
+
+                let printer =
+                    pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                let unelaborator = pion_core::unelab::Unelaborator::new(
+                    printer,
+                    pion_core::unelab::Config::default(),
+                );
+
+                let doc = unelaborator.ann_expr(&mut self.env.locals.names, &expr, &r#type);
+                let pretty = doc.pretty(80).to_string();
+                self.command_handler.display_to_user(pretty);
+            }
+            pion_surface::Command::Eval(expr) => {
+                let (expr, r#type) = self.synth_expr(&expr);
+
+                let expr = self.eval_env().normalize(&expr);
+                let r#type = self.quote_env().quote(&r#type);
+
+                let expr = self.zonk_env().zonk(&expr);
+                let r#type = self.zonk_env().zonk(&r#type);
+
+                let printer =
+                    pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                let unelaborator = pion_core::unelab::Unelaborator::new(
+                    printer,
+                    pion_core::unelab::Config::default(),
+                );
+
+                let doc = unelaborator.expr(&mut self.env.locals.names, &expr);
+                let pretty = doc.pretty(80).to_string();
+                self.command_handler.display_to_user(pretty);
+            }
+        }
+    }
+
     pub fn synth_block(&mut self, block: &surface::Block<'surface>) -> (Expr<'core>, Type<'core>) {
         return recur(self, block.stmts, block.result_expr);
 
@@ -29,6 +72,10 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 }
                 pion_surface::Stmt::Let(Rec::Rec, binding) => {
                     this.elab_letrec(&binding, |this| recur(this, stmts, expr))
+                }
+                pion_surface::Stmt::Command(command) => {
+                    this.elab_command(command);
+                    recur(this, stmts, expr)
                 }
             }
         }
@@ -72,6 +119,10 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         (expr, ())
                     });
                     expr
+                }
+                pion_surface::Stmt::Command(command) => {
+                    this.elab_command(command);
+                    recur(this, stmts, expr, expected)
                 }
             }
         }
