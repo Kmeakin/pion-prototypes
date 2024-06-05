@@ -72,7 +72,7 @@ fn main() -> std::io::Result<()> {
             };
 
             let file = pion_parser::parse_file(&bump, &mut handler, file_id, &text);
-            let mut elaborator = pion_elab::Elaborator::new(&bump, &text, file_id, handler);
+            let mut elaborator = pion_elab::Elaborator::new(&bump, &text, file_id, &mut handler);
             let (mut expr, r#type) = elaborator.synth_block(&file.contents);
             elaborator.report_unsolved_metas();
             let r#type = elaborator.quote_env().quote(&r#type);

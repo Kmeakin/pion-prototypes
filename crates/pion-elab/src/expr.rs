@@ -6,7 +6,7 @@ use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
-use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
+use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::{self as surface, Located};
 use pion_symbol::Symbol;
 use pion_util::slice_vec::SliceVec;
@@ -14,10 +14,7 @@ use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
 
-impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     pub fn synth_lit(
         &mut self,
         surface_lit: &Located<surface::Lit>,

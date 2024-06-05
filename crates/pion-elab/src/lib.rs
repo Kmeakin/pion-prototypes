@@ -15,14 +15,11 @@ mod pat;
 mod stmt;
 mod unify;
 
-pub struct Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+pub struct Elaborator<'handler, 'core, 'text> {
     bump: &'core bumpalo::Bump,
     text: &'text str,
     file_id: usize,
-    diagnostic_handler: H,
+    diagnostic_handler: &'handler mut dyn DiagnosticHandler,
 
     env: ElabEnv<'core>,
 }
@@ -161,11 +158,13 @@ impl MetaSource {
     }
 }
 
-impl<'core, 'text, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
-    pub fn new(bump: &'core bumpalo::Bump, text: &'text str, file_id: usize, handler: H) -> Self {
+impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
+    pub fn new(
+        bump: &'core bumpalo::Bump,
+        text: &'text str,
+        file_id: usize,
+        handler: &'handler mut dyn DiagnosticHandler,
+    ) -> Self {
         Self {
             bump,
             text,

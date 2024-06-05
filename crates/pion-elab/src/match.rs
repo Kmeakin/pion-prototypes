@@ -1,5 +1,5 @@
 use pion_core::LetBinding;
-use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
+use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::{self as surface, Located};
 
 use super::{Elaborator, EnvLen, Expr, TextRange, Type};
@@ -12,10 +12,7 @@ mod matrix;
 use self::compile::MatchResult;
 use self::matrix::{PatMatrix, PatRow};
 
-impl<'core, 'text, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
     pub(super) fn check_match_expr(
         &mut self,
         range: TextRange,

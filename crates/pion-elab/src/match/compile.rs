@@ -26,7 +26,6 @@
 // matching*
 
 use pion_core::Lit;
-use pion_diagnostic::DiagnosticHandler;
 use pion_util::collect_in::CollectIn;
 use smallvec::{smallvec, SmallVec};
 
@@ -50,10 +49,7 @@ pub struct MatchResult<'core> {
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
-impl<'core, 'text, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
     pub fn compile_match(
         &self,
         matrix: &mut PatMatrix<'core>,

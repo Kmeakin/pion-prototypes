@@ -1,7 +1,6 @@
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
 use pion_core::{Expr, FunParam, LetBinding, Pat};
-use pion_diagnostic::DiagnosticHandler;
 use pion_surface::{self as surface, Located};
 use pion_symbol::{self, Symbol};
 use pion_util::slice_vec::SliceVec;
@@ -9,10 +8,7 @@ use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
 
-impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     pub(super) fn synth_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
@@ -268,16 +264,14 @@ where
         r#type: &Type<'core>,
         toplevel_param: bool,
     ) -> Vec<LetBinding<Expr<'core>, Expr<'core>>> {
-        fn recur<'core, H>(
-            ctx: &mut Elaborator<'core, '_, H>,
+        fn recur<'core>(
+            ctx: &mut Elaborator<'_, 'core, '_>,
             pat: &Pat<'core>,
             expr: &Expr<'core>,
             r#type: &Type<'core>,
             bindings: &mut Vec<LetBinding<Expr<'core>, Expr<'core>>>,
             toplevel_param: bool,
-        ) where
-            H: DiagnosticHandler,
-        {
+        ) {
             match pat {
                 Pat::Error | Pat::Underscore | Pat::Lit(_) => {}
                 Pat::Ident(..) if toplevel_param => {}

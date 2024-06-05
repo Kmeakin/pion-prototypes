@@ -1,21 +1,18 @@
 use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, LetBinding};
-use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
+use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::{self as surface, Located, Rec};
 use text_size::TextRange;
 
 use super::Elaborator;
 
-impl<'core, 'text, 'surface, H> Elaborator<'core, 'text, H>
-where
-    H: DiagnosticHandler,
-{
+impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     pub fn synth_block(&mut self, block: &surface::Block<'surface>) -> (Expr<'core>, Type<'core>) {
         return recur(self, block.stmts, block.result_expr);
 
-        fn recur<'surface, 'core, H: DiagnosticHandler>(
-            this: &mut Elaborator<'core, '_, H>,
+        fn recur<'surface, 'core>(
+            this: &mut Elaborator<'_, 'core, '_>,
             stmts: &[Located<surface::Stmt<'surface>>],
             expr: Option<&'surface Located<surface::Expr<'surface>>>,
         ) -> (Expr<'core>, Type<'core>) {
@@ -51,8 +48,8 @@ where
             }
         };
 
-        fn recur<'surface, 'core, H: DiagnosticHandler>(
-            this: &mut Elaborator<'core, '_, H>,
+        fn recur<'surface, 'core>(
+            this: &mut Elaborator<'_, 'core, '_>,
             stmts: &[Located<surface::Stmt<'surface>>],
             expr: &'surface Located<surface::Expr<'surface>>,
             expected: &Type<'core>,

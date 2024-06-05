@@ -76,9 +76,9 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
     }
 }
 
-pub fn parse_file<'surface, H: DiagnosticHandler>(
+pub fn parse_file<'surface>(
     bump: &'surface bumpalo::Bump,
-    mut handler: H,
+    handler: &mut dyn DiagnosticHandler,
     file_id: usize,
     text: &str,
 ) -> File<'surface> {
@@ -102,9 +102,9 @@ pub fn parse_file<'surface, H: DiagnosticHandler>(
     file
 }
 
-pub fn parse_expr<'surface, H: DiagnosticHandler>(
+pub fn parse_expr<'surface>(
     bump: &'surface bumpalo::Bump,
-    mut handler: H,
+    handler: &mut dyn DiagnosticHandler,
     file_id: usize,
     text: &str,
 ) -> Located<Expr<'surface>> {
