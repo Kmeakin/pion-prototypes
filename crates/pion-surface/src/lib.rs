@@ -117,6 +117,8 @@ pub enum Command<'surface> {
     Check(Located<Expr<'surface>>),
     /// Eval command, `#eval <expr>`.
     Eval(Located<Expr<'surface>>),
+    /// Show command, `#show <name>`.
+    Show(Located<Symbol>),
 }
 
 /// Recursive or non-recursive binding.

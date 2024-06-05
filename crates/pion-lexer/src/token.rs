@@ -54,6 +54,8 @@ pub enum TokenKind {
     KwCheck,
     /// The `#eval` keyword.
     KwEval,
+    /// The `#show` keyword.
+    KwShow,
 
     /// A left parenthesis `(`.
     LParen,
@@ -128,6 +130,7 @@ impl TokenKind {
             Self::KwTrue => "keyword `true`",
             Self::KwCheck => "keyword `#check`",
             Self::KwEval => "keyword `#eval`",
+            Self::KwShow => "keyword `#show`",
             Self::LParen => "`(`",
             Self::RParen => "`)`",
             Self::LCurly => "`{`",

@@ -48,6 +48,56 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let pretty = doc.pretty(80).to_string();
                 self.command_handler.display_to_user(pretty);
             }
+            pion_surface::Command::Show(name) => {
+                let Some(var) = self.env.locals.lookup(name.data) else {
+                    todo!()
+                };
+
+                match self.env.locals.infos.get_relative(var).unwrap() {
+                    crate::LocalInfo::Param => {
+                        let r#type = self.env.locals.types.get_relative(var).unwrap();
+                        let r#type = self.quote_env().quote(r#type);
+                        let r#type = self.zonk_env().zonk(&r#type);
+
+                        let printer =
+                            pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                        let unelaborator = pion_core::unelab::Unelaborator::new(
+                            printer,
+                            pion_core::unelab::Config::default(),
+                        );
+
+                        let doc = unelaborator.expr(&mut self.env.locals.names, &r#type);
+                        let pretty = doc.pretty(80).to_string();
+                        self.command_handler
+                            .display_to_user(format!("parameter {} : {pretty}", name.data));
+                    }
+                    crate::LocalInfo::Let => {
+                        let value = self.env.locals.values.get_relative(var).unwrap();
+                        let expr = self.quote_env().quote(value);
+                        let expr = self.zonk_env().zonk(&expr);
+
+                        let r#type = self.env.locals.types.get_relative(var).unwrap();
+                        let r#type = self.quote_env().quote(r#type);
+                        let r#type = self.zonk_env().zonk(&r#type);
+
+                        let printer =
+                            pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                        let unelaborator = pion_core::unelab::Unelaborator::new(
+                            printer,
+                            pion_core::unelab::Config::default(),
+                        );
+
+                        let doc = unelaborator.let_stmt(
+                            &mut self.env.locals.names,
+                            Some(name.data),
+                            &r#type,
+                            &expr,
+                        );
+                        let pretty = doc.pretty(80).to_string();
+                        self.command_handler.display_to_user(pretty);
+                    }
+                }
+            }
         }
     }
 

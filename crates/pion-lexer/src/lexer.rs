@@ -162,6 +162,7 @@ const fn keyword_or_ident(bytes: &[u8]) -> TokenKind {
 
         b"#check" => TokenKind::KwCheck,
         b"#eval" => TokenKind::KwEval,
+        b"#show" => TokenKind::KwShow,
         _ => TokenKind::Ident,
     }
 }

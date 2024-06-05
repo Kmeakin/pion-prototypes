@@ -31,6 +31,7 @@ extern {
 
         "#check" => TokenKind::KwCheck,
         "#eval" => TokenKind::KwEval,
+        "#show" => TokenKind::KwShow,
 
         "(" => TokenKind::LParen,
         ")" => TokenKind::RParen,
@@ -102,6 +103,10 @@ Command: Located<Command<'surface>> = {
     <start: @L> "#eval" <expr: Expr> ";" <end: @R> => {
         let range = TextRange::new(start, end);
         Located::new(range, Command::Eval(expr))
+    },
+    <start: @L> "#show" <name: Ident> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Command::Show(name))
     },
 };
 
