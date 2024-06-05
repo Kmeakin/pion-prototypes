@@ -2,39 +2,15 @@ exit status: 0
 
 stdout = """
 let fst1 : forall (A : Type) (B : Type) -> (A, B) -> A
-    = fun (A : Type) (B : Type) (p : (A, B)) =>
-        do {
-            let x : A = p._0;
-            let y : B = p._1;
-            x
-        };
+    = fun (A : Type) (B : Type) (p : (A, B)) => p._0;
 let fst2 : forall (A : Type) (B : Type) -> (A, B) -> A
-    = fun (A : Type) (B : Type) (p : (A, B)) =>
-        do {
-            let x : A = p._0;
-            x
-        };
+    = fun (A : Type) (B : Type) (p : (A, B)) => p._0;
 let snd1 : forall (A : Type) (B : Type) -> (A, B) -> B
-    = fun (A : Type) (B : Type) (p : (A, B)) =>
-        do {
-            let x : A = p._0;
-            let y : B = p._1;
-            y
-        };
+    = fun (A : Type) (B : Type) (p : (A, B)) => p._1;
 let snd2 : forall (A : Type) (B : Type) -> (A, B) -> B
-    = fun (A : Type) (B : Type) (p : (A, B)) =>
-        do {
-            let y : B = p._1;
-            y
-        };
+    = fun (A : Type) (B : Type) (p : (A, B)) => p._1;
 let swap : forall (A : Type) (B : Type) -> (A, B) -> (B, A)
-    = fun (A : Type) (B : Type) (p : (A, B)) =>
-        do {
-            let x : A = p._0;
-            let y : B = p._1;
-            (y, x)
-        };
-() : ()
+    = fun (A : Type) (B : Type) (p : (A, B)) => (p._1, p._0);
 """
 
 stderr = """

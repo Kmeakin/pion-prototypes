@@ -37,4 +37,11 @@ let or4 = fun x y => match (x, y) {
     (_, true) => true,
     _ => false,
 };
-()
+
+#show and1;
+#show and2;
+#show and3;
+#show or1;
+#show or2;
+#show or3;
+#show or4;

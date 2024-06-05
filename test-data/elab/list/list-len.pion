@@ -1,1 +1,2 @@
-len [1, 2, 3]
+#check len [1, 2, 3];
+#eval len [1, 2, 3];

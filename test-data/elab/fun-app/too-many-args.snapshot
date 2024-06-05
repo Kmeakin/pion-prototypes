@@ -6,8 +6,8 @@ stdout = """
 
 stderr = """
 error: Expected function, found `Int`
-  ┌─ test-data/elab/fun-app/too-many-args.pion:1:1
+  ┌─ test-data/elab/fun-app/too-many-args.pion:1:8
   │
-1 │ (fun x => x) 1 2 3
-  │ ^^^^^^^^^^^^^^
+1 │ #check (fun x => x) 1 2 3;
+  │        ^^^^^^^^^^^^^^
 """

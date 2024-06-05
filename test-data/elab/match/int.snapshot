@@ -7,7 +7,6 @@ let is-zero : Int -> Bool
             0 => true,
             _ => false,
         };
-() : ()
 """
 
 stderr = """

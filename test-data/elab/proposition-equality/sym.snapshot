@@ -3,13 +3,7 @@ exit status: 0
 stdout = """
 let sym : forall (@A : Type) (@a : A) (@b : A) -> Eq @A a b -> Eq @A b a
     = fun (@A : Type) (@a : A) (@b : A) (a_eq_b : Eq @A a b) =>
-        do {
-            let p : A -> Type = fun (x : A) => Eq @A x a;
-            let p_a : Eq @A a a = refl @A a;
-            let goal : Eq @A b a = subst @A @p a b a_eq_b p_a;
-            goal
-        };
-() : ()
+        subst @A @(fun (x : A) => Eq @A x a) a b a_eq_b (refl @A a);
 """
 
 stderr = """

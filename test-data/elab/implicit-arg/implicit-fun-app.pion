@@ -1,1 +1,2 @@
-(fun (@x : Int) => x) @5
+#check (fun (@x : Int) => x) @5;
+#eval (fun (@x : Int) => x) @5;

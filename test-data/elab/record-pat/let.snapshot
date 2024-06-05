@@ -1,10 +1,8 @@
 exit status: 0
 
 stdout = """
-let p : (Int, Int) = (1, 2);
-let x : Int = p._0;
-let y : Int = p._1;
-() : ()
+let x : Int = 1;
+let y : Int = 2;
 """
 
 stderr = """

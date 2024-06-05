@@ -83,25 +83,8 @@ fn main() -> std::io::Result<()> {
                 &mut diagnostic_handler,
                 &mut command_handler,
             );
-            let (mut expr, r#type) = elaborator.synth_block(&file.contents);
+            elaborator.synth_block(&file.contents);
             elaborator.report_unsolved_metas();
-            let r#type = elaborator.quote_env().quote(&r#type);
-
-            if let Cli::Eval { .. } = command {
-                expr = elaborator.eval_env().normalize(&expr);
-            }
-
-            let expr = elaborator.zonk_env().zonk(&expr);
-            let r#type = elaborator.zonk_env().zonk(&r#type);
-
-            let printer = pion_printer::Printer::new(&bump, pion_printer::Config::default());
-            let unelaborator =
-                pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
-            let doc = unelaborator
-                .ann_expr(&mut UniqueEnv::default(), &expr, &r#type)
-                .into_doc();
-            let doc = doc.pretty(80);
-            println!("{doc}");
 
             Ok(())
         }

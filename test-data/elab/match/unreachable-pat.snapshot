@@ -7,7 +7,6 @@ let foo : Bool -> Int
             true => 1,
             false => 2,
         };
-() : ()
 """
 
 stderr = """

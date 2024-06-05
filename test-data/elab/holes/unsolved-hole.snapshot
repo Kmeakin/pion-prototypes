@@ -2,7 +2,6 @@ exit status: 0
 
 stdout = """
 let x : ?0 = ?1;
-() : ()
 """
 
 stderr = """

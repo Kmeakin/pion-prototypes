@@ -6,8 +6,8 @@ stdout = """
 
 stderr = """
 error: Unsolved metavariable: ?0
-  ┌─ test-data/elab/list/empty-list-ambiguous.pion:1:1
+  ┌─ test-data/elab/list/empty-list-ambiguous.pion:1:8
   │
-1 │ []
-  │ ^^ could not infer element type of empty list
+1 │ #check [];
+  │        ^^ could not infer element type of empty list
 """

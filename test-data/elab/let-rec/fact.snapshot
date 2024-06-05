@@ -7,7 +7,6 @@ let fact : Int -> Int
             true => 1,
             false => mul n (fact (sub n 1)),
         });
-() : ()
 """
 
 stderr = """

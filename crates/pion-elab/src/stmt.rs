@@ -72,6 +72,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                             .display_to_user(format!("parameter {} : {pretty}", name.data));
                     }
                     crate::LocalInfo::Let => {
+                        // TODO: print expr in unreduced form
+
                         let value = self.env.locals.values.get_relative(var).unwrap();
                         let expr = self.quote_env().quote(value);
                         let expr = self.zonk_env().zonk(&expr);

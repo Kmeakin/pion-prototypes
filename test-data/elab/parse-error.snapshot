@@ -5,9 +5,9 @@ stdout = """
 """
 
 stderr = """
-error: Syntax error: unexpected end of file
-  ┌─ test-data/elab/parse-error.pion:1:4
+error: expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
+  ┌─ test-data/elab/parse-error.pion:1:11
   │
-1 │ fun
-  │    ^ expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
+1 │ #check fun;
+  │           ^
 """

@@ -16,4 +16,6 @@ let apply = fun (x: Bool) (f: Bool -> Int) => match x {
     z => f(z),
 };
 
-()
+#show not;
+#show bool-to-int;
+#show apply;

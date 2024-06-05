@@ -2,4 +2,5 @@ let is-zero = fun(x) => match x {
     0 => true,
     _ => false,
 };
-()
+
+#show is-zero;

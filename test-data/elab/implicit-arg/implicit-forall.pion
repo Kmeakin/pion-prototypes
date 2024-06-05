@@ -1,1 +1,1 @@
-forall (@x: Int) -> Bool
+#check forall (@x: Int) -> Bool;

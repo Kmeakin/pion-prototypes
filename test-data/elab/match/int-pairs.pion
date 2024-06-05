@@ -8,4 +8,5 @@ let foo = fun (x) (y: Int) => match (x, y) {
     (d, 1) => d,
     (xx, yy) => xx,
 };
-()
+
+#show foo;

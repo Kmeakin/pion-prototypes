@@ -1,1 +1,2 @@
-push [1, 2, 3] 4
+#check push [1, 2, 3] 4;
+#eval push [1, 2, 3] 4;

@@ -1,3 +1,5 @@
 let p = (1, 2);
 let (x, y) = p;
-()
+
+#show x;
+#show y;

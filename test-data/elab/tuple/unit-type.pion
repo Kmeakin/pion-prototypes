@@ -1,1 +1,1 @@
-() : Type
+#check () : Type;

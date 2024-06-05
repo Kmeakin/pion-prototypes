@@ -26,7 +26,6 @@ let is_true_or_false_record2 : { b : Bool } -> Bool
             true => true,
             false => true,
         };
-() : ()
 """
 
 stderr = """

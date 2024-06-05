@@ -2,6 +2,7 @@ exit status: 0
 
 stdout = """
 ((fun (x : Int) => x) 1) : Int
+1
 """
 
 stderr = """

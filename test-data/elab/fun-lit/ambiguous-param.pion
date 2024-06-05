@@ -1,1 +1,1 @@
-fun x => x
+#check fun x => x;

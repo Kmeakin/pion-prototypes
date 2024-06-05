@@ -23,4 +23,7 @@ let is_true_or_false_record2 = fun (x : {b : Bool}) => match x {
     _ => false,
 };
 
-()
+#show is_zero_or_one;
+#show is_true_or_false;
+#show is_true_or_false_record;
+#show is_true_or_false_record2;

@@ -3,38 +3,37 @@ exit status: 0
 stdout = """
 let and3 : Bool -> Bool -> Bool
     = fun (x : Bool) (y : Bool) =>
-        match (x, y)._0 {
-            true => match (x, y)._1 {
+        match x {
+            true => match y {
                 true => true,
                 false => false,
             },
-            false => match (x, y)._1 {
+            false => match y {
                 true => false,
                 false => false,
             },
         };
 let or3 : Bool -> Bool -> Bool
     = fun (x : Bool) (y : Bool) =>
-        match (x, y)._0 {
-            true => match (x, y)._1 {
+        match x {
+            true => match y {
                 true => true,
                 false => true,
             },
-            false => match (x, y)._1 {
+            false => match y {
                 true => true,
                 false => false,
             },
         };
 let or4 : Bool -> Bool -> Bool
     = fun (x : Bool) (y : Bool) =>
-        match (x, y)._0 {
+        match x {
             true => true,
-            false => match (x, y)._1 {
+            false => match y {
                 true => true,
                 false => false,
             },
         };
-() : ()
 """
 
 stderr = """

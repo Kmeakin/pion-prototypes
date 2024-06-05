@@ -6,10 +6,10 @@ stdout = """
 
 stderr = """
 error: Applied implicit argument when explicit argument was expected
-  ┌─ test-data/elab/fun-app/plicity-mismatch.pion:1:22
+  ┌─ test-data/elab/fun-app/plicity-mismatch.pion:1:29
   │
-1 │ (fun (x : Int) => x) @5
-  │ -------------------- ^^ implicit argument
-  │ │                     
-  │ function has type Int -> Int
+1 │ #check (fun (x : Int) => x) @5;
+  │        -------------------- ^^ implicit argument
+  │        │                     
+  │        function has type Int -> Int
 """

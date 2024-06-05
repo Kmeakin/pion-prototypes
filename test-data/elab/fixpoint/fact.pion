@@ -1,7 +1,6 @@
 let fact = fix (fun fact n => if eq n 0 then 1 else mul n (fact (sub n 1)));
 
 #show fact;
-#eval fact;
 #eval fact 0;
 #eval fact 1;
 #eval fact 2;

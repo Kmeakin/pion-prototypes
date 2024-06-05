@@ -4,4 +4,5 @@ fix (fun (fix2 : ((A1 -> B1, A2 -> B2) -> (A1 -> B1, A2 -> B2)) -> (A1 -> B1, A2
    (fun x => (f (fix2 f))._0 x),
    (fun x => (f (fix2 f))._1 x)
 ));
-()
+
+#show fix2;

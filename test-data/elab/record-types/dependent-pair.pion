@@ -1,1 +1,1 @@
-{A: Type, a: A}
+#check {A: Type, a: A};

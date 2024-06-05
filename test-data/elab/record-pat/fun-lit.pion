@@ -1,1 +1,2 @@
-fun ((x, y) : (Int, Bool)) => (y, x)
+#check fun ((x, y) : (Int, Bool)) => (y, x);
+#eval (fun ((x, y) : (Int, Bool)) => (y, x)) (1, false);

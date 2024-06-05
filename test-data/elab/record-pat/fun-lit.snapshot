@@ -7,6 +7,7 @@ stdout = """
         let y : Bool = _#1._1;
         (y, x)
     }) : (Int, Bool) -> (Bool, Int)
+(false, 1)
 """
 
 stderr = """

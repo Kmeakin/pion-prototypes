@@ -6,8 +6,8 @@ stdout = """
 
 stderr = """
 error: Unsolved metavariable: ?0
-  ┌─ test-data/elab/fun-lit/ambiguous-param.pion:1:5
+  ┌─ test-data/elab/fun-lit/ambiguous-param.pion:1:12
   │
-1 │ fun x => x
-  │     ^ could not infer type of variable `x`
+1 │ #check fun x => x;
+  │            ^ could not infer type of variable `x`
 """

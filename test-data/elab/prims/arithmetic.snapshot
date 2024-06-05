@@ -1,7 +1,15 @@
 exit status: 0
 
 stdout = """
-() : ()
+add : Int -> Int -> Int
+sub : Int -> Int -> Int
+mul : Int -> Int -> Int
+eq : Int -> Int -> Bool
+ne : Int -> Int -> Bool
+lt : Int -> Int -> Bool
+gt : Int -> Int -> Bool
+lte : Int -> Int -> Bool
+gte : Int -> Int -> Bool
 """
 
 stderr = """

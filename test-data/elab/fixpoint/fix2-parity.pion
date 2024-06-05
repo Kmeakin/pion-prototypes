@@ -12,4 +12,9 @@ let evenodd : (Int -> Bool, Int -> Bool)
 ));
 let even = evenodd._0;
 let odd = evenodd._1;
-even 2
+
+#show even;
+#show odd;
+
+#eval even 1;
+#eval odd 1;

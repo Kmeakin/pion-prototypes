@@ -1,1 +1,2 @@
-({A = Int, a = 5} : {A : Type, a : A}).a
+#check ({A = Int, a = 5} : {A : Type, a : A}).a;
+#eval ({A = Int, a = 5} : {A : Type, a : A}).a;

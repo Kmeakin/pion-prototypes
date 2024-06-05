@@ -2,6 +2,7 @@ exit status: 0
 
 stdout = """
 (forall (A : Type) -> A -> A) : Type
+(forall (A : Type) -> A -> A) : Type
 """
 
 stderr = """
