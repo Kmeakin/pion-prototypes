@@ -1,6 +1,7 @@
 #![feature(allocator_api)]
 
 use command::CommandHandler;
+use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::{Expr, FunArg, LetBinding, Plicity};
@@ -8,7 +9,7 @@ use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_symbol::Symbol;
 use text_size::TextRange;
 
-use self::unify::{PartialRenaming, UnifyCtx};
+use self::unify::UnifyCtx;
 
 mod expr;
 mod r#match;
@@ -17,6 +18,7 @@ mod stmt;
 mod unify;
 
 pub mod command;
+pub mod env;
 
 pub struct Elaborator<'handler, 'core, 'text> {
     bump: &'core bumpalo::Bump,
@@ -26,140 +28,6 @@ pub struct Elaborator<'handler, 'core, 'text> {
     command_handler: &'handler mut dyn CommandHandler,
 
     env: ElabEnv<'core>,
-}
-
-#[derive(Default)]
-pub struct ElabEnv<'core> {
-    locals: LocalEnv<'core>,
-    metas: MetaEnv<'core>,
-    renaming: PartialRenaming,
-}
-
-#[derive(Default)]
-struct LocalEnv<'core> {
-    names: UniqueEnv<Option<Symbol>>,
-    infos: UniqueEnv<LocalInfo>,
-    types: UniqueEnv<Type<'core>>,
-    values: SharedEnv<Value<'core>>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum LocalInfo {
-    Let,
-    Param,
-}
-
-impl<'core> LocalEnv<'core> {
-    pub fn len(&self) -> EnvLen { self.names.len() }
-
-    pub fn push(
-        &mut self,
-        name: Option<Symbol>,
-        info: LocalInfo,
-        r#type: Type<'core>,
-        value: Value<'core>,
-    ) {
-        self.names.push(name);
-        self.infos.push(info);
-        self.types.push(r#type);
-        self.values.push(value);
-    }
-
-    pub fn push_let(&mut self, name: Option<Symbol>, r#type: Type<'core>, value: Value<'core>) {
-        self.push(name, LocalInfo::Let, r#type, value);
-    }
-
-    pub fn push_param(&mut self, name: Option<Symbol>, r#type: Type<'core>) {
-        let var = Value::local_var(self.values.len().to_absolute());
-        self.push(name, LocalInfo::Param, r#type, var);
-    }
-
-    pub fn pop(&mut self) {
-        self.names.pop();
-        self.infos.pop();
-        self.types.pop();
-        self.values.pop();
-    }
-
-    pub fn truncate(&mut self, len: EnvLen) {
-        self.names.truncate(len);
-        self.infos.truncate(len);
-        self.types.truncate(len);
-        self.values.truncate(len);
-    }
-
-    pub fn lookup(&self, sym: Symbol) -> Option<RelativeVar> {
-        self.names
-            .iter()
-            .rev()
-            .enumerate()
-            .find(|(_, name)| **name == Some(sym))
-            .map(|(idx, _)| RelativeVar::from(idx))
-    }
-
-    fn next_var(&self) -> Value<'core> { Value::local_var(self.len().to_absolute()) }
-}
-
-#[derive(Default)]
-struct MetaEnv<'core> {
-    sources: UniqueEnv<MetaSource>,
-    types: UniqueEnv<Type<'core>>,
-    values: UniqueEnv<Option<Value<'core>>>,
-}
-
-impl<'core> MetaEnv<'core> {
-    fn len(&self) -> EnvLen { self.sources.len() }
-
-    fn push(&mut self, source: MetaSource, r#type: Type<'core>) {
-        self.sources.push(source);
-        self.types.push(r#type);
-        self.values.push(None);
-    }
-
-    fn iter(&self) -> impl Iterator<Item = (MetaSource, &Type<'core>, &Option<Value<'core>>)> + '_ {
-        self.sources
-            .iter()
-            .zip(self.types.iter())
-            .zip(self.values.iter())
-            .map(|((source, r#type), value)| (*source, r#type, value))
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum MetaSource {
-    PatType {
-        range: TextRange,
-        name: Option<Symbol>,
-    },
-    HoleType {
-        range: TextRange,
-    },
-    HoleExpr {
-        range: TextRange,
-    },
-    ImplicitArg {
-        range: TextRange,
-        name: Option<Symbol>,
-    },
-    ListElemType {
-        range: TextRange,
-    },
-    MatchResultType {
-        range: TextRange,
-    },
-}
-
-impl MetaSource {
-    pub const fn range(&self) -> TextRange {
-        match self {
-            Self::PatType { range, .. }
-            | Self::HoleType { range, .. }
-            | Self::HoleExpr { range, .. }
-            | Self::ImplicitArg { range, .. }
-            | Self::ListElemType { range, .. }
-            | Self::MatchResultType { range, .. } => *range,
-        }
-    }
 }
 
 impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
