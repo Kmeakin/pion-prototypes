@@ -248,6 +248,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     Type::RecordType(telescope),
                 )
             }
+            // FIXME: check for duplicate fields
             surface::Expr::RecordType(surface_fields) => {
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
                 let local_len = self.env.locals.len();
@@ -263,6 +264,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 (Expr::RecordType(type_fields.into()), Type::TYPE)
             }
+            // FIXME: check for duplicate fields
             surface::Expr::RecordLit(surface_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, surface_fields.len());
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
@@ -358,6 +360,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         (expr, r#type)
     }
 
+    // FIXME: check patterns for exhaustiveness
     fn synth_fun_type(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
@@ -393,6 +396,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         }
     }
 
+    // FIXME: check patterns for exhaustiveness
     fn synth_fun_lit(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],
@@ -500,6 +504,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 self.env.locals.truncate(len);
                 Expr::RecordType(r#type_fields.into())
             }
+            // FIXME: check for duplicate fields
             surface::Expr::RecordLit(surface_fields) => {
                 let Value::RecordType(telescope) = &expected else {
                     return self.synth_and_convert_expr(surface_expr, &expected);
@@ -543,6 +548,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         }
     }
 
+    // FIXME: check patterns for exhaustiveness
     fn check_fun_lit(
         &mut self,
         surface_params: &'surface [Located<surface::FunParam<'surface>>],

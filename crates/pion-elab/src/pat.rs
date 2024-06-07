@@ -76,6 +76,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         }
     }
 
+    // FIXME: check pattern variables are linear (each bound variable appears once)
     fn synth_pat(
         &mut self,
         surface_pat: &'surface Located<surface::Pat<'surface>>,
@@ -185,6 +186,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 Pat::RecordLit(pat_fields.into())
             }
+            // FIXME: check for duplicate fields
             surface::Pat::RecordLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
                     return self.synth_and_convert_pat(surface_pat, expected);

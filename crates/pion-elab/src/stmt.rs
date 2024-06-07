@@ -188,6 +188,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         }
     }
 
+    // FIXME: check patterns for exhaustiveness
     fn elab_let<T>(
         &mut self,
         surface_binding: &'surface surface::LetBinding<'surface>,
@@ -215,6 +216,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         (expr, body_type)
     }
 
+    // FIXME: check patterns for exhaustiveness
     fn elab_letrec<T>(
         &mut self,
         surface_binding: &'surface surface::LetBinding<'surface>,
