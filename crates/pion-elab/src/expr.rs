@@ -1,7 +1,6 @@
 use std::num::NonZero;
 
 use ecow::eco_vec;
-use lexical_parse_integer::{FromLexicalWithOptions, NumberFormatBuilder};
 use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
@@ -41,6 +40,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         &self,
         int: Located<surface::IntLit>,
     ) -> Result<u32, lexical_parse_integer::Error> {
+        use lexical_parse_integer::{FromLexicalWithOptions, NumberFormatBuilder};
+
         const COMMON_OPTS: NumberFormatBuilder = NumberFormatBuilder::new()
             .digit_separator(NonZero::new(b'_'))
             .integer_internal_digit_separator(true);
@@ -59,7 +60,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
         let text = &self.text[int.range];
         let bytes = text.as_bytes();
-        let opts = Default::default();
+        let opts = lexical_parse_integer::Options::default();
 
         match int.data {
             surface::IntLit::Dec => u32::from_lexical_with_options::<DEC_OPTS>(bytes, &opts),
