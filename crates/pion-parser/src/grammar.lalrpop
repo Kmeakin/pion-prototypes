@@ -1,7 +1,7 @@
 use text_size::{TextRange, TextSize};
 
 use pion_lexer::TokenKind;
-use pion_surface::*;
+use pion_surface::syntax::*;
 use pion_symbol::Symbol;
 
 use crate::LalrpopError;

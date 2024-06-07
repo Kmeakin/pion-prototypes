@@ -7,7 +7,7 @@ use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
 use pion_diagnostic::{Diagnostic, Label};
-use pion_surface::{self as surface, Located};
+use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::Symbol;
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
@@ -62,9 +62,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         let opts = Default::default();
 
         match int.data {
-            pion_surface::IntLit::Dec => u32::from_lexical_with_options::<DEC_OPTS>(bytes, &opts),
-            pion_surface::IntLit::Bin => u32::from_lexical_with_options::<BIN_OPTS>(bytes, &opts),
-            pion_surface::IntLit::Hex => u32::from_lexical_with_options::<HEX_OPTS>(bytes, &opts),
+            surface::IntLit::Dec => u32::from_lexical_with_options::<DEC_OPTS>(bytes, &opts),
+            surface::IntLit::Bin => u32::from_lexical_with_options::<BIN_OPTS>(bytes, &opts),
+            surface::IntLit::Hex => u32::from_lexical_with_options::<HEX_OPTS>(bytes, &opts),
         }
     }
 

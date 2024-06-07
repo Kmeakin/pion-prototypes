@@ -262,20 +262,20 @@ impl Plicity {
     }
 }
 
-impl From<pion_surface::Plicity> for Plicity {
-    fn from(value: pion_surface::Plicity) -> Self {
+impl From<pion_surface::syntax::Plicity> for Plicity {
+    fn from(value: pion_surface::syntax::Plicity) -> Self {
         match value {
-            pion_surface::Plicity::Implicit => Self::Implicit,
-            pion_surface::Plicity::Explicit => Self::Explicit,
+            pion_surface::syntax::Plicity::Implicit => Self::Implicit,
+            pion_surface::syntax::Plicity::Explicit => Self::Explicit,
         }
     }
 }
 
-impl PartialEq<pion_surface::Plicity> for Plicity {
-    fn eq(&self, other: &pion_surface::Plicity) -> bool { *self == Self::from(*other) }
+impl PartialEq<pion_surface::syntax::Plicity> for Plicity {
+    fn eq(&self, other: &pion_surface::syntax::Plicity) -> bool { *self == Self::from(*other) }
 }
 
-impl PartialEq<Plicity> for pion_surface::Plicity {
+impl PartialEq<Plicity> for pion_surface::syntax::Plicity {
     fn eq(&self, other: &Plicity) -> bool { Plicity::from(*self) == *other }
 }
 

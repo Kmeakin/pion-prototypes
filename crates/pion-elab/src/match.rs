@@ -1,6 +1,6 @@
 use pion_core::LetBinding;
 use pion_diagnostic::{Diagnostic, Label};
-use pion_surface::{self as surface, Located};
+use pion_surface::syntax::{self as surface, Located};
 
 use super::{Elaborator, EnvLen, Expr, TextRange, Type};
 

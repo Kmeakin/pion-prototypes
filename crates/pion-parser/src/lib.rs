@@ -3,7 +3,7 @@
 use lalrpop_util::lalrpop_mod;
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_lexer::TokenKind;
-use pion_surface::{Block, Expr, File, Located};
+use pion_surface::syntax::{Block, Expr, File, Located};
 use text_size::{TextRange, TextSize};
 
 lalrpop_mod!(

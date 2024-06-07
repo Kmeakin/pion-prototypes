@@ -1,7 +1,7 @@
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
 use pion_core::{Expr, FunParam, LetBinding, Pat};
-use pion_surface::{self as surface, Located};
+use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::{self, Symbol};
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;

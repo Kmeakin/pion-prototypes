@@ -2,7 +2,7 @@ use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, LetBinding};
 use pion_diagnostic::{Diagnostic, Label};
-use pion_surface::{self as surface, Located, Rec};
+use pion_surface::syntax::{self as surface, Located, Rec};
 use text_size::TextRange;
 
 use super::Elaborator;
@@ -10,7 +10,7 @@ use super::Elaborator;
 impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     fn elab_command(&mut self, command: Located<surface::Command<'surface>>) {
         match command.data {
-            pion_surface::Command::Check(expr) => {
+            surface::Command::Check(expr) => {
                 let (expr, r#type) = self.synth_expr(&expr);
                 let r#type = self.quote_env().quote(&r#type);
 
@@ -28,7 +28,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let pretty = doc.pretty(80).to_string();
                 self.command_handler.display_to_user(pretty);
             }
-            pion_surface::Command::Eval(expr) => {
+            surface::Command::Eval(expr) => {
                 let (expr, r#type) = self.synth_expr(&expr);
 
                 let expr = self.eval_env().normalize(&expr);
@@ -48,7 +48,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let pretty = doc.pretty(80).to_string();
                 self.command_handler.display_to_user(pretty);
             }
-            pion_surface::Command::Show(name) => {
+            surface::Command::Show(name) => {
                 let Some(var) = self.env.locals.lookup(name.data) else {
                     todo!()
                 };
@@ -119,13 +119,13 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             };
 
             match stmt.data {
-                pion_surface::Stmt::Let(Rec::Nonrec, binding) => {
+                surface::Stmt::Let(Rec::Nonrec, binding) => {
                     this.elab_let(&binding, |this| recur(this, stmts, expr))
                 }
-                pion_surface::Stmt::Let(Rec::Rec, binding) => {
+                surface::Stmt::Let(Rec::Rec, binding) => {
                     this.elab_letrec(&binding, |this| recur(this, stmts, expr))
                 }
-                pion_surface::Stmt::Command(command) => {
+                surface::Stmt::Command(command) => {
                     this.elab_command(command);
                     recur(this, stmts, expr)
                 }
@@ -158,21 +158,21 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             };
 
             match stmt.data {
-                pion_surface::Stmt::Let(Rec::Nonrec, binding) => {
+                surface::Stmt::Let(Rec::Nonrec, binding) => {
                     let (expr, ()) = this.elab_let(&binding, |this| {
                         let expr = recur(this, stmts, expr, expected);
                         (expr, ())
                     });
                     expr
                 }
-                pion_surface::Stmt::Let(Rec::Rec, binding) => {
+                surface::Stmt::Let(Rec::Rec, binding) => {
                     let (expr, ()) = this.elab_letrec(&binding, |this| {
                         let expr = recur(this, stmts, expr, expected);
                         (expr, ())
                     });
                     expr
                 }
-                pion_surface::Stmt::Command(command) => {
+                surface::Stmt::Command(command) => {
                     this.elab_command(command);
                     recur(this, stmts, expr, expected)
                 }
