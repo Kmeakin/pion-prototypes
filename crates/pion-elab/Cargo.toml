@@ -22,6 +22,6 @@ text-size = { workspace = true }
 
 internal-iterator = { version = "0.2.3" }
 lexical-parse-integer = { version = "0.8.6", features = [
-    "format",
-    "power-of-two",
+  "format",
+  "power-of-two",
 ] }

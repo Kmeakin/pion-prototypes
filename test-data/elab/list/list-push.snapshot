@@ -2,7 +2,7 @@ exit status: 0
 
 stdout = """
 (push @Int [1, 2, 3] 4) : List Int
-[1, 2, 3, 4]
+push [1, 2, 3] 4 ⇝ [1, 2, 3, 4]
 """
 
 stderr = """

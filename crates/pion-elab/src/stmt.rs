@@ -2,6 +2,7 @@ use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::{Expr, FunArg, FunParam, LetBinding};
 use pion_diagnostic::{Diagnostic, Label};
+use pion_printer::{docs, DocAllocator as _};
 use pion_surface::syntax::{self as surface, Located, Rec};
 use text_size::TextRange;
 
@@ -20,7 +21,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let printer =
                     pion_printer::Printer::new(self.bump, pion_printer::Config::default());
                 let unelaborator = pion_core::unelab::Unelaborator::new(
-                    printer,
+                    &printer,
                     pion_core::unelab::Config::default(),
                 );
 
@@ -28,25 +29,32 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let pretty = doc.pretty(80).to_string();
                 self.command_handler.display_to_user(pretty);
             }
-            surface::Command::Eval(expr) => {
-                let (expr, r#type) = self.synth_expr(&expr);
-
-                let expr = self.eval_env().normalize(&expr);
-                let r#type = self.quote_env().quote(&r#type);
-
-                let expr = self.zonk_env().zonk(&expr);
-                let r#type = self.zonk_env().zonk(&r#type);
+            surface::Command::Eval(surface_expr) => {
+                let (core_expr, _) = self.synth_expr(&surface_expr);
+                let core_expr = self.eval_env().normalize(&core_expr);
+                let core_expr = self.zonk_env().zonk(&core_expr);
 
                 let printer =
                     pion_printer::Printer::new(self.bump, pion_printer::Config::default());
-                let unelaborator = pion_core::unelab::Unelaborator::new(
-                    printer,
+                let surface_printer = pion_surface::printer::Printer::new(self.text, &printer);
+                let core_unelaborator = pion_core::unelab::Unelaborator::new(
+                    &printer,
                     pion_core::unelab::Config::default(),
                 );
 
-                let doc = unelaborator.expr(&mut self.env.locals.names, &expr);
-                let pretty = doc.pretty(80).to_string();
-                self.command_handler.display_to_user(pretty);
+                let surface_expr_doc = surface_printer.expr(&surface_expr.data);
+                let core_expr_doc = core_unelaborator.expr(&mut self.env.locals.names, &core_expr);
+                let doc = docs![
+                    &printer,
+                    surface_expr_doc,
+                    printer.line(),
+                    "⇝",
+                    printer.line(),
+                    core_expr_doc
+                ]
+                .group();
+                self.command_handler
+                    .display_to_user(doc.pretty(80).to_string());
             }
             surface::Command::Show(name) => {
                 let Some(var) = self.env.locals.lookup(name.data) else {
@@ -62,7 +70,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         let printer =
                             pion_printer::Printer::new(self.bump, pion_printer::Config::default());
                         let unelaborator = pion_core::unelab::Unelaborator::new(
-                            printer,
+                            &printer,
                             pion_core::unelab::Config::default(),
                         );
 
@@ -85,7 +93,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         let printer =
                             pion_printer::Printer::new(self.bump, pion_printer::Config::default());
                         let unelaborator = pion_core::unelab::Unelaborator::new(
-                            printer,
+                            &printer,
                             pion_core::unelab::Config::default(),
                         );
 

@@ -21,13 +21,13 @@ impl Default for Config {
     }
 }
 
-pub struct Unelaborator<'bump> {
-    printer: pion_printer::Printer<'bump>,
+pub struct Unelaborator<'bump, 'printer> {
+    printer: &'printer pion_printer::Printer<'bump>,
     config: Config,
 }
 
-impl<'bump> Unelaborator<'bump> {
-    pub const fn new(printer: pion_printer::Printer<'bump>, config: Config) -> Self {
+impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
+    pub const fn new(printer: &'printer pion_printer::Printer<'bump>, config: Config) -> Self {
         Self { printer, config }
     }
 }
@@ -67,7 +67,7 @@ impl Prec {
 }
 
 /// Expressions
-impl<'bump> Unelaborator<'bump> {
+impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
     pub fn expr(&'bump self, names: &mut NameEnv, expr: &Expr) -> DocBuilder<'bump> {
         self.expr_prec(names, expr, Prec::MAX)
     }
@@ -252,7 +252,7 @@ impl<'bump> Unelaborator<'bump> {
                         })
                         .collect::<Vec<_>>();
                     names.truncate(names_len);
-                    return self.printer.tuple_expr(exprs);
+                    return self.printer.tuple(exprs);
                 }
 
                 let names_len = names.len();
@@ -266,21 +266,21 @@ impl<'bump> Unelaborator<'bump> {
                     })
                     .collect::<Vec<_>>();
                 names.truncate(names_len);
-                self.printer.record_expr(fields)
+                self.printer.record(fields)
             }
             Expr::RecordLit(fields) => {
                 if Symbol::are_tuple_field_names(fields.iter().map(|(n, _)| *n)) {
                     let exprs = fields
                         .iter()
                         .map(|(_, expr)| self.expr_prec(names, expr, Prec::MAX));
-                    return self.printer.tuple_expr(exprs);
+                    return self.printer.tuple(exprs);
                 }
 
                 let fields = fields.iter().map(|(name, expr)| {
                     let expr = self.expr_prec(names, expr, Prec::MAX);
                     self.printer.record_lit_field(self.symbol(*name), expr)
                 });
-                self.printer.record_expr(fields)
+                self.printer.record(fields)
             }
             Expr::RecordProj(scrut, symbol) => {
                 let scrut = self.expr_prec(names, scrut, Prec::Proj);
@@ -290,7 +290,7 @@ impl<'bump> Unelaborator<'bump> {
         };
 
         if prec < Prec::of_expr(expr) {
-            self.printer.paren_expr(doc)
+            self.printer.paren(doc)
         } else {
             doc
         }
@@ -298,7 +298,7 @@ impl<'bump> Unelaborator<'bump> {
 }
 
 /// Function arguments and parameters
-impl<'bump> Unelaborator<'bump> {
+impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
     fn fun_arg(&'bump self, names: &mut NameEnv, arg: &FunArg<&Expr>) -> DocBuilder<'bump> {
         let expr = self.expr_prec(names, arg.expr, Prec::Atom);
         self.printer.fun_arg(arg.plicity, expr)
@@ -317,7 +317,7 @@ impl<'bump> Unelaborator<'bump> {
 }
 
 /// Misc
-impl<'bump> Unelaborator<'bump> {
+impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
     fn lit(&'bump self, lit: Lit) -> DocBuilder<'bump> {
         match lit {
             Lit::Bool(true) => self.printer.text("true"),

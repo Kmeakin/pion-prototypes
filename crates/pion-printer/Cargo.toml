@@ -5,8 +5,11 @@ edition.workspace = true
 version.workspace = true
 
 [dependencies]
+pion-symbol = { path = "../pion-symbol" }
+
 bumpalo = { workspace = true }
-pretty  = { version = "0.12.3" }
+
+pretty = { version = "0.12.3" }
 
 [lints]
 workspace = true

@@ -150,7 +150,7 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         let expr = self.zonk_env().zonk(expr);
         let printer = pion_printer::Printer::new(self.bump, pion_printer::Config::default());
         let unelaborator =
-            pion_core::unelab::Unelaborator::new(printer, pion_core::unelab::Config::default());
+            pion_core::unelab::Unelaborator::new(&printer, pion_core::unelab::Config::default());
         let doc = unelaborator
             .expr(&mut self.env.locals.names, &expr)
             .into_doc();

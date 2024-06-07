@@ -2,7 +2,7 @@ exit status: 0
 
 stdout = """
 { A = Int, a = 5 }.a : Int
-5
+({ A = Int, a = 5 } : { A : Type, a : A }).a ⇝ 5
 """
 
 stderr = """

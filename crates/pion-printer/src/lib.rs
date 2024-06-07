@@ -1,4 +1,5 @@
-use pretty::{docs, Doc, DocAllocator, DocPtr, Pretty, RefDoc};
+use pion_symbol::Symbol;
+pub use pretty::{docs, Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
 pub struct Config {
     indent: isize,
@@ -22,10 +23,6 @@ impl<'bump> Printer<'bump> {
 
 /// Exprs
 impl<'bump> Printer<'bump> {
-    pub fn paren_expr(&'bump self, expr: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
-        docs![self, "(", expr, ")"]
-    }
-
     pub fn ann_expr(
         &'bump self,
         expr: impl Pretty<'bump, Self>,
@@ -201,31 +198,6 @@ impl<'bump> Printer<'bump> {
         docs![self, "[", exprs, "]"]
     }
 
-    pub fn tuple_expr<I>(&'bump self, exprs: I) -> DocBuilder<'bump>
-    where
-        I: IntoIterator,
-        I::Item: Pretty<'bump, Self>,
-        I::IntoIter: ExactSizeIterator,
-    {
-        let exprs = exprs.into_iter();
-        let trailing_comma = if exprs.len() == 1 {
-            self.text(",")
-        } else {
-            self.nil()
-        };
-
-        let exprs = self.intersperse(exprs, self.text(",").append(self.line()));
-        docs![self, "(", exprs, trailing_comma, ")"].group()
-    }
-
-    pub fn record_expr(
-        &'bump self,
-        fields: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
-    ) -> DocBuilder<'bump> {
-        let exprs = self.intersperse(fields, self.text(",").append(self.line()));
-        docs![self, "{", self.line(), exprs, self.line(), "}"].group()
-    }
-
     pub fn record_type_field(
         &'bump self,
         name: impl Pretty<'bump, Self>,
@@ -248,6 +220,16 @@ impl<'bump> Printer<'bump> {
         field: impl Pretty<'bump, Self>,
     ) -> DocBuilder<'bump> {
         docs![self, scrut, ".", field]
+    }
+}
+
+/// Pats
+impl<'bump> Printer<'bump> {
+    pub fn or_pat(
+        &'bump self,
+        pats: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        self.intersperse(pats, self.text(" | ")).group()
     }
 }
 
@@ -279,6 +261,43 @@ impl<'bump> Printer<'bump> {
             false => self.text("false"),
         }
     }
+}
+
+/// Definitions shared between expressions and patterns
+impl<'bump> Printer<'bump> {
+    pub fn paren(&'bump self, inner: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
+        docs![self, "(", inner, ")"]
+    }
+
+    pub fn tuple<I>(&'bump self, elems: I) -> DocBuilder<'bump>
+    where
+        I: IntoIterator,
+        I::Item: Pretty<'bump, Self>,
+        I::IntoIter: ExactSizeIterator,
+    {
+        let exprs = elems.into_iter();
+        let trailing_comma = if exprs.len() == 1 {
+            self.text(",")
+        } else {
+            self.nil()
+        };
+
+        let exprs = self.intersperse(exprs, self.text(",").append(self.line()));
+        docs![self, "(", exprs, trailing_comma, ")"].group()
+    }
+
+    pub fn record(
+        &'bump self,
+        fields: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
+    ) -> DocBuilder<'bump> {
+        let exprs = self.intersperse(fields, self.text(",").append(self.line()));
+        docs![self, "{", self.line(), exprs, self.line(), "}"].group()
+    }
+}
+
+/// Misc
+impl<'bump> Printer<'bump> {
+    pub fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> { self.text(symbol.as_str()) }
 }
 
 impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {

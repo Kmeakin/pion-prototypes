@@ -7,7 +7,7 @@ stdout = """
         let y : Bool = _#1._1;
         (y, x)
     }) : (Int, Bool) -> (Bool, Int)
-(false, 1)
+(fun ((x, y) : (Int, Bool)) => (y, x)) (1, false) ⇝ (false, 1)
 """
 
 stderr = """

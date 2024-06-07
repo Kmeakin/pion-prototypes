@@ -2,7 +2,7 @@ exit status: 0
 
 stdout = """
 (len @Int [1, 2, 3]) : Int
-3
+len [1, 2, 3] ⇝ 3
 """
 
 stderr = """
