@@ -2,11 +2,10 @@
 
 use command::CommandHandler;
 use env::{ElabEnv, LocalInfo, MetaSource};
-use pion_core::env::{AbsoluteVar, EnvLen, RelativeVar, SharedEnv, UniqueEnv};
+use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::{Expr, FunArg, LetBinding, Plicity};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
-use pion_symbol::Symbol;
 use text_size::TextRange;
 
 use self::unify::UnifyCtx;

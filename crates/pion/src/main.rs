@@ -2,7 +2,6 @@ use std::io::{IsTerminal, Read};
 
 use camino::Utf8PathBuf;
 use clap::Parser;
-use pion_core::env::UniqueEnv;
 use pion_util::numeric_conversions::ZeroExtendFrom;
 
 #[derive(Parser)]
