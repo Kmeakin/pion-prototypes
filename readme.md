@@ -45,7 +45,6 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
 
 * [ ] user interface
     * [x] `pion check`
-    * [x] `pion eval`
     * [ ] `pion repl`
     * [ ] `pion fmt`
     * [x] "commands" a la Lean4/Rocq (eg `#check term`, `#print metavars`)

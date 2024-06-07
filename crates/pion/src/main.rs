@@ -7,7 +7,6 @@ use pion_util::numeric_conversions::ZeroExtendFrom;
 #[derive(Parser)]
 pub enum Cli {
     Check { path: PathOrStdin },
-    Eval { path: PathOrStdin },
 }
 
 #[derive(Clone, Debug)]
@@ -49,7 +48,7 @@ impl PathOrStdin {
 fn main() -> std::io::Result<()> {
     let command = Cli::parse();
     match &command {
-        Cli::Check { path } | Cli::Eval { path } => {
+        Cli::Check { path } => {
             let color = match std::io::stderr().is_terminal() {
                 true => codespan_reporting::term::termcolor::ColorChoice::Auto,
                 false => codespan_reporting::term::termcolor::ColorChoice::Never,
