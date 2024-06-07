@@ -48,7 +48,7 @@ Minimalist reimplementation of [pion](github.com/kmeakin/pion)
     * [x] `pion eval`
     * [ ] `pion repl`
     * [ ] `pion fmt`
-    * [ ] "commands" a la Lean4/Rocq (eg `#check term`, `#print metavars`)
+    * [x] "commands" a la Lean4/Rocq (eg `#check term`, `#print metavars`)
 
 * [ ] documentation
     * [ ] code comments
