@@ -1,0 +1,8 @@
+#check 01234;
+#check 0123_456;
+
+#check 0b1010;
+#check 0b1010_1100;
+
+#check 0xabcd;
+#check 0xabcd_1234;

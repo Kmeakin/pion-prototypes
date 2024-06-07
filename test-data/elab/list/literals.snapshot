@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+[1, 2, 3] : List Int
+[] : List Int
+"""
+
+stderr = """
+
+"""

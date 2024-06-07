@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+() : Type
+{ x : Int } : Type
+{ A : Type, a : A } : Type
+"""
+
+stderr = """
+
+"""

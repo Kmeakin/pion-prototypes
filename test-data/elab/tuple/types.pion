@@ -1,0 +1,3 @@
+#check () : Type;
+#check (Bool,) : Type;
+#check (Bool, Int) : Type;

@@ -1,9 +1,0 @@
-exit status: 0
-
-stdout = """
-Eq : forall (@A : Type) -> A -> A -> Type
-"""
-
-stderr = """
-
-"""

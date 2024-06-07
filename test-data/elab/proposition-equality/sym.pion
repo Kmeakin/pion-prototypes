@@ -1,8 +1,0 @@
-let sym: forall (@A: Type) (@a: A) (@b: A) -> Eq a b -> Eq b a
-    = fun a_eq_b => do {
-        let p = fun x => Eq @A x a;
-        let p_a  : p a = refl a;
-        let goal : p b = subst @A @p a b a_eq_b p_a;
-        goal
-    };
-#show sym;

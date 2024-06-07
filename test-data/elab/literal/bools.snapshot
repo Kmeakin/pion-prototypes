@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+true : Bool
+false : Bool
+"""
+
+stderr = """
+
+"""

@@ -1,9 +1,0 @@
-exit status: 0
-
-stdout = """
-(1,) : (Int,)
-"""
-
-stderr = """
-
-"""

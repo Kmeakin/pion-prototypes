@@ -1,9 +1,0 @@
-exit status: 0
-
-stdout = """
-{ A : Type, a : A } : Type
-"""
-
-stderr = """
-
-"""

@@ -1,0 +1,14 @@
+exit status: 0
+
+stdout = """
+1234 : Int
+123456 : Int
+10 : Int
+172 : Int
+43981 : Int
+2882343476 : Int
+"""
+
+stderr = """
+
+"""

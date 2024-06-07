@@ -1,0 +1,3 @@
+#check {} : Type;
+#check {x : Int};
+#check {A: Type, a: A};

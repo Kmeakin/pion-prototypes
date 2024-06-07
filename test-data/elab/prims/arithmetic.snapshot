@@ -10,6 +10,15 @@ lt : Int -> Int -> Bool
 gt : Int -> Int -> Bool
 lte : Int -> Int -> Bool
 gte : Int -> Int -> Bool
+add 1 2 ⇝ 3
+sub 2 1 ⇝ 1
+mul 3 4 ⇝ 12
+eq 1 2 ⇝ false
+ne 1 2 ⇝ true
+lt 1 2 ⇝ true
+gt 1 2 ⇝ false
+lte 1 2 ⇝ true
+gte 1 2 ⇝ false
 """
 
 stderr = """
