@@ -3,6 +3,7 @@ use pion_core::semantics::{Telescope, Type};
 use pion_core::syntax::{Expr, FunParam, LetBinding, Pat};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::{self, Symbol};
+use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
 
@@ -111,7 +112,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let mut pat_fields = SliceVec::new(self.bump, pats.len());
                 let mut type_fields = SliceVec::new(self.bump, pats.len());
                 for (index, pat) in pats.iter().enumerate() {
-                    let name = Symbol::tuple_index(index);
+                    let name = Symbol::tuple_index(u32::truncate_from(index));
                     let (pat, r#type) = self.synth_pat(pat);
                     pat_fields.push((name, pat));
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));

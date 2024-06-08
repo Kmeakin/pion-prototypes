@@ -8,6 +8,7 @@ use pion_core::syntax::{Expr, FunArg, FunParam, Lit, Plicity};
 use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::Symbol;
+use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
 
@@ -238,7 +239,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 for (index, surface_expr) in surface_exprs.iter().enumerate() {
                     let (expr, r#type) = self.synth_expr(surface_expr);
-                    let name = Symbol::tuple_index(index);
+                    let name = Symbol::tuple_index(u32::truncate_from(index));
                     expr_fields.push((name, expr));
                     type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
                 }
@@ -496,7 +497,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let len = self.env.locals.len();
                 let mut type_fields = SliceVec::new(self.bump, surface_exprs.len());
                 for (index, expr) in surface_exprs.iter().enumerate() {
-                    let name = Symbol::tuple_index(index);
+                    let name = Symbol::tuple_index(u32::truncate_from(index));
                     let r#type = self.check_expr_is_type(expr);
                     let r#type_value = self.eval_env().eval(&r#type);
                     self.env.locals.push_param(None, type_value);

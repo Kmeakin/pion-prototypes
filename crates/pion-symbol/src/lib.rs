@@ -1,38 +1,50 @@
-//! Interned strings for constant-time equality comparisons
+//! Interned strings for constant-time equality comparisons.
 
 use std::fmt;
 use std::num::NonZeroU32;
+use std::sync::LazyLock;
 
-use lasso::Key;
-use once_cell::sync::Lazy;
-use pion_util::numeric_conversions::{TruncateFrom, ZeroExtendFrom};
+use lasso::Spur;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Symbol(NonZeroU32);
+pub struct Symbol(Spur);
 
-impl Symbol {
-    const fn from_u32(index: u32) -> Self {
-        debug_assert!(index < u32::MAX);
-        unsafe { Self(NonZeroU32::new_unchecked(index + 1)) }
+impl From<NonZeroU32> for Symbol {
+    fn from(value: NonZeroU32) -> Self {
+        let spur = unsafe { std::mem::transmute::<NonZeroU32, Spur>(value) };
+        Self(spur)
     }
+}
 
-    const fn as_u32(self) -> u32 { self.0.get() - 1 }
+impl From<Symbol> for NonZeroU32 {
+    #[allow(clippy::use_self)]
+    fn from(value: Symbol) -> Self { unsafe { std::mem::transmute::<Spur, NonZeroU32>(value.0) } }
+}
 
-    fn as_usize(self) -> usize { usize::zext_from(self.as_u32()) }
+impl From<Symbol> for u32 {
+    fn from(value: Symbol) -> Self { NonZeroU32::from(value).get() }
+}
+
+impl From<Spur> for Symbol {
+    fn from(spur: Spur) -> Self { Self(spur) }
+}
+
+impl From<Symbol> for Spur {
+    fn from(symbol: Symbol) -> Self { symbol.0 }
 }
 
 macro_rules! symbols {
     ($($sym:ident),*) => {
-        symbols!(@step, 0u32, $($sym,)*);
+        symbols!(@step, 1u32, $($sym,)*);
 
         const SYMBOLS: &[&str] = &[$(stringify!($sym)),*];
     };
 
     (@step, $index:expr, $sym:ident, $($tail:ident,)*) => {
 
-        impl Symbol{
+        impl Symbol {
             #[allow(non_upper_case_globals)]
-            pub const $sym: Symbol = Symbol::from_u32($index);
+            pub const $sym: Symbol = unsafe { std::mem::transmute(NonZeroU32::new_unchecked($index)) };
         }
 
         symbols!(@step, $index + 1u32, $($tail,)*);
@@ -43,9 +55,6 @@ macro_rules! symbols {
 
 #[rustfmt::skip]
 symbols![
-    // keywords
-    r#else, r#false, r#forall, r#fun, r#if, r#let, r#rec, r#then, r#true,
-
     // alphabet
     a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
     A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
@@ -66,46 +75,37 @@ symbols![
     bool_rec
 ];
 
-pub type Interner = lasso::ThreadedRodeo<lasso::Spur>;
+pub type Interner = lasso::ThreadedRodeo<Spur>;
 
-pub static INTERNER: Lazy<Interner> = Lazy::new(prefill_interner);
-
-impl From<lasso::Spur> for Symbol {
-    fn from(spur: lasso::Spur) -> Self { Self(spur.into_inner()) }
-}
+pub static INTERNER: LazyLock<Interner> = LazyLock::new(prefill_interner);
 
 impl Symbol {
     pub fn intern(text: impl AsRef<str>) -> Self {
         let text = text.as_ref();
         let text = text.strip_prefix("r#").unwrap_or(text);
-        (INTERNER.get_or_intern(text)).into()
+        Self(INTERNER.get_or_intern(text))
     }
 
     pub fn get(sym: impl AsRef<str>) -> Option<Self> { INTERNER.get(sym).map(Self::from) }
 
-    pub fn as_str(self) -> &'static str {
-        INTERNER.resolve(&lasso::Spur::try_from_usize(self.as_usize()).unwrap())
-    }
+    pub fn as_str(self) -> &'static str { INTERNER.resolve(&self.0) }
 
-    pub const fn is_keyword(self) -> bool {
-        matches!(
-            self,
-            Self::r#false | Self::r#forall | Self::r#fun | Self::r#let | Self::r#true
-        )
-    }
-
-    pub fn tuple_index(index: usize) -> Self {
+    pub fn tuple_index(index: u32) -> Self {
         if index <= 32 {
-            Self::from_u32(Self::_0.as_u32() + u32::truncate_from(index))
+            let key = unsafe { NonZeroU32::new_unchecked(u32::from(Self::_0) + index) };
+            Self::from(key)
         } else {
             Self::intern(format!("_{index}"))
         }
     }
 
     pub fn are_tuple_field_names(names: impl Iterator<Item = Self>) -> bool {
+        #![allow(clippy::as_conversions)]
+        #![allow(clippy::cast_possible_truncation)]
+
         names
             .enumerate()
-            .all(|(index, name)| name == Self::tuple_index(index))
+            .all(|(index, name)| name == Self::tuple_index(index as u32))
     }
 }
 
