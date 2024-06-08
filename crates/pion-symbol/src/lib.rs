@@ -44,7 +44,11 @@ macro_rules! symbols {
 
         impl Symbol {
             #[allow(non_upper_case_globals)]
-            pub const $sym: Symbol = unsafe { std::mem::transmute(NonZeroU32::new_unchecked($index)) };
+            pub const $sym: Symbol = {
+                let int = unsafe { NonZeroU32::new_unchecked($index) };
+                let spur = unsafe { std::mem::transmute::<NonZeroU32, Spur>(int) };
+                Symbol(spur)
+            };
         }
 
         symbols!(@step, $index + 1u32, $($tail,)*);
@@ -82,7 +86,6 @@ pub static INTERNER: LazyLock<Interner> = LazyLock::new(prefill_interner);
 impl Symbol {
     pub fn intern(text: impl AsRef<str>) -> Self {
         let text = text.as_ref();
-        let text = text.strip_prefix("r#").unwrap_or(text);
         Self(INTERNER.get_or_intern(text))
     }
 
@@ -112,7 +115,7 @@ impl Symbol {
 fn prefill_interner() -> Interner {
     let interner = Interner::new();
     for sym in SYMBOLS {
-        interner.get_or_intern_static(sym.strip_prefix("r#").unwrap_or(sym));
+        interner.get_or_intern_static(sym);
     }
     interner
 }
