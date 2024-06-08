@@ -1,9 +1,10 @@
 //! Interned strings for constant-time equality comparisons.
 
 use std::fmt;
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32, NonZeroUsize};
 use std::sync::LazyLock;
 
+use fxhash::FxBuildHasher;
 use lasso::Spur;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -79,7 +80,7 @@ symbols![
     bool_rec
 ];
 
-pub type Interner = lasso::ThreadedRodeo<Spur>;
+pub type Interner = lasso::ThreadedRodeo<Spur, FxBuildHasher>;
 
 pub static INTERNER: LazyLock<Interner> = LazyLock::new(prefill_interner);
 
@@ -113,7 +114,19 @@ impl Symbol {
 }
 
 fn prefill_interner() -> Interner {
-    let interner = Interner::new();
+    const STRINGS: usize = SYMBOLS.len();
+    const BYTES: NonZeroUsize = {
+        let mut bytes = 0;
+        let mut i = 0;
+        while i < SYMBOLS.len() {
+            bytes += SYMBOLS[i].len();
+            i += 1;
+        }
+        unsafe { NonZeroUsize::new_unchecked(bytes) }
+    };
+
+    let capacity = lasso::Capacity::new(STRINGS, BYTES);
+    let interner = Interner::with_capacity_and_hasher(capacity, FxBuildHasher::default());
     for sym in SYMBOLS {
         interner.get_or_intern_static(sym);
     }

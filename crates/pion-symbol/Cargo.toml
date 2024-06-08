@@ -8,4 +8,6 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-lasso     = { version = "0.7.2", features = ["multi-threaded"] }
+fxhash = { workspace = true }
+
+lasso = { version = "0.7.2", features = ["multi-threaded"] }
