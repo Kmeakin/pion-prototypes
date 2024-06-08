@@ -1,0 +1,11 @@
+#check fun (r : ()) => do {
+    let () = r;
+};
+
+#check fun (r : (Int,)) => do {
+    let (x,) = r;
+};
+
+#check fun (r : (Int,Bool)) => do {
+    let (x,y) = r;
+};
