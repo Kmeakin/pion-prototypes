@@ -58,12 +58,19 @@ impl<'bump, Elem> SliceVec<'bump, Elem> {
         self.elems[self.len] = MaybeUninit::new(elem);
         self.len += 1;
     }
-}
 
-impl<'a, Elem> Deref for SliceVec<'a, Elem> {
-    type Target = [Elem];
+    pub fn into_slice(self) -> &'bump [Elem] {
+        // SAFETY: This is safe because we know that `self.elems[..self.len]`
+        // only ever contains elements initialized with `MaybeUninit::new`.
+        // We know this because:
+        //
+        // - `self.len` is always initialized to `0` in `SliceVec::new`
+        // - `self.len` is only incremented in `SliceVec::push`, and in that case we
+        //   make sure `self.elems[self.len]` has been initialized before hand.
+        unsafe { MaybeUninit::slice_assume_init_ref(&self.elems[..self.len]) }
+    }
 
-    fn deref(&self) -> &[Elem] {
+    pub fn as_slice(&self) -> &[Elem] {
         // SAFETY: This is safe because we know that `self.elems[..self.len]`
         // only ever contains elements initialized with `MaybeUninit::new`.
         // We know this because:
@@ -75,15 +82,11 @@ impl<'a, Elem> Deref for SliceVec<'a, Elem> {
     }
 }
 
+impl<'a, Elem> Deref for SliceVec<'a, Elem> {
+    type Target = [Elem];
+    fn deref(&self) -> &[Elem] { self.as_slice() }
+}
+
 impl<'a, Elem> From<SliceVec<'a, Elem>> for &'a [Elem] {
-    fn from(slice: SliceVec<'a, Elem>) -> &'a [Elem] {
-        // SAFETY: This is safe because we know that `self.elems[..self.len]`
-        // only ever contains elements initialized with `MaybeUninit::new`.
-        // We know this because:
-        //
-        // - `self.len` is always initialized to `0` in `SliceVec::new`
-        // - `self.len` is only incremented in `SliceVec::push`, and in that case we
-        //   make sure `self.elems[self.len]` has been initialized before hand.
-        unsafe { MaybeUninit::slice_assume_init_ref(slice.elems) }
-    }
+    fn from(vec: SliceVec<'a, Elem>) -> &'a [Elem] { vec.into_slice() }
 }
