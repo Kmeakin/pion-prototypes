@@ -1,6 +1,7 @@
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
 use pion_core::syntax::{Expr, FunParam, LetBinding, Pat};
+use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::{self, Symbol};
 use pion_util::numeric_conversions::TruncateFrom;
@@ -122,15 +123,33 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let r#type = Type::RecordType(telescope);
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
-            surface::Pat::RecordLit(fields) => {
-                let mut pat_fields = SliceVec::new(self.bump, fields.len());
-                let mut type_fields = SliceVec::new(self.bump, fields.len());
+            surface::Pat::RecordLit(surface_fields) => {
+                let mut pat_fields = SliceVec::new(self.bump, surface_fields.len());
+                let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
 
-                for (index, field) in fields.iter().enumerate() {
-                    let surface::PatField { name, pat } = field.data;
-                    let (pat, r#type) = self.synth_pat(&pat);
-                    pat_fields.push((name.data, pat));
-                    type_fields.push((name.data, self.quote_env().quote_at(&r#type, index)));
+                for surface_field in surface_fields {
+                    let name = surface_field.data.name.data;
+
+                    if let Some(index) = pat_fields.iter().position(|(n, _)| *n == name) {
+                        self.report_diagnostic(
+                            Diagnostic::error()
+                                .with_message(format!("Duplicate field `{name}`"))
+                                .with_labels(vec![
+                                    Label::primary(self.file_id, surface_field.data.name.range),
+                                    Label::secondary(
+                                        self.file_id,
+                                        surface_fields[index].data.name.range,
+                                    )
+                                    .with_message(format!("`{name}` was already defined here")),
+                                ]),
+                        );
+                        continue;
+                    }
+
+                    let (pat, r#type) = self.synth_pat(&surface_field.data.pat);
+                    let r#type = self.quote_env().quote_at(&r#type, pat_fields.len());
+                    pat_fields.push((name, pat));
+                    type_fields.push((name, r#type));
                 }
 
                 let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
@@ -187,7 +206,6 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 Pat::RecordLit(pat_fields.into())
             }
-            // FIXME: check for duplicate fields
             surface::Pat::RecordLit(surface_fields) => {
                 let Type::RecordType(telescope) = &expected else {
                     return self.synth_and_convert_pat(surface_pat, expected);

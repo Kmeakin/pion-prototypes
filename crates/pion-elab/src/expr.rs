@@ -250,13 +250,28 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     Type::RecordType(telescope),
                 )
             }
-            // FIXME: check for duplicate fields
             surface::Expr::RecordType(surface_fields) => {
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
                 let local_len = self.env.locals.len();
 
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
+                    if let Some(index) = type_fields.iter().position(|(n, _)| *n == name) {
+                        self.report_diagnostic(
+                            Diagnostic::error()
+                                .with_message(format!("Duplicate field `{name}`"))
+                                .with_labels(vec![
+                                    Label::primary(self.file_id, surface_field.data.name.range),
+                                    Label::secondary(
+                                        self.file_id,
+                                        surface_fields[index].data.name.range,
+                                    )
+                                    .with_message(format!("`{name}` was already defined here")),
+                                ]),
+                        );
+                        continue;
+                    }
+
                     let r#type = self.check_expr_is_type(&surface_field.data.r#type);
                     let r#type_value = self.eval_env().eval(&r#type);
                     type_fields.push((name, r#type));
@@ -266,16 +281,32 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 (Expr::RecordType(type_fields.into()), Type::TYPE)
             }
-            // FIXME: check for duplicate fields
             surface::Expr::RecordLit(surface_fields) => {
                 let mut expr_fields = SliceVec::new(self.bump, surface_fields.len());
                 let mut type_fields = SliceVec::new(self.bump, surface_fields.len());
 
-                for (index, surface_field) in surface_fields.iter().enumerate() {
-                    let (expr, r#type) = self.synth_expr(&surface_field.data.expr);
+                for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
+                    if let Some(index) = expr_fields.iter().position(|(n, _)| *n == name) {
+                        self.report_diagnostic(
+                            Diagnostic::error()
+                                .with_message(format!("Duplicate field `{name}`"))
+                                .with_labels(vec![
+                                    Label::primary(self.file_id, surface_field.data.name.range),
+                                    Label::secondary(
+                                        self.file_id,
+                                        surface_fields[index].data.name.range,
+                                    )
+                                    .with_message(format!("`{name}` was already defined here")),
+                                ]),
+                        );
+                        continue;
+                    }
+
+                    let (expr, r#type) = self.synth_expr(&surface_field.data.expr);
+                    let r#type = self.quote_env().quote_at(&r#type, expr_fields.len());
                     expr_fields.push((name, expr));
-                    type_fields.push((name, self.quote_env().quote_at(&r#type, index)));
+                    type_fields.push((name, r#type));
                 }
 
                 let telescope = Telescope::new(self.env.locals.values.clone(), type_fields.into());
@@ -506,7 +537,6 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 self.env.locals.truncate(len);
                 Expr::RecordType(r#type_fields.into())
             }
-            // FIXME: check for duplicate fields
             surface::Expr::RecordLit(surface_fields) => {
                 let Value::RecordType(telescope) = &expected else {
                     return self.synth_and_convert_expr(surface_expr, &expected);
