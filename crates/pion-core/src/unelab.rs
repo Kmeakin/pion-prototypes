@@ -1,4 +1,4 @@
-use pion_printer::DocBuilder;
+use pion_printer::{BumpDocAllocator, DocBuilder};
 use pion_symbol::Symbol;
 use pretty::{Doc, DocAllocator, Pretty};
 
@@ -21,14 +21,14 @@ impl Default for Config {
     }
 }
 
-pub struct Unelaborator<'bump, 'printer> {
-    printer: &'printer pion_printer::Printer<'bump>,
+pub struct Unelaborator<'bump> {
+    alloc: BumpDocAllocator<'bump>,
     config: Config,
 }
 
-impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
-    pub const fn new(printer: &'printer pion_printer::Printer<'bump>, config: Config) -> Self {
-        Self { printer, config }
+impl<'bump> Unelaborator<'bump> {
+    pub const fn new(alloc: BumpDocAllocator<'bump>, config: Config) -> Self {
+        Self { alloc, config }
     }
 }
 
@@ -67,7 +67,7 @@ impl Prec {
 }
 
 /// Expressions
-impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
+impl<'bump> Unelaborator<'bump> {
     pub fn expr(&'bump self, names: &mut NameEnv, expr: &Expr) -> DocBuilder<'bump> {
         self.expr_prec(names, expr, Prec::MAX)
     }
@@ -89,12 +89,12 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
             let r#type = self.expr_prec(names, binding.r#type, Prec::MAX);
             let init = self.expr_prec(names, binding.expr, Prec::MAX);
 
-            return self.printer.let_expr(name, Some(r#type), init, body);
+            return self.alloc.let_expr(name, Some(r#type), init, body);
         }
 
         let expr = self.expr_prec(names, expr, Prec::Proj);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
-        self.printer.ann_expr(expr, r#type)
+        self.alloc.ann_expr(expr, r#type)
     }
 
     pub fn let_stmt(
@@ -107,7 +107,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
         let pat = self.name(name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
         let init = self.expr_prec(names, init, Prec::MAX);
-        self.printer.let_stmt(pat, Some(r#type), init)
+        self.alloc.let_stmt(pat, Some(r#type), init)
     }
 
     pub fn expr_prec(
@@ -117,15 +117,15 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
         prec: Prec,
     ) -> DocBuilder<'bump> {
         let doc = match expr {
-            Expr::Error => self.printer.text("#error"),
+            Expr::Error => self.alloc.text("#error"),
             Expr::Lit(lit) => self.lit(*lit),
             Expr::LocalVar(var) if self.config.print_names => match names.get_relative(*var) {
-                Some(Some(name)) => self.printer.text(name.to_string()),
-                Some(None) => self.printer.text(format!("_#{var}")),
+                Some(Some(name)) => self.alloc.text(name.to_string()),
+                Some(None) => self.alloc.text(format!("_#{var}")),
                 None => panic!("Unbound variable: {var:?}"),
             },
-            Expr::LocalVar(var) => self.printer.text(format!("_#{var}")),
-            Expr::MetaVar(var) => self.printer.text(format!("?{var}")),
+            Expr::LocalVar(var) => self.alloc.text(format!("_#{var}")),
+            Expr::MetaVar(var) => self.alloc.text(format!("?{var}")),
             Expr::Let { .. } => {
                 let mut expr = expr;
                 let mut stmts = Vec::new();
@@ -140,7 +140,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                 let expr = self.expr_prec(names, expr, Prec::MAX);
                 names.truncate(names_len);
 
-                self.printer.do_expr(self.printer.block(stmts, Some(expr)))
+                self.alloc.do_expr(self.alloc.block(stmts, Some(expr)))
             }
             Expr::MatchBool { cond, then, r#else } => {
                 let cond = self.expr_prec(names, cond, Prec::Proj);
@@ -148,13 +148,13 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                 let r#else = self.expr_prec(names, r#else, Prec::MAX);
 
                 let true_case = self
-                    .printer
-                    .match_case(self.printer.bool(true), Doc::nil(), then);
-                let false_case =
-                    self.printer
-                        .match_case(self.printer.bool(false), Doc::nil(), r#else);
+                    .alloc
+                    .match_case(self.alloc.bool(true), Doc::nil(), then);
+                let false_case = self
+                    .alloc
+                    .match_case(self.alloc.bool(false), Doc::nil(), r#else);
 
-                self.printer.match_expr(cond, [true_case, false_case])
+                self.alloc.match_expr(cond, [true_case, false_case])
             }
             Expr::MatchInt {
                 scrut,
@@ -163,16 +163,16 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
             } => {
                 let scrut = self.expr_prec(names, scrut, Prec::Proj);
                 let default = {
-                    let pat = self.printer.text("_");
+                    let pat = self.alloc.text("_");
                     let expr = self.expr_prec(names, default, Prec::MAX);
-                    self.printer.match_case(pat, Doc::nil(), expr)
+                    self.alloc.match_case(pat, Doc::nil(), expr)
                 };
                 let cases = cases.iter().map(|(value, expr)| {
                     let pat = self.lit(Lit::Int(*value));
                     let expr = self.expr_prec(names, expr, Prec::MAX);
-                    self.printer.match_case(pat, Doc::nil(), expr)
+                    self.alloc.match_case(pat, Doc::nil(), expr)
                 });
-                self.printer
+                self.alloc
                     .match_expr(scrut, cases.chain(std::iter::once(default)))
             }
             Expr::FunType { .. } => {
@@ -186,7 +186,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                         let r#type = self.expr_prec(names, param.r#type, Prec::App);
                         names.push(None);
                         let body = self.expr_prec(names, body, Prec::Fun);
-                        rhs = Some(self.printer.arrow_expr(param.plicity, r#type, body));
+                        rhs = Some(self.alloc.arrow_expr(param.plicity, r#type, body));
                         break;
                     }
 
@@ -204,7 +204,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                 if params.is_empty() {
                     rhs
                 } else {
-                    self.printer.fun_type_expr(params, rhs)
+                    self.alloc.fun_type_expr(params, rhs)
                 }
             }
             Expr::FunLit { .. } => {
@@ -218,7 +218,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                 }
                 let body = self.expr_prec(names, rhs, Prec::MAX);
                 names.truncate(names_len);
-                self.printer.fun_lit_expr(params, body)
+                self.alloc.fun_lit_expr(params, body)
             }
             Expr::FunApp { .. } => {
                 let mut fun = expr;
@@ -230,14 +230,14 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
 
                 let fun = self.expr_prec(names, fun, Prec::App);
                 let args = args.into_iter().rev().map(|arg| self.fun_arg(names, arg));
-                self.printer.fun_app_expr(fun, args)
+                self.alloc.fun_app_expr(fun, args)
             }
-            Expr::Prim(prim) => self.printer.text(prim.name()),
+            Expr::Prim(prim) => self.alloc.text(prim.name()),
             Expr::ListLit(exprs) => {
                 let exprs = exprs
                     .iter()
                     .map(|expr| self.expr_prec(names, expr, Prec::MAX));
-                self.printer.list_lit_expr(exprs)
+                self.alloc.list_lit_expr(exprs)
             }
             Expr::RecordType(fields) => {
                 // TODO: check that subsequent fields do not depend on previous fields
@@ -252,7 +252,7 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                         })
                         .collect::<Vec<_>>();
                     names.truncate(names_len);
-                    return self.printer.tuple(exprs);
+                    return self.alloc.tuple(exprs);
                 }
 
                 let names_len = names.len();
@@ -260,37 +260,37 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
                     .iter()
                     .map(|(name, expr)| {
                         let expr = self.expr_prec(names, expr, Prec::MAX);
-                        let field = self.printer.record_type_field(self.symbol(*name), expr);
+                        let field = self.alloc.record_type_field(self.symbol(*name), expr);
                         names.push(Some(*name));
                         field
                     })
                     .collect::<Vec<_>>();
                 names.truncate(names_len);
-                self.printer.record(fields)
+                self.alloc.record(fields)
             }
             Expr::RecordLit(fields) => {
                 if Symbol::are_tuple_field_names(fields.iter().map(|(n, _)| *n)) {
                     let exprs = fields
                         .iter()
                         .map(|(_, expr)| self.expr_prec(names, expr, Prec::MAX));
-                    return self.printer.tuple(exprs);
+                    return self.alloc.tuple(exprs);
                 }
 
                 let fields = fields.iter().map(|(name, expr)| {
                     let expr = self.expr_prec(names, expr, Prec::MAX);
-                    self.printer.record_lit_field(self.symbol(*name), expr)
+                    self.alloc.record_lit_field(self.symbol(*name), expr)
                 });
-                self.printer.record(fields)
+                self.alloc.record(fields)
             }
             Expr::RecordProj(scrut, symbol) => {
                 let scrut = self.expr_prec(names, scrut, Prec::Proj);
                 let field = self.symbol(*symbol);
-                self.printer.record_proj_expr(scrut, field)
+                self.alloc.record_proj_expr(scrut, field)
             }
         };
 
         if prec < Prec::of_expr(expr) {
-            self.printer.paren(doc)
+            self.alloc.paren(doc)
         } else {
             doc
         }
@@ -298,10 +298,10 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
 }
 
 /// Function arguments and parameters
-impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
+impl<'bump> Unelaborator<'bump> {
     fn fun_arg(&'bump self, names: &mut NameEnv, arg: &FunArg<&Expr>) -> DocBuilder<'bump> {
         let expr = self.expr_prec(names, arg.expr, Prec::Atom);
-        self.printer.fun_arg(arg.plicity, expr)
+        self.alloc.fun_arg(arg.plicity, expr)
     }
 
     fn fun_param(&'bump self, names: &mut NameEnv, param: &FunParam<&Expr>) -> DocBuilder<'bump> {
@@ -312,30 +312,28 @@ impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
         } = param;
         let pat = self.name(*name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
-        self.printer.fun_param(*plicity, pat, Some(r#type))
+        self.alloc.fun_param(*plicity, pat, Some(r#type))
     }
 }
 
 /// Misc
-impl<'bump, 'printer> Unelaborator<'bump, 'printer> {
+impl<'bump> Unelaborator<'bump> {
     fn lit(&'bump self, lit: Lit) -> DocBuilder<'bump> {
         match lit {
-            Lit::Bool(true) => self.printer.text("true"),
-            Lit::Bool(false) => self.printer.text("false"),
-            Lit::Int(value) => self.printer.text(value.to_string()),
+            Lit::Bool(true) => self.alloc.text("true"),
+            Lit::Bool(false) => self.alloc.text("false"),
+            Lit::Int(value) => self.alloc.text(value.to_string()),
         }
     }
 
     fn name(&'bump self, name: Option<Symbol>) -> DocBuilder<'bump> {
         match name {
-            None => self.printer.text("_"),
+            None => self.alloc.text("_"),
             Some(symbol) => self.symbol(symbol),
         }
     }
 
-    fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> {
-        self.printer.text(symbol.as_str())
-    }
+    fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> { self.alloc.text(symbol.as_str()) }
 }
 
 impl<'a, D: DocAllocator<'a>> Pretty<'a, D> for Plicity {

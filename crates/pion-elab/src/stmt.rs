@@ -2,7 +2,7 @@ use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
 use pion_diagnostic::{Diagnostic, Label};
-use pion_printer::{docs, DocAllocator as _};
+use pion_printer::{docs, BumpDocAllocator, DocAllocator as _};
 use pion_surface::syntax::{self as surface, Located, Rec};
 use text_size::TextRange;
 
@@ -18,10 +18,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let expr = self.zonk_env().zonk(&expr);
                 let r#type = self.zonk_env().zonk(&r#type);
 
-                let printer =
-                    pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                let alloc = BumpDocAllocator::new(self.bump);
                 let unelaborator = pion_core::unelab::Unelaborator::new(
-                    &printer,
+                    alloc,
                     pion_core::unelab::Config::default(),
                 );
 
@@ -34,22 +33,21 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 let core_expr = self.eval_env().normalize(&core_expr);
                 let core_expr = self.zonk_env().zonk(&core_expr);
 
-                let printer =
-                    pion_printer::Printer::new(self.bump, pion_printer::Config::default());
-                let surface_printer = pion_surface::printer::Printer::new(self.text, &printer);
+                let alloc = BumpDocAllocator::new(self.bump);
+                let surface_printer = pion_surface::printer::Printer::new(alloc, self.text);
                 let core_unelaborator = pion_core::unelab::Unelaborator::new(
-                    &printer,
+                    alloc,
                     pion_core::unelab::Config::default(),
                 );
 
                 let surface_expr_doc = surface_printer.expr(&surface_expr.data);
                 let core_expr_doc = core_unelaborator.expr(&mut self.env.locals.names, &core_expr);
                 let doc = docs![
-                    &printer,
+                    &alloc,
                     surface_expr_doc,
-                    printer.line(),
+                    alloc.line(),
                     "⇝",
-                    printer.line(),
+                    alloc.line(),
                     core_expr_doc
                 ]
                 .group();
@@ -67,10 +65,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         let r#type = self.quote_env().quote(r#type);
                         let r#type = self.zonk_env().zonk(&r#type);
 
-                        let printer =
-                            pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                        let alloc = BumpDocAllocator::new(self.bump);
                         let unelaborator = pion_core::unelab::Unelaborator::new(
-                            &printer,
+                            alloc,
                             pion_core::unelab::Config::default(),
                         );
 
@@ -90,10 +87,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         let r#type = self.quote_env().quote(r#type);
                         let r#type = self.zonk_env().zonk(&r#type);
 
-                        let printer =
-                            pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+                        let alloc = BumpDocAllocator::new(self.bump);
                         let unelaborator = pion_core::unelab::Unelaborator::new(
-                            &printer,
+                            alloc,
                             pion_core::unelab::Config::default(),
                         );
 

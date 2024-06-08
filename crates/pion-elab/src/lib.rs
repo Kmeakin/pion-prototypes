@@ -6,6 +6,7 @@ use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::syntax::{Expr, FunArg, LetBinding, Plicity};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
+use pion_printer::BumpDocAllocator;
 use text_size::TextRange;
 
 use self::unify::UnifyCtx;
@@ -147,9 +148,9 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
 
     pub fn pretty(&mut self, expr: &Expr<'core>) -> String {
         let expr = self.zonk_env().zonk(expr);
-        let printer = pion_printer::Printer::new(self.bump, pion_printer::Config::default());
+        let alloc = BumpDocAllocator::new(self.bump);
         let unelaborator =
-            pion_core::unelab::Unelaborator::new(&printer, pion_core::unelab::Config::default());
+            pion_core::unelab::Unelaborator::new(alloc, pion_core::unelab::Config::default());
         let doc = unelaborator
             .expr(&mut self.env.locals.names, &expr)
             .into_doc();

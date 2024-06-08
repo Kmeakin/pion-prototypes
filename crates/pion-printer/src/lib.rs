@@ -1,28 +1,16 @@
 use pion_symbol::Symbol;
 pub use pretty::{docs, Doc, DocAllocator, DocPtr, Pretty, RefDoc};
 
-pub struct Config {
-    indent: isize,
-}
+mod bump;
 
-impl Default for Config {
-    fn default() -> Self { Self { indent: 4 } }
-}
+pub use self::bump::BumpDocAllocator;
 
-pub struct Printer<'bump> {
-    bump: &'bump bumpalo::Bump,
-    config: Config,
-}
+pub type DocBuilder<'bump> = pretty::DocBuilder<'bump, BumpDocAllocator<'bump>>;
 
-pub type DocBuilder<'bump> = pretty::DocBuilder<'bump, Printer<'bump>>;
-
-/// Construction
-impl<'bump> Printer<'bump> {
-    pub const fn new(bump: &'bump bumpalo::Bump, config: Config) -> Self { Self { bump, config } }
-}
+pub const INDENT: isize = 4;
 
 /// Exprs
-impl<'bump> Printer<'bump> {
+impl<'bump> BumpDocAllocator<'bump> {
     pub fn ann_expr(
         &'bump self,
         expr: impl Pretty<'bump, Self>,
@@ -32,7 +20,7 @@ impl<'bump> Printer<'bump> {
     }
 
     pub fn do_expr(&'bump self, block: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
-        let block = block.pretty(self).nest(self.config.indent);
+        let block = block.pretty(self).nest(INDENT);
         docs![self, "do", " {", block, "}"].group()
     }
 
@@ -84,7 +72,7 @@ impl<'bump> Printer<'bump> {
             r#type,
             docs![self, self.line(), "= ", init, ";"]
                 .group()
-                .nest(self.config.indent),
+                .nest(INDENT),
         ]
     }
 
@@ -107,7 +95,7 @@ impl<'bump> Printer<'bump> {
             r#type,
             docs![self, self.line(), "= ", init, ";"]
                 .group()
-                .nest(self.config.indent),
+                .nest(INDENT),
             docs![self, self.hardline(), body]
         ]
     }
@@ -129,7 +117,7 @@ impl<'bump> Printer<'bump> {
         let cases = cases
             .into_iter()
             .map(|case| self.hardline().append(case).append(","));
-        let cases = self.concat(cases).nest(self.config.indent);
+        let cases = self.concat(cases).nest(INDENT);
         docs![self, "match ", scrut, " {", cases, self.line_(), "}"].group()
     }
 
@@ -162,7 +150,7 @@ impl<'bump> Printer<'bump> {
             "forall ",
             params,
             " ->",
-            self.line().append(body).group().nest(self.config.indent)
+            self.line().append(body).group().nest(INDENT)
         ]
     }
 
@@ -177,7 +165,7 @@ impl<'bump> Printer<'bump> {
             "fun ",
             params,
             " =>",
-            self.line().append(body).group().nest(self.config.indent)
+            self.line().append(body).group().nest(INDENT)
         ]
     }
 
@@ -224,7 +212,7 @@ impl<'bump> Printer<'bump> {
 }
 
 /// Pats
-impl<'bump> Printer<'bump> {
+impl<'bump> BumpDocAllocator<'bump> {
     pub fn or_pat(
         &'bump self,
         pats: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
@@ -234,7 +222,7 @@ impl<'bump> Printer<'bump> {
 }
 
 /// Function arguments and parameters
-impl<'bump> Printer<'bump> {
+impl<'bump> BumpDocAllocator<'bump> {
     pub fn fun_arg(
         &'bump self,
         plicity: impl Pretty<'bump, Self>,
@@ -264,7 +252,7 @@ impl<'bump> Printer<'bump> {
 }
 
 /// Definitions shared between expressions and patterns
-impl<'bump> Printer<'bump> {
+impl<'bump> BumpDocAllocator<'bump> {
     pub fn paren(&'bump self, inner: impl Pretty<'bump, Self>) -> DocBuilder<'bump> {
         docs![self, "(", inner, ")"]
     }
@@ -296,28 +284,6 @@ impl<'bump> Printer<'bump> {
 }
 
 /// Misc
-impl<'bump> Printer<'bump> {
+impl<'bump> BumpDocAllocator<'bump> {
     pub fn symbol(&'bump self, symbol: Symbol) -> DocBuilder<'bump> { self.text(symbol.as_str()) }
-}
-
-impl<'bump, A: 'bump> DocAllocator<'bump, A> for Printer<'bump> {
-    type Doc = RefDoc<'bump, A>;
-
-    fn alloc(&'bump self, doc: Doc<'bump, Self::Doc, A>) -> Self::Doc {
-        RefDoc(self.bump.alloc(doc))
-    }
-
-    fn alloc_column_fn(
-        &'bump self,
-        f: impl Fn(usize) -> Self::Doc + 'bump,
-    ) -> <Self::Doc as DocPtr<'bump, A>>::ColumnFn {
-        self.bump.alloc(f)
-    }
-
-    fn alloc_width_fn(
-        &'bump self,
-        f: impl Fn(isize) -> Self::Doc + 'bump,
-    ) -> <Self::Doc as DocPtr<'bump, A>>::WidthFn {
-        self.bump.alloc(f)
-    }
 }
