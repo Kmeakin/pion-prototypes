@@ -1,6 +1,12 @@
 exit status: 0
 
 stdout = """
+(() -> Int) : Type
+(forall (_ : (Int,)) ->
+    do {
+        let x : Int = _#0._0;
+        Int
+    }) : Type
 (forall (_ : (Int, Bool)) ->
     do {
         let x : Int = _#0._0;

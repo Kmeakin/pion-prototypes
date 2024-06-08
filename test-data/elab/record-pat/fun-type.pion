@@ -1,0 +1,3 @@
+#check forall ({} : {}) -> Int;
+#check forall ({x=a,} : {x : Int,}) -> Int;
+#check forall ({x=a, y=b} : {x:Int, y:Bool}) -> Int;

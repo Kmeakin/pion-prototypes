@@ -1,0 +1,20 @@
+exit status: 0
+
+stdout = """
+(() -> Int) : Type
+(forall (_ : { x : Int }) ->
+    do {
+        let a : Int = _#0.x;
+        Int
+    }) : Type
+(forall (_ : { x : Int, y : Bool }) ->
+    do {
+        let a : Int = _#0.x;
+        let b : Bool = _#1.y;
+        Int
+    }) : Type
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,8 @@
+#check fun ({} : {}) => {};
+#eval (fun ({} : {}) => {}) {};
+
+#check fun ({x=a} : {x : Int}) => {y=a};
+#eval (fun ({x=a} : {x: Int}) => {y=a}) {x=1};
+
+#check fun ({x=a, y=b} : {x : Int, y : Bool}) => {x=b, y=a};
+#eval (fun ({x=a, y=b} : {x: Int, y: Bool}) => {x=b, y=a}) {x=1, y=false};
