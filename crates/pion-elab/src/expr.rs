@@ -4,7 +4,7 @@ use ecow::eco_vec;
 use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
-use pion_core::{Expr, FunArg, FunParam, Lit, Plicity};
+use pion_core::syntax::{Expr, FunArg, FunParam, Lit, Plicity};
 use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::Symbol;

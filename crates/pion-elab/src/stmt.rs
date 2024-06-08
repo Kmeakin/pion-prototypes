@@ -1,6 +1,6 @@
 use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
-use pion_core::{Expr, FunArg, FunParam, LetBinding};
+use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
 use pion_diagnostic::{Diagnostic, Label};
 use pion_printer::{docs, DocAllocator as _};
 use pion_surface::syntax::{self as surface, Located, Rec};

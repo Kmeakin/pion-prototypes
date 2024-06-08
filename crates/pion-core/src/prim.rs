@@ -2,7 +2,7 @@ use pion_symbol::Symbol;
 
 use crate::env::RelativeVar;
 use crate::semantics::{Closure, Type};
-use crate::{Expr, FunArg, FunParam, Plicity};
+use crate::syntax::{Expr, FunArg, FunParam, Plicity};
 
 macro_rules! prims {
     ($($prim:ident),*) => {

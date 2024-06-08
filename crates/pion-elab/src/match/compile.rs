@@ -25,7 +25,7 @@
 // of missing patterns is described in part two of *Warnings for pattern
 // matching*
 
-use pion_core::Lit;
+use pion_core::syntax::Lit;
 use pion_util::collect_in::CollectIn;
 use smallvec::{smallvec, SmallVec};
 

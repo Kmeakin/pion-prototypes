@@ -6,7 +6,8 @@ use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
-use crate::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity, Prim};
+use crate::prim::Prim;
+use crate::syntax::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity};
 
 pub type Type<'core> = Value<'core>;
 

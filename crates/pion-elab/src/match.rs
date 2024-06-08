@@ -1,4 +1,4 @@
-use pion_core::LetBinding;
+use pion_core::syntax::LetBinding;
 use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 

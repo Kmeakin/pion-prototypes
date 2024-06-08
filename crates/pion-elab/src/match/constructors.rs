@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use internal_iterator::InternalIterator;
-use pion_core::{Lit, Pat};
+use pion_core::syntax::{Lit, Pat};
 use pion_symbol::Symbol;
 use pion_util::numeric_conversions::ZeroExtendFrom;
 use smallvec::{smallvec, SmallVec};

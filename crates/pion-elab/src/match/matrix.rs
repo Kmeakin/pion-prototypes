@@ -1,4 +1,4 @@
-use pion_core::{Expr, Pat};
+use pion_core::syntax::{Expr, Pat};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug, Clone)]

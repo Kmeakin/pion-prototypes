@@ -1,4 +1,4 @@
-use pion_core::Pat;
+use pion_core::syntax::Pat;
 
 use super::constructors::Constructor;
 use super::matrix::BorrowedPatRow;

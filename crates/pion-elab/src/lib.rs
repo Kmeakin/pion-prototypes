@@ -4,7 +4,7 @@ use command::CommandHandler;
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
-use pion_core::{Expr, FunArg, LetBinding, Plicity};
+use pion_core::syntax::{Expr, FunArg, LetBinding, Plicity};
 use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use text_size::TextRange;
 
