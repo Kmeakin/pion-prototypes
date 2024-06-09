@@ -127,7 +127,7 @@ impl<'bump> BumpDocAllocator<'bump> {
         guard: impl Pretty<'bump, Self>,
         expr: impl Pretty<'bump, Self>,
     ) -> DocBuilder<'bump> {
-        docs! {self,pat, guard, " => ",expr}
+        docs![self, pat, guard, " => ", expr]
     }
 
     pub fn arrow_expr(
@@ -267,19 +267,22 @@ impl<'bump> BumpDocAllocator<'bump> {
         let trailing_comma = if exprs.len() == 1 {
             self.text(",")
         } else {
-            self.nil()
+            self.text(",").flat_alt(self.nil())
         };
 
         let exprs = self.intersperse(exprs, self.text(",").append(self.line()));
-        docs![self, "(", exprs, trailing_comma, ")"].group()
+        let exprs = docs![self, self.line_(), exprs, trailing_comma, self.line_()].nest(INDENT);
+        docs![self, "(", exprs, ")"].group()
     }
 
     pub fn record(
         &'bump self,
         fields: impl IntoIterator<Item = impl Pretty<'bump, Self>>,
     ) -> DocBuilder<'bump> {
+        let trailing_comma = self.text(",").flat_alt(self.nil());
         let exprs = self.intersperse(fields, self.text(",").append(self.line()));
-        docs![self, "{", self.line(), exprs, self.line(), "}"].group()
+        let exprs = docs![self, self.line(), exprs, trailing_comma, self.line()].nest(INDENT);
+        docs![self, "{", exprs, "}"].group()
     }
 }
 

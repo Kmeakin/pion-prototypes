@@ -5,51 +5,63 @@ let even : Int -> Bool
     = fun (x : Int) =>
         match (eq x 0) {
             true => true,
-            false => (fix @((Int -> Bool, Int -> Bool) -> (Int -> Bool,
-            Int -> Bool)) @(Int -> Bool,
-            Int -> Bool) (fun (fix2 : ((Int -> Bool,
-            Int -> Bool) -> (Int -> Bool, Int -> Bool)) -> (Int -> Bool,
-            Int -> Bool)) (f : (Int -> Bool, Int -> Bool) -> (Int -> Bool,
-            Int -> Bool)) =>
-                (fun (x : Int) => (f (fix2 f))._0 x,
-                fun (x : Int) =>
-                    (f (fix2 f))._1 x)) (fun (evenodd : (Int -> Bool,
-            Int -> Bool)) =>
-                (fun (n : Int) =>
-                    match (eq n 0) {
-                        true => true,
-                        false => evenodd._1 (sub n 1),
-                    },
-                fun (n : Int) =>
-                    match (eq n 0) {
-                        true => false,
-                        false => evenodd._0 (sub n 1),
-                    })))._1 (sub x 1),
+            false => (fix @((Int -> Bool, Int -> Bool) -> (
+                Int -> Bool,
+                Int -> Bool,
+            )) @(Int -> Bool, Int -> Bool) (fun (fix2 : ((
+                Int -> Bool,
+                Int -> Bool,
+            ) -> (Int -> Bool, Int -> Bool)) -> (
+                Int -> Bool,
+                Int -> Bool,
+            )) (f : (Int -> Bool, Int -> Bool) -> (Int -> Bool, Int -> Bool)) =>
+                (
+                    fun (x : Int) => (f (fix2 f))._0 x,
+                    fun (x : Int) => (f (fix2 f))._1 x,
+                )) (fun (evenodd : (Int -> Bool, Int -> Bool)) =>
+                (
+                    fun (n : Int) =>
+                        match (eq n 0) {
+                            true => true,
+                            false => evenodd._1 (sub n 1),
+                        },
+                    fun (n : Int) =>
+                        match (eq n 0) {
+                            true => false,
+                            false => evenodd._0 (sub n 1),
+                        },
+                )))._1 (sub x 1),
         };
 let odd : Int -> Bool
     = fun (x : Int) =>
         match (eq x 0) {
             true => false,
-            false => (fix @((Int -> Bool, Int -> Bool) -> (Int -> Bool,
-            Int -> Bool)) @(Int -> Bool,
-            Int -> Bool) (fun (fix2 : ((Int -> Bool,
-            Int -> Bool) -> (Int -> Bool, Int -> Bool)) -> (Int -> Bool,
-            Int -> Bool)) (f : (Int -> Bool, Int -> Bool) -> (Int -> Bool,
-            Int -> Bool)) =>
-                (fun (x : Int) => (f (fix2 f))._0 x,
-                fun (x : Int) =>
-                    (f (fix2 f))._1 x)) (fun (evenodd : (Int -> Bool,
-            Int -> Bool)) =>
-                (fun (n : Int) =>
-                    match (eq n 0) {
-                        true => true,
-                        false => evenodd._1 (sub n 1),
-                    },
-                fun (n : Int) =>
-                    match (eq n 0) {
-                        true => false,
-                        false => evenodd._0 (sub n 1),
-                    })))._0 (sub x 1),
+            false => (fix @((Int -> Bool, Int -> Bool) -> (
+                Int -> Bool,
+                Int -> Bool,
+            )) @(Int -> Bool, Int -> Bool) (fun (fix2 : ((
+                Int -> Bool,
+                Int -> Bool,
+            ) -> (Int -> Bool, Int -> Bool)) -> (
+                Int -> Bool,
+                Int -> Bool,
+            )) (f : (Int -> Bool, Int -> Bool) -> (Int -> Bool, Int -> Bool)) =>
+                (
+                    fun (x : Int) => (f (fix2 f))._0 x,
+                    fun (x : Int) => (f (fix2 f))._1 x,
+                )) (fun (evenodd : (Int -> Bool, Int -> Bool)) =>
+                (
+                    fun (n : Int) =>
+                        match (eq n 0) {
+                            true => true,
+                            false => evenodd._1 (sub n 1),
+                        },
+                    fun (n : Int) =>
+                        match (eq n 0) {
+                            true => false,
+                            false => evenodd._0 (sub n 1),
+                        },
+                )))._0 (sub x 1),
         };
 even 1 ⇝ false
 odd 1 ⇝ true
