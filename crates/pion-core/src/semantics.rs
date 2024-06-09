@@ -577,8 +577,8 @@ impl<'core, 'env> EvalEnv<'core, 'env> {
             },
 
             Expr::Let { binding, body, .. } => {
-                let init = self.eval(binding.expr);
-                self.local_values.push(init);
+                let rhs = self.eval(binding.rhs);
+                self.local_values.push(rhs);
                 let body = self.eval(body);
                 self.local_values.pop();
                 body
@@ -841,10 +841,10 @@ impl<'core, 'env> ZonkEnv<'core, 'env> {
 
             Expr::Let { binding, body } => {
                 let r#type = self.zonk(binding.r#type);
-                let init = self.zonk(binding.expr);
+                let rhs = self.zonk(binding.rhs);
                 let body = self.zonk_with_local(body);
-                let (r#type, init, body) = self.bump.alloc((r#type, init, body));
-                let binding = LetBinding::new(binding.name, &*r#type, &*init);
+                let (r#type, rhs, body) = self.bump.alloc((r#type, rhs, body));
+                let binding = LetBinding::new(binding.name, &*r#type, &*rhs);
                 Expr::Let { binding, body }
             }
             Expr::FunType { param, body } => {

@@ -59,7 +59,7 @@ impl<'bump> BumpDocAllocator<'bump> {
         rec: bool,
         pat: impl Pretty<'bump, Self>,
         r#type: Option<impl Pretty<'bump, Self>>,
-        init: impl Pretty<'bump, Self>,
+        rhs: impl Pretty<'bump, Self>,
     ) -> DocBuilder<'bump> {
         let rec = if rec {
             docs![self, self.text("rec"), self.space()]
@@ -79,33 +79,9 @@ impl<'bump> BumpDocAllocator<'bump> {
             rec,
             pat,
             r#type,
-            docs![self, self.line(), "= ", init, ";"]
+            docs![self, self.line(), "= ", rhs, ";"]
                 .group()
                 .nest(INDENT),
-        ]
-    }
-
-    pub fn let_expr(
-        &'bump self,
-        pat: impl Pretty<'bump, Self>,
-        r#type: Option<impl Pretty<'bump, Self>>,
-        init: impl Pretty<'bump, Self>,
-        body: impl Pretty<'bump, Self>,
-    ) -> DocBuilder<'bump> {
-        let r#type = match r#type {
-            None => self.nil(),
-            Some(r#type) => docs![self, " : ", r#type],
-        };
-
-        docs![
-            self,
-            "let ",
-            pat,
-            r#type,
-            docs![self, self.line(), "= ", init, ";"]
-                .group()
-                .nest(INDENT),
-            docs![self, self.hardline(), body]
         ]
     }
 

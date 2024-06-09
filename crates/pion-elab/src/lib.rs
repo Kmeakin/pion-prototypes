@@ -131,10 +131,10 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
     }
 
     fn push_let_bindings(&mut self, bindings: &[LetBinding<Expr<'core>, Expr<'core>>]) {
-        for LetBinding { name, r#type, expr } in bindings {
-            let value = self.eval_env().eval(expr);
+        for LetBinding { name, r#type, rhs } in bindings {
+            let value = self.eval_env().eval(rhs);
             let r#type = self.eval_env().eval(r#type);
-            self.env.locals.push_let(*name, *expr, r#type, value);
+            self.env.locals.push_let(*name, *rhs, r#type, value);
         }
     }
 }

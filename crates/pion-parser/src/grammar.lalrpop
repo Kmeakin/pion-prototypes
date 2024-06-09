@@ -116,9 +116,9 @@ Rec: Rec = {
 }
 
 LetBinding: LetBinding<'surface> = {
-    <pat: Pat> <r#type: (":" <Expr>)?> "=" <init: Expr> => {
+    <pat: Pat> <r#type: (":" <Expr>)?> "=" <rhs: Expr> => {
         let r#type = r#type.map(|r#type| &*bump.alloc(r#type));
-        let (pat, rhs) = bump.alloc((pat, init));
+        let (pat, rhs) = bump.alloc((pat, rhs));
         LetBinding { pat, r#type, rhs }
     },
 }

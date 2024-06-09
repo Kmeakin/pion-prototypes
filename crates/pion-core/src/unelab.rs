@@ -88,12 +88,12 @@ impl<'bump> Unelaborator<'bump> {
         names: &mut NameEnv,
         name: Option<Symbol>,
         r#type: &Expr,
-        init: &Expr,
+        rhs: &Expr,
     ) -> DocBuilder<'bump> {
         let pat = self.name(name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
-        let init = self.expr_prec(names, init, Prec::MAX);
-        self.alloc.let_stmt(false, pat, Some(r#type), init)
+        let rhs = self.expr_prec(names, rhs, Prec::MAX);
+        self.alloc.let_stmt(false, pat, Some(r#type), rhs)
     }
 
     pub fn expr_prec(
@@ -118,7 +118,7 @@ impl<'bump> Unelaborator<'bump> {
 
                 let names_len = names.len();
                 while let Expr::Let { binding, body } = expr {
-                    let stmt = self.let_stmt(names, binding.name, binding.r#type, binding.expr);
+                    let stmt = self.let_stmt(names, binding.name, binding.r#type, binding.rhs);
                     stmts.push(stmt);
                     names.push(binding.name);
                     expr = body;

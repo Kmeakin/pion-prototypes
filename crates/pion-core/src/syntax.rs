@@ -51,12 +51,12 @@ pub enum Expr<'core> {
 pub struct LetBinding<Type, Expr> {
     pub name: Option<Symbol>,
     pub r#type: Type,
-    pub expr: Expr,
+    pub rhs: Expr,
 }
 
 impl<Type, Expr> LetBinding<Type, Expr> {
-    pub const fn new(name: Option<Symbol>, r#type: Type, expr: Expr) -> Self {
-        Self { name, r#type, expr }
+    pub const fn new(name: Option<Symbol>, r#type: Type, rhs: Expr) -> Self {
+        Self { name, r#type, rhs }
     }
 }
 
@@ -74,7 +74,7 @@ impl<'core> Expr<'core> {
             Expr::Error | Expr::Lit(..) | Expr::Prim(..) | Expr::MetaVar(..) => false,
             Expr::Let { binding, body, .. } => {
                 binding.r#type.references_local(var)
-                    || binding.expr.references_local(var)
+                    || binding.rhs.references_local(var)
                     || body.references_local(var.succ())
             }
             Expr::FunType { param, body } | Expr::FunLit { param, body } => {
@@ -134,10 +134,10 @@ impl<'core> Expr<'core> {
 
             Expr::Let { binding, body } => {
                 let r#type = binding.r#type.shift_inner(bump, min, amount);
-                let init = binding.expr.shift_inner(bump, min, amount);
+                let rhs = binding.rhs.shift_inner(bump, min, amount);
                 let body = body.shift_inner(bump, min.succ(), amount);
-                let (r#type, init, body) = bump.alloc((r#type, init, body));
-                let binding = LetBinding::new(binding.name, &*r#type, &*init);
+                let (r#type, rhs, body) = bump.alloc((r#type, rhs, body));
+                let binding = LetBinding::new(binding.name, &*r#type, &*rhs);
                 Expr::Let { binding, body }
             }
 
@@ -232,9 +232,9 @@ impl<'core> Expr<'core> {
             .iter()
             .copied()
             .rev()
-            .fold(body, |body, LetBinding { name, r#type, expr }| {
-                let (r#type, init, body) = bump.alloc((r#type, expr, body));
-                let binding = LetBinding::new(name, &*r#type, &*init);
+            .fold(body, |body, LetBinding { name, r#type, rhs }| {
+                let (r#type, rhs, body) = bump.alloc((r#type, rhs, body));
+                let binding = LetBinding::new(name, &*r#type, &*rhs);
                 Expr::Let { binding, body }
             })
     }

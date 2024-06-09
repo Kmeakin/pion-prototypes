@@ -194,12 +194,12 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         let surface::LetBinding {
             pat: surface_pat,
             r#type: surface_type,
-            rhs: surface_init,
+            rhs: surface_rhs,
         } = surface_binding;
         let (pat, r#type) = self.synth_ann_pat(surface_pat, *surface_type);
-        let init_expr = self.check_expr(surface_init, &r#type);
+        let rhs_expr = self.check_expr(surface_rhs, &r#type);
 
-        let bindings = self.destruct_pat(&pat, &init_expr, &r#type, false);
+        let bindings = self.destruct_pat(&pat, &rhs_expr, &r#type, false);
 
         let (body_expr, body_type) = {
             let local_len = self.env.locals.len();
@@ -222,22 +222,22 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         let surface::LetBinding {
             pat: surface_pat,
             r#type: surface_type,
-            rhs: surface_init,
+            rhs: surface_rhs,
         } = surface_binding;
         let (pat, mut r#type) = self.synth_ann_pat(surface_pat, *surface_type);
         let name = pat.name();
 
-        let init_expr = {
+        let rhs_expr = {
             let expr = Expr::LocalVar(RelativeVar::default());
             let var = self.env.locals.next_var();
             self.env.locals.push_let(name, expr, r#type.clone(), var);
-            let init_expr = self.check_expr(surface_init, &r#type);
+            let rhs_expr = self.check_expr(surface_rhs, &r#type);
             self.env.locals.pop();
-            init_expr
+            rhs_expr
         };
 
         let r#type_expr = self.quote_env().quote(&r#type);
-        let init_expr = match init_expr {
+        let rhs_expr = match rhs_expr {
             Expr::FunLit { .. } => {
                 r#type = self.elim_env().update_metas(&r#type);
                 let Value::FunType { param, body } = &r#type else {
@@ -257,7 +257,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     }),
                     arg: FunArg::explicit(self.bump.alloc(Expr::FunLit {
                         param: FunParam::explicit(name, self.bump.alloc(r#type_expr)),
-                        body: self.bump.alloc(init_expr),
+                        body: self.bump.alloc(rhs_expr),
                     })),
                 }
             }
@@ -270,17 +270,17 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         };
 
         let (body_expr, body_type) = {
-            let init_value = self.eval_env().eval(&init_expr);
+            let rhs_value = self.eval_env().eval(&rhs_expr);
             self.env
                 .locals
-                .push_let(name, init_expr, r#type.clone(), init_value);
+                .push_let(name, rhs_expr, r#type.clone(), rhs_value);
             let (body_expr, body_type) = elab_body(self);
             self.env.locals.pop();
             (body_expr, body_type)
         };
 
-        let (r#type, init, body) = self.bump.alloc((r#type_expr, init_expr, body_expr));
-        let binding = LetBinding::new(name, &*r#type, &*init);
+        let (r#type, rhs, body) = self.bump.alloc((r#type_expr, rhs_expr, body_expr));
+        let binding = LetBinding::new(name, &*r#type, &*rhs);
         let core_expr = Expr::Let { binding, body };
         (core_expr, body_type)
     }
