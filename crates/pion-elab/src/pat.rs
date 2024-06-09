@@ -3,6 +3,7 @@ use pion_core::semantics::{Telescope, Type};
 use pion_core::syntax::{Expr, FunParam, LetBinding, Pat};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::{self, Symbol};
+use pion_util::location::Location;
 use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
@@ -131,13 +132,11 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     let name = surface_field.data.name.data;
 
                     if let Some(index) = pat_fields.iter().position(|(n, _)| *n == name) {
-                        diagnostics::duplicate_record_field(
-                            self,
-                            name,
-                            surface_field.data.name.range,
-                            surface_fields[index].data.name.range,
-                            self.file_id,
-                        );
+                        let duplicate_loc =
+                            Location::new(self.file_id, surface_field.data.name.range);
+                        let first_loc =
+                            Location::new(self.file_id, surface_fields[index].data.name.range);
+                        diagnostics::duplicate_record_field(self, name, duplicate_loc, first_loc);
                         continue;
                     }
 
@@ -260,7 +259,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         match self.unify_env().unify(from, to) {
             Ok(()) => pat,
             Err(error) => {
-                diagnostics::unable_to_unify(self, error, from, to, range, self.file_id);
+                let loc = Location::new(self.file_id, range);
+                diagnostics::unable_to_unify(self, error, from, to, loc);
                 Pat::Error
             }
         }

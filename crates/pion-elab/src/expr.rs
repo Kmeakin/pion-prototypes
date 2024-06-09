@@ -7,6 +7,7 @@ use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, Lit, Plicity};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::Symbol;
+use pion_util::location::Location;
 use pion_util::numeric_conversions::TruncateFrom;
 use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
@@ -25,7 +26,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             surface::Lit::Int(int) => match self.synth_int_lit(Located::new(range, int)) {
                 Ok(value) => (Ok(Lit::Int(value)), Type::INT),
                 Err(error) => {
-                    diagnostics::invalid_integer_literal(self, error, self.file_id, range);
+                    let lit_loc = Location::new(self.file_id, range);
+                    diagnostics::invalid_integer_literal(self, error, lit_loc);
                     (Err(()), Type::INT)
                 }
             },
@@ -91,7 +93,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     return (Expr::Prim(prim), r#type);
                 }
 
-                diagnostics::unbound_local_var(self, name, self.file_id, surface_expr.range);
+                let var_loc = Location::new(self.file_id, surface_expr.range);
+                diagnostics::unbound_local_var(self, name, var_loc);
                 (Expr::Error, Type::Error)
             }
             surface::Expr::Hole => {
@@ -165,30 +168,34 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                             r#type = self.elim_env().apply_closure(body, arg_value);
                         }
                         Value::FunType { param, .. } => {
-                            diagnostics::plicity_mismatch(
+                            let arg_loc = Location::new(self.file_id, surface_arg.range);
+                            let fun_loc = Location::new(self.file_id, fun.range);
+                            diagnostics::fun_app_plicity_mismatch(
                                 self,
                                 surface_arg.data.plicity,
                                 param.plicity,
-                                &r#type,
-                                surface_arg.range,
-                                fun.range,
-                                self.file_id,
+                                &fun_type,
+                                arg_loc,
+                                fun_loc,
                             );
                             return (Expr::Error, Type::Error);
                         }
                         Value::Error => return (Expr::Error, Type::Error),
                         _ if arity == 0 => {
-                            diagnostics::fun_app_not_fun(self, &r#type, fun.range, self.file_id);
+                            let fun_loc = Location::new(self.file_id, fun.range);
+                            diagnostics::fun_app_not_fun(self, &r#type, fun_loc);
                             return (Expr::Error, Type::Error);
                         }
                         _ => {
+                            let fun_loc = Location::new(self.file_id, fun.range);
+                            let arg_loc = Location::new(self.file_id, surface_arg.range);
                             diagnostics::fun_app_too_many_args(
                                 self,
                                 arity,
                                 surface_args.len(),
                                 &fun_type,
-                                fun.range,
-                                self.file_id,
+                                fun_loc,
+                                arg_loc,
                             );
                             return (Expr::Error, Type::Error);
                         }
@@ -251,13 +258,11 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     if let Some(index) = type_fields.iter().position(|(n, _)| *n == name) {
-                        diagnostics::duplicate_record_field(
-                            self,
-                            name,
-                            surface_field.data.name.range,
-                            surface_fields[index].data.name.range,
-                            self.file_id,
-                        );
+                        let duplicate_loc =
+                            Location::new(self.file_id, surface_field.data.name.range);
+                        let first_loc =
+                            Location::new(self.file_id, surface_fields[index].data.name.range);
+                        diagnostics::duplicate_record_field(self, name, duplicate_loc, first_loc);
                         continue;
                     }
 
@@ -277,13 +282,11 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     if let Some(index) = expr_fields.iter().position(|(n, _)| *n == name) {
-                        diagnostics::duplicate_record_field(
-                            self,
-                            name,
-                            surface_field.data.name.range,
-                            surface_fields[index].data.name.range,
-                            self.file_id,
-                        );
+                        let duplicate_loc =
+                            Location::new(self.file_id, surface_field.data.name.range);
+                        let first_loc =
+                            Location::new(self.file_id, surface_fields[index].data.name.range);
+                        diagnostics::duplicate_record_field(self, name, duplicate_loc, first_loc);
                         continue;
                     }
 
@@ -307,7 +310,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 match scrut_type {
                     Value::RecordType(mut telescope) => {
                         let Some(_) = telescope.fields.iter().find(|(n, _)| *n == name.data) else {
-                            diagnostics::field_not_found(self, name.data, name.range, self.file_id);
+                            let loc = Location::new(self.file_id, name.range);
+                            diagnostics::field_not_found(self, name.data, loc);
                             return (Expr::Error, Type::Error);
                         };
 
@@ -328,12 +332,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     }
                     Value::Error => (Expr::Error, Type::Error),
                     _ => {
-                        diagnostics::record_proj_not_record(
-                            self,
-                            &scrut_type,
-                            name.range,
-                            self.file_id,
-                        );
+                        let scrut_loc = Location::new(self.file_id, scrut.range);
+                        diagnostics::record_proj_not_record(self, &scrut_type, scrut_loc);
                         (Expr::Error, Type::Error)
                     }
                 }
@@ -662,7 +662,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         match self.unify_env().unify(&from, to) {
             Ok(()) => expr,
             Err(error) => {
-                diagnostics::unable_to_unify(self, error, &from, to, range, self.file_id);
+                let loc = Location::new(self.file_id, range);
+                diagnostics::unable_to_unify(self, error, &from, to, loc);
                 Expr::Error
             }
         }

@@ -2,15 +2,25 @@ exit status: 0
 
 stdout = """
 #error : #error
+#error : #error
 """
 
 stderr = """
 error: Called function with too many arguments
-  ┌─ test-data/elab/fun-app/too-many-args.pion:1:8
+  ┌─ test-data/elab/fun-app/too-many-args.pion:1:23
   │
 1 │ #check (fun x => x) 1 2 3;
-  │        ^^^^^^^^^^^^
+  │        ------------   ^
   │
   = help: the function expects 1 argument, but recieved 3 arguments
   = help: the type of the function is `Int -> Int`
+
+error: Called function with too many arguments
+  ┌─ test-data/elab/fun-app/too-many-args.pion:2:43
+  │
+2 │ #check (fun (x : Int) (y : Int) => x) 1 2 3;
+  │        ------------------------------     ^
+  │
+  = help: the function expects 2 arguments, but recieved 3 arguments
+  = help: the type of the function is `Int -> Int -> Int`
 """

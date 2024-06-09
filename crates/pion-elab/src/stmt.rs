@@ -4,6 +4,7 @@ use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
 use pion_printer::{docs, BumpDocAllocator, DocAllocator as _};
 use pion_surface::syntax::{self as surface, Located, Rec};
+use pion_util::location::Location;
 use text_size::TextRange;
 
 use super::Elaborator;
@@ -57,7 +58,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             }
             surface::Command::Show(name) => {
                 let Some(var) = self.env.locals.lookup(name.data) else {
-                    diagnostics::unbound_local_var(self, name.data, self.file_id, name.range);
+                    let var_loc = Location::new(self.file_id, name.range);
+                    diagnostics::unbound_local_var(self, name.data, var_loc);
                     return;
                 };
 
@@ -261,7 +263,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             }
             Expr::Error => Expr::Error,
             _ => {
-                diagnostics::recursive_let_not_function(self, surface_pat.range, self.file_id);
+                let loc = Location::new(self.file_id, surface_pat.range);
+                diagnostics::recursive_let_not_function(self, loc);
                 Expr::Error
             }
         };

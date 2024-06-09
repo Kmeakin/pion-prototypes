@@ -1,5 +1,6 @@
 use pion_core::syntax::LetBinding;
 use pion_surface::syntax::{self as surface, Located};
+use pion_util::location::Location;
 
 use super::{Elaborator, EnvLen, Expr, TextRange, Type};
 use crate::diagnostics;
@@ -50,13 +51,14 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
 
         for (idx, is_reachable) in reachable_rows.iter().enumerate() {
             if !is_reachable {
-                let range = surface_cases[idx].expr.range;
-                diagnostics::unreachable_match_case(self, range, self.file_id);
+                let loc = Location::new(self.file_id, surface_cases[idx].expr.range);
+                diagnostics::unreachable_match_case(self, loc);
             }
         }
 
         if inexhaustive {
-            diagnostics::inexhaustive_match(self, range, self.file_id);
+            let loc = Location::new(self.file_id, range);
+            diagnostics::inexhaustive_match(self, loc);
         }
 
         expr

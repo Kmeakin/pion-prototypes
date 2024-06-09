@@ -1,6 +1,7 @@
 #![feature(maybe_uninit_slice)]
 
 pub mod collect_in;
+pub mod location;
 pub mod numeric_conversions;
 pub mod slice_vec;
 
