@@ -1,0 +1,5 @@
+let error
+  : forall (Wrap : Type -> Type) -> forall (f : forall(A : _) -> (A -> Wrap A) -> Type) -> Type
+  = fun Wrap => fun f => f _ (fun a => a);
+
+#show error;
