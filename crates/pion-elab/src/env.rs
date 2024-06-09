@@ -1,5 +1,6 @@
 use pion_core::env::{EnvLen, RelativeVar, SharedEnv, UniqueEnv};
 use pion_core::semantics::{Type, Value};
+use pion_core::syntax::Expr;
 use pion_symbol::Symbol;
 use text_size::TextRange;
 
@@ -16,6 +17,7 @@ pub struct ElabEnv<'core> {
 pub struct LocalEnv<'core> {
     pub names: UniqueEnv<Option<Symbol>>,
     pub infos: UniqueEnv<LocalInfo>,
+    pub exprs: UniqueEnv<Option<Expr<'core>>>,
     pub types: UniqueEnv<Type<'core>>,
     pub values: SharedEnv<Value<'core>>,
 }
@@ -33,27 +35,36 @@ impl<'core> LocalEnv<'core> {
         &mut self,
         name: Option<Symbol>,
         info: LocalInfo,
+        expr: Option<Expr<'core>>,
         r#type: Type<'core>,
         value: Value<'core>,
     ) {
         self.names.push(name);
         self.infos.push(info);
+        self.exprs.push(expr);
         self.types.push(r#type);
         self.values.push(value);
     }
 
-    pub fn push_let(&mut self, name: Option<Symbol>, r#type: Type<'core>, value: Value<'core>) {
-        self.push(name, LocalInfo::Let, r#type, value);
+    pub fn push_let(
+        &mut self,
+        name: Option<Symbol>,
+        expr: Expr<'core>,
+        r#type: Type<'core>,
+        value: Value<'core>,
+    ) {
+        self.push(name, LocalInfo::Let, Some(expr), r#type, value);
     }
 
     pub fn push_param(&mut self, name: Option<Symbol>, r#type: Type<'core>) {
         let var = Value::local_var(self.values.len().to_absolute());
-        self.push(name, LocalInfo::Param, r#type, var);
+        self.push(name, LocalInfo::Param, None, r#type, var);
     }
 
     pub fn pop(&mut self) {
         self.names.pop();
         self.infos.pop();
+        self.exprs.pop();
         self.types.pop();
         self.values.pop();
     }
@@ -61,6 +72,7 @@ impl<'core> LocalEnv<'core> {
     pub fn truncate(&mut self, len: EnvLen) {
         self.names.truncate(len);
         self.infos.truncate(len);
+        self.exprs.truncate(len);
         self.types.truncate(len);
         self.values.truncate(len);
     }

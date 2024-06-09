@@ -161,7 +161,7 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         for LetBinding { name, r#type, expr } in bindings {
             let value = self.eval_env().eval(expr);
             let r#type = self.eval_env().eval(r#type);
-            self.env.locals.push_let(*name, r#type, value);
+            self.env.locals.push_let(*name, *expr, r#type, value);
         }
     }
 }

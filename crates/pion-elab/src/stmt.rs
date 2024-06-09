@@ -1,3 +1,4 @@
+use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
@@ -77,10 +78,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                             .display_to_user(format!("parameter {} : {pretty}", name.data));
                     }
                     crate::LocalInfo::Let => {
-                        // TODO: print expr in unreduced form
-
-                        let value = self.env.locals.values.get_relative(var).unwrap();
-                        let expr = self.quote_env().quote(value);
+                        let expr = self.env.locals.exprs.get_relative(var).unwrap().unwrap();
                         let expr = self.zonk_env().zonk(&expr);
 
                         let r#type = self.env.locals.types.get_relative(var).unwrap();
@@ -227,8 +225,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         let name = pat.name();
 
         let init_expr = {
+            let expr = Expr::LocalVar(RelativeVar::default());
             let var = self.env.locals.next_var();
-            self.env.locals.push_let(name, r#type.clone(), var);
+            self.env.locals.push_let(name, expr, r#type.clone(), var);
             let init_expr = self.check_expr(surface_init, &r#type);
             self.env.locals.pop();
             init_expr
@@ -271,7 +270,9 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
         let (body_expr, body_type) = {
             let init_value = self.eval_env().eval(&init_expr);
-            self.env.locals.push_let(name, r#type.clone(), init_value);
+            self.env
+                .locals
+                .push_let(name, init_expr, r#type.clone(), init_value);
             let (body_expr, body_type) = elab_body(self);
             self.env.locals.pop();
             (body_expr, body_type)
