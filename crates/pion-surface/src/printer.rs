@@ -69,12 +69,14 @@ impl<'bump, 'text> Printer<'bump, 'text> {
                 let body = self.expr(&body.data);
                 self.alloc.fun_lit_expr(params, body)
             }
-            Expr::FunApp(fun, arg) => {
+            Expr::FunApp(fun, args) => {
                 let fun = self.expr(&fun.data);
-                let arg_plicity = self.plicity(arg.data.plicity);
-                let arg_expr = self.expr(&arg.data.expr.data);
-                let arg = self.alloc.fun_arg(arg_plicity, arg_expr);
-                self.alloc.fun_app_expr(fun, std::iter::once(arg))
+                let args = args.iter().map(|arg| {
+                    let arg_plicity = self.plicity(arg.data.plicity);
+                    let arg_expr = self.expr(&arg.data.expr.data);
+                    self.alloc.fun_arg(arg_plicity, arg_expr)
+                });
+                self.alloc.fun_app_expr(fun, args)
             }
             Expr::ListLit(exprs) => {
                 let exprs = exprs.iter().map(|expr| self.expr(&expr.data));

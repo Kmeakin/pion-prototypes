@@ -156,10 +156,11 @@ FunParam: Located<FunParam<'surface>> = {
 }
 
 AppExpr: Located<Expr<'surface>> = {
-    <start: @L> <fun: AppExpr> <arg: FunArg> <end: @R> => {
+    <start: @L> <fun: ProjExpr> <args: FunArg+> <end: @R> => {
         let range = TextRange::new(start, end);
-        let (fun, ) = bump.alloc((fun, ));
-        Located::new(range, Expr::FunApp(fun, arg))
+        let fun = bump.alloc(fun);
+        let args = bump.alloc_slice_copy(&args);
+        Located::new(range, Expr::FunApp(fun, args))
     },
     ProjExpr => <>,
 }

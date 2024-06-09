@@ -72,8 +72,11 @@ pub enum Expr<'surface> {
         &'surface Located<Self>,
     ),
 
-    /// Function application, `<fun> <arg>`.
-    FunApp(&'surface Located<Self>, Located<FunArg<'surface>>),
+    /// Function application, `<fun> <args>`.
+    FunApp(
+        &'surface Located<Self>,
+        &'surface [Located<FunArg<'surface>>],
+    ),
 
     /// List literal, `[<elems>]`.
     ListLit(&'surface [Located<Self>]),

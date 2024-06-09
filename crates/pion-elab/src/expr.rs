@@ -140,44 +140,62 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             }
             surface::Expr::FunType(params, body) => self.synth_fun_type(params, body),
             surface::Expr::FunLit(params, body) => self.synth_fun_lit(params, body),
-            surface::Expr::FunApp(fun, arg) => {
-                let (mut fun_expr, mut fun_type) = self.synth_expr(fun);
-                if arg.data.plicity == Plicity::Explicit {
-                    (fun_expr, fun_type) = self.insert_implicit_apps(arg.range, fun_expr, fun_type);
+            surface::Expr::FunApp(fun, surface_args) => {
+                let (mut expr, fun_type) = self.synth_expr(fun);
+                let mut r#type = fun_type.clone();
+
+                for (arity, surface_arg) in surface_args.iter().enumerate() {
+                    r#type = self.elim_env().update_metas(&r#type);
+
+                    if surface_arg.data.plicity == Plicity::Explicit {
+                        (expr, r#type) = self.insert_implicit_apps(surface_arg.range, expr, r#type);
+                    }
+
+                    match r#type {
+                        Value::FunType { param, body }
+                            if param.plicity == surface_arg.data.plicity =>
+                        {
+                            let arg_expr = self.check_expr(surface_arg.data.expr, param.r#type);
+                            let arg_value = self.eval_env().eval(&arg_expr);
+                            let (fun_expr, arg_expr) = self.bump.alloc((expr, arg_expr));
+                            expr = Expr::FunApp {
+                                fun: &*fun_expr,
+                                arg: FunArg::new(param.plicity, &*arg_expr),
+                            };
+                            r#type = self.elim_env().apply_closure(body, arg_value);
+                        }
+                        Value::FunType { param, .. } => {
+                            diagnostics::plicity_mismatch(
+                                self,
+                                surface_arg.data.plicity,
+                                param.plicity,
+                                &r#type,
+                                surface_arg.range,
+                                fun.range,
+                                self.file_id,
+                            );
+                            return (Expr::Error, Type::Error);
+                        }
+                        Value::Error => return (Expr::Error, Type::Error),
+                        _ if arity == 0 => {
+                            diagnostics::fun_app_not_fun(self, &r#type, fun.range, self.file_id);
+                            return (Expr::Error, Type::Error);
+                        }
+                        _ => {
+                            diagnostics::fun_app_too_many_args(
+                                self,
+                                arity,
+                                surface_args.len(),
+                                &fun_type,
+                                fun.range,
+                                self.file_id,
+                            );
+                            return (Expr::Error, Type::Error);
+                        }
+                    }
                 }
-                let fun_type = self.elim_env().update_metas(&fun_type);
 
-                let (param, body) = match fun_type {
-                    Value::FunType { param, body } if arg.data.plicity == param.plicity => {
-                        (param, body)
-                    }
-                    Value::FunType { param, .. } => {
-                        diagnostics::plicity_mismatch(
-                            self,
-                            arg.data.plicity,
-                            param.plicity,
-                            &fun_type,
-                            arg.range,
-                            fun.range,
-                            self.file_id,
-                        );
-                        return (Expr::Error, Type::Error);
-                    }
-                    Value::Error => return (Expr::Error, Type::Error),
-                    _ => {
-                        diagnostics::fun_app_not_fun(self, &fun_type, fun.range, self.file_id);
-                        return (Expr::Error, Type::Error);
-                    }
-                };
-
-                let arg_expr = self.check_expr(arg.data.expr, param.r#type);
-                let arg = self.eval_env().eval(&arg_expr);
-                let output_type = self.elim_env().apply_closure(body, arg);
-
-                let (fun, arg_expr) = self.bump.alloc((fun_expr, arg_expr));
-                let arg = FunArg::new(param.plicity, &*arg_expr);
-                let core_expr = Expr::FunApp { fun, arg };
-                (core_expr, output_type)
+                (expr, r#type)
             }
             surface::Expr::ListLit(surface_exprs) => {
                 let Some((first_surface_expr, rest_surface_exprs)) = surface_exprs.split_first()

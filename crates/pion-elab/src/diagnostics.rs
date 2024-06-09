@@ -63,6 +63,33 @@ pub fn fun_app_not_fun<'core>(
     elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
 }
 
+pub fn fun_app_too_many_args<'core>(
+    elaborator: &mut Elaborator<'_, 'core, '_>,
+    expected_arity: usize,
+    actual_arity: usize,
+    fun_type: &Type<'core>,
+    at: TextRange,
+    file: usize,
+) {
+    debug_assert!(actual_arity > expected_arity);
+
+    let fun_type = elaborator.quote_env().quote(fun_type);
+    let fun_type = elaborator.pretty(&fun_type);
+
+    let diagnostic = Diagnostic::error()
+        .with_message("Called function with too many arguments")
+        .with_labels(vec![Label::primary(file, at)])
+        .with_notes(vec![
+            format!(
+                "help: the function expects {expected_arity} {}, but recieved {actual_arity} \
+                 arguments",
+                pluralize(expected_arity, "argument", "arguments"),
+            ),
+            format!("help: the type of the function is `{fun_type}`"),
+        ]);
+    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+}
+
 pub fn duplicate_record_field(
     elaborator: &mut Elaborator,
     name: Symbol,
@@ -163,4 +190,12 @@ pub fn plicity_mismatch<'core>(
             Label::secondary(file, fun_range).with_message(format!("function has type {fun_type}")),
         ]);
     elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+}
+
+const fn pluralize<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {
+    if count == 1 {
+        singular
+    } else {
+        plural
+    }
 }
