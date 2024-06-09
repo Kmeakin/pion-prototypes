@@ -56,10 +56,17 @@ impl<'bump> BumpDocAllocator<'bump> {
 
     pub fn let_stmt(
         &'bump self,
+        rec: bool,
         pat: impl Pretty<'bump, Self>,
         r#type: Option<impl Pretty<'bump, Self>>,
         init: impl Pretty<'bump, Self>,
     ) -> DocBuilder<'bump> {
+        let rec = if rec {
+            docs![self, self.text("rec"), self.space()]
+        } else {
+            self.nil()
+        };
+
         let r#type = match r#type {
             None => self.nil(),
             Some(r#type) => docs![self, " : ", r#type],
@@ -67,7 +74,9 @@ impl<'bump> BumpDocAllocator<'bump> {
 
         docs![
             self,
-            "let ",
+            "let",
+            self.space(),
+            rec,
             pat,
             r#type,
             docs![self, self.line(), "= ", init, ";"]

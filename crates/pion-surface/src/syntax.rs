@@ -128,6 +128,10 @@ pub enum Rec {
     /// Non-recursive binding, pattern is not bound in RHS.
     Nonrec,
 }
+impl Rec {
+    pub fn is_rec(&self) -> bool { matches!(self, Self::Rec) }
+    pub fn is_nonrec(&self) -> bool { matches!(self, Self::Nonrec) }
+}
 
 /// Let-binding, `<pat> (: <type>)? = <rhs>`.
 #[derive(Debug, Copy, Clone)]

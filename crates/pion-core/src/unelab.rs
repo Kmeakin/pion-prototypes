@@ -78,20 +78,6 @@ impl<'bump> Unelaborator<'bump> {
         expr: &Expr,
         r#type: &Expr,
     ) -> DocBuilder<'bump> {
-        // transform `(let x : A = e; b): t` into `let x: A = e; b: t`
-        if let Expr::Let { binding, body } = expr {
-            let name = self.name(binding.name);
-
-            names.push(binding.name);
-            let body = self.ann_expr(names, body, r#type);
-            names.pop();
-
-            let r#type = self.expr_prec(names, binding.r#type, Prec::MAX);
-            let init = self.expr_prec(names, binding.expr, Prec::MAX);
-
-            return self.alloc.let_expr(name, Some(r#type), init, body);
-        }
-
         let expr = self.expr_prec(names, expr, Prec::Proj);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
         self.alloc.ann_expr(expr, r#type)
@@ -107,7 +93,7 @@ impl<'bump> Unelaborator<'bump> {
         let pat = self.name(name);
         let r#type = self.expr_prec(names, r#type, Prec::MAX);
         let init = self.expr_prec(names, init, Prec::MAX);
-        self.alloc.let_stmt(pat, Some(r#type), init)
+        self.alloc.let_stmt(false, pat, Some(r#type), init)
     }
 
     pub fn expr_prec(

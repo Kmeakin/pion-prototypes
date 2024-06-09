@@ -121,7 +121,12 @@ impl<'bump, 'text> Printer<'bump, 'text> {
 
     pub fn stmt(&'bump self, stmt: &Stmt) -> DocBuilder<'bump> {
         match stmt {
-            Stmt::Let(..) => todo!(),
+            Stmt::Let(rec, binding) => {
+                let pat = self.pat(&binding.pat.data);
+                let r#type = binding.r#type.as_ref().map(|ty| self.expr(&ty.data));
+                let rhs = self.expr(&binding.rhs.data);
+                self.alloc.let_stmt(rec.is_rec(), pat, r#type, rhs)
+            }
             Stmt::Command(command) => match command.data {
                 Command::Check(expr) => {
                     let expr = self.expr(&expr.data);
