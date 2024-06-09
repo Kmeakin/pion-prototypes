@@ -129,8 +129,8 @@ pub enum Rec {
     Nonrec,
 }
 impl Rec {
-    pub fn is_rec(&self) -> bool { matches!(self, Self::Rec) }
-    pub fn is_nonrec(&self) -> bool { matches!(self, Self::Nonrec) }
+    pub const fn is_rec(&self) -> bool { matches!(self, Self::Rec) }
+    pub const fn is_nonrec(&self) -> bool { matches!(self, Self::Nonrec) }
 }
 
 /// Let-binding, `<pat> (: <type>)? = <rhs>`.
