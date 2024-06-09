@@ -2,12 +2,12 @@ use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
-use pion_diagnostic::{Diagnostic, Label};
 use pion_printer::{docs, BumpDocAllocator, DocAllocator as _};
 use pion_surface::syntax::{self as surface, Located, Rec};
 use text_size::TextRange;
 
 use super::Elaborator;
+use crate::diagnostics;
 
 impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     fn elab_command(&mut self, command: Located<surface::Command<'surface>>) {
@@ -57,7 +57,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             }
             surface::Command::Show(name) => {
                 let Some(var) = self.env.locals.lookup(name.data) else {
-                    todo!()
+                    diagnostics::unbound_local_var(self, name.data, self.file_id, name.range);
+                    return;
                 };
 
                 match self.env.locals.infos.get_relative(var).unwrap() {
@@ -260,10 +261,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             }
             Expr::Error => Expr::Error,
             _ => {
-                let diagnostic = Diagnostic::error()
-                    .with_message("recursive bindings must be function literals")
-                    .with_labels(vec![Label::primary(self.file_id, surface_pat.range)]);
-                self.report_diagnostic(diagnostic);
+                diagnostics::recursive_let_not_function(self, surface_pat.range, self.file_id);
                 Expr::Error
             }
         };

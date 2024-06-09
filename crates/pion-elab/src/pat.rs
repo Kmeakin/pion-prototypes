@@ -1,7 +1,6 @@
 use pion_core::env::EnvLen;
 use pion_core::semantics::{Telescope, Type};
 use pion_core::syntax::{Expr, FunParam, LetBinding, Pat};
-use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::{self, Symbol};
 use pion_util::numeric_conversions::TruncateFrom;
@@ -9,6 +8,7 @@ use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
+use crate::diagnostics;
 
 impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     pub(super) fn synth_param(
@@ -131,17 +131,12 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     let name = surface_field.data.name.data;
 
                     if let Some(index) = pat_fields.iter().position(|(n, _)| *n == name) {
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!("Duplicate field `{name}`"))
-                                .with_labels(vec![
-                                    Label::primary(self.file_id, surface_field.data.name.range),
-                                    Label::secondary(
-                                        self.file_id,
-                                        surface_fields[index].data.name.range,
-                                    )
-                                    .with_message(format!("`{name}` was already defined here")),
-                                ]),
+                        diagnostics::duplicate_record_field(
+                            self,
+                            name,
+                            surface_field.data.name.range,
+                            surface_fields[index].data.name.range,
+                            self.file_id,
                         );
                         continue;
                     }
@@ -265,14 +260,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         match self.unify_env().unify(from, to) {
             Ok(()) => pat,
             Err(error) => {
-                let from = self.quote_env().quote(from);
-                let to = self.quote_env().quote(to);
-
-                let found = self.pretty(&from);
-                let expected = self.pretty(&to);
-
-                let diagnostic = error.to_diagnostic(self.file_id, range, &expected, &found);
-                self.report_diagnostic(diagnostic);
+                diagnostics::unable_to_unify(self, error, from, to, range, self.file_id);
                 Pat::Error
             }
         }

@@ -1,8 +1,8 @@
 use pion_core::syntax::LetBinding;
-use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 
 use super::{Elaborator, EnvLen, Expr, TextRange, Type};
+use crate::diagnostics;
 
 mod compile;
 mod constructors;
@@ -51,20 +51,12 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         for (idx, is_reachable) in reachable_rows.iter().enumerate() {
             if !is_reachable {
                 let range = surface_cases[idx].expr.range;
-                self.report_diagnostic(
-                    Diagnostic::warning()
-                        .with_message("Unreachable match case")
-                        .with_labels(vec![Label::primary(self.file_id, range)]),
-                );
+                diagnostics::unreachable_match_case(self, range, self.file_id);
             }
         }
 
         if inexhaustive {
-            self.report_diagnostic(
-                Diagnostic::error()
-                    .with_message("Inexhaustive match")
-                    .with_labels(vec![Label::primary(self.file_id, range)]),
-            );
+            diagnostics::inexhaustive_match(self, range, self.file_id);
         }
 
         expr

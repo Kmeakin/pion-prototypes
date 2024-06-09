@@ -5,7 +5,6 @@ use pion_core::env::RelativeVar;
 use pion_core::prim::Prim;
 use pion_core::semantics::{Closure, Elim, Head, Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, Lit, Plicity};
-use pion_diagnostic::{Diagnostic, Label};
 use pion_surface::syntax::{self as surface, Located};
 use pion_symbol::Symbol;
 use pion_util::numeric_conversions::TruncateFrom;
@@ -13,6 +12,7 @@ use pion_util::slice_vec::SliceVec;
 use text_size::TextRange;
 
 use super::{Elaborator, MetaSource};
+use crate::diagnostics;
 
 impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
     pub fn synth_lit(
@@ -25,11 +25,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
             surface::Lit::Int(int) => match self.synth_int_lit(Located::new(range, int)) {
                 Ok(value) => (Ok(Lit::Int(value)), Type::INT),
                 Err(error) => {
-                    self.report_diagnostic(
-                        Diagnostic::error()
-                            .with_message(format!("Invalid integer literal: {error}"))
-                            .with_labels(vec![Label::primary(self.file_id, surface_lit.range)]),
-                    );
+                    diagnostics::invalid_integer_literal(self, error, self.file_id, range);
                     (Err(()), Type::INT)
                 }
             },
@@ -95,11 +91,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     return (Expr::Prim(prim), r#type);
                 }
 
-                self.report_diagnostic(
-                    Diagnostic::error()
-                        .with_message(format!("Unbound variable: {name}"))
-                        .with_labels(vec![Label::primary(self.file_id, surface_expr.range)]),
-                );
+                diagnostics::unbound_local_var(self, name, self.file_id, surface_expr.range);
                 (Expr::Error, Type::Error)
             }
             surface::Expr::Hole => {
@@ -160,34 +152,20 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                         (param, body)
                     }
                     Value::FunType { param, .. } => {
-                        let fun_type = self.quote_env().quote(&fun_type);
-                        let fun_type = self.pretty(&fun_type);
-                        let diagnostic = Diagnostic::error()
-                            .with_message(format!(
-                                "Applied {} argument when {} argument was expected",
-                                arg.data.plicity.description(),
-                                param.plicity.description()
-                            ))
-                            .with_labels(vec![
-                                Label::primary(self.file_id, arg.range).with_message(format!(
-                                    "{} argument",
-                                    arg.data.plicity.description()
-                                )),
-                                Label::secondary(self.file_id, fun.range)
-                                    .with_message(format!("function has type {fun_type}")),
-                            ]);
-                        self.report_diagnostic(diagnostic);
+                        diagnostics::plicity_mismatch(
+                            self,
+                            arg.data.plicity,
+                            param.plicity,
+                            &fun_type,
+                            arg.range,
+                            fun.range,
+                            self.file_id,
+                        );
                         return (Expr::Error, Type::Error);
                     }
                     Value::Error => return (Expr::Error, Type::Error),
                     _ => {
-                        let fun_type = self.quote_env().quote(&fun_type);
-                        let fun_type = self.pretty(&fun_type);
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!("Expected function, found `{fun_type}`"))
-                                .with_labels(vec![Label::primary(self.file_id, fun.range)]),
-                        );
+                        diagnostics::fun_app_not_fun(self, &fun_type, fun.range, self.file_id);
                         return (Expr::Error, Type::Error);
                     }
                 };
@@ -207,13 +185,11 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     let elem_type = self.push_unsolved_type(MetaSource::ListElemType {
                         range: surface_expr.range,
                     });
-                    return (
-                        Expr::ListLit(&[]),
-                        Type::Neutral(
-                            Head::Prim(Prim::List),
-                            eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
-                        ),
+                    let r#type = Type::Neutral(
+                        Head::Prim(Prim::List),
+                        eco_vec![Elim::FunApp(FunArg::explicit(elem_type))],
                     );
+                    return (Expr::ListLit(&[]), r#type);
                 };
 
                 let mut exprs = SliceVec::new(self.bump, surface_exprs.len());
@@ -257,17 +233,12 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     if let Some(index) = type_fields.iter().position(|(n, _)| *n == name) {
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!("Duplicate field `{name}`"))
-                                .with_labels(vec![
-                                    Label::primary(self.file_id, surface_field.data.name.range),
-                                    Label::secondary(
-                                        self.file_id,
-                                        surface_fields[index].data.name.range,
-                                    )
-                                    .with_message(format!("`{name}` was already defined here")),
-                                ]),
+                        diagnostics::duplicate_record_field(
+                            self,
+                            name,
+                            surface_field.data.name.range,
+                            surface_fields[index].data.name.range,
+                            self.file_id,
                         );
                         continue;
                     }
@@ -288,17 +259,12 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 for surface_field in surface_fields {
                     let name = surface_field.data.name.data;
                     if let Some(index) = expr_fields.iter().position(|(n, _)| *n == name) {
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!("Duplicate field `{name}`"))
-                                .with_labels(vec![
-                                    Label::primary(self.file_id, surface_field.data.name.range),
-                                    Label::secondary(
-                                        self.file_id,
-                                        surface_fields[index].data.name.range,
-                                    )
-                                    .with_message(format!("`{name}` was already defined here")),
-                                ]),
+                        diagnostics::duplicate_record_field(
+                            self,
+                            name,
+                            surface_field.data.name.range,
+                            surface_fields[index].data.name.range,
+                            self.file_id,
                         );
                         continue;
                     }
@@ -323,11 +289,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 match scrut_type {
                     Value::RecordType(mut telescope) => {
                         let Some(_) = telescope.fields.iter().find(|(n, _)| *n == name.data) else {
-                            self.report_diagnostic(
-                                Diagnostic::error()
-                                    .with_message(format!("Field `{}` not found", name.data))
-                                    .with_labels(vec![Label::primary(self.file_id, name.range)]),
-                            );
+                            diagnostics::field_not_found(self, name.data, name.range, self.file_id);
                             return (Expr::Error, Type::Error);
                         };
 
@@ -348,12 +310,11 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     }
                     Value::Error => (Expr::Error, Type::Error),
                     _ => {
-                        let scrut_type = self.quote_env().quote(&scrut_type);
-                        let scrut_type = self.pretty(&scrut_type);
-                        self.report_diagnostic(
-                            Diagnostic::error()
-                                .with_message(format!("Expected record, found `{scrut_type}`"))
-                                .with_labels(vec![Label::primary(self.file_id, name.range)]),
+                        diagnostics::record_proj_not_record(
+                            self,
+                            &scrut_type,
+                            name.range,
+                            self.file_id,
                         );
                         (Expr::Error, Type::Error)
                     }
@@ -683,14 +644,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         match self.unify_env().unify(&from, to) {
             Ok(()) => expr,
             Err(error) => {
-                let from = self.quote_env().quote(&from);
-                let to = self.quote_env().quote(to);
-
-                let found = self.pretty(&from);
-                let expected = self.pretty(&to);
-
-                let diagnostic = error.to_diagnostic(self.file_id, range, &expected, &found);
-                self.report_diagnostic(diagnostic);
+                diagnostics::unable_to_unify(self, error, &from, to, range, self.file_id);
                 Expr::Error
             }
         }

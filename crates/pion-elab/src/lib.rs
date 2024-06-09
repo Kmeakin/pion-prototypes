@@ -5,12 +5,13 @@ use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::syntax::{Expr, FunArg, LetBinding, Plicity};
-use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
+use pion_diagnostic::DiagnosticHandler;
 use pion_printer::BumpDocAllocator;
 use text_size::TextRange;
 
 use self::unify::UnifyCtx;
 
+mod diagnostics;
 mod expr;
 mod r#match;
 mod pat;
@@ -49,39 +50,11 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         }
     }
 
-    fn report_diagnostic(&mut self, diagnostic: Diagnostic<usize>) {
-        self.diagnostic_handler.handle_diagnostic(diagnostic);
-    }
-
     pub fn report_unsolved_metas(&mut self) {
         let meta_env = std::mem::take(&mut self.env.metas);
         for (id, (source, _, value)) in meta_env.iter().enumerate() {
             if value.is_none() {
-                let message = match source {
-                    MetaSource::PatType {
-                        name: Some(name), ..
-                    } => format!("type of variable `{name}`"),
-                    MetaSource::PatType { name: None, .. } => {
-                        "type of placeholder pattern".to_string()
-                    }
-                    MetaSource::HoleType { .. } => "type of hole".to_string(),
-                    MetaSource::HoleExpr { .. } => "expression to solve hole".to_string(),
-                    MetaSource::ImplicitArg {
-                        name: Some(name), ..
-                    } => format!("implicit argument `{name}`"),
-                    MetaSource::ImplicitArg { name: None, .. } => "implicit argument".to_string(),
-                    MetaSource::ListElemType { .. } => "element type of empty list".to_string(),
-                    MetaSource::MatchResultType { .. } => {
-                        "result type of match expression".to_string()
-                    }
-                };
-
-                self.report_diagnostic(
-                    Diagnostic::error()
-                        .with_message(format!("Unsolved metavariable: ?{id}"))
-                        .with_labels(vec![Label::primary(self.file_id, source.range())
-                            .with_message(format!("could not infer {message}"))]),
-                );
+                diagnostics::unsolved_meta_var(self, id, source, self.file_id);
             }
         }
         self.env.metas = meta_env;
