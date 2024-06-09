@@ -1,8 +1,12 @@
+//! Local variables and environments.
+
 use core::fmt;
 use std::ops::{Add, Deref, DerefMut};
 
 use ecow::EcoVec;
 
+/// A de Bruijn index: counts number of binders from the binder that introduced
+/// the variable to the start of the environment.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct AbsoluteVar(usize);
 
@@ -22,6 +26,8 @@ impl AbsoluteVar {
     pub fn iter() -> impl Iterator<Item = Self> { (0..).map(Self) }
 }
 
+/// A de Bruijn index: counts number of binders from the variable to the binder
+/// that introduced it.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub struct RelativeVar(usize);
 impl RelativeVar {
@@ -148,6 +154,8 @@ impl<T> DerefMut for UniqueEnv<T> {
     fn deref_mut(&mut self) -> &mut Self::Target { (&mut self.elems[..]).into() }
 }
 
+/// An environment that is cheap to clone, with copy on-write-semantics for
+/// mutation.
 #[derive(Debug, Clone)]
 pub struct SharedEnv<T> {
     elems: EcoVec<T>,
@@ -176,6 +184,8 @@ impl<T> Deref for SharedEnv<T> {
     fn deref(&self) -> &Self::Target { self.elems[..].into() }
 }
 
+/// A fixed-length view of an environment.
+/// `SliceEnv` is to `UniqueEnv` as `[T]` is to `Vec<T>`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct SliceEnv<T> {
     elems: [T],
