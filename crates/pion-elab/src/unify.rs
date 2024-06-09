@@ -170,10 +170,9 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             }
 
             (Value::RecordType(mut left_telescope), Value::RecordType(mut right_telescope)) => {
-                if !pion_util::slice_eq_by_key(
+                if !pion_core::syntax::record_keys_equal(
                     left_telescope.fields,
                     right_telescope.fields,
-                    |(field, _)| *field,
                 ) {
                     return Err(UnifyError::Mismatch);
                 }
@@ -217,7 +216,7 @@ impl<'core, 'env> UnifyCtx<'core, 'env> {
             }
 
             (Value::RecordLit(left_fields), Value::RecordLit(right_fields)) => {
-                if !pion_util::slice_eq_by_key(left_fields, right_fields, |(field, _)| *field) {
+                if !pion_core::syntax::record_keys_equal(left_fields, right_fields) {
                     return Err(UnifyError::Mismatch);
                 }
 

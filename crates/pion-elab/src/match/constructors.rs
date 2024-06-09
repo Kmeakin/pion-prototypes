@@ -20,7 +20,7 @@ impl<'core> PartialEq for Constructor<'core> {
         match (self, other) {
             (Self::Lit(left_lit), Self::Lit(right_lit)) => left_lit == right_lit,
             (Self::Record(left_fields), Self::Record(right_fields)) => {
-                pion_util::slice_eq_by_key(left_fields, right_fields, |(name, _)| *name)
+                pion_core::syntax::record_keys_equal(left_fields, right_fields)
             }
             _ => false,
         }

@@ -31,8 +31,8 @@ pub enum Expr<'core> {
     },
 
     ListLit(&'core [Self]),
-    RecordType(&'core [(Symbol, Self)]),
-    RecordLit(&'core [(Symbol, Self)]),
+    RecordType(RecordFields<'core, Self>),
+    RecordLit(RecordFields<'core, Self>),
     RecordProj(&'core Self, Symbol),
 
     MatchBool {
@@ -240,6 +240,12 @@ impl<'core> Expr<'core> {
     }
 }
 
+pub type RecordFields<'core, Field> = &'core [(Symbol, Field)];
+
+pub fn record_keys_equal<L, R>(lhs: RecordFields<L>, rhs: RecordFields<R>) -> bool {
+    lhs.len() == rhs.len() && lhs.iter().zip(rhs.iter()).all(|(l, r)| l.0 == r.0)
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Plicity {
     Implicit,
@@ -315,7 +321,7 @@ pub enum Pat<'core> {
     Underscore,
     Ident(Symbol),
     Lit(Lit),
-    RecordLit(&'core [(Symbol, Self)]),
+    RecordLit(RecordFields<'core, Self>),
     Or(&'core [Self]),
 }
 

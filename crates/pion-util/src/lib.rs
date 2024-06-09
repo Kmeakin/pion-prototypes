@@ -4,18 +4,6 @@ pub mod collect_in;
 pub mod numeric_conversions;
 pub mod slice_vec;
 
-pub fn slice_eq_by_key<T, V: PartialEq>(
-    xs: &[T],
-    ys: &[T],
-    key_fn: impl Copy + Fn(&T) -> V,
-) -> bool {
-    if xs.len() != ys.len() {
-        return false;
-    }
-
-    Iterator::eq(xs.iter().map(key_fn), ys.iter().map(key_fn))
-}
-
 pub fn slice_eq_by_key2<T1, T2, V: PartialEq>(
     xs: &[T1],
     ys: &[T2],

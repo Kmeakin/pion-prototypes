@@ -7,7 +7,7 @@ use pion_util::slice_vec::SliceVec;
 
 use crate::env::{AbsoluteVar, EnvLen, SharedEnv, SliceEnv};
 use crate::prim::Prim;
-use crate::syntax::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity};
+use crate::syntax::{Expr, FunArg, FunParam, LetBinding, Lit, Plicity, RecordFields};
 
 pub type Type<'core> = Value<'core>;
 
@@ -26,7 +26,7 @@ pub enum Value<'core> {
     },
     List(EcoVec<Self>),
     RecordType(Telescope<'core>),
-    RecordLit(&'core [(Symbol, Self)]),
+    RecordLit(RecordFields<'core, Self>),
 }
 
 impl<'core> Value<'core> {
@@ -134,7 +134,7 @@ impl<'core> Closure<'core> {
 #[derive(Debug, Clone)]
 pub struct Telescope<'core> {
     pub local_values: LocalValues<'core>,
-    pub fields: &'core [(Symbol, Expr<'core>)],
+    pub fields: RecordFields<'core, Expr<'core>>,
 }
 
 impl<'core> Telescope<'core> {
