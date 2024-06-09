@@ -10,6 +10,8 @@ let evenodd : (Int -> Bool, Int -> Bool)
     fun n => if eq n 0 then true else evenodd._1 (sub n 1),
     fun n => if eq n 0 then false else evenodd._0 (sub n 1)
 ));
+#show evenodd;
+
 let even = evenodd._0;
 let odd = evenodd._1;
 

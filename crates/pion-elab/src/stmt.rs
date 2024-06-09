@@ -1,4 +1,4 @@
-use pion_core::env::RelativeVar;
+use pion_core::env::{EnvLen, RelativeVar};
 use pion_core::prim::Prim;
 use pion_core::semantics::{Telescope, Type, Value};
 use pion_core::syntax::{Expr, FunArg, FunParam, LetBinding};
@@ -82,6 +82,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     }
                     crate::LocalInfo::Let => {
                         let expr = self.env.locals.exprs.get_relative(var).unwrap().unwrap();
+                        let expr = expr.shift(self.bump, EnvLen::from(usize::from(var) + 1));
                         let expr = self.zonk_env().zonk(&expr);
 
                         let r#type = self.env.locals.types.get_relative(var).unwrap();

@@ -108,114 +108,116 @@ impl<'core> Expr<'core> {
     }
 
     pub fn shift(&self, bump: &'core bumpalo::Bump, amount: EnvLen) -> Self {
-        self.shift_inner(bump, RelativeVar::default(), amount)
-    }
+        return recur(self, bump, RelativeVar::default(), amount);
 
-    fn shift_inner(
-        &self,
-        bump: &'core bumpalo::Bump,
-        mut min: RelativeVar,
-        amount: EnvLen,
-    ) -> Self {
-        // Skip traversing and rebuilding the term if it would make no change.
-        // Increases sharing.
-        if amount == EnvLen::new() {
-            return *self;
-        }
-
-        match self {
-            Expr::LocalVar(var) if *var >= min => Expr::LocalVar(*var + amount),
-
-            Expr::Error
-            | Expr::Lit(..)
-            | Expr::Prim(..)
-            | Expr::LocalVar(..)
-            | Expr::MetaVar(..) => *self,
-
-            Expr::Let { binding, body } => {
-                let r#type = binding.r#type.shift_inner(bump, min, amount);
-                let rhs = binding.rhs.shift_inner(bump, min, amount);
-                let body = body.shift_inner(bump, min.succ(), amount);
-                let (r#type, rhs, body) = bump.alloc((r#type, rhs, body));
-                let binding = LetBinding::new(binding.name, &*r#type, &*rhs);
-                Expr::Let { binding, body }
+        /// Increment all `LocalVar`s greater than or equal to `min` by
+        /// `amount`. See <https://github.com/dhall-lang/dhall-lang/blob/master/standard/shift.md>.
+        fn recur<'core>(
+            expr: &Expr<'core>,
+            bump: &'core bumpalo::Bump,
+            mut min: RelativeVar,
+            amount: EnvLen,
+        ) -> Expr<'core> {
+            // Skip traversing and rebuilding the term if it would make no change.
+            // Increases sharing.
+            if amount == EnvLen::new() {
+                return *expr;
             }
 
-            Expr::FunLit { param, body } => {
-                let r#type = param.r#type.shift_inner(bump, min, amount);
-                let body = body.shift_inner(bump, min.succ(), amount);
-                let (r#type, body) = bump.alloc((r#type, body));
-                let param = FunParam::new(param.plicity, param.name, &*r#type);
-                Expr::FunLit { param, body }
-            }
-            Expr::FunType { param, body } => {
-                let r#type = param.r#type.shift_inner(bump, min, amount);
-                let body = body.shift_inner(bump, min.succ(), amount);
-                let (r#type, body) = bump.alloc((r#type, body));
-                let param = FunParam::new(param.plicity, param.name, &*r#type);
-                Expr::FunType { param, body }
-            }
-            Expr::FunApp { fun, arg } => {
-                let fun = fun.shift_inner(bump, min, amount);
-                let arg_expr = arg.expr.shift_inner(bump, min, amount);
-                let (fun, arg_expr) = bump.alloc((fun, arg_expr));
-                Expr::FunApp {
-                    fun,
-                    arg: FunArg::new(arg.plicity, arg_expr),
+            match expr {
+                Expr::LocalVar(var) if *var >= min => Expr::LocalVar(*var + amount),
+
+                Expr::Error
+                | Expr::Lit(..)
+                | Expr::Prim(..)
+                | Expr::LocalVar(..)
+                | Expr::MetaVar(..) => *expr,
+
+                Expr::Let { binding, body } => {
+                    let r#type = recur(binding.r#type, bump, min, amount);
+                    let rhs = recur(binding.rhs, bump, min, amount);
+                    let body = recur(body, bump, min.succ(), amount);
+                    let (r#type, rhs, body) = bump.alloc((r#type, rhs, body));
+                    let binding = LetBinding::new(binding.name, &*r#type, &*rhs);
+                    Expr::Let { binding, body }
                 }
-            }
 
-            Expr::RecordType(fields) => Expr::RecordType(
-                fields
-                    .iter()
-                    .map(|(name, r#type)| {
-                        let r#type = r#type.shift_inner(bump, min, amount);
-                        min = min.succ();
-                        (*name, r#type)
-                    })
-                    .collect_in(bump),
-            ),
+                Expr::FunLit { param, body } => {
+                    let r#type = recur(param.r#type, bump, min, amount);
+                    let body = recur(body, bump, min.succ(), amount);
+                    let (r#type, body) = bump.alloc((r#type, body));
+                    let param = FunParam::new(param.plicity, param.name, &*r#type);
+                    Expr::FunLit { param, body }
+                }
+                Expr::FunType { param, body } => {
+                    let r#type = recur(param.r#type, bump, min, amount);
+                    let body = recur(body, bump, min.succ(), amount);
+                    let (r#type, body) = bump.alloc((r#type, body));
+                    let param = FunParam::new(param.plicity, param.name, &*r#type);
+                    Expr::FunType { param, body }
+                }
+                Expr::FunApp { fun, arg } => {
+                    let fun = recur(fun, bump, min, amount);
+                    let arg_expr = recur(arg.expr, bump, min, amount);
+                    let (fun, arg_expr) = bump.alloc((fun, arg_expr));
+                    Expr::FunApp {
+                        fun,
+                        arg: FunArg::new(arg.plicity, arg_expr),
+                    }
+                }
 
-            Expr::RecordLit(fields) => Expr::RecordLit(
-                fields
-                    .iter()
-                    .map(|(name, r#type)| (*name, r#type.shift_inner(bump, min, amount)))
-                    .collect_in(bump),
-            ),
+                Expr::RecordType(fields) => Expr::RecordType(
+                    fields
+                        .iter()
+                        .map(|(name, r#type)| {
+                            let r#type = recur(r#type, bump, min, amount);
+                            min = min.succ();
+                            (*name, r#type)
+                        })
+                        .collect_in(bump),
+                ),
 
-            Expr::RecordProj(scrut, label) => {
-                Expr::RecordProj(bump.alloc(scrut.shift_inner(bump, min, amount)), *label)
-            }
-            Expr::ListLit(elems) => Expr::ListLit(
-                elems
-                    .iter()
-                    .map(|expr| expr.shift_inner(bump, min, amount))
-                    .collect_in(bump),
-            ),
+                Expr::RecordLit(fields) => Expr::RecordLit(
+                    fields
+                        .iter()
+                        .map(|(name, r#type)| (*name, recur(r#type, bump, min, amount)))
+                        .collect_in(bump),
+                ),
 
-            Expr::MatchBool { cond, then, r#else } => {
-                let cond = cond.shift_inner(bump, min, amount);
-                let then = then.shift_inner(bump, min, amount);
-                let r#else = r#else.shift_inner(bump, min, amount);
-                let (cond, then, r#else) = bump.alloc((cond, then, r#else));
-                Expr::MatchBool { cond, then, r#else }
-            }
-            Expr::MatchInt {
-                scrut,
-                cases,
-                default,
-            } => {
-                let scrut = scrut.shift_inner(bump, min, amount);
-                let cases = cases
-                    .iter()
-                    .map(|(int, expr)| (*int, expr.shift_inner(bump, min, amount)))
-                    .collect_in(bump);
-                let default = default.shift_inner(bump, min, amount);
-                let (scrut, cases, default) = bump.alloc((scrut, cases, default));
+                Expr::RecordProj(scrut, label) => {
+                    Expr::RecordProj(bump.alloc(recur(scrut, bump, min, amount)), *label)
+                }
+                Expr::ListLit(elems) => Expr::ListLit(
+                    elems
+                        .iter()
+                        .map(|expr| recur(expr, bump, min, amount))
+                        .collect_in(bump),
+                ),
+
+                Expr::MatchBool { cond, then, r#else } => {
+                    let cond = recur(cond, bump, min, amount);
+                    let then = recur(then, bump, min, amount);
+                    let r#else = recur(r#else, bump, min, amount);
+                    let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+                    Expr::MatchBool { cond, then, r#else }
+                }
                 Expr::MatchInt {
                     scrut,
                     cases,
                     default,
+                } => {
+                    let scrut = recur(scrut, bump, min, amount);
+                    let cases = cases
+                        .iter()
+                        .map(|(int, expr)| (*int, recur(expr, bump, min, amount)))
+                        .collect_in(bump);
+                    let default = recur(default, bump, min, amount);
+                    let (scrut, cases, default) = bump.alloc((scrut, cases, default));
+                    Expr::MatchInt {
+                        scrut,
+                        cases,
+                        default,
+                    }
                 }
             }
         }
