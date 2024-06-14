@@ -151,7 +151,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 (Pat::RecordLit(pat_fields.into()), r#type)
             }
             surface::Pat::Or(pats) => {
-                // TODO: check all alts bind the same set of variables
+                // FIXME: check all alts bind the same set of variables
                 let mut core_pats = SliceVec::new(self.bump, pats.len());
                 let [first, rest @ ..] = pats else {
                     unreachable!()
@@ -227,7 +227,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                 Pat::RecordLit(pat_fields.into())
             }
             surface::Pat::Or(pats) => {
-                // TODO: check all alts bind the same set of variables
+                // FIXME: check all alts bind the same set of variables
                 let mut core_pats = SliceVec::new(self.bump, pats.len());
                 for pat in pats {
                     let pat = self.check_pat(pat, expected);
