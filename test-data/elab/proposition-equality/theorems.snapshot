@@ -36,6 +36,14 @@ let cong-app : forall (@A : Type) (@B : Type) (@a : A) (f : A -> B) (g : A -> B)
             let goal : Eq @B (f a) (g a) = subst @(A -> B) @p f g f-eq-g p_f;
             goal
         };
+let cast : forall (@T : Type) (@V : Type) -> Eq @Type T V -> T -> V
+    = fun (@T : Type) (@V : Type) (t-eq-v : Eq @Type T V) (t : T) =>
+        do {
+            let p : Type -> Type = fun (x : Type) => x;
+            let p-t : T = t;
+            let goal : V = subst @Type @p T V t-eq-v p-t;
+            goal
+        };
 """
 
 stderr = """
