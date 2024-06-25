@@ -52,23 +52,52 @@ use std::ops::Range;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TokenKind {
+    // Error
+    UnknownChar(char),
+
     // Trivia
-    UnknownChar = 1,
     Whitespace,
     LineComment,
     BlockComment,
 
     // Delimiters
-    LParen,
-    LSquare,
-    LCurly,
-    RParen,
-    RSquare,
-    RCurly,
+    OpenDelim(Delimiter),
+    CloseDelim(Delimiter),
 
     // Atoms
-    Punct,
     Ident,
+    Punct(char),
+    Lit(Literal),
+}
+
+impl TokenKind {
+    pub const L_PAREN: Self = Self::OpenDelim(Delimiter::Round);
+    pub const L_SQUARE: Self = Self::OpenDelim(Delimiter::Square);
+    pub const L_CURLY: Self = Self::OpenDelim(Delimiter::Curly);
+
+    pub const R_PAREN: Self = Self::CloseDelim(Delimiter::Round);
+    pub const R_SQUARE: Self = Self::CloseDelim(Delimiter::Square);
+    pub const R_CURLY: Self = Self::CloseDelim(Delimiter::Curly);
+
+    pub const NUMBER: Self = Self::Lit(Literal::Number);
+    pub const CHAR: Self = Self::Lit(Literal::Char);
+    pub const STRING: Self = Self::Lit(Literal::String);
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Delimiter {
+    /// `()`
+    Round,
+
+    /// `{}`
+    Square,
+
+    /// `[]`
+    Curly,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Literal {
     Number,
     Char,
     String,
@@ -168,36 +197,36 @@ pub fn lex(mut text: &str) -> impl Iterator<Item = (TokenKind, Range<usize>)> + 
 pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
     let c = text.chars().next()?;
     let (kind, len) = match c {
-        '(' => (TokenKind::LParen, 1),
-        '[' => (TokenKind::LSquare, 1),
-        '{' => (TokenKind::LCurly, 1),
-        ')' => (TokenKind::RParen, 1),
-        ']' => (TokenKind::RSquare, 1),
-        '}' => (TokenKind::RCurly, 1),
+        '(' => (TokenKind::L_PAREN, 1),
+        '[' => (TokenKind::L_SQUARE, 1),
+        '{' => (TokenKind::L_CURLY, 1),
+        ')' => (TokenKind::R_PAREN, 1),
+        ']' => (TokenKind::R_SQUARE, 1),
+        '}' => (TokenKind::R_CURLY, 1),
 
         '/' => match text.as_bytes().get(1) {
             Some(b'/') => (TokenKind::LineComment, line_comment(text)),
             Some(b'*') => (TokenKind::BlockComment, block_comment(text)),
-            _ => (TokenKind::Punct, 1),
+            _ => (TokenKind::Punct('/'), 1),
         },
 
-        '"' => (TokenKind::String, string(text)),
-        '\'' => (TokenKind::Char, char(text)),
+        '"' => (TokenKind::STRING, string(text)),
+        '\'' => (TokenKind::CHAR, char(text)),
 
-        '0'..='9' => (TokenKind::Number, number(text)),
+        '0'..='9' => (TokenKind::NUMBER, number(text)),
         '-' | '+' => match text.chars().nth(1) {
-            Some('0'..='9') => (TokenKind::Number, 1 + number(&text[1..])),
-            _ => (TokenKind::Punct, 1),
+            Some('0'..='9') => (TokenKind::NUMBER, 1 + number(&text[1..])),
+            _ => (TokenKind::Punct(c), 1),
         },
 
         '_' => match text.chars().nth(1) {
             Some(c) if CharTraits::is_xid_continue(&c) => (TokenKind::Ident, ident(text)),
-            _ => (TokenKind::Punct, 1),
+            _ => (TokenKind::Punct('_'), 1),
         },
         c if CharTraits::is_xid_start(&c) => (TokenKind::Ident, ident(text)),
         c if CharTraits::is_whitespace(&c) => (TokenKind::Whitespace, whitespace(text)),
-        c if CharTraits::is_punct(&c) => (TokenKind::Punct, c.len_utf8()),
-        _ => (TokenKind::UnknownChar, c.len_utf8()),
+        c if CharTraits::is_punct(&c) => (TokenKind::Punct(c), c.len_utf8()),
+        _ => (TokenKind::UnknownChar(c), c.len_utf8()),
     };
     Some((kind, len))
 }
@@ -387,42 +416,42 @@ mod tests {
     fn delimiter() {
         let text = "()[]{}";
         let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LParen, 0..1)));
-        assert_eq!(lexer.next(), Some((RParen, 1..2)));
-        assert_eq!(lexer.next(), Some((LSquare, 2..3)));
-        assert_eq!(lexer.next(), Some((RSquare, 3..4)));
-        assert_eq!(lexer.next(), Some((LCurly, 4..5)));
-        assert_eq!(lexer.next(), Some((RCurly, 5..6)));
+        assert_eq!(lexer.next(), Some((TokenKind::L_PAREN, 0..1)));
+        assert_eq!(lexer.next(), Some((TokenKind::R_PAREN, 1..2)));
+        assert_eq!(lexer.next(), Some((TokenKind::L_SQUARE, 2..3)));
+        assert_eq!(lexer.next(), Some((TokenKind::R_SQUARE, 3..4)));
+        assert_eq!(lexer.next(), Some((TokenKind::L_CURLY, 4..5)));
+        assert_eq!(lexer.next(), Some((TokenKind::R_CURLY, 5..6)));
         assert_eq!(lexer.next(), None);
     }
 
     #[test]
     fn punct() {
         let mut lexer = lex("!#$%&*+,-./:;<=>?@\\^_`|~");
-        assert_eq!(lexer.next(), Some((Punct, 0..1)));
-        assert_eq!(lexer.next(), Some((Punct, 1..2)));
-        assert_eq!(lexer.next(), Some((Punct, 2..3)));
-        assert_eq!(lexer.next(), Some((Punct, 3..4)));
-        assert_eq!(lexer.next(), Some((Punct, 4..5)));
-        assert_eq!(lexer.next(), Some((Punct, 5..6)));
-        assert_eq!(lexer.next(), Some((Punct, 6..7)));
-        assert_eq!(lexer.next(), Some((Punct, 7..8)));
-        assert_eq!(lexer.next(), Some((Punct, 8..9)));
-        assert_eq!(lexer.next(), Some((Punct, 9..10)));
-        assert_eq!(lexer.next(), Some((Punct, 10..11)));
-        assert_eq!(lexer.next(), Some((Punct, 11..12)));
-        assert_eq!(lexer.next(), Some((Punct, 12..13)));
-        assert_eq!(lexer.next(), Some((Punct, 13..14)));
-        assert_eq!(lexer.next(), Some((Punct, 14..15)));
-        assert_eq!(lexer.next(), Some((Punct, 15..16)));
-        assert_eq!(lexer.next(), Some((Punct, 16..17)));
-        assert_eq!(lexer.next(), Some((Punct, 17..18)));
-        assert_eq!(lexer.next(), Some((Punct, 18..19)));
-        assert_eq!(lexer.next(), Some((Punct, 19..20)));
-        assert_eq!(lexer.next(), Some((Punct, 20..21)));
-        assert_eq!(lexer.next(), Some((Punct, 21..22)));
-        assert_eq!(lexer.next(), Some((Punct, 22..23)));
-        assert_eq!(lexer.next(), Some((Punct, 23..24)));
+        assert_eq!(lexer.next(), Some((Punct('!'), 0..1)));
+        assert_eq!(lexer.next(), Some((Punct('#'), 1..2)));
+        assert_eq!(lexer.next(), Some((Punct('$'), 2..3)));
+        assert_eq!(lexer.next(), Some((Punct('%'), 3..4)));
+        assert_eq!(lexer.next(), Some((Punct('&'), 4..5)));
+        assert_eq!(lexer.next(), Some((Punct('*'), 5..6)));
+        assert_eq!(lexer.next(), Some((Punct('+'), 6..7)));
+        assert_eq!(lexer.next(), Some((Punct(','), 7..8)));
+        assert_eq!(lexer.next(), Some((Punct('-'), 8..9)));
+        assert_eq!(lexer.next(), Some((Punct('.'), 9..10)));
+        assert_eq!(lexer.next(), Some((Punct('/'), 10..11)));
+        assert_eq!(lexer.next(), Some((Punct(':'), 11..12)));
+        assert_eq!(lexer.next(), Some((Punct(';'), 12..13)));
+        assert_eq!(lexer.next(), Some((Punct('<'), 13..14)));
+        assert_eq!(lexer.next(), Some((Punct('='), 14..15)));
+        assert_eq!(lexer.next(), Some((Punct('>'), 15..16)));
+        assert_eq!(lexer.next(), Some((Punct('?'), 16..17)));
+        assert_eq!(lexer.next(), Some((Punct('@'), 17..18)));
+        assert_eq!(lexer.next(), Some((Punct('\\'), 18..19)));
+        assert_eq!(lexer.next(), Some((Punct('^'), 19..20)));
+        assert_eq!(lexer.next(), Some((Punct('_'), 20..21)));
+        assert_eq!(lexer.next(), Some((Punct('`'), 21..22)));
+        assert_eq!(lexer.next(), Some((Punct('|'), 22..23)));
+        assert_eq!(lexer.next(), Some((Punct('~'), 23..24)));
         assert_eq!(lexer.next(), None);
     }
 
@@ -434,7 +463,7 @@ mod tests {
 
         // Leading '-' at start of ident is interpreted as Punct
         let mut lexer = lex("-abcd1234");
-        assert_eq!(lexer.next(), Some((Punct, 0..1)));
+        assert_eq!(lexer.next(), Some((Punct('-'), 0..1)));
         assert_eq!(lexer.next(), Some((Ident, 1..9)));
 
         let mut lexer = lex("a-");
@@ -450,13 +479,13 @@ mod tests {
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("_-");
-        assert_eq!(lexer.next(), Some((Punct, 0..1)));
-        assert_eq!(lexer.next(), Some((Punct, 1..2)));
+        assert_eq!(lexer.next(), Some((Punct('_'), 0..1)));
+        assert_eq!(lexer.next(), Some((Punct('-'), 1..2)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("-_");
-        assert_eq!(lexer.next(), Some((Punct, 0..1)));
-        assert_eq!(lexer.next(), Some((Punct, 1..2)));
+        assert_eq!(lexer.next(), Some((Punct('-'), 0..1)));
+        assert_eq!(lexer.next(), Some((Punct('_'), 1..2)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("__");
@@ -467,77 +496,77 @@ mod tests {
     #[test]
     fn number() {
         let mut lexer = lex("123_456");
-        assert_eq!(lexer.next(), Some((Number, 0..7)));
+        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..7)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("0x123_456");
-        assert_eq!(lexer.next(), Some((Number, 0..9)));
+        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..9)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("0b123_456");
-        assert_eq!(lexer.next(), Some((Number, 0..9)));
+        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..9)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("-123");
-        assert_eq!(lexer.next(), Some((Number, 0..4)));
+        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..4)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("+123");
-        assert_eq!(lexer.next(), Some((Number, 0..4)));
+        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..4)));
         assert_eq!(lexer.next(), None);
     }
 
     #[test]
     fn char() {
         let mut lexer = lex("'a'");
-        assert_eq!(lexer.next(), Some((Char, 0..3)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..3)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("'abc'");
-        assert_eq!(lexer.next(), Some((Char, 0..5)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..5)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("'abc");
-        assert_eq!(lexer.next(), Some((Char, 0..4)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..4)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r"'abc\'def'");
-        assert_eq!(lexer.next(), Some((Char, 0..10)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..10)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r"'abc\\'def'");
-        assert_eq!(lexer.next(), Some((Char, 0..7)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..7)));
         assert_eq!(lexer.next(), Some((Ident, 7..10)));
-        assert_eq!(lexer.next(), Some((Char, 10..11)));
+        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 10..11)));
         assert_eq!(lexer.next(), None);
     }
 
     #[test]
     fn string() {
         let mut lexer = lex(r#""""#);
-        assert_eq!(lexer.next(), Some((String, 0..2)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..2)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r#""a""#);
-        assert_eq!(lexer.next(), Some((String, 0..3)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..3)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r#""abc""#);
-        assert_eq!(lexer.next(), Some((String, 0..5)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..5)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r#""abc"#);
-        assert_eq!(lexer.next(), Some((String, 0..4)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..4)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r#""abc\"def"#);
-        assert_eq!(lexer.next(), Some((String, 0..9)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..9)));
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex(r#""abc\\"def""#);
-        assert_eq!(lexer.next(), Some((String, 0..7)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..7)));
         assert_eq!(lexer.next(), Some((Ident, 7..10)));
-        assert_eq!(lexer.next(), Some((String, 10..11)));
+        assert_eq!(lexer.next(), Some((TokenKind::STRING, 10..11)));
         assert_eq!(lexer.next(), None);
     }
 }
