@@ -16,3 +16,5 @@ all = { level = "warn" }
 all      = { level = "warn" }
 nursery  = { level = "warn" }
 pedantic = { level = "warn" }
+
+must_use_candidate = { level = "allow", priority = 100 }
