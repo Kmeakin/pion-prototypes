@@ -1,0 +1,13 @@
+[package]
+name = "pion-parser"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo = { version = "3.16.0", features = ["allocator_api"] }
+pion-lexer = { path = "../pion-lexer" }
+text-size  = { workspace = true }

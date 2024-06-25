@@ -19,3 +19,6 @@ pedantic = { level = "warn" }
 
 must_use_candidate   = { level = "allow", priority = 100 }
 cognitive_complexity = { level = "allow", priority = 100 }
+
+[workspace.dependencies]
+text-size = { version = "1.1.1" }
