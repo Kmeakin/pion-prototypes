@@ -53,17 +53,17 @@ use std::ops::Range;
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TokenKind {
     // Trivia
-    Unknown = 1,
+    UnknownChar = 1,
     Whitespace,
     LineComment,
     BlockComment,
 
     // Delimiters
     LParen,
-    RParen,
     LSquare,
-    RSquare,
     LCurly,
+    RParen,
+    RSquare,
     RCurly,
 
     // Atoms
@@ -169,10 +169,10 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
     let c = text.chars().next()?;
     let (kind, len) = match c {
         '(' => (TokenKind::LParen, 1),
-        ')' => (TokenKind::RParen, 1),
         '[' => (TokenKind::LSquare, 1),
-        ']' => (TokenKind::RSquare, 1),
         '{' => (TokenKind::LCurly, 1),
+        ')' => (TokenKind::RParen, 1),
+        ']' => (TokenKind::RSquare, 1),
         '}' => (TokenKind::RCurly, 1),
 
         '/' => match text.as_bytes().get(1) {
@@ -197,7 +197,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         c if CharTraits::is_xid_start(&c) => (TokenKind::Ident, ident(text)),
         c if CharTraits::is_whitespace(&c) => (TokenKind::Whitespace, whitespace(text)),
         c if CharTraits::is_punct(&c) => (TokenKind::Punct, c.len_utf8()),
-        _ => (TokenKind::Unknown, c.len_utf8()),
+        _ => (TokenKind::UnknownChar, c.len_utf8()),
     };
     Some((kind, len))
 }
