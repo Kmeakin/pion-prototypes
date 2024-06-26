@@ -112,7 +112,6 @@ pub trait CharTraits {
     fn is_ident_continue(&self) -> bool;
 
     fn is_line_terminator(&self) -> bool;
-    fn is_punct(&self) -> bool;
 }
 
 impl CharTraits for char {
@@ -151,35 +150,6 @@ impl CharTraits for char {
                 | '\u{2029}'
         )
     }
-
-    fn is_punct(&self) -> bool {
-        matches!(
-            self,
-            '!' | '#'
-                | '$'
-                | '%'
-                | '&'
-                | '*'
-                | '+'
-                | ','
-                | '-'
-                | '.'
-                | '/'
-                | ':'
-                | ';'
-                | '<'
-                | '='
-                | '>'
-                | '?'
-                | '@'
-                | '\\'
-                | '^'
-                | '_'
-                | '`'
-                | '|'
-                | '~'
-        )
-    }
 }
 
 pub fn lex(mut text: &str) -> impl Iterator<Item = (TokenKind, Range<usize>)> + '_ {
@@ -195,38 +165,83 @@ pub fn lex(mut text: &str) -> impl Iterator<Item = (TokenKind, Range<usize>)> + 
 }
 
 pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
-    let c = text.chars().next()?;
-    let (kind, len) = match c {
-        '(' => (TokenKind::L_PAREN, 1),
-        '[' => (TokenKind::L_SQUARE, 1),
-        '{' => (TokenKind::L_CURLY, 1),
-        ')' => (TokenKind::R_PAREN, 1),
-        ']' => (TokenKind::R_SQUARE, 1),
-        '}' => (TokenKind::R_CURLY, 1),
+    let bytes = text.as_bytes();
+    let byte = *bytes.first()?;
+    let c = char::from(byte);
 
-        '/' => match text.as_bytes().get(1) {
-            Some(b'/') => (TokenKind::LineComment, line_comment(text)),
-            Some(b'*') => (TokenKind::BlockComment, block_comment(text)),
-            _ => (TokenKind::Punct('/'), 1),
-        },
-
-        '"' => (TokenKind::STRING, string(text)),
-        '\'' => (TokenKind::CHAR, char(text)),
-
-        '0'..='9' => (TokenKind::NUMBER, number(text)),
-        '-' | '+' => match text.chars().nth(1) {
-            Some('0'..='9') => (TokenKind::NUMBER, 1 + number(&text[1..])),
+    #[allow(clippy::match_same_arms)]
+    let (kind, len) = match byte {
+        0x00..=0x08 => (TokenKind::UnknownChar(c), 1),
+        0x09 => (TokenKind::Whitespace, whitespace(text)),
+        0x0A => (TokenKind::Whitespace, whitespace(text)),
+        0x0B => (TokenKind::Whitespace, whitespace(text)),
+        0x0C => (TokenKind::Whitespace, whitespace(text)),
+        0x0D => (TokenKind::Whitespace, whitespace(text)),
+        0x0E..=0x1F => (TokenKind::UnknownChar(c), 1),
+        b' ' => (TokenKind::Whitespace, whitespace(text)),
+        b'!' => (TokenKind::Punct(c), 1),
+        b'"' => (TokenKind::STRING, string(text)),
+        b'#' => (TokenKind::Punct(c), 1),
+        b'$' => (TokenKind::Punct(c), 1),
+        b'%' => (TokenKind::Punct(c), 1),
+        b'&' => (TokenKind::Punct(c), 1),
+        b'\'' => (TokenKind::CHAR, char(text)),
+        b'(' => (TokenKind::L_PAREN, 1),
+        b')' => (TokenKind::R_PAREN, 1),
+        b'*' => (TokenKind::Punct(c), 1),
+        b',' => (TokenKind::Punct(c), 1),
+        b'.' => (TokenKind::Punct(c), 1),
+        b'+' | b'-' => match bytes.get(1) {
+            Some(b'0'..=b'9') => (TokenKind::NUMBER, 1 + number(&text[1..])),
             _ => (TokenKind::Punct(c), 1),
         },
-
-        '_' => match text.chars().nth(1) {
-            Some(c) if CharTraits::is_xid_continue(&c) => (TokenKind::Ident, ident(text)),
-            _ => (TokenKind::Punct('_'), 1),
+        b'/' => match bytes.get(1) {
+            Some(b'/') => (TokenKind::LineComment, line_comment(text)),
+            Some(b'*') => (TokenKind::BlockComment, block_comment(text)),
+            _ => (TokenKind::Punct(c), 1),
         },
-        c if CharTraits::is_xid_start(&c) => (TokenKind::Ident, ident(text)),
-        c if CharTraits::is_whitespace(&c) => (TokenKind::Whitespace, whitespace(text)),
-        c if CharTraits::is_punct(&c) => (TokenKind::Punct(c), c.len_utf8()),
-        _ => (TokenKind::UnknownChar(c), c.len_utf8()),
+        b'0'..=b'9' => (TokenKind::NUMBER, number(text)),
+        b':' => (TokenKind::Punct(c), 1),
+        b';' => (TokenKind::Punct(c), 1),
+        b'<' => (TokenKind::Punct(c), 1),
+        b'=' => (TokenKind::Punct(c), 1),
+        b'>' => (TokenKind::Punct(c), 1),
+        b'?' => (TokenKind::Punct(c), 1),
+        b'@' => (TokenKind::Punct(c), 1),
+        b'A'..=b'Z' => (TokenKind::Ident, ident(text)),
+        b'[' => (TokenKind::L_SQUARE, 1),
+        b'\\' => (TokenKind::Punct(c), 1),
+        b']' => (TokenKind::R_SQUARE, 1),
+        b'^' => (TokenKind::Punct(c), 1),
+        b'_' => match bytes.get(1) {
+            None => (TokenKind::Punct(c), 1),
+            Some(b'-') => (TokenKind::Punct(c), 1),
+            Some(_) => {
+                let len = ident(text);
+                let kind = if len == 1 {
+                    TokenKind::Punct(c)
+                } else {
+                    TokenKind::Ident
+                };
+                (kind, len)
+            }
+        },
+        b'`' => (TokenKind::Punct(c), 1),
+        b'a'..=b'z' => (TokenKind::Ident, ident(text)),
+        b'{' => (TokenKind::L_CURLY, 1),
+        b'|' => (TokenKind::Punct(c), 1),
+        b'}' => (TokenKind::R_CURLY, 1),
+        b'~' => (TokenKind::Punct(c), 1),
+        0x7F => (TokenKind::UnknownChar(c), 1),
+
+        0x80..=0xFF => {
+            let c = unsafe { text.chars().next().unwrap_unchecked() };
+            match c {
+                c if CharTraits::is_whitespace(&c) => (TokenKind::Whitespace, whitespace(text)),
+                c if CharTraits::is_xid_start(&c) => (TokenKind::Ident, ident(text)),
+                _ => (TokenKind::UnknownChar(c), c.len_utf8()),
+            }
+        }
     };
     Some((kind, len))
 }
