@@ -17,4 +17,5 @@ all      = { level = "warn" }
 nursery  = { level = "warn" }
 pedantic = { level = "warn" }
 
-must_use_candidate = { level = "allow", priority = 100 }
+must_use_candidate   = { level = "allow", priority = 100 }
+cognitive_complexity = { level = "allow", priority = 100 }
