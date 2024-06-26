@@ -39,12 +39,8 @@
 //!     | XID_Start (XID_Continue | '-')*
 //!     | '_' XID_Continue (XID_Continue | '-')*
 //!
-//! Number ::=
-//!     | DecimalDigit XID_Continue*
-//!     | '+' DecimalDigit XID_Continue*
-//!     | '-' DecimalDigit XID_Continue*
-//!
-//! Char ::= "'" AnyChar "'"
+//! Number ::= ('+' | '-')? DecimalDigit XID_Continue*
+//! Char   ::= "'" AnyChar "'"
 //! String ::= '"' AnyChar '"'
 //! ```
 
@@ -103,28 +99,17 @@ pub enum Literal {
     String,
 }
 
-pub trait CharTraits {
-    fn is_whitespace(&self) -> bool;
-
-    fn is_xid_start(&self) -> bool;
-    fn is_xid_continue(&self) -> bool;
-    fn is_ident_start(&self) -> bool;
-    fn is_ident_continue(&self) -> bool;
-
-    fn is_line_terminator(&self) -> bool;
-}
-
-impl CharTraits for char {
-    fn is_whitespace(&self) -> bool {
+mod classify {
+    pub const fn is_whitespace(c: char) -> bool {
         matches!(
-            *self,
-            '\u{0009}'
-                | '\u{000A}'
-                | '\u{000B}'
-                | '\u{000C}'
-                | '\u{000D}'
-                | '\u{0020}'
-                | '\u{0085}'
+            c,
+            '\x09'
+                | '\x0A'
+                | '\x0B'
+                | '\x0C'
+                | '\x0D'
+                | '\x20'
+                | '\u{00085}'
                 | '\u{200E}'
                 | '\u{200F}'
                 | '\u{2028}'
@@ -132,24 +117,17 @@ impl CharTraits for char {
         )
     }
 
-    fn is_xid_start(&self) -> bool { unicode_ident::is_xid_start(*self) }
-    fn is_xid_continue(&self) -> bool { unicode_ident::is_xid_continue(*self) }
-
-    fn is_ident_start(&self) -> bool { CharTraits::is_xid_start(self) || *self == '_' }
-    fn is_ident_continue(&self) -> bool { CharTraits::is_xid_continue(self) || *self == '-' }
-
-    fn is_line_terminator(&self) -> bool {
+    pub const fn is_line_terminator(c: char) -> bool {
         matches!(
-            *self,
-            '\u{000A}'
-                | '\u{000B}'
-                | '\u{000C}'
-                | '\u{000D}'
-                | '\u{0085}'
-                | '\u{2028}'
-                | '\u{2029}'
+            c,
+            '\x0A' | '\x0B' | '\x0C' | '\x0D' | '\u{0085}' | '\u{2028}' | '\u{2029}'
         )
     }
+
+    pub fn is_ident_start(c: char) -> bool { unicode_ident::is_xid_start(c) || c == '_' }
+    pub fn is_ident_continue(c: char) -> bool { unicode_ident::is_xid_continue(c) || c == '-' }
+
+    pub fn is_number_continue(c: char) -> bool { unicode_ident::is_xid_continue(c) }
 }
 
 pub fn lex(mut text: &str) -> impl Iterator<Item = (TokenKind, Range<usize>)> + '_ {
@@ -237,8 +215,8 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         0x80..=0xFF => {
             let c = unsafe { text.chars().next().unwrap_unchecked() };
             match c {
-                c if CharTraits::is_whitespace(&c) => (TokenKind::Whitespace, whitespace(text)),
-                c if CharTraits::is_xid_start(&c) => (TokenKind::Ident, ident(text)),
+                c if classify::is_whitespace(c) => (TokenKind::Whitespace, whitespace(text)),
+                c if classify::is_ident_start(c) => (TokenKind::Ident, ident(text)),
                 _ => (TokenKind::UnknownChar(c), c.len_utf8()),
             }
         }
@@ -247,21 +225,21 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
 }
 
 fn whitespace(text: &str) -> usize {
-    debug_assert!(text.starts_with(|c: char| CharTraits::is_whitespace(&c)));
-    text.find(|c| !CharTraits::is_whitespace(&c))
+    debug_assert!(text.starts_with(classify::is_whitespace));
+    text.find(|c| !classify::is_whitespace(c))
         .unwrap_or(text.len())
 }
 
 fn ident(text: &str) -> usize {
-    debug_assert!(text.starts_with(|c: char| CharTraits::is_ident_start(&c)));
-    text.find(|c| !CharTraits::is_ident_continue(&c))
+    debug_assert!(text.starts_with(classify::is_ident_start));
+    text.find(|c| !classify::is_ident_continue(c))
         .unwrap_or(text.len())
 }
 
 fn number(text: &str) -> usize {
     debug_assert!(text.starts_with(|c: char| c.is_ascii_digit()));
 
-    text.find(|c| !CharTraits::is_xid_continue(&c))
+    text.find(|c| !classify::is_number_continue(c))
         .unwrap_or(text.len())
 }
 
@@ -302,7 +280,7 @@ fn char(text: &str) -> usize {
 fn line_comment(text: &str) -> usize {
     debug_assert!(text.starts_with("//"));
 
-    text.find(|c| CharTraits::is_line_terminator(&c))
+    text.find(classify::is_line_terminator)
         .unwrap_or(text.len())
 }
 
