@@ -327,6 +327,15 @@ mod tests {
     }
 
     #[test]
+    fn unknown_char() {
+        let mut lexer = lex("\u{00}\u{7F}\u{80}");
+        assert_eq!(lexer.next(), Some((UnknownChar('\0'), 0..1)));
+        assert_eq!(lexer.next(), Some((UnknownChar('\x7F'), 1..2)));
+        assert_eq!(lexer.next(), Some((UnknownChar('\u{80}'), 2..4)));
+        assert_eq!(lexer.next(), None);
+    }
+
+    #[test]
     fn whitespace() {
         let text = "\t\n\x0B\x0C\r ";
         let mut lexer = lex(text);
@@ -482,6 +491,10 @@ mod tests {
         assert_eq!(lexer.next(), None);
 
         let mut lexer = lex("__");
+        assert_eq!(lexer.next(), Some((Ident, 0..2)));
+        assert_eq!(lexer.next(), None);
+
+        let mut lexer = lex("λ");
         assert_eq!(lexer.next(), Some((Ident, 0..2)));
         assert_eq!(lexer.next(), None);
     }
