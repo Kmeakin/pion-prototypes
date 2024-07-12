@@ -44,7 +44,20 @@
 //! String ::= '"' AnyChar '"'
 //! ```
 
-use std::ops::Range;
+use text_size::{TextRange, TextSize};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Token<'text> {
+    pub kind: TokenKind,
+    pub range: TextRange,
+    pub text: &'text str,
+}
+
+impl<'text> Token<'text> {
+    pub const fn new(kind: TokenKind, range: TextRange, text: &'text str) -> Self {
+        Self { kind, range, text }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum TokenKind {
@@ -130,15 +143,24 @@ mod classify {
     pub fn is_number_continue(c: char) -> bool { unicode_ident::is_xid_continue(c) }
 }
 
-pub fn lex(mut text: &str) -> impl Iterator<Item = (TokenKind, Range<usize>)> + '_ {
+pub fn lex(mut text: &str) -> impl Iterator<Item = Token<'_>> + '_ {
     let mut pos = 0;
     std::iter::from_fn(move || {
         let (kind, len) = next_token(text)?;
         let start = pos;
         let end = start + len;
         pos = end;
-        text = &text[len..];
-        Some((kind, start..end))
+
+        let token_text = unsafe { text.get_unchecked(..len) };
+        let remainder_text = unsafe { text.get_unchecked(len..) };
+        text = remainder_text;
+
+        #[allow(
+            clippy::cast_possible_truncation,
+            reason = "Source files cannot be more than u32::MAX bytes long"
+        )]
+        let token_range = TextRange::new(TextSize::new(start as u32), TextSize::new(end as u32));
+        Some(Token::new(kind, token_range, token_text))
     })
 }
 
@@ -221,6 +243,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
             }
         }
     };
+
     Some((kind, len))
 }
 
@@ -316,263 +339,203 @@ fn block_comment(text: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use TokenKind::*;
+    use std::fmt::Write;
+
+    use expect_test::{expect, Expect};
 
     use super::*;
 
+    #[track_caller]
+    fn assert_lex(text: &str, expected: &Expect) {
+        let mut got = String::with_capacity(text.len());
+        for token in lex(text) {
+            writeln!(got, "{:?} {:?} {:?}", token.kind, token.range, token.text).unwrap();
+        }
+        expected.assert_eq(got.trim_end());
+    }
+
+    macro_rules! assert_lex {
+        ($text:literal => $expected:expr) => {
+            assert_lex($text, &$expected)
+        };
+    }
+
     #[test]
     fn empty() {
-        let mut lexer = lex("");
-        assert_eq!(lexer.next(), None);
+        assert_lex!("" => expect![""]);
     }
 
     #[test]
     fn unknown_char() {
-        let mut lexer = lex("\u{00}\u{7F}\u{80}");
-        assert_eq!(lexer.next(), Some((UnknownChar('\0'), 0..1)));
-        assert_eq!(lexer.next(), Some((UnknownChar('\x7F'), 1..2)));
-        assert_eq!(lexer.next(), Some((UnknownChar('\u{80}'), 2..4)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("\u{00}\u{7F}\u{80}" => expect![[r#"
+            UnknownChar('\0') 0..1 "\0"
+            UnknownChar('\u{7f}') 1..2 "\u{7f}"
+            UnknownChar('\u{80}') 2..4 "\u{80}""#]]);
     }
 
     #[test]
     fn whitespace() {
-        let text = "\t\n\x0B\x0C\r ";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((Whitespace, 0..text.len())));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("\t\n\x0B\x0C\r "=> expect![[r#"Whitespace 0..6 "\t\n\u{b}\u{c}\r ""#]]
+        );
 
-        let text = "\t\n\x0B\x0C\r \u{0085} \u{200E} \u{200F} \u{2028} \u{2029}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((Whitespace, 0..text.len())));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("\t\n\x0B\x0C\r\u{0085}\u{200E}\u{200F}\u{2028}\u{2029}"=> expect![[r#"Whitespace 0..19 "\t\n\u{b}\u{c}\r\u{85}\u{200e}\u{200f}\u{2028}\u{2029}""#]]
+        );
     }
 
     #[test]
     fn line_comment() {
-        let text = "// line comment";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..text.len())));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("// line comment" => expect![[r#"LineComment 0..15 "// line comment""#]]
+        );
 
-        let text = "// line comment\u{000A}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..16)));
+        assert_lex!("// line comment\u{000A}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..16 "\n""#]]
+        );
 
-        let text = "// line comment\u{000B}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..16)));
+        assert_lex!("// line comment\u{000B}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..16 "\u{b}""#]]
+        );
 
-        let text = "// line comment\u{000C}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..16)));
+        assert_lex!("// line comment\u{000C}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..16 "\u{c}""#]]
+        );
 
-        let text = "// line comment\u{000D}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..16)));
+        assert_lex!("// line comment\u{000D}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..16 "\r""#]]
+        );
 
-        let text = "// line comment\u{00085}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..17)));
+        assert_lex!("// line comment\u{00085}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..17 "\u{85}""#]]
+        );
 
-        let text = "// line comment\u{2028}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..18)));
+        assert_lex!("// line comment\u{2028}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..18 "\u{2028}""#]]
+        );
 
-        let text = "// line comment\u{2029}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((LineComment, 0..15)));
-        assert_eq!(lexer.next(), Some((Whitespace, 15..18)));
+        assert_lex!("// line comment\u{2029}" => expect![[r#"
+            LineComment 0..15 "// line comment"
+            Whitespace 15..18 "\u{2029}""#]]
+        );
     }
 
     #[test]
     fn block_comment() {
-        let text = "/**/";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((BlockComment, 0..4)));
-        assert_eq!(lexer.next(), None);
-
-        let text = "/* */";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((BlockComment, 0..5)));
-        assert_eq!(lexer.next(), None);
-
-        let text = "/* /* */ */";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((BlockComment, 0..11)));
-        assert_eq!(lexer.next(), None);
-
-        let text = "/* /* */";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((BlockComment, 0..8)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("/**/" => expect![[r#"BlockComment 0..4 "/**/""#]]);
+        assert_lex!("/* */" => expect![[r#"BlockComment 0..5 "/* */""#]]);
+        assert_lex!("/* /* */ */" => expect![[r#"BlockComment 0..11 "/* /* */ */""#]]);
+        assert_lex!("/* /* */" => expect![[r#"BlockComment 0..8 "/* /* */""#]]);
     }
 
     #[test]
     fn delimiter() {
-        let text = "()[]{}";
-        let mut lexer = lex(text);
-        assert_eq!(lexer.next(), Some((TokenKind::L_PAREN, 0..1)));
-        assert_eq!(lexer.next(), Some((TokenKind::R_PAREN, 1..2)));
-        assert_eq!(lexer.next(), Some((TokenKind::L_SQUARE, 2..3)));
-        assert_eq!(lexer.next(), Some((TokenKind::R_SQUARE, 3..4)));
-        assert_eq!(lexer.next(), Some((TokenKind::L_CURLY, 4..5)));
-        assert_eq!(lexer.next(), Some((TokenKind::R_CURLY, 5..6)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("()[]{}" => expect![[r#"
+            OpenDelim(Round) 0..1 "("
+            CloseDelim(Round) 1..2 ")"
+            OpenDelim(Square) 2..3 "["
+            CloseDelim(Square) 3..4 "]"
+            OpenDelim(Curly) 4..5 "{"
+            CloseDelim(Curly) 5..6 "}""#]]
+        );
     }
 
     #[test]
     fn punct() {
-        let mut lexer = lex("!#$%&*+,-./:;<=>?@\\^_`|~");
-        assert_eq!(lexer.next(), Some((Punct('!'), 0..1)));
-        assert_eq!(lexer.next(), Some((Punct('#'), 1..2)));
-        assert_eq!(lexer.next(), Some((Punct('$'), 2..3)));
-        assert_eq!(lexer.next(), Some((Punct('%'), 3..4)));
-        assert_eq!(lexer.next(), Some((Punct('&'), 4..5)));
-        assert_eq!(lexer.next(), Some((Punct('*'), 5..6)));
-        assert_eq!(lexer.next(), Some((Punct('+'), 6..7)));
-        assert_eq!(lexer.next(), Some((Punct(','), 7..8)));
-        assert_eq!(lexer.next(), Some((Punct('-'), 8..9)));
-        assert_eq!(lexer.next(), Some((Punct('.'), 9..10)));
-        assert_eq!(lexer.next(), Some((Punct('/'), 10..11)));
-        assert_eq!(lexer.next(), Some((Punct(':'), 11..12)));
-        assert_eq!(lexer.next(), Some((Punct(';'), 12..13)));
-        assert_eq!(lexer.next(), Some((Punct('<'), 13..14)));
-        assert_eq!(lexer.next(), Some((Punct('='), 14..15)));
-        assert_eq!(lexer.next(), Some((Punct('>'), 15..16)));
-        assert_eq!(lexer.next(), Some((Punct('?'), 16..17)));
-        assert_eq!(lexer.next(), Some((Punct('@'), 17..18)));
-        assert_eq!(lexer.next(), Some((Punct('\\'), 18..19)));
-        assert_eq!(lexer.next(), Some((Punct('^'), 19..20)));
-        assert_eq!(lexer.next(), Some((Punct('_'), 20..21)));
-        assert_eq!(lexer.next(), Some((Punct('`'), 21..22)));
-        assert_eq!(lexer.next(), Some((Punct('|'), 22..23)));
-        assert_eq!(lexer.next(), Some((Punct('~'), 23..24)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("!#$%&*+,-./:;<=>?@\\^_`|~" => expect![[r##"
+            Punct('!') 0..1 "!"
+            Punct('#') 1..2 "#"
+            Punct('$') 2..3 "$"
+            Punct('%') 3..4 "%"
+            Punct('&') 4..5 "&"
+            Punct('*') 5..6 "*"
+            Punct('+') 6..7 "+"
+            Punct(',') 7..8 ","
+            Punct('-') 8..9 "-"
+            Punct('.') 9..10 "."
+            Punct('/') 10..11 "/"
+            Punct(':') 11..12 ":"
+            Punct(';') 12..13 ";"
+            Punct('<') 13..14 "<"
+            Punct('=') 14..15 "="
+            Punct('>') 15..16 ">"
+            Punct('?') 16..17 "?"
+            Punct('@') 17..18 "@"
+            Punct('\\') 18..19 "\\"
+            Punct('^') 19..20 "^"
+            Punct('_') 20..21 "_"
+            Punct('`') 21..22 "`"
+            Punct('|') 22..23 "|"
+            Punct('~') 23..24 "~""##]]
+        );
     }
 
     #[test]
     fn ident() {
-        let mut lexer = lex("abcd1234");
-        assert_eq!(lexer.next(), Some((Ident, 0..8)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("abcd1234" => expect![[r#"Ident 0..8 "abcd1234""#]]
+        );
 
         // Leading '-' at start of ident is interpreted as Punct
-        let mut lexer = lex("-abcd1234");
-        assert_eq!(lexer.next(), Some((Punct('-'), 0..1)));
-        assert_eq!(lexer.next(), Some((Ident, 1..9)));
+        assert_lex!("-abcd1234" => expect![[r#"
+            Punct('-') 0..1 "-"
+            Ident 1..9 "abcd1234""#]]
+        );
 
-        let mut lexer = lex("a-");
-        assert_eq!(lexer.next(), Some((Ident, 0..2)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("a-" => expect![[r#"Ident 0..2 "a-""#]]);
+        assert_lex!("a-b" => expect![[r#"Ident 0..3 "a-b""#]]);
+        assert_lex!("_a" => expect![[r#"Ident 0..2 "_a""#]]);
 
-        let mut lexer = lex("a-b");
-        assert_eq!(lexer.next(), Some((Ident, 0..3)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("_-" => expect![[r#"
+            Punct('_') 0..1 "_"
+            Punct('-') 1..2 "-""#]]
+        );
 
-        let mut lexer = lex("_a");
-        assert_eq!(lexer.next(), Some((Ident, 0..2)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("-_" => expect![[r#"
+            Punct('-') 0..1 "-"
+            Punct('_') 1..2 "_""#]]
+        );
 
-        let mut lexer = lex("_-");
-        assert_eq!(lexer.next(), Some((Punct('_'), 0..1)));
-        assert_eq!(lexer.next(), Some((Punct('-'), 1..2)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("-_");
-        assert_eq!(lexer.next(), Some((Punct('-'), 0..1)));
-        assert_eq!(lexer.next(), Some((Punct('_'), 1..2)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("__");
-        assert_eq!(lexer.next(), Some((Ident, 0..2)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("λ");
-        assert_eq!(lexer.next(), Some((Ident, 0..2)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("__" => expect![[r#"Ident 0..2 "__""#]]);
+        assert_lex!("λ" => expect![[r#"Ident 0..2 "λ""#]]);
     }
 
     #[test]
     fn number() {
-        let mut lexer = lex("123_456");
-        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..7)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("0x123_456");
-        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..9)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("0b123_456");
-        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..9)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("-123");
-        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..4)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("+123");
-        assert_eq!(lexer.next(), Some((TokenKind::NUMBER, 0..4)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("123_456" => expect![[r#"Lit(Number) 0..7 "123_456""#]]);
+        assert_lex!("0x123_456" => expect![[r#"Lit(Number) 0..9 "0x123_456""#]]);
+        assert_lex!("0b123_456" => expect![[r#"Lit(Number) 0..9 "0b123_456""#]]);
+        assert_lex!("-123" => expect![[r#"Lit(Number) 0..4 "-123""#]]);
+        assert_lex!("+123" => expect![[r#"Lit(Number) 0..4 "+123""#]]);
     }
 
     #[test]
     fn char() {
-        let mut lexer = lex("'a'");
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..3)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("'abc'");
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..5)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex("'abc");
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..4)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r"'abc\'def'");
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..10)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r"'abc\\'def'");
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 0..7)));
-        assert_eq!(lexer.next(), Some((Ident, 7..10)));
-        assert_eq!(lexer.next(), Some((TokenKind::CHAR, 10..11)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!("'a'" => expect![[r#"Lit(Char) 0..3 "'a'""#]]);
+        assert_lex!("'abc'" => expect![[r#"Lit(Char) 0..5 "'abc'""#]]);
+        assert_lex!("'abc" => expect![[r#"Lit(Char) 0..4 "'abc""#]]);
+        assert_lex!(r"'abc\'def'" => expect![[r#"Lit(Char) 0..10 "'abc\\'def'""#]]);
+        assert_lex!(
+            r"'abc\\'def'" => expect![[r#"
+                Lit(Char) 0..7 "'abc\\\\'"
+                Ident 7..10 "def"
+                Lit(Char) 10..11 "'""#]]
+        );
     }
 
     #[test]
     fn string() {
-        let mut lexer = lex(r#""""#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..2)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r#""a""#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..3)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r#""abc""#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..5)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r#""abc"#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..4)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r#""abc\"def"#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..9)));
-        assert_eq!(lexer.next(), None);
-
-        let mut lexer = lex(r#""abc\\"def""#);
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 0..7)));
-        assert_eq!(lexer.next(), Some((Ident, 7..10)));
-        assert_eq!(lexer.next(), Some((TokenKind::STRING, 10..11)));
-        assert_eq!(lexer.next(), None);
+        assert_lex!(r#""""# => expect![[r#"Lit(String) 0..2 "\"\"""#]]);
+        assert_lex!(r#""a""# => expect![[r#"Lit(String) 0..3 "\"a\"""#]]);
+        assert_lex!(r#""abc""# => expect![[r#"Lit(String) 0..5 "\"abc\"""#]]);
+        assert_lex!(r#""abc"# => expect![[r#"Lit(String) 0..4 "\"abc""#]]);
+        assert_lex!(r#""abc\"def"# => expect![[r#"Lit(String) 0..9 "\"abc\\\"def""#]]);
+        assert_lex!(r#""abc\\"def""# => expect![[r#"
+            Lit(String) 0..7 "\"abc\\\\\""
+            Ident 7..10 "def"
+            Lit(String) 10..11 "\"""#]]
+        );
     }
 }

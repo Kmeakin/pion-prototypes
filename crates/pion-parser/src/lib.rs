@@ -175,12 +175,7 @@ mod tests {
 
     #[track_caller]
     fn check_ok(text: &str, expected: Option<Located<TokenTree>>) {
-        let mut tokens = pion_lexer::lex(text).map(|(kind, range)| {
-            let start = TextSize::from(range.start as u32);
-            let end = TextSize::from(range.end as u32);
-            let range = TextRange::new(start, end);
-            (kind, range)
-        });
+        let mut tokens = pion_lexer::lex(text).map(|token| (token.kind, token.range));
         let bump = bumpalo::Bump::new();
         let mut errors = Vec::new();
         let got = parse_token_tree(&bump, &mut tokens, &mut errors);
@@ -194,12 +189,7 @@ mod tests {
         expected_tt: Option<Located<TokenTree>>,
         expected_errors: &[Error],
     ) {
-        let mut tokens = pion_lexer::lex(text).map(|(kind, range)| {
-            let start = TextSize::from(range.start as u32);
-            let end = TextSize::from(range.end as u32);
-            let range = TextRange::new(start, end);
-            (kind, range)
-        });
+        let mut tokens = pion_lexer::lex(text).map(|token| (token.kind, token.range));
         let bump = bumpalo::Bump::new();
         let mut errors = Vec::new();
         let got = parse_token_tree(&bump, &mut tokens, &mut errors);
