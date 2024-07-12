@@ -151,11 +151,18 @@ pub fn lex(mut text: &str) -> impl Iterator<Item = Token<'_>> + '_ {
         let end = start + len;
         pos = end;
 
-        let token_text = unsafe { text.get_unchecked(..len) };
-        let remainder_text = unsafe { text.get_unchecked(len..) };
+        let token_text;
+        let remainder_text;
+
+        // SAFETY: `next_token` ensures that the length is in range
+        unsafe {
+            token_text = text.get_unchecked(..len);
+            remainder_text = text.get_unchecked(len..);
+        }
         text = remainder_text;
 
         #[allow(
+            clippy::as_conversions,
             clippy::cast_possible_truncation,
             reason = "Source files cannot be more than u32::MAX bytes long"
         )]
@@ -169,7 +176,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
     let byte = *bytes.first()?;
     let c = char::from(byte);
 
-    #[allow(clippy::match_same_arms)]
+    #[allow(clippy::match_same_arms, reason = "Explicit is better")]
     let (kind, len) = match byte {
         0x00..=0x08 => (TokenKind::UnknownChar(c), 1),
         0x09 => (TokenKind::Whitespace, whitespace(text)),
@@ -235,6 +242,7 @@ pub fn next_token(text: &str) -> Option<(TokenKind, usize)> {
         0x7F => (TokenKind::UnknownChar(c), 1),
 
         0x80..=0xFF => {
+            // SAFETY: UTF-8 validity means more characters must be present
             let c = unsafe { text.chars().next().unwrap_unchecked() };
             match c {
                 c if classify::is_whitespace(c) => (TokenKind::Whitespace, whitespace(text)),

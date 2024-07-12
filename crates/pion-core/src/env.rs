@@ -1,6 +1,6 @@
 //! Local variables and environments.
 
-use core::fmt;
+use std::fmt;
 use std::ops::{Add, Deref, DerefMut};
 
 use ecow::EcoVec;
@@ -197,6 +197,7 @@ impl<T> Deref for SharedEnv<T> {
 /// A fixed-length view of an environment.
 /// `SliceEnv` is to `UniqueEnv` as `[T]` is to `Vec<T>`.
 #[derive(Debug, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct SliceEnv<T> {
     elems: [T],
 }
@@ -248,19 +249,29 @@ impl<'a, T> IntoIterator for &'a mut SliceEnv<T> {
 }
 
 impl<'a, T> From<&'a [T]> for &'a SliceEnv<T> {
-    #[allow(clippy::as_conversions)]
     fn from(slice: &'a [T]) -> &'a SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { &*(std::ptr::from_ref::<[T]>(slice) as *const SliceEnv<T>) }
+        #[allow(
+            clippy::as_conversions,
+            reason = "ptr::cast is not available for unsized types"
+        )]
+        unsafe {
+            &*(std::ptr::from_ref::<[T]>(slice) as *const SliceEnv<T>)
+        }
     }
 }
 
 impl<'a, T> From<&'a mut [T]> for &'a mut SliceEnv<T> {
-    #[allow(clippy::as_conversions)]
     fn from(slice: &'a mut [T]) -> &'a mut SliceEnv<T> {
         // SAFETY:
         // - `SliceEnv<T>` is equivalent to an `[T]` internally
-        unsafe { &mut *(std::ptr::from_mut::<[T]>(slice) as *mut SliceEnv<T>) }
+        #[allow(
+            clippy::as_conversions,
+            reason = "ptr::cast is not available for unsized types"
+        )]
+        unsafe {
+            &mut *(std::ptr::from_mut(slice) as *mut SliceEnv<T>)
+        }
     }
 }
