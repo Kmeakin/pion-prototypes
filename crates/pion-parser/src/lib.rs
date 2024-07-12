@@ -174,7 +174,7 @@ mod tests {
     use super::*;
 
     #[track_caller]
-    fn check_ok(text: &str, expected: Option<Located<TokenTree>>) {
+    fn assert_parse(text: &str, expected: Option<Located<TokenTree>>) {
         let mut tokens = pion_lexer::lex(text).map(|token| (token.kind, token.range));
         let bump = bumpalo::Bump::new();
         let mut errors = Vec::new();
@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_errors(
+    fn assert_parse_errors(
         text: &str,
         expected_tt: Option<Located<TokenTree>>,
         expected_errors: &[Error],
@@ -198,11 +198,11 @@ mod tests {
     }
 
     #[test]
-    fn empty() { check_ok("", None); }
+    fn empty() { assert_parse("", None); }
 
     #[test]
     fn ident() {
-        check_ok(
+        assert_parse(
             "abc",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -213,7 +213,7 @@ mod tests {
 
     #[test]
     fn punct() {
-        check_ok(
+        assert_parse(
             ",",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
@@ -224,7 +224,7 @@ mod tests {
 
     #[test]
     fn literal() {
-        check_ok(
+        assert_parse(
             "1234",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(4)),
@@ -232,7 +232,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "'a'",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -240,7 +240,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "\"a\"",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -251,7 +251,7 @@ mod tests {
 
     #[test]
     fn group_empty() {
-        check_ok(
+        assert_parse(
             "()",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
@@ -259,7 +259,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "[]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
@@ -267,7 +267,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "{}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn group_singleton() {
-        check_ok(
+        assert_parse(
             "(a)",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -292,7 +292,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "[a]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -306,7 +306,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "{a}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
@@ -323,7 +323,7 @@ mod tests {
 
     #[test]
     fn group_many() {
-        check_ok(
+        assert_parse(
             "(a, b)",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
@@ -347,7 +347,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "[a, b]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
@@ -371,7 +371,7 @@ mod tests {
             )),
         );
 
-        check_ok(
+        assert_parse(
             "{a, b}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
@@ -398,7 +398,7 @@ mod tests {
 
     #[test]
     fn group_nested() {
-        check_ok(
+        assert_parse(
             "([a], {b})",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(10)),
@@ -437,7 +437,7 @@ mod tests {
 
     #[test]
     fn error_unknown_char() {
-        check_errors(
+        assert_parse_errors(
             "\0",
             None,
             &[Error::UnknownChar {
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn error_unclosed_open_delim() {
-        check_errors(
+        assert_parse_errors(
             "(",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
@@ -462,7 +462,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "[",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
@@ -476,7 +476,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "{",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
@@ -493,7 +493,7 @@ mod tests {
 
     #[test]
     fn error_unopened_close_delim() {
-        check_errors(
+        assert_parse_errors(
             ")",
             None,
             &[Error::UnopenedCloseDelimiter {
@@ -504,7 +504,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "]",
             None,
             &[Error::UnopenedCloseDelimiter {
@@ -515,7 +515,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "}",
             None,
             &[Error::UnopenedCloseDelimiter {
@@ -529,7 +529,7 @@ mod tests {
 
     #[test]
     fn error_delim_mismatch() {
-        check_errors(
+        assert_parse_errors(
             "(]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
@@ -547,7 +547,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "[}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
@@ -565,7 +565,7 @@ mod tests {
             }],
         );
 
-        check_errors(
+        assert_parse_errors(
             "{)",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
