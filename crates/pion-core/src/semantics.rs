@@ -301,6 +301,7 @@ mod tests {
     use crate::env::UniqueEnv;
 
     #[track_caller]
+    #[allow(clippy::needless_pass_by_value)]
     fn assert_eval(expr: Expr, expected: Result<Value, Error>) {
         let bump = bumpalo::Bump::default();
         let mut local_values = LocalValues::default();
@@ -317,6 +318,7 @@ mod tests {
     }
 
     #[track_caller]
+    #[allow(clippy::needless_pass_by_value)]
     fn assert_quote(value: Value, expected: Result<Expr, Error>) {
         let bump = bumpalo::Bump::default();
         let local_len = EnvLen::default();
