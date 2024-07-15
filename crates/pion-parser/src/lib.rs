@@ -11,7 +11,7 @@
 //!     | Literal
 //! ```
 
-use pion_lexer::{DelimiterKind, LiteralKind, TokenKind};
+use pion_lexer::{DelimiterKind, LiteralKind, Token, TokenKind};
 use text_size::TextRange;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -25,11 +25,18 @@ impl<T> Located<T> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum TokenTree<'tt> {
-    Ident,
+pub enum TokenTree<'text, 'tt> {
+    Ident(&'text str),
     Punct(char),
-    Literal(LiteralKind),
+    Literal(Literal<'text>),
     Group(DelimiterKind, &'tt [Located<Self>]),
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Literal<'text> {
+    Number(&'text str),
+    Char(&'text str),
+    String(&'text str),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -49,13 +56,11 @@ pub enum Error {
     },
 }
 
-pub type Token = (TokenKind, TextRange);
-
-pub fn parse_file<'tt>(
+pub fn parse_file<'text, 'tt>(
     bump: &'tt bumpalo::Bump,
-    tokens: &mut impl Iterator<Item = Token>,
+    tokens: &mut impl Iterator<Item = Token<'text>>,
     errors: &mut Vec<Error>,
-) -> &'tt [Located<TokenTree<'tt>>] {
+) -> &'tt [Located<TokenTree<'text, 'tt>>] {
     let mut tts = Vec::new_in(bump);
     while let Some(tt) = parse_token_tree(bump, tokens, errors) {
         tts.push(tt);
@@ -63,13 +68,14 @@ pub fn parse_file<'tt>(
     tts.leak()
 }
 
-pub fn parse_token_tree<'tt>(
+pub fn parse_token_tree<'text, 'tt>(
     bump: &'tt bumpalo::Bump,
-    tokens: &mut impl Iterator<Item = Token>,
+    tokens: &mut impl Iterator<Item = Token<'text>>,
     errors: &mut Vec<Error>,
-) -> Option<Located<TokenTree<'tt>>> {
-    let (token, range) = tokens.next()?;
-    let tt = match token {
+) -> Option<Located<TokenTree<'text, 'tt>>> {
+    let token = tokens.next()?;
+    let range = token.range;
+    let tt = match token.kind {
         TokenKind::UnknownChar(c) => {
             errors.push(Error::UnknownChar {
                 c: Located::new(range, c),
@@ -91,30 +97,37 @@ pub fn parse_token_tree<'tt>(
             parse_group(bump, tokens, errors, Located::new(range, start_delimiter))
         }
         TokenKind::Punct(c) => Located::new(range, TokenTree::Punct(c)),
-        TokenKind::Ident => Located::new(range, TokenTree::Ident),
-        TokenKind::Literal(lit) => Located::new(range, TokenTree::Literal(lit)),
+        TokenKind::Ident => Located::new(range, TokenTree::Ident(token.text)),
+        TokenKind::Literal(lit) => Located::new(
+            range,
+            TokenTree::Literal(match lit {
+                LiteralKind::Number => Literal::Number(token.text),
+                LiteralKind::Char => Literal::Char(token.text),
+                LiteralKind::String => Literal::String(token.text),
+            }),
+        ),
     };
     Some(tt)
 }
 
-fn parse_group<'tt>(
+fn parse_group<'text, 'tt>(
     bump: &'tt bumpalo::Bump,
-    tokens: &mut impl Iterator<Item = Token>,
+    tokens: &mut impl Iterator<Item = Token<'text>>,
     errors: &mut Vec<Error>,
     start_delimiter: Located<DelimiterKind>,
-) -> Located<TokenTree<'tt>> {
+) -> Located<TokenTree<'text, 'tt>> {
     let contents = parse_group_contents(bump, tokens, errors, start_delimiter);
     let range = contents.range;
     let contents = contents.data;
     Located::new(range, TokenTree::Group(start_delimiter.data, contents))
 }
 
-fn parse_group_contents<'tt>(
+fn parse_group_contents<'text, 'tt>(
     bump: &'tt bumpalo::Bump,
-    tokens: &mut impl Iterator<Item = Token>,
+    tokens: &mut impl Iterator<Item = Token<'text>>,
     errors: &mut Vec<Error>,
     start_delimiter: Located<DelimiterKind>,
-) -> Located<&'tt [Located<TokenTree<'tt>>]> {
+) -> Located<&'tt [Located<TokenTree<'text, 'tt>>]> {
     let mut contents = Vec::new_in(bump);
     let start_range = start_delimiter.range;
     let mut end_range = start_range;
@@ -127,12 +140,12 @@ fn parse_group_contents<'tt>(
                 });
                 break;
             }
-            Some((kind, range)) => {
-                end_range = range;
-                let tt = match kind {
+            Some(token) => {
+                end_range = token.range;
+                let tt = match token.kind {
                     TokenKind::UnknownChar(c) => {
                         errors.push(Error::UnknownChar {
-                            c: Located::new(range, c),
+                            c: Located::new(token.range, c),
                         });
                         continue;
                     }
@@ -140,20 +153,27 @@ fn parse_group_contents<'tt>(
                         continue
                     }
                     TokenKind::OpenDelim(delim) => {
-                        parse_group(bump, tokens, errors, Located::new(range, delim))
+                        parse_group(bump, tokens, errors, Located::new(token.range, delim))
                     }
                     TokenKind::CloseDelim(end_delimiter) => {
                         if end_delimiter != start_delimiter.data {
                             errors.push(Error::DelimiterMismatch {
-                                end: Located::new(range, end_delimiter),
+                                end: Located::new(token.range, end_delimiter),
                                 start: start_delimiter,
                             });
                         }
                         break;
                     }
-                    TokenKind::Punct(c) => Located::new(range, TokenTree::Punct(c)),
-                    TokenKind::Ident => Located::new(range, TokenTree::Ident),
-                    TokenKind::Literal(lit) => Located::new(range, TokenTree::Literal(lit)),
+                    TokenKind::Punct(c) => Located::new(token.range, TokenTree::Punct(c)),
+                    TokenKind::Ident => Located::new(token.range, TokenTree::Ident(token.text)),
+                    TokenKind::Literal(lit) => Located::new(
+                        token.range,
+                        TokenTree::Literal(match lit {
+                            LiteralKind::Number => Literal::Number(token.text),
+                            LiteralKind::Char => Literal::Char(token.text),
+                            LiteralKind::String => Literal::String(token.text),
+                        }),
+                    ),
                 };
                 contents.push(tt);
             }
@@ -175,7 +195,7 @@ mod tests {
 
     #[track_caller]
     fn assert_parse(text: &str, expected: Option<Located<TokenTree>>) {
-        let mut tokens = pion_lexer::lex(text).map(|token| (token.kind, token.range));
+        let mut tokens = pion_lexer::lex(text);
         let bump = bumpalo::Bump::new();
         let mut errors = Vec::new();
         let got = parse_token_tree(&bump, &mut tokens, &mut errors);
@@ -189,7 +209,7 @@ mod tests {
         expected_tt: Option<Located<TokenTree>>,
         expected_errors: &[Error],
     ) {
-        let mut tokens = pion_lexer::lex(text).map(|token| (token.kind, token.range));
+        let mut tokens = pion_lexer::lex(text);
         let bump = bumpalo::Bump::new();
         let mut errors = Vec::new();
         let got = parse_token_tree(&bump, &mut tokens, &mut errors);
@@ -206,7 +226,7 @@ mod tests {
             "abc",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
-                TokenTree::Ident,
+                TokenTree::Ident("abc"),
             )),
         );
     }
@@ -228,7 +248,7 @@ mod tests {
             "1234",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(4)),
-                TokenTree::Literal(LiteralKind::Number),
+                TokenTree::Literal(Literal::Number("1234")),
             )),
         );
 
@@ -236,7 +256,7 @@ mod tests {
             "'a'",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
-                TokenTree::Literal(LiteralKind::Char),
+                TokenTree::Literal(Literal::Char("'a'")),
             )),
         );
 
@@ -244,7 +264,7 @@ mod tests {
             "\"a\"",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
-                TokenTree::Literal(LiteralKind::String),
+                TokenTree::Literal(Literal::String("\"a\"")),
             )),
         );
     }
@@ -286,7 +306,7 @@ mod tests {
                     DelimiterKind::Round,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
-                        TokenTree::Ident,
+                        TokenTree::Ident("a"),
                     )],
                 ),
             )),
@@ -300,7 +320,7 @@ mod tests {
                     DelimiterKind::Square,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
-                        TokenTree::Ident,
+                        TokenTree::Ident("a"),
                     )],
                 ),
             )),
@@ -314,7 +334,7 @@ mod tests {
                     DelimiterKind::Curly,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
-                        TokenTree::Ident,
+                        TokenTree::Ident("a"),
                     )],
                 ),
             )),
@@ -332,7 +352,7 @@ mod tests {
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("a"),
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(2), TextSize::from(3)),
@@ -340,7 +360,7 @@ mod tests {
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(4), TextSize::from(5)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("b"),
                         ),
                     ],
                 ),
@@ -356,7 +376,7 @@ mod tests {
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("a"),
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(2), TextSize::from(3)),
@@ -364,7 +384,7 @@ mod tests {
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(4), TextSize::from(5)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("b"),
                         ),
                     ],
                 ),
@@ -380,7 +400,7 @@ mod tests {
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("a"),
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(2), TextSize::from(3)),
@@ -388,7 +408,7 @@ mod tests {
                         ),
                         Located::new(
                             TextRange::new(TextSize::from(4), TextSize::from(5)),
-                            TokenTree::Ident,
+                            TokenTree::Ident("b"),
                         ),
                     ],
                 ),
@@ -411,7 +431,7 @@ mod tests {
                                 DelimiterKind::Square,
                                 &[Located::new(
                                     TextRange::new(TextSize::from(2), TextSize::from(3)),
-                                    TokenTree::Ident,
+                                    TokenTree::Ident("a"),
                                 )],
                             ),
                         ),
@@ -425,7 +445,7 @@ mod tests {
                                 DelimiterKind::Curly,
                                 &[Located::new(
                                     TextRange::new(TextSize::from(7), TextSize::from(8)),
-                                    TokenTree::Ident,
+                                    TokenTree::Ident("b"),
                                 )],
                             ),
                         ),
