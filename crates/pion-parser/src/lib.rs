@@ -11,7 +11,7 @@
 //!     | Literal
 //! ```
 
-use pion_lexer::{Delimiter, Literal, TokenKind};
+use pion_lexer::{DelimiterKind, LiteralKind, TokenKind};
 use text_size::TextRange;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -28,8 +28,8 @@ impl<T> Located<T> {
 pub enum TokenTree<'tt> {
     Ident,
     Punct(char),
-    Literal(Literal),
-    Group(Delimiter, &'tt [Located<Self>]),
+    Literal(LiteralKind),
+    Group(DelimiterKind, &'tt [Located<Self>]),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -38,14 +38,14 @@ pub enum Error {
         c: Located<char>,
     },
     UnclosedOpenDelimiter {
-        delim: Located<Delimiter>,
+        delim: Located<DelimiterKind>,
     },
     UnopenedCloseDelimiter {
-        delim: Located<Delimiter>,
+        delim: Located<DelimiterKind>,
     },
     DelimiterMismatch {
-        start: Located<Delimiter>,
-        end: Located<Delimiter>,
+        start: Located<DelimiterKind>,
+        end: Located<DelimiterKind>,
     },
 }
 
@@ -92,7 +92,7 @@ pub fn parse_token_tree<'tt>(
         }
         TokenKind::Punct(c) => Located::new(range, TokenTree::Punct(c)),
         TokenKind::Ident => Located::new(range, TokenTree::Ident),
-        TokenKind::Lit(lit) => Located::new(range, TokenTree::Literal(lit)),
+        TokenKind::Literal(lit) => Located::new(range, TokenTree::Literal(lit)),
     };
     Some(tt)
 }
@@ -101,7 +101,7 @@ fn parse_group<'tt>(
     bump: &'tt bumpalo::Bump,
     tokens: &mut impl Iterator<Item = Token>,
     errors: &mut Vec<Error>,
-    start_delimiter: Located<Delimiter>,
+    start_delimiter: Located<DelimiterKind>,
 ) -> Located<TokenTree<'tt>> {
     let contents = parse_group_contents(bump, tokens, errors, start_delimiter);
     let range = contents.range;
@@ -113,7 +113,7 @@ fn parse_group_contents<'tt>(
     bump: &'tt bumpalo::Bump,
     tokens: &mut impl Iterator<Item = Token>,
     errors: &mut Vec<Error>,
-    start_delimiter: Located<Delimiter>,
+    start_delimiter: Located<DelimiterKind>,
 ) -> Located<&'tt [Located<TokenTree<'tt>>]> {
     let mut contents = Vec::new_in(bump);
     let start_range = start_delimiter.range;
@@ -153,7 +153,7 @@ fn parse_group_contents<'tt>(
                     }
                     TokenKind::Punct(c) => Located::new(range, TokenTree::Punct(c)),
                     TokenKind::Ident => Located::new(range, TokenTree::Ident),
-                    TokenKind::Lit(lit) => Located::new(range, TokenTree::Literal(lit)),
+                    TokenKind::Literal(lit) => Located::new(range, TokenTree::Literal(lit)),
                 };
                 contents.push(tt);
             }
@@ -228,7 +228,7 @@ mod tests {
             "1234",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(4)),
-                TokenTree::Literal(Literal::Number),
+                TokenTree::Literal(LiteralKind::Number),
             )),
         );
 
@@ -236,7 +236,7 @@ mod tests {
             "'a'",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
-                TokenTree::Literal(Literal::Char),
+                TokenTree::Literal(LiteralKind::Char),
             )),
         );
 
@@ -244,7 +244,7 @@ mod tests {
             "\"a\"",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
-                TokenTree::Literal(Literal::String),
+                TokenTree::Literal(LiteralKind::String),
             )),
         );
     }
@@ -255,7 +255,7 @@ mod tests {
             "()",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Round, &[]),
+                TokenTree::Group(DelimiterKind::Round, &[]),
             )),
         );
 
@@ -263,7 +263,7 @@ mod tests {
             "[]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Square, &[]),
+                TokenTree::Group(DelimiterKind::Square, &[]),
             )),
         );
 
@@ -271,7 +271,7 @@ mod tests {
             "{}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Curly, &[]),
+                TokenTree::Group(DelimiterKind::Curly, &[]),
             )),
         );
     }
@@ -283,7 +283,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
                 TokenTree::Group(
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
                         TokenTree::Ident,
@@ -297,7 +297,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
                 TokenTree::Group(
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
                         TokenTree::Ident,
@@ -311,7 +311,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(3)),
                 TokenTree::Group(
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                     &[Located::new(
                         TextRange::new(TextSize::from(1), TextSize::from(2)),
                         TokenTree::Ident,
@@ -328,7 +328,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
                 TokenTree::Group(
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
@@ -352,7 +352,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
                 TokenTree::Group(
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
@@ -376,7 +376,7 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(6)),
                 TokenTree::Group(
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(2)),
@@ -403,12 +403,12 @@ mod tests {
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(10)),
                 TokenTree::Group(
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                     &[
                         Located::new(
                             TextRange::new(TextSize::from(1), TextSize::from(4)),
                             TokenTree::Group(
-                                Delimiter::Square,
+                                DelimiterKind::Square,
                                 &[Located::new(
                                     TextRange::new(TextSize::from(2), TextSize::from(3)),
                                     TokenTree::Ident,
@@ -422,7 +422,7 @@ mod tests {
                         Located::new(
                             TextRange::new(TextSize::from(6), TextSize::from(9)),
                             TokenTree::Group(
-                                Delimiter::Curly,
+                                DelimiterKind::Curly,
                                 &[Located::new(
                                     TextRange::new(TextSize::from(7), TextSize::from(8)),
                                     TokenTree::Ident,
@@ -452,12 +452,12 @@ mod tests {
             "(",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
-                TokenTree::Group(Delimiter::Round, &[]),
+                TokenTree::Group(DelimiterKind::Round, &[]),
             )),
             &[Error::UnclosedOpenDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                 ),
             }],
         );
@@ -466,12 +466,12 @@ mod tests {
             "[",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
-                TokenTree::Group(Delimiter::Square, &[]),
+                TokenTree::Group(DelimiterKind::Square, &[]),
             )),
             &[Error::UnclosedOpenDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                 ),
             }],
         );
@@ -480,12 +480,12 @@ mod tests {
             "{",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(1)),
-                TokenTree::Group(Delimiter::Curly, &[]),
+                TokenTree::Group(DelimiterKind::Curly, &[]),
             )),
             &[Error::UnclosedOpenDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                 ),
             }],
         );
@@ -499,7 +499,7 @@ mod tests {
             &[Error::UnopenedCloseDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                 ),
             }],
         );
@@ -510,7 +510,7 @@ mod tests {
             &[Error::UnopenedCloseDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                 ),
             }],
         );
@@ -521,7 +521,7 @@ mod tests {
             &[Error::UnopenedCloseDelimiter {
                 delim: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                 ),
             }],
         );
@@ -533,16 +533,16 @@ mod tests {
             "(]",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Round, &[]),
+                TokenTree::Group(DelimiterKind::Round, &[]),
             )),
             &[Error::DelimiterMismatch {
                 start: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                 ),
                 end: Located::new(
                     TextRange::new(TextSize::from(1), TextSize::from(2)),
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                 ),
             }],
         );
@@ -551,16 +551,16 @@ mod tests {
             "[}",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Square, &[]),
+                TokenTree::Group(DelimiterKind::Square, &[]),
             )),
             &[Error::DelimiterMismatch {
                 start: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Square,
+                    DelimiterKind::Square,
                 ),
                 end: Located::new(
                     TextRange::new(TextSize::from(1), TextSize::from(2)),
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                 ),
             }],
         );
@@ -569,16 +569,16 @@ mod tests {
             "{)",
             Some(Located::new(
                 TextRange::new(TextSize::from(0), TextSize::from(2)),
-                TokenTree::Group(Delimiter::Curly, &[]),
+                TokenTree::Group(DelimiterKind::Curly, &[]),
             )),
             &[Error::DelimiterMismatch {
                 start: Located::new(
                     TextRange::new(TextSize::from(0), TextSize::from(1)),
-                    Delimiter::Curly,
+                    DelimiterKind::Curly,
                 ),
                 end: Located::new(
                     TextRange::new(TextSize::from(1), TextSize::from(2)),
-                    Delimiter::Round,
+                    DelimiterKind::Round,
                 ),
             }],
         );

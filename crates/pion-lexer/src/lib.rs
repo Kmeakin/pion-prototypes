@@ -70,31 +70,31 @@ pub enum TokenKind {
     BlockComment,
 
     // Delimiters
-    OpenDelim(Delimiter),
-    CloseDelim(Delimiter),
+    OpenDelim(DelimiterKind),
+    CloseDelim(DelimiterKind),
 
     // Atoms
     Ident,
     Punct(char),
-    Lit(Literal),
+    Literal(LiteralKind),
 }
 
 impl TokenKind {
-    pub const L_PAREN: Self = Self::OpenDelim(Delimiter::Round);
-    pub const L_SQUARE: Self = Self::OpenDelim(Delimiter::Square);
-    pub const L_CURLY: Self = Self::OpenDelim(Delimiter::Curly);
+    pub const L_PAREN: Self = Self::OpenDelim(DelimiterKind::Round);
+    pub const L_SQUARE: Self = Self::OpenDelim(DelimiterKind::Square);
+    pub const L_CURLY: Self = Self::OpenDelim(DelimiterKind::Curly);
 
-    pub const R_PAREN: Self = Self::CloseDelim(Delimiter::Round);
-    pub const R_SQUARE: Self = Self::CloseDelim(Delimiter::Square);
-    pub const R_CURLY: Self = Self::CloseDelim(Delimiter::Curly);
+    pub const R_PAREN: Self = Self::CloseDelim(DelimiterKind::Round);
+    pub const R_SQUARE: Self = Self::CloseDelim(DelimiterKind::Square);
+    pub const R_CURLY: Self = Self::CloseDelim(DelimiterKind::Curly);
 
-    pub const NUMBER: Self = Self::Lit(Literal::Number);
-    pub const CHAR: Self = Self::Lit(Literal::Char);
-    pub const STRING: Self = Self::Lit(Literal::String);
+    pub const NUMBER: Self = Self::Literal(LiteralKind::Number);
+    pub const CHAR: Self = Self::Literal(LiteralKind::Char);
+    pub const STRING: Self = Self::Literal(LiteralKind::String);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Delimiter {
+pub enum DelimiterKind {
     /// `()`
     Round,
 
@@ -106,7 +106,7 @@ pub enum Delimiter {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Literal {
+pub enum LiteralKind {
     Number,
     Char,
     String,
@@ -512,38 +512,38 @@ mod tests {
 
     #[test]
     fn number() {
-        assert_lex!("123_456" => expect![[r#"Lit(Number) 0..7 "123_456""#]]);
-        assert_lex!("0x123_456" => expect![[r#"Lit(Number) 0..9 "0x123_456""#]]);
-        assert_lex!("0b123_456" => expect![[r#"Lit(Number) 0..9 "0b123_456""#]]);
-        assert_lex!("-123" => expect![[r#"Lit(Number) 0..4 "-123""#]]);
-        assert_lex!("+123" => expect![[r#"Lit(Number) 0..4 "+123""#]]);
+        assert_lex!("123_456" => expect![[r#"Literal(Number) 0..7 "123_456""#]]);
+        assert_lex!("0x123_456" => expect![[r#"Literal(Number) 0..9 "0x123_456""#]]);
+        assert_lex!("0b123_456" => expect![[r#"Literal(Number) 0..9 "0b123_456""#]]);
+        assert_lex!("-123" => expect![[r#"Literal(Number) 0..4 "-123""#]]);
+        assert_lex!("+123" => expect![[r#"Literal(Number) 0..4 "+123""#]]);
     }
 
     #[test]
     fn char() {
-        assert_lex!("'a'" => expect![[r#"Lit(Char) 0..3 "'a'""#]]);
-        assert_lex!("'abc'" => expect![[r#"Lit(Char) 0..5 "'abc'""#]]);
-        assert_lex!("'abc" => expect![[r#"Lit(Char) 0..4 "'abc""#]]);
-        assert_lex!(r"'abc\'def'" => expect![[r#"Lit(Char) 0..10 "'abc\\'def'""#]]);
+        assert_lex!("'a'" => expect![[r#"Literal(Char) 0..3 "'a'""#]]);
+        assert_lex!("'abc'" => expect![[r#"Literal(Char) 0..5 "'abc'""#]]);
+        assert_lex!("'abc" => expect![[r#"Literal(Char) 0..4 "'abc""#]]);
+        assert_lex!(r"'abc\'def'" => expect![[r#"Literal(Char) 0..10 "'abc\\'def'""#]]);
         assert_lex!(
             r"'abc\\'def'" => expect![[r#"
-                Lit(Char) 0..7 "'abc\\\\'"
+                Literal(Char) 0..7 "'abc\\\\'"
                 Ident 7..10 "def"
-                Lit(Char) 10..11 "'""#]]
+                Literal(Char) 10..11 "'""#]]
         );
     }
 
     #[test]
     fn string() {
-        assert_lex!(r#""""# => expect![[r#"Lit(String) 0..2 "\"\"""#]]);
-        assert_lex!(r#""a""# => expect![[r#"Lit(String) 0..3 "\"a\"""#]]);
-        assert_lex!(r#""abc""# => expect![[r#"Lit(String) 0..5 "\"abc\"""#]]);
-        assert_lex!(r#""abc"# => expect![[r#"Lit(String) 0..4 "\"abc""#]]);
-        assert_lex!(r#""abc\"def"# => expect![[r#"Lit(String) 0..9 "\"abc\\\"def""#]]);
+        assert_lex!(r#""""# => expect![[r#"Literal(String) 0..2 "\"\"""#]]);
+        assert_lex!(r#""a""# => expect![[r#"Literal(String) 0..3 "\"a\"""#]]);
+        assert_lex!(r#""abc""# => expect![[r#"Literal(String) 0..5 "\"abc\"""#]]);
+        assert_lex!(r#""abc"# => expect![[r#"Literal(String) 0..4 "\"abc""#]]);
+        assert_lex!(r#""abc\"def"# => expect![[r#"Literal(String) 0..9 "\"abc\\\"def""#]]);
         assert_lex!(r#""abc\\"def""# => expect![[r#"
-            Lit(String) 0..7 "\"abc\\\\\""
+            Literal(String) 0..7 "\"abc\\\\\""
             Ident 7..10 "def"
-            Lit(String) 10..11 "\"""#]]
+            Literal(String) 10..11 "\"""#]]
         );
     }
 }
