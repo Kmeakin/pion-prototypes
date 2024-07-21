@@ -1,0 +1,25 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: unexpected ")"
+  ┌─ test-data/diagnostics/parse/unopened-delim.pion:1:5
+  │
+1 │ foo )
+  │     ^
+
+error: unexpected "]"
+  ┌─ test-data/diagnostics/parse/unopened-delim.pion:2:5
+  │
+2 │ bar ]
+  │     ^
+
+error: unexpected "}"
+  ┌─ test-data/diagnostics/parse/unopened-delim.pion:3:5
+  │
+3 │ baz }
+  │     ^
+"""

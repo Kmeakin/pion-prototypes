@@ -86,7 +86,7 @@ pub fn parse_token_tree<'text, 'tt>(
             errors.push(Error::UnopenedCloseDelimiter {
                 delim: Located::new(range, delim),
             });
-            return None;
+            return parse_token_tree(bump, tokens, errors);
         }
 
         TokenKind::Whitespace | TokenKind::LineComment | TokenKind::BlockComment => {

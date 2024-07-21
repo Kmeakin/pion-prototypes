@@ -98,11 +98,29 @@ pub enum DelimiterKind {
     /// `()`
     Round,
 
-    /// `{}`
+    /// `[]`
     Square,
 
-    /// `[]`
+    /// `{}`
     Curly,
+}
+
+impl DelimiterKind {
+    pub const fn open(self) -> &'static str {
+        match self {
+            Self::Round => "(",
+            Self::Square => "[",
+            Self::Curly => "{",
+        }
+    }
+
+    pub const fn close(self) -> &'static str {
+        match self {
+            Self::Round => ")",
+            Self::Square => "]",
+            Self::Curly => "}",
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -274,6 +292,7 @@ fn number(text: &str) -> usize {
         .unwrap_or(text.len())
 }
 
+// FIXME: report unclosed string literals
 fn string(text: &str) -> usize {
     debug_assert!(text.starts_with('"'));
 
@@ -291,6 +310,7 @@ fn string(text: &str) -> usize {
     text.len()
 }
 
+// FIXME: report unclosed character literals
 fn char(text: &str) -> usize {
     debug_assert!(text.starts_with('\''));
 
@@ -315,6 +335,7 @@ fn line_comment(text: &str) -> usize {
         .unwrap_or(text.len())
 }
 
+// FIXME: report unclosed block comments
 fn block_comment(text: &str) -> usize {
     debug_assert!(text.starts_with("/*"));
 

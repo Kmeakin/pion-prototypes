@@ -8,6 +8,13 @@ version.workspace = true
 workspace = true
 
 [dependencies]
+bumpalo            = { workspace = true, features = ["allocator_api"] }
+camino             = { workspace = true }
+clap               = { version = "4.5.9", features = ["derive"] }
+codespan-reporting = { version = "0.11.1" }
+pion-core          = { version = "0.1.0", path = "../pion-core" }
+pion-lexer         = { version = "0.1.0", path = "../pion-lexer" }
+pion-parser        = { version = "0.1.0", path = "../pion-parser" }
 
 [[bin]]
 name = "pion"

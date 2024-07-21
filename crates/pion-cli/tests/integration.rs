@@ -14,7 +14,7 @@ fn main() {
     let workspace_dir = workspace_dir.ancestors().nth(2).unwrap();
     std::env::set_current_dir(workspace_dir).unwrap();
 
-    let update_snapshots = std::env::var_os("PION_UPDATE_EXPECT").is_some();
+    let update_snapshots = std::env::var_os("UPDATE_EXPECT").is_some();
 
     let tests = std::iter::empty()
         .chain(find_source_files(TESTS_DIR).map(|path| elab_test(&path, update_snapshots)))
