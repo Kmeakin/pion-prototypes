@@ -278,6 +278,7 @@ name = "pion-parser"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
+ "codespan-reporting",
  "pion-lexer",
  "text-size",
 ]

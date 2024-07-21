@@ -2,7 +2,6 @@ use std::error::Error;
 use std::io::IsTerminal;
 
 use clap::Parser;
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 
 #[derive(Debug, Parser)]
 enum Cli {
@@ -34,29 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let _parsed_file = pion_parser::parse_file(&bump, &mut tokens, &mut parse_errors);
 
             for error in parse_errors {
-                let diag = match error {
-                    pion_parser::Error::UnknownChar { c } => Diagnostic::error()
-                        .with_message(format!("unknown character {:?}", c.data))
-                        .with_labels(vec![Label::primary(file_id, c.range)]),
-                    pion_parser::Error::UnclosedOpenDelimiter { delim } => Diagnostic::error()
-                        .with_message(format!("unclosed {:?}", delim.data.open()))
-                        .with_labels(vec![Label::primary(file_id, delim.range)]),
-                    pion_parser::Error::UnopenedCloseDelimiter { delim } => Diagnostic::error()
-                        .with_message(format!("unexpected {:?}", delim.data.close()))
-                        .with_labels(vec![Label::primary(file_id, delim.range)]),
-                    pion_parser::Error::DelimiterMismatch { start, end } => Diagnostic::error()
-                        .with_message(format!(
-                            "mismatched delimiter (expected {:?}, found {:?})",
-                            start.data.close(),
-                            end.data.close()
-                        ))
-                        .with_labels(vec![
-                            Label::primary(file_id, end.range),
-                            Label::secondary(file_id, start.range)
-                                .with_message(format!("to close {:?} here", start.data.open())),
-                        ]),
-                };
-
+                let diag = error.to_diagnostic(file_id);
                 codespan_reporting::term::emit(&mut writer, &codespan_config, &files, &diag)
                     .expect("Could not report diagnostic");
             }

@@ -11,6 +11,7 @@
 //!     | Literal
 //! ```
 
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_lexer::{DelimiterKind, LiteralKind, Token, TokenKind};
 use text_size::TextRange;
 
@@ -54,6 +55,33 @@ pub enum Error {
         start: Located<DelimiterKind>,
         end: Located<DelimiterKind>,
     },
+}
+
+impl Error {
+    pub fn to_diagnostic(&self, file_id: usize) -> Diagnostic<usize> {
+        match self {
+            Self::UnknownChar { c } => Diagnostic::error()
+                .with_message(format!("unknown character {:?}", c.data))
+                .with_labels(vec![Label::primary(file_id, c.range)]),
+            Self::UnclosedOpenDelimiter { delim } => Diagnostic::error()
+                .with_message(format!("unclosed {:?}", delim.data.open()))
+                .with_labels(vec![Label::primary(file_id, delim.range)]),
+            Self::UnopenedCloseDelimiter { delim } => Diagnostic::error()
+                .with_message(format!("unexpected {:?}", delim.data.close()))
+                .with_labels(vec![Label::primary(file_id, delim.range)]),
+            Self::DelimiterMismatch { start, end } => Diagnostic::error()
+                .with_message(format!(
+                    "mismatched delimiter (expected {:?}, found {:?})",
+                    start.data.close(),
+                    end.data.close()
+                ))
+                .with_labels(vec![
+                    Label::primary(file_id, end.range),
+                    Label::secondary(file_id, start.range)
+                        .with_message(format!("to close {:?} here", start.data.open())),
+                ]),
+        }
+    }
 }
 
 pub fn parse_file<'text, 'tt>(
