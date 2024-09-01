@@ -13,9 +13,9 @@ camino             = { workspace = true }
 codespan-reporting = { workspace = true }
 
 clap        = { version = "4.5.9", features = ["derive"] }
-pion-core   = { version = "0.1.0", path = "../pion-core" }
-pion-lexer  = { version = "0.1.0", path = "../pion-lexer" }
-pion-parser = { version = "0.1.0", path = "../pion-parser" }
+pion-core   = { path = "../pion-core" }
+pion-lexer  = { path = "../pion-lexer" }
+pion-parser = { path = "../pion-parser" }
 
 [[bin]]
 name = "pion"
@@ -26,6 +26,6 @@ name    = "integration"
 harness = false
 
 [dev-dependencies]
-libtest-mimic   = "0.7.3"
-similar-asserts = "1.5.0"
-walkdir         = "2.5.0"
+libtest-mimic   = { version = "0.7.3" }
+similar-asserts = { version = "1.5.0" }
+walkdir         = { version = "2.5.0" }
