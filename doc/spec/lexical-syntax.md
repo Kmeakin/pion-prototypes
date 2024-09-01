@@ -26,7 +26,7 @@ dashes, and must start with a letter. They are case-sensitive. For example,
 `myVariable`, `count123`, and `another_identifier` are all valid identifiers.
 
 ```
-Identifier = IdentiferStart IdentifierContunue*
+Identifier = IdentifierStart IdentifierContinue*
 IdentifierStart = "_" | Letter
 IdentifierContinue = "_" | Letter | Digit
 
@@ -40,7 +40,7 @@ Integer literals in Pion are sequences of digits. They can be written in decimal
 and `0b1111011` all represent the same integer.
 
 ## Keywords
-Keywords are reserved words that have special meanings in Pion. They cannot be used as identifiers. 
+Keywords are reserved words that have special meanings in Pion. They cannot be used as identifiers.
 ```
 Keyword = "do" | "else" | "false" | "forall" | "fun" | "if" | "let" | "match" | "rec" | "then" | "true"
 ```

@@ -57,10 +57,10 @@ pub enum Expr<'surface> {
     /// Match expression, `match <scrutinee> { <cases> }`.
     Match(&'surface Located<Self>, &'surface [MatchCase<'surface>]),
 
-    /// Non-depdendent function type, `<plicity> <lhs> -> <body>`.
+    /// Non-dependent function type, `<plicity> <lhs> -> <body>`.
     FunArrow(Plicity, &'surface Located<Self>, &'surface Located<Self>),
 
-    /// Depdendent function type, `forall <params> -> <body>`.
+    /// Dependent function type, `forall <params> -> <body>`.
     FunType(
         &'surface [Located<FunParam<'surface>>],
         &'surface Located<Self>,

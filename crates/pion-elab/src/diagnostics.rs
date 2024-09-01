@@ -155,7 +155,7 @@ pub fn fun_app_too_many_args<'core>(
         ])
         .with_notes(vec![
             format!(
-                "help: the function expects {expected_arity} {}, but recieved {actual_arity} \
+                "help: the function expects {expected_arity} {}, but received {actual_arity} \
                  arguments",
                 pluralize(expected_arity, "argument", "arguments"),
             ),
