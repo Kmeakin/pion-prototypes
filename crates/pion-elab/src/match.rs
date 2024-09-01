@@ -13,7 +13,7 @@ mod matrix;
 use self::compile::MatchResult;
 use self::matrix::{PatMatrix, PatRow};
 
-impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
+impl<'core, 'text> Elaborator<'core, 'text> {
     pub(super) fn check_match_expr(
         &mut self,
         range: TextRange,

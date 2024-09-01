@@ -49,7 +49,7 @@ pub struct MatchResult<'core> {
 /// Compilation of pattern matrices to decision trees.
 /// This is the `CC` function in *Compiling pattern matching to good decision
 /// trees*.
-impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
+impl<'core, 'text> Elaborator<'core, 'text> {
     pub fn compile_match(
         &self,
         matrix: &mut PatMatrix<'core>,

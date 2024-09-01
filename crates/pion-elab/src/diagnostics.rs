@@ -71,7 +71,7 @@ pub fn field_not_found(elaborator: &mut Elaborator, name: Symbol, field_loc: Loc
 }
 
 pub fn record_proj_not_record<'core>(
-    elaborator: &mut Elaborator<'_, 'core, '_>,
+    elaborator: &mut Elaborator<'core, '_>,
     scrut_type: &Type<'core>,
     scrut_loc: Location,
 ) {
@@ -86,7 +86,7 @@ pub fn record_proj_not_record<'core>(
 }
 
 pub fn unable_to_unify<'core>(
-    elaborator: &mut Elaborator<'_, 'core, '_>,
+    elaborator: &mut Elaborator<'core, '_>,
     error: crate::unify::UnifyError,
     from: &Type<'core>,
     to: &Type<'core>,
@@ -125,7 +125,7 @@ pub fn recursive_let_not_function(elaborator: &mut Elaborator, loc: Location) {
 }
 
 pub fn fun_app_not_fun<'core>(
-    elaborator: &mut Elaborator<'_, 'core, '_>,
+    elaborator: &mut Elaborator<'core, '_>,
     fun_type: &Type<'core>,
     fun_loc: Location,
 ) {
@@ -140,7 +140,7 @@ pub fn fun_app_not_fun<'core>(
 }
 
 pub fn fun_app_too_many_args<'core>(
-    elaborator: &mut Elaborator<'_, 'core, '_>,
+    elaborator: &mut Elaborator<'core, '_>,
     expected_arity: usize,
     actual_arity: usize,
     fun_type: &Type<'core>,
@@ -171,7 +171,7 @@ pub fn fun_app_too_many_args<'core>(
 }
 
 pub fn fun_app_plicity_mismatch<'core>(
-    elaborator: &mut Elaborator<'_, 'core, '_>,
+    elaborator: &mut Elaborator<'core, '_>,
     given: pion_surface::syntax::Plicity,
     expected: pion_core::syntax::Plicity,
     fun_type: &Type<'core>,

@@ -10,7 +10,7 @@ use text_size::TextRange;
 use super::Elaborator;
 use crate::diagnostics;
 
-impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
+impl<'core, 'text, 'surface> Elaborator<'core, 'text> {
     fn elab_command(&mut self, command: Located<surface::Command<'surface>>) {
         match command.data {
             surface::Command::Check(expr) => {
@@ -28,7 +28,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                 let doc = unelaborator.ann_expr(&mut self.env.locals.names, &expr, &r#type);
                 let pretty = doc.pretty(80).to_string();
-                self.command_handler.display_to_user(pretty);
+                self.command_output.push(pretty);
             }
             surface::Command::Eval(surface_expr) => {
                 let (core_expr, _) = self.synth_expr(&surface_expr);
@@ -53,8 +53,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                     core_expr_doc
                 ]
                 .group();
-                self.command_handler
-                    .display_to_user(doc.pretty(80).to_string());
+                self.command_output.push(doc.pretty(80).to_string());
             }
             surface::Command::Show(name) => {
                 let Some(var) = self.env.locals.lookup(name.data) else {
@@ -77,8 +76,8 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
 
                         let doc = unelaborator.expr(&mut self.env.locals.names, &r#type);
                         let pretty = doc.pretty(80).to_string();
-                        self.command_handler
-                            .display_to_user(format!("parameter {} : {pretty}", name.data));
+                        self.command_output
+                            .push(format!("parameter {} : {pretty}", name.data));
                     }
                     crate::LocalInfo::Let => {
                         let expr = self.env.locals.exprs.get_relative(var).unwrap().unwrap();
@@ -102,7 +101,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
                             &expr,
                         );
                         let pretty = doc.pretty(80).to_string();
-                        self.command_handler.display_to_user(pretty);
+                        self.command_output.push(pretty);
                     }
                 }
             }
@@ -113,7 +112,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         return recur(self, block.stmts, block.result_expr);
 
         fn recur<'surface, 'core>(
-            this: &mut Elaborator<'_, 'core, '_>,
+            this: &mut Elaborator<'core, '_>,
             stmts: &[Located<surface::Stmt<'surface>>],
             expr: Option<&'surface Located<surface::Expr<'surface>>>,
         ) -> (Expr<'core>, Type<'core>) {
@@ -154,7 +153,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         };
 
         fn recur<'surface, 'core>(
-            this: &mut Elaborator<'_, 'core, '_>,
+            this: &mut Elaborator<'core, '_>,
             stmts: &[Located<surface::Stmt<'surface>>],
             expr: &'surface Located<surface::Expr<'surface>>,
             expected: &Type<'core>,

@@ -1,7 +1,6 @@
 #![feature(allocator_api)]
 
 use codespan_reporting::diagnostic::Diagnostic;
-use command::CommandHandler;
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
@@ -18,32 +17,26 @@ mod pat;
 mod stmt;
 mod unify;
 
-pub mod command;
 pub mod env;
 
-pub struct Elaborator<'handler, 'core, 'text> {
+pub struct Elaborator<'core, 'text> {
     bump: &'core bumpalo::Bump,
     text: &'text str,
     file_id: usize,
     pub diagnostics: Vec<Diagnostic<usize>>,
-    command_handler: &'handler mut dyn CommandHandler,
+    pub command_output: Vec<String>,
 
     env: ElabEnv<'core>,
 }
 
-impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
-    pub fn new(
-        bump: &'core bumpalo::Bump,
-        text: &'text str,
-        file_id: usize,
-        command_handler: &'handler mut dyn CommandHandler,
-    ) -> Self {
+impl<'core, 'text> Elaborator<'core, 'text> {
+    pub fn new(bump: &'core bumpalo::Bump, text: &'text str, file_id: usize) -> Self {
         Self {
             bump,
             text,
             file_id,
             diagnostics: Vec::new(),
-            command_handler,
+            command_output: Vec::new(),
 
             env: ElabEnv::default(),
         }

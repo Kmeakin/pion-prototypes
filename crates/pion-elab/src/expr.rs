@@ -15,7 +15,7 @@ use text_size::TextRange;
 use super::{Elaborator, MetaSource};
 use crate::diagnostics;
 
-impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
+impl<'core, 'text, 'surface> Elaborator<'core, 'text> {
     pub fn synth_lit(
         &mut self,
         surface_lit: &Located<surface::Lit>,

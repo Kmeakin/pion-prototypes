@@ -11,7 +11,7 @@ use text_size::TextRange;
 use super::{Elaborator, MetaSource};
 use crate::diagnostics;
 
-impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
+impl<'core, 'text, 'surface> Elaborator<'core, 'text> {
     pub(super) fn synth_param(
         &mut self,
         surface_param: &'surface Located<surface::FunParam<'surface>>,
@@ -274,7 +274,7 @@ impl<'handler, 'core, 'text, 'surface> Elaborator<'handler, 'core, 'text> {
         toplevel_param: bool,
     ) -> Vec<LetBinding<Expr<'core>, Expr<'core>>> {
         fn recur<'core>(
-            ctx: &mut Elaborator<'_, 'core, '_>,
+            ctx: &mut Elaborator<'core, '_>,
             pat: &Pat<'core>,
             expr: &Expr<'core>,
             r#type: &Type<'core>,
