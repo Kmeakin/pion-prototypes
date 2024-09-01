@@ -9,9 +9,10 @@ use text_size::{TextRange, TextSize};
 lalrpop_mod!(
     #[allow(
         clippy::all,
-        clippy::pedantic,
-        clippy::nursery,
         clippy::as_conversions,
+        clippy::nursery,
+        clippy::pedantic,
+        unreachable_patterns,
         unused_imports,
         unused_qualifications
     )]
@@ -22,17 +23,18 @@ lalrpop_mod!(
 pub type LalrpopError = lalrpop_util::ParseError<TextSize, TokenKind, std::convert::Infallible>;
 
 const fn error_range(error: &LalrpopError) -> TextRange {
-    match error {
-        lalrpop_util::ParseError::InvalidToken { location } => TextRange::new(*location, *location),
+    match *error {
+        lalrpop_util::ParseError::InvalidToken { location } => TextRange::new(location, location),
         lalrpop_util::ParseError::UnrecognizedEof { location, .. } => {
-            TextRange::new(*location, *location)
+            TextRange::new(location, location)
         }
         lalrpop_util::ParseError::UnrecognizedToken { token, .. } => {
             TextRange::new(token.0, token.2)
         }
         lalrpop_util::ParseError::ExtraToken { token } => TextRange::new(token.0, token.2),
-        #[allow(clippy::uninhabited_references)]
-        lalrpop_util::ParseError::User { error } => match *error {},
+
+        #[allow(unreachable_patterns)]
+        lalrpop_util::ParseError::User { error } => match error {},
     }
 }
 
@@ -72,6 +74,8 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
         } => Diagnostic::error()
             .with_message(format!("Syntax error: unexpected {}", token.description()))
             .with_labels(vec![Label::primary(file_id, range)]),
+
+        #[allow(unreachable_patterns)]
         lalrpop_util::ParseError::User { error } => match error {},
     }
 }

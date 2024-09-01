@@ -10,6 +10,7 @@ use std::ops::Deref;
 // Our requirements around drop-glue might be an issue.
 
 /// A helpful type for allocating elements to a slice up to a maximum length.
+///
 /// This can be helpful if we have initialization code that might be difficult
 /// to implement using [`bumpallo::Bump::alloc`], for example:
 ///
