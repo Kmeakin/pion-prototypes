@@ -3,13 +3,16 @@ use text_size::{TextRange, TextSize};
 use pion_lexer::TokenKind;
 use pion_surface::syntax::*;
 use pion_symbol::Symbol;
+use crate::Diagnostic;
 
 use crate::LalrpopError;
+use crate::error_to_diagnostic;
 
 grammar<'surface, 'text>(
+    file_id: usize,
     bump: &'surface bumpalo::Bump,
     text: &'text str,
-    errors: &mut Vec<LalrpopError>,
+    diagnostics: &mut Vec<Diagnostic<usize>>,
 );
 
 extern {
@@ -191,7 +194,7 @@ Plicity: Plicity = {
 AtomExpr: Located<Expr<'surface>> = {
     <start: @L> <recovery: !> <end: @R> => {
         let range = TextRange::new(start, end);
-        errors.push(recovery.error);
+        diagnostics.push(error_to_diagnostic(file_id, range, recovery.error));
         Located::new(range, Expr::Error)
     },
     <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Expr::Lit(lit)),
@@ -241,7 +244,7 @@ Pat: Located<Pat<'surface>> = {
 AtomPat: Located<Pat<'surface>> = {
     <start: @L> <recovery: !> <end: @R> => {
         let range = TextRange::new(start, end);
-        errors.push(recovery.error);
+        diagnostics.push(error_to_diagnostic(file_id, range, recovery.error));
         Located::new(range, Pat::Error)
     },
     <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),

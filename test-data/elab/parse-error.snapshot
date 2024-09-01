@@ -6,8 +6,8 @@ stdout = """
 
 stderr = """
 error: expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
-  ┌─ test-data/elab/parse-error.pion:1:11
+  ┌─ test-data/elab/parse-error.pion:1:8
   │
 1 │ #check fun;
-  │           ^
+  │        ^^^
 """

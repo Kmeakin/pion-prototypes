@@ -8,17 +8,17 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-pion-core       = { path = "../pion-core" }
-pion-diagnostic = { path = "../pion-diagnostic" }
-pion-printer    = { path = "../pion-printer" }
-pion-surface    = { path = "../pion-surface" }
-pion-symbol     = { path = "../pion-symbol" }
-pion-util       = { path = "../pion-util" }
+pion-core    = { path = "../pion-core" }
+pion-printer = { path = "../pion-printer" }
+pion-surface = { path = "../pion-surface" }
+pion-symbol  = { path = "../pion-symbol" }
+pion-util    = { path = "../pion-util" }
 
-bumpalo   = { workspace = true }
-ecow      = { workspace = true }
-smallvec  = { workspace = true, features = ["union"] }
-text-size = { workspace = true }
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+ecow               = { workspace = true }
+smallvec           = { workspace = true, features = ["union"] }
+text-size          = { workspace = true }
 
 internal-iterator = { version = "0.2.3" }
 lexical-parse-integer = { version = "0.8.6", features = [

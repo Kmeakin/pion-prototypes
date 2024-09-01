@@ -1,7 +1,7 @@
 #![feature(iter_intersperse)]
 
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use lalrpop_util::lalrpop_mod;
-use pion_diagnostic::{Diagnostic, DiagnosticHandler, Label};
 use pion_lexer::TokenKind;
 use pion_surface::syntax::{Block, Expr, File, Located};
 use text_size::{TextRange, TextSize};
@@ -38,7 +38,11 @@ const fn error_range(error: &LalrpopError) -> TextRange {
     }
 }
 
-fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) -> Diagnostic<usize> {
+pub fn error_to_diagnostic(
+    file_id: usize,
+    range: TextRange,
+    error: LalrpopError,
+) -> Diagnostic<usize> {
     let format_expected = |expected: Vec<String>| match expected.as_slice() {
         [] => unreachable!(),
         [expected] => format!("expected {expected}"),
@@ -82,51 +86,42 @@ fn error_to_diagnostic(file_id: usize, range: TextRange, error: LalrpopError) ->
 
 pub fn parse_file<'surface>(
     bump: &'surface bumpalo::Bump,
-    handler: &mut dyn DiagnosticHandler,
+    diagnostics: &mut Vec<Diagnostic<usize>>,
     file_id: usize,
     text: &str,
 ) -> File<'surface> {
     let tokens = pion_lexer::lex(text)
         .filter(|token| !token.kind.is_trivia())
         .map(|token| (token.range.start(), token.kind, token.range.end()));
-    let mut errors = Vec::new();
-    let file = match grammar::FileParser::new().parse(bump, text, &mut errors, tokens) {
+    let file = match grammar::FileParser::new().parse(file_id, bump, text, diagnostics, tokens) {
         Ok(expr) => expr,
         Err(error) => {
-            errors.push(error);
+            let range = error_range(&error);
+            diagnostics.push(error_to_diagnostic(file_id, range, error));
             File {
                 contents: Block::default(),
             }
         }
     };
-    for error in errors {
-        let range = error_range(&error);
-        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error));
-    }
     file
 }
 
 pub fn parse_expr<'surface>(
     bump: &'surface bumpalo::Bump,
-    handler: &mut dyn DiagnosticHandler,
+    diagnostics: &mut Vec<Diagnostic<usize>>,
     file_id: usize,
     text: &str,
 ) -> Located<Expr<'surface>> {
     let tokens = pion_lexer::lex(text)
         .filter(|token| !token.kind.is_trivia())
         .map(|token| (token.range.start(), token.kind, token.range.end()));
-    let mut errors = Vec::new();
-    let expr = match grammar::ExprParser::new().parse(bump, text, &mut errors, tokens) {
+    let expr = match grammar::ExprParser::new().parse(file_id, bump, text, diagnostics, tokens) {
         Ok(expr) => expr,
         Err(error) => {
             let range = error_range(&error);
-            errors.push(error);
+            diagnostics.push(error_to_diagnostic(file_id, range, error));
             Located::new(range, Expr::Error)
         }
     };
-    for error in errors {
-        let range = error_range(&error);
-        handler.handle_diagnostic(error_to_diagnostic(file_id, range, error));
-    }
     expr
 }

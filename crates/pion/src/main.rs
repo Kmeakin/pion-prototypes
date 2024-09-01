@@ -63,26 +63,23 @@ fn main() -> std::io::Result<()> {
             }
             let file_id = files.add(path.name(), text.clone());
 
-            let mut diagnostic_handler = |diagnostic| {
-                let config = codespan_reporting::term::Config::default();
-                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)
-                    .expect("Could not print diagnostic");
-            };
-
             let mut command_handler = |text| {
                 println!("{text}");
             };
 
-            let file = pion_parser::parse_file(&bump, &mut diagnostic_handler, file_id, &text);
-            let mut elaborator = pion_elab::Elaborator::new(
-                &bump,
-                &text,
-                file_id,
-                &mut diagnostic_handler,
-                &mut command_handler,
-            );
+            let mut diagnostics = Vec::new();
+
+            let file = pion_parser::parse_file(&bump, &mut diagnostics, file_id, &text);
+            let mut elaborator =
+                pion_elab::Elaborator::new(&bump, &text, file_id, &mut command_handler);
             elaborator.synth_block(&file.contents);
             elaborator.report_unsolved_metas();
+
+            for diag in diagnostics.iter().chain(elaborator.diagnostics.iter()) {
+                let config = codespan_reporting::term::Config::default();
+                codespan_reporting::term::emit(&mut writer, &config, &files, diag)
+                    .expect("Could not print diagnostic");
+            }
 
             Ok(())
         }

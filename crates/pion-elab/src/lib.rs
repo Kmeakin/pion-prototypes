@@ -1,11 +1,11 @@
 #![feature(allocator_api)]
 
+use codespan_reporting::diagnostic::Diagnostic;
 use command::CommandHandler;
 use env::{ElabEnv, LocalInfo, MetaSource};
 use pion_core::env::{AbsoluteVar, EnvLen};
 use pion_core::semantics::{self, EvalOpts, Type, Value};
 use pion_core::syntax::{Expr, FunArg, LetBinding, Plicity};
-use pion_diagnostic::DiagnosticHandler;
 use pion_printer::BumpDocAllocator;
 use text_size::TextRange;
 
@@ -25,7 +25,7 @@ pub struct Elaborator<'handler, 'core, 'text> {
     bump: &'core bumpalo::Bump,
     text: &'text str,
     file_id: usize,
-    diagnostic_handler: &'handler mut dyn DiagnosticHandler,
+    pub diagnostics: Vec<Diagnostic<usize>>,
     command_handler: &'handler mut dyn CommandHandler,
 
     env: ElabEnv<'core>,
@@ -36,14 +36,13 @@ impl<'handler, 'core, 'text> Elaborator<'handler, 'core, 'text> {
         bump: &'core bumpalo::Bump,
         text: &'text str,
         file_id: usize,
-        diagnostic_handler: &'handler mut dyn DiagnosticHandler,
         command_handler: &'handler mut dyn CommandHandler,
     ) -> Self {
         Self {
             bump,
             text,
             file_id,
-            diagnostic_handler,
+            diagnostics: Vec::new(),
             command_handler,
 
             env: ElabEnv::default(),

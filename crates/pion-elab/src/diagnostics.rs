@@ -1,5 +1,5 @@
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use pion_core::semantics::Type;
-use pion_diagnostic::{Diagnostic, Label};
 use pion_symbol::Symbol;
 use pion_util::location::Location;
 
@@ -10,7 +10,7 @@ pub fn unbound_local_var(elaborator: &mut Elaborator, name: Symbol, var_loc: Loc
     let diagnostic = Diagnostic::error()
         .with_message(format!("Unbound local variable `{name}`"))
         .with_labels(vec![Label::primary(var_loc.file, var_loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn invalid_integer_literal(
@@ -21,7 +21,7 @@ pub fn invalid_integer_literal(
     let diagnostic = Diagnostic::error()
         .with_message(format!("Invalid integer literal: {error}"))
         .with_labels(vec![Label::primary(lit_loc.file, lit_loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn unsolved_meta_var(elaborator: &mut Elaborator, id: usize, source: MetaSource, file: usize) {
@@ -44,7 +44,7 @@ pub fn unsolved_meta_var(elaborator: &mut Elaborator, id: usize, source: MetaSou
         .with_labels(vec![
             Label::primary(file, source.range()).with_message(format!("could not infer {message}"))
         ]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn duplicate_record_field(
@@ -60,14 +60,14 @@ pub fn duplicate_record_field(
             Label::secondary(first_loc.file, first_loc.range)
                 .with_message(format!("`{name}` was already defined here")),
         ]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn field_not_found(elaborator: &mut Elaborator, name: Symbol, field_loc: Location) {
     let diagnostic = Diagnostic::error()
         .with_message(format!("Field `{name}` not found"))
         .with_labels(vec![Label::primary(field_loc.file, field_loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn record_proj_not_record<'core>(
@@ -78,10 +78,11 @@ pub fn record_proj_not_record<'core>(
     let scrut_type = elaborator.quote_env().quote(scrut_type);
     let scrut_type = elaborator.pretty(&scrut_type);
 
-    let diagnostic = Diagnostic::error()
-        .with_message(format!("Expected record, found `{scrut_type}`"))
-        .with_labels(vec![Label::primary(scrut_loc.file, scrut_loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message(format!("Expected record, found `{scrut_type}`"))
+            .with_labels(vec![Label::primary(scrut_loc.file, scrut_loc.range)]),
+    );
 }
 
 pub fn unable_to_unify<'core>(
@@ -96,28 +97,31 @@ pub fn unable_to_unify<'core>(
     let found = elaborator.pretty(&from);
     let expected = elaborator.pretty(&to);
     let diagnostic = error.to_diagnostic(loc.file, loc.range, &expected, &found);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(diagnostic);
 }
 
 pub fn unreachable_match_case(elaborator: &mut Elaborator, loc: Location) {
-    let diagnostic = Diagnostic::warning()
-        .with_message("Unreachable match case")
-        .with_labels(vec![Label::primary(loc.file, loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::warning()
+            .with_message("Unreachable match case")
+            .with_labels(vec![Label::primary(loc.file, loc.range)]),
+    );
 }
 
 pub fn inexhaustive_match(elaborator: &mut Elaborator, loc: Location) {
-    let diagnostic = Diagnostic::error()
-        .with_message("Inexhaustive match")
-        .with_labels(vec![Label::primary(loc.file, loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message("Inexhaustive match")
+            .with_labels(vec![Label::primary(loc.file, loc.range)]),
+    );
 }
 
 pub fn recursive_let_not_function(elaborator: &mut Elaborator, loc: Location) {
-    let diagnostic = Diagnostic::error()
-        .with_message("recursive bindings must be function literals")
-        .with_labels(vec![Label::primary(loc.file, loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message("recursive bindings must be function literals")
+            .with_labels(vec![Label::primary(loc.file, loc.range)]),
+    );
 }
 
 pub fn fun_app_not_fun<'core>(
@@ -128,10 +132,11 @@ pub fn fun_app_not_fun<'core>(
     let fun_type = elaborator.quote_env().quote(fun_type);
     let fun_type = elaborator.pretty(&fun_type);
 
-    let diagnostic = Diagnostic::error()
-        .with_message(format!("Expected function, found `{fun_type}`"))
-        .with_labels(vec![Label::primary(fun_loc.file, fun_loc.range)]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message(format!("Expected function, found `{fun_type}`"))
+            .with_labels(vec![Label::primary(fun_loc.file, fun_loc.range)]),
+    );
 }
 
 pub fn fun_app_too_many_args<'core>(
@@ -147,21 +152,22 @@ pub fn fun_app_too_many_args<'core>(
     let fun_type = elaborator.quote_env().quote(fun_type);
     let fun_type = elaborator.pretty(&fun_type);
 
-    let diagnostic = Diagnostic::error()
-        .with_message("Called function with too many arguments")
-        .with_labels(vec![
-            Label::secondary(fun_loc.file, fun_loc.range),
-            Label::primary(arg_loc.file, arg_loc.range),
-        ])
-        .with_notes(vec![
-            format!(
-                "help: the function expects {expected_arity} {}, but received {actual_arity} \
-                 arguments",
-                pluralize(expected_arity, "argument", "arguments"),
-            ),
-            format!("help: the type of the function is `{fun_type}`"),
-        ]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message("Called function with too many arguments")
+            .with_labels(vec![
+                Label::secondary(fun_loc.file, fun_loc.range),
+                Label::primary(arg_loc.file, arg_loc.range),
+            ])
+            .with_notes(vec![
+                format!(
+                    "help: the function expects {expected_arity} {}, but received {actual_arity} \
+                     arguments",
+                    pluralize(expected_arity, "argument", "arguments"),
+                ),
+                format!("help: the type of the function is `{fun_type}`"),
+            ]),
+    );
 }
 
 pub fn fun_app_plicity_mismatch<'core>(
@@ -175,19 +181,20 @@ pub fn fun_app_plicity_mismatch<'core>(
     let fun_type = elaborator.quote_env().quote(fun_type);
     let fun_type = elaborator.pretty(&fun_type);
 
-    let diagnostic = Diagnostic::error()
-        .with_message(format!(
-            "Applied {} argument when {} argument was expected",
-            given.description(),
-            expected.description()
-        ))
-        .with_labels(vec![
-            Label::primary(arg_loc.file, arg_loc.range)
-                .with_message(format!("{} argument", given.description())),
-            Label::secondary(fun_loc.file, fun_loc.range)
-                .with_message(format!("function has type {fun_type}")),
-        ]);
-    elaborator.diagnostic_handler.handle_diagnostic(diagnostic);
+    elaborator.diagnostics.push(
+        Diagnostic::error()
+            .with_message(format!(
+                "Applied {} argument when {} argument was expected",
+                given.description(),
+                expected.description()
+            ))
+            .with_labels(vec![
+                Label::primary(arg_loc.file, arg_loc.range)
+                    .with_message(format!("{} argument", given.description())),
+                Label::secondary(fun_loc.file, fun_loc.range)
+                    .with_message(format!("function has type {fun_type}")),
+            ]),
+    );
 }
 
 const fn pluralize<'a>(count: usize, singular: &'a str, plural: &'a str) -> &'a str {

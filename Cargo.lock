@@ -590,7 +590,6 @@ dependencies = [
  "codespan-reporting",
  "libtest-mimic",
  "pion-core",
- "pion-diagnostic",
  "pion-elab",
  "pion-lexer",
  "pion-parser",
@@ -616,22 +615,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "pion-diagnostic"
-version = "0.1.0"
-dependencies = [
- "codespan-reporting",
-]
-
-[[package]]
 name = "pion-elab"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
+ "codespan-reporting",
  "ecow",
  "internal-iterator",
  "lexical-parse-integer",
  "pion-core",
- "pion-diagnostic",
  "pion-printer",
  "pion-surface",
  "pion-symbol",
@@ -655,9 +647,9 @@ name = "pion-parser"
 version = "0.1.0"
 dependencies = [
  "bumpalo",
+ "codespan-reporting",
  "lalrpop",
  "lalrpop-util",
- "pion-diagnostic",
  "pion-lexer",
  "pion-surface",
  "pion-symbol",
