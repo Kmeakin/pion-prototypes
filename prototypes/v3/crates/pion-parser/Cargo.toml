@@ -1,0 +1,15 @@
+[package]
+name = "pion-parser"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-lexer = { path = "../pion-lexer" }
+
+bumpalo            = { workspace = true }
+text-size          = { workspace = true }
+codespan-reporting = { workspace = true }

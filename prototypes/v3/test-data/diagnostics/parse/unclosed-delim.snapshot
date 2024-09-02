@@ -1,0 +1,25 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: unclosed "{"
+  ┌─ test-data/diagnostics/parse/unclosed-delim.pion:3:5
+  │
+3 │ baz {
+  │     ^
+
+error: unclosed "["
+  ┌─ test-data/diagnostics/parse/unclosed-delim.pion:2:5
+  │
+2 │ bar [
+  │     ^
+
+error: unclosed "("
+  ┌─ test-data/diagnostics/parse/unclosed-delim.pion:1:5
+  │
+1 │ foo (
+  │     ^
+"""

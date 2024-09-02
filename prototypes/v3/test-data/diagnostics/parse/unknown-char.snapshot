@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: unknown character '🦀'
+  ┌─ test-data/diagnostics/parse/unknown-char.pion:1:1
+  │
+1 │ 🦀
+  │ ^^
+"""

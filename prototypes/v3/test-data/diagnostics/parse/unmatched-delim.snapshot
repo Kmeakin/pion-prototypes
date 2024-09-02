@@ -1,0 +1,31 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: mismatched delimiter (expected ")", found "]")
+  ┌─ test-data/diagnostics/parse/unmatched-delim.pion:1:7
+  │
+1 │ ( foo ]
+  │ -     ^
+  │ │      
+  │ to close "(" here
+
+error: mismatched delimiter (expected "]", found "}")
+  ┌─ test-data/diagnostics/parse/unmatched-delim.pion:2:7
+  │
+2 │ [ bar }
+  │ -     ^
+  │ │      
+  │ to close "[" here
+
+error: mismatched delimiter (expected "}", found ")")
+  ┌─ test-data/diagnostics/parse/unmatched-delim.pion:3:7
+  │
+3 │ { baz )
+  │ -     ^
+  │ │      
+  │ to close "{" here
+"""
