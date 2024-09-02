@@ -1,0 +1,19 @@
+exit status: 0
+
+stdout = """
+let x : ?0 = ?1;
+"""
+
+stderr = """
+error: Unsolved metavariable: ?0
+  ┌─ test-data/elab/holes/unsolved-hole.pion:1:5
+  │
+1 │ let x = _;
+  │     ^ could not infer type of variable `x`
+
+error: Unsolved metavariable: ?1
+  ┌─ test-data/elab/holes/unsolved-hole.pion:1:9
+  │
+1 │ let x = _;
+  │         ^ could not infer expression to solve hole
+"""

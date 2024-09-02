@@ -1,0 +1,79 @@
+exit status: 0
+
+stdout = """
+let is_zero_or_one : Int -> Bool
+    = fun (x : Int) =>
+        match x {
+            0 => true,
+            1 => true,
+            _ => false,
+        };
+let is_true_or_false : Bool -> Bool
+    = fun (x : Bool) =>
+        match x {
+            true => true,
+            false => true,
+        };
+let is_true_or_false_record : { b : Bool } -> Bool
+    = fun (x : { b : Bool }) =>
+        match x.b {
+            true => true,
+            false => true,
+        };
+let is_true_or_false_record2 : { b : Bool } -> Bool
+    = fun (x : { b : Bool }) =>
+        match x.b {
+            true => true,
+            false => true,
+        };
+"""
+
+stderr = """
+warning: Unreachable match case
+  ┌─ test-data/elab/match/or-pat/coverage.pion:3:10
+  │
+3 │     0 => true,
+  │          ^^^^
+
+warning: Unreachable match case
+  ┌─ test-data/elab/match/or-pat/coverage.pion:4:10
+  │
+4 │     1 => true,
+  │          ^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:10:14
+   │
+10 │     false => true,
+   │              ^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:11:10
+   │
+11 │     _ => false,
+   │          ^^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:16:19
+   │
+16 │     {b = true} => true,
+   │                   ^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:17:10
+   │
+17 │     _ => false,
+   │          ^^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:22:20
+   │
+22 │     {b = false} => true,
+   │                    ^^^^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/or-pat/coverage.pion:23:10
+   │
+23 │     _ => false,
+   │          ^^^^^
+"""

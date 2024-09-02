@@ -1,0 +1,23 @@
+exit status: 0
+
+stdout = """
+{ x = 1, y = 2 } : { x : Int, y : Int }
+"""
+
+stderr = """
+error: Duplicate field `x`
+  ┌─ test-data/elab/record-literal/duplicate-fields.pion:1:21
+  │
+1 │ #check {x=1, y = 2, x = 3, y = 3};
+  │         -           ^
+  │         │            
+  │         `x` was already defined here
+
+error: Duplicate field `y`
+  ┌─ test-data/elab/record-literal/duplicate-fields.pion:1:28
+  │
+1 │ #check {x=1, y = 2, x = 3, y = 3};
+  │              -             ^
+  │              │              
+  │              `y` was already defined here
+"""

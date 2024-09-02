@@ -1,0 +1,62 @@
+exit status: 0
+
+stdout = """
+let foo : Int -> Bool -> Bool -> Int
+    = fun (x : Int) (y : Bool) (z : Bool) =>
+        match x {
+            1 => 1,
+            2 => 2,
+            3 => 3,
+            4 => 4,
+            5 => 5,
+            _ => 6,
+        };
+let bar : Bool -> (Bool -> Bool) -> Int -> Int
+    = fun (x : Bool) (f : Bool -> Bool) (y : Int) =>
+        match x {
+            true => 0,
+            false => do {
+                let z : Bool = x;
+                y
+            },
+        };
+let baz : Int -> Int -> (Int -> Bool) -> Int
+    = fun (x : Int) (y : Int) (f : Int -> Bool) =>
+        match (x, y)._0 {
+            0 => do {
+                let a : Int = (x, y)._1;
+                a
+            },
+            _ => do {
+                let aa : Int = (x, y)._0;
+                let bb : Int = (x, y)._1;
+                bb
+            },
+        };
+"""
+
+stderr = """
+warning: Unreachable match case
+   ┌─ test-data/elab/match/guards.pion:13:10
+   │
+13 │     _ => 3,
+   │          ^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/guards.pion:18:23
+   │
+18 │     (0, b) if f(b) => b,
+   │                       ^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/guards.pion:19:23
+   │
+19 │     (0, c) if f(c) => c,
+   │                       ^
+
+warning: Unreachable match case
+   ┌─ test-data/elab/match/guards.pion:20:23
+   │
+20 │     (0, d) if f(d) => d,
+   │                       ^
+"""

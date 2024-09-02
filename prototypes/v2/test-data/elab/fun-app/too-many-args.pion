@@ -1,0 +1,2 @@
+#check (fun x => x) 1 2 3;
+#check (fun (x : Int) (y : Int) => x) 1 2 3;

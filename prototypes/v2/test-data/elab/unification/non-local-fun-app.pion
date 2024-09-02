@@ -1,0 +1,4 @@
+let error : forall (A : Type) -> (A -> _) -> A
+    = fun A => fun a => a _;
+
+#show error;

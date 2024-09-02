@@ -1,0 +1,12 @@
+[package]
+name = "pion-util"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+bumpalo   = { workspace = true }
+text-size = { workspace = true }

@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+#error : #error
+"""
+
+stderr = """
+error: Expected function, found `Type`
+  ┌─ test-data/elab/fun-app/fun-app-not-fun.pion:1:8
+  │
+1 │ #check Int 5;
+  │        ^^^
+"""

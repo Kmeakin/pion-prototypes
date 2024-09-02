@@ -1,0 +1,8 @@
+#check fun (() : ()) => ();
+#eval (fun (() : ()) => ()) ();
+
+#check fun ((x, ) : (Int, )) => (x,);
+#eval (fun ((x, ) : (Int, )) => (x,)) (1,);
+
+#check fun ((x, y) : (Int, Bool)) => (y, x);
+#eval (fun ((x, y) : (Int, Bool)) => (y, x)) (1, false);

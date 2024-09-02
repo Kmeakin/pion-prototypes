@@ -1,0 +1,28 @@
+exit status: 0
+
+stdout = """
+(fun (r : { x : Int, y : Bool }) =>
+    do {
+        let a : Int = r.x;
+        let b : Bool = r.y;
+        ()
+    }) : { x : Int, y : Bool } -> ()
+"""
+
+stderr = """
+error: Duplicate field `x`
+  ┌─ test-data/elab/record-pat/duplicate-fields.pion:2:24
+  │
+2 │     let {x = a, y = b, x = c, y = d} = r;
+  │          -             ^
+  │          │              
+  │          `x` was already defined here
+
+error: Duplicate field `y`
+  ┌─ test-data/elab/record-pat/duplicate-fields.pion:2:31
+  │
+2 │     let {x = a, y = b, x = c, y = d} = r;
+  │                 -             ^
+  │                 │              
+  │                 `y` was already defined here
+"""

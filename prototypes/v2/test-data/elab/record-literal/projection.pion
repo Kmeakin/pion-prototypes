@@ -1,0 +1,7 @@
+#check {x = 1, y = false}.x;
+#check {x = 1, y = false}.y;
+#check ({A = Int, a = 5} : {A : Type, a : A}).a;
+
+#eval {x = 1, y = false}.x;
+#eval {x = 1, y = false}.y;
+#eval ({A = Int, a = 5} : {A : Type, a : A}).a;

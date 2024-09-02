@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+let id : forall (@A : Type) -> A -> A = fun (@A : Type) (x : A) => x;
+(id @Int 5) : Int
+id 5 ⇝ 5
+"""
+
+stderr = """
+
+"""

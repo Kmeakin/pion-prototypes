@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+#error : #error
+"""
+
+stderr = """
+error: Unbound local variable `x`
+  ┌─ test-data/elab/local-var/unbound.pion:1:8
+  │
+1 │ #check x;
+  │        ^
+"""

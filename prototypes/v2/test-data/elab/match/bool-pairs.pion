@@ -1,0 +1,47 @@
+let and1 = fun x y => match (x, y) {
+    (true, true) => true,
+    _ => false,
+};
+
+let and2 = fun x y => match (x, y) {
+    (true, true) => true,
+    (_, _) => false,
+};
+
+let and3 = fun x y => match (x, y) {
+    (true, true) => true,
+    (false, true) => false,
+    (true, false) => false,
+    (false, false) => false,
+};
+
+let or1 = fun x y => match (x, y) {
+    (false, false) => false,
+    _ => true,
+};
+
+let or2 = fun x y => match (x, y) {
+    (false, false) => false,
+    (_, _) => true,
+};
+
+let or3 = fun x y => match (x, y) {
+    (true, true) => true,
+    (false, true) => true,
+    (true, false) => true,
+    (false, false) => false,
+};
+
+let or4 = fun x y => match (x, y) {
+    (true, _) => true,
+    (_, true) => true,
+    _ => false,
+};
+
+#show and1;
+#show and2;
+#show and3;
+#show or1;
+#show or2;
+#show or3;
+#show or4;

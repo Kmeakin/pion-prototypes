@@ -1,0 +1,4 @@
+#eval [add 1 2, add 2 3, add 3 4];
+#eval len [1, 2, 3];
+#eval push [1, 2, 3] 4;
+#eval append [1, 2, 3] [4, 5, 6];

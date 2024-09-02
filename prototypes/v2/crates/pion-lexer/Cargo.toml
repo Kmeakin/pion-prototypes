@@ -1,0 +1,18 @@
+[package]
+name = "pion-lexer"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-util = { path = "../pion-util" }
+
+text-size = { workspace = true }
+
+memchr = { version = "2.7.2" }
+
+[dev-dependencies]
+expect-test = { version = "1.5.0" }

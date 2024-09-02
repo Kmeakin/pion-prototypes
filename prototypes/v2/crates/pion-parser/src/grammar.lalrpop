@@ -1,0 +1,297 @@
+use text_size::{TextRange, TextSize};
+
+use pion_lexer::TokenKind;
+use pion_surface::syntax::*;
+use pion_symbol::Symbol;
+use crate::Diagnostic;
+
+use crate::LalrpopError;
+use crate::error_to_diagnostic;
+
+grammar<'surface, 'text>(
+    file_id: usize,
+    bump: &'surface bumpalo::Bump,
+    text: &'text str,
+    diagnostics: &mut Vec<Diagnostic<usize>>,
+);
+
+extern {
+    type Location = TextSize;
+    type Error = std::convert::Infallible;
+
+    enum TokenKind {
+        "do" => TokenKind::KwDo,
+        "else" => TokenKind::KwElse,
+        "false" => TokenKind::KwFalse,
+        "forall" => TokenKind::KwForall,
+        "fun" => TokenKind::KwFun,
+        "if" => TokenKind::KwIf,
+        "let" => TokenKind::KwLet,
+        "match" => TokenKind::KwMatch,
+        "rec" => TokenKind::KwRec,
+        "then" => TokenKind::KwThen,
+        "true" => TokenKind::KwTrue,
+
+        "#check" => TokenKind::KwCheck,
+        "#eval" => TokenKind::KwEval,
+        "#show" => TokenKind::KwShow,
+
+        "(" => TokenKind::LParen,
+        ")" => TokenKind::RParen,
+        "{" => TokenKind::LCurly,
+        "}" => TokenKind::RCurly,
+        "[" => TokenKind::LSquare,
+        "]" => TokenKind::RSquare,
+
+        "_" => TokenKind::Underscore,
+        "," => TokenKind::Comma,
+        ";" => TokenKind::Semicolon,
+        ":" => TokenKind::Colon,
+        "." => TokenKind::Dot,
+        "@" => TokenKind::At,
+        "=" => TokenKind::Eq,
+        "|" => TokenKind::Pipe,
+        "=>" => TokenKind::DoubleArrow,
+        "->" => TokenKind::SingleArrow,
+
+        "Ident" => TokenKind::Ident,
+        "DecInt" => TokenKind::DecInt,
+        "BinInt" => TokenKind::BinInt,
+        "HexInt" => TokenKind::HexInt,
+    }
+}
+
+pub File: File<'surface> = {
+    <contents: Block> => File { contents }
+};
+
+pub Expr: Located<Expr<'surface>> = {
+    <start: @L> "do" "{" <block: Block> "}" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Expr::Do(block))
+    },
+    <start: @L> "if" <cond: AppExpr> "then" <then: Expr> "else" <r#else: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (cond, then, r#else) = bump.alloc((cond, then, r#else));
+        Located::new(range, Expr::If(cond, then, r#else))
+    },
+    <start: @L> <expr: AtomExpr> ":" <r#type: FunExpr> <end:@R> => {
+        let range = TextRange::new(start, end);
+        let (expr, r#type) = bump.alloc((expr, r#type));
+        Located::new(range, Expr::Ann(expr, r#type))
+    },
+    FunExpr => <>,
+}
+
+Block: Block<'surface> = {
+    <stmts: Stmt*> <expr: Expr?> => Block { stmts: bump.alloc_slice_copy(&stmts), result_expr: expr.map(|expr| &*bump.alloc(expr)) },
+}
+
+Stmt: Located<Stmt<'surface>> = {
+    <start: @L> "let" <rec: Rec>  <binding: LetBinding> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Stmt::Let(rec, binding))
+    },
+    <start: @L> <cmd: Command> <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Stmt::Command(cmd))
+    },
+};
+
+Command: Located<Command<'surface>> = {
+    <start: @L> "#check" <expr: Expr> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Command::Check(expr))
+    },
+    <start: @L> "#eval" <expr: Expr> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Command::Eval(expr))
+    },
+    <start: @L> "#show" <name: Ident> ";" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, Command::Show(name))
+    },
+};
+
+Rec: Rec = {
+    () => Rec::Nonrec,
+    "rec" => Rec::Rec,
+}
+
+LetBinding: LetBinding<'surface> = {
+    <pat: Pat> <r#type: (":" <Expr>)?> "=" <rhs: Expr> => {
+        let r#type = r#type.map(|r#type| &*bump.alloc(r#type));
+        let (pat, rhs) = bump.alloc((pat, rhs));
+        LetBinding { pat, r#type, rhs }
+    },
+}
+
+FunExpr: Located<Expr<'surface>> = {
+    <start: @L> "fun" <params: FunParam+> "=>" <body: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let params = bump.alloc_slice_copy(&params);
+        let body = bump.alloc(body);
+        Located::new(range, Expr::FunLit(params, body))
+    },
+    <start: @L> "forall" <params: FunParam+> "->" <body: Expr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let params = bump.alloc_slice_copy(&params);
+        let body = bump.alloc(body);
+        Located::new(range, Expr::FunType(params, body))
+    },
+    <start: @L> <plicity: Plicity> <lhs: AppExpr> "->" <rhs: FunExpr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let (lhs, rhs) = bump.alloc((lhs, rhs));
+        Located::new(range, Expr::FunArrow(plicity, lhs, rhs))
+    },
+    AppExpr => <>,
+}
+
+FunParam: Located<FunParam<'surface>> = {
+    <start: @L> "(" <plicity: Plicity> <pat: Pat> ":" <r#type: Expr> ")" <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { plicity, pat, r#type: Some(r#type) })
+    },
+    <start: @L> <plicity: Plicity> <pat: Pat> <end: @R> => {
+        let range = TextRange::new(start, end);
+        Located::new(range, FunParam { plicity, pat, r#type: None })
+    }
+}
+
+AppExpr: Located<Expr<'surface>> = {
+    <start: @L> <fun: ProjExpr> <args: FunArg+> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let fun = bump.alloc(fun);
+        let args = bump.alloc_slice_copy(&args);
+        Located::new(range, Expr::FunApp(fun, args))
+    },
+    ProjExpr => <>,
+}
+
+ProjExpr: Located<Expr<'surface>> = {
+    <start: @L> <scrut: ProjExpr> "." <name: Ident> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let scrut = bump.alloc(scrut);
+        Located::new(range, Expr::RecordProj(scrut, name))
+    },
+    AtomExpr => <>,
+}
+
+FunArg: Located<FunArg<'surface>> = {
+    <start: @L> <plicity: Plicity> <expr: AtomExpr> <end: @R> => {
+        let range = TextRange::new(start, end);
+        let expr = bump.alloc(expr);
+        Located::new(range, FunArg { plicity, expr })
+    }
+}
+
+#[inline]
+Plicity: Plicity = {
+    "@" => Plicity::Implicit,
+    ()  => Plicity::Explicit,
+}
+
+AtomExpr: Located<Expr<'surface>> = {
+    <start: @L> <recovery: !> <end: @R> => {
+        let range = TextRange::new(start, end);
+        diagnostics.push(error_to_diagnostic(file_id, range, recovery.error));
+        Located::new(range, Expr::Error)
+    },
+    <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Expr::Lit(lit)),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Expr::VarRef(ident)),
+    <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Expr::Hole),
+    <start: @L> "(" <expr: Expr> ")" <end: @R> => Located::new(TextRange::new(start, end), Expr::Paren(bump.alloc(expr))),
+    <start: @L> <exprs: Tuple<Expr>> <end: @R> => Located::new(TextRange::new(start, end), Expr::TupleLit(exprs)),
+    <start: @L> "{" "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::TupleLit(&[])),
+    <start: @L> "{" <fields: Sep1<TypeField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordType(fields)),
+    <start: @L> "{" <fields: Sep1<ExprField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::RecordLit(fields)),
+    <start: @L> "[" <exprs: Sep0<Expr, ",">> "]" <end: @R> => Located::new(TextRange::new(start, end), Expr::ListLit(exprs)),
+    <start: @L> "match" <scrut: ProjExpr> "{" <cases: Sep0<MatchCase, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Expr::Match(bump.alloc(scrut), cases)),
+}
+
+MatchCase: MatchCase<'surface> = {
+    <pat: Pat> <guard: MatchGuard?> "=>" <expr: Expr> => MatchCase { pat, guard, expr },
+}
+
+MatchGuard: MatchGuard<'surface> = {
+    "if" <cond: Expr> => MatchGuard::If(cond),
+}
+
+Tuple<Elem>: &'surface [Elem] = {
+    "(" ")" => &[],
+    "(" <elem: Elem> "," ")" => bump.alloc_slice_copy(&[elem]),
+    "(" <elems: Sep2<Elem, ",">> ")" => elems,
+}
+
+TypeField: Located<TypeField<'surface>> = {
+    <start: @L> <name: Ident> ":" <r#type: Expr> <end: @R> => Located::new(TextRange::new(start, end), TypeField { name, r#type }),
+}
+
+ExprField: Located<ExprField<'surface>> = {
+    <start: @L> <name: Ident> "=" <expr: Expr> <end: @R> => Located::new(TextRange::new(start, end), ExprField { name, expr }),
+}
+
+
+Pat: Located<Pat<'surface>> = {
+    <start: @L> <mut pats: (<AtomPat> "|")+> <last: AtomPat> <end: @R> => {
+        pats.push(last);
+        let pats = bump.alloc_slice_copy(&pats);
+        Located::new(TextRange::new(start, end), Pat::Or(pats))
+    },
+    AtomPat => <>,
+}
+
+AtomPat: Located<Pat<'surface>> = {
+    <start: @L> <recovery: !> <end: @R> => {
+        let range = TextRange::new(start, end);
+        diagnostics.push(error_to_diagnostic(file_id, range, recovery.error));
+        Located::new(range, Pat::Error)
+    },
+    <start: @L> "_" <end: @R> => Located::new(TextRange::new(start, end), Pat::Underscore),
+    <start: @L> <ident: Ident> <end: @R> => Located::new(TextRange::new(start, end), Pat::Var(ident)),
+    <start: @L> <lit: Lit> <end: @R> => Located::new(TextRange::new(start, end), Pat::Lit(lit)),
+    <start: @L> "(" <pat: Pat> ")" <end: @R> => Located::new(TextRange::new(start, end), Pat::Paren(bump.alloc(pat))),
+    <start: @L> <pats: Tuple<Pat>> <end: @R> => Located::new(TextRange::new(start, end), Pat::TupleLit(pats)),
+    <start: @L> "{" <fields: Sep0<PatField, ",">> "}" <end: @R> => Located::new(TextRange::new(start, end), Pat::RecordLit(fields)),
+}
+
+PatField: Located<PatField<'surface>> = {
+    <start: @L> <name: Ident> "=" <pat: Pat> <end: @R> => Located::new(TextRange::new(start, end), PatField { name, pat }),
+}
+
+Lit: Located<Lit> = {
+    <start: @L> "true" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(true)),
+    <start: @L> "false" <end: @R> => Located::new(TextRange::new(start, end), Lit::Bool(false)),
+    <start: @L> "DecInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Dec)),
+    <start: @L> "BinInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Bin)),
+    <start: @L> "HexInt" <end: @R> => Located::new(TextRange::new(start, end), Lit::Int(IntLit::Hex)),
+}
+
+Ident: Located<Symbol> = {
+    <start: @L> "Ident" <end: @R> => {
+        let range = TextRange::new(start, end);
+        let text = &text[range];
+        Located::new(range, Symbol::intern(text))
+    }
+}
+
+Sep0<Elem, Sep>: &'surface [Elem] = {
+    <mut elems: (<Elem> Sep)*> <last: Elem?> => {
+        elems.extend(last);
+        bump.alloc_slice_copy(&elems)
+    }
+};
+
+Sep1<Elem, Sep>: &'surface [Elem] = {
+    <mut elems: (<Elem> Sep)*> <last: Elem> Sep? => {
+        elems.push(last);
+        bump.alloc_slice_copy(&elems)
+    }
+};
+
+Sep2<Elem, Sep>: &'surface [Elem] = {
+    <mut elems: (<Elem> Sep)+> <last: Elem> Sep? => {
+        elems.push(last);
+        bump.alloc_slice_copy(&elems)
+    }
+};

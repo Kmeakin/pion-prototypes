@@ -1,0 +1,22 @@
+let and3 = fun x y => match (x, y) {
+    (true, true) => true,
+    (false, true)
+    | (true, false)
+    | (false, false) => false,
+};
+
+let or3 = fun x y => match (x, y) {
+    (false, false) => false,
+    (true, true)
+    | (false, true)
+    | (true, false) => true,
+};
+
+let or4 = fun x y => match (x, y) {
+    (true, _) | (_, true) => true,
+    _ => false,
+};
+
+#show and3;
+#show or3;
+#show or4;

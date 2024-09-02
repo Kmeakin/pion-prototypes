@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+let foo : Bool -> Int
+    = fun (x : Bool) =>
+        match x {
+            true => 1,
+            false => 2,
+        };
+"""
+
+stderr = """
+warning: Unreachable match case
+  ┌─ test-data/elab/match/unreachable-pat.pion:4:13
+  │
+4 │     true => 3,
+  │             ^
+"""

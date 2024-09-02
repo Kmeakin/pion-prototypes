@@ -1,0 +1,3 @@
+#check Eq;
+#check refl;
+#check subst;

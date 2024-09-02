@@ -1,0 +1,20 @@
+exit status: 0
+
+stdout = """
+(fun (r : ()) => ()) : () -> ()
+(fun (r : (Int,)) =>
+    do {
+        let x : Int = r._0;
+        ()
+    }) : (Int,) -> ()
+(fun (r : (Int, Bool)) =>
+    do {
+        let x : Int = r._0;
+        let y : Bool = r._1;
+        ()
+    }) : (Int, Bool) -> ()
+"""
+
+stderr = """
+
+"""

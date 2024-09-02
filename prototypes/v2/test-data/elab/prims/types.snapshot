@@ -1,0 +1,12 @@
+exit status: 0
+
+stdout = """
+Type : Type
+Bool : Type
+Int : Type
+List : Type -> Type
+"""
+
+stderr = """
+
+"""

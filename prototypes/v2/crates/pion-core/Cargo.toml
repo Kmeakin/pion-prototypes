@@ -1,0 +1,20 @@
+[package]
+name = "pion-core"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-printer = { path = "../pion-printer" }
+pion-surface = { path = "../pion-surface" }
+pion-symbol  = { path = "../pion-symbol" }
+pion-util    = { path = "../pion-util" }
+
+bumpalo = { workspace = true }
+ecow    = { workspace = true }
+
+either = { version = "1.10.0" }
+pretty = { version = "0.12.3" }

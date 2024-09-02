@@ -1,0 +1,19 @@
+#check add;
+#check sub;
+#check mul;
+#check eq;
+#check ne;
+#check lt;
+#check gt;
+#check lte;
+#check gte;
+
+#eval add 1 2;
+#eval sub 2 1;
+#eval mul 3 4;
+#eval eq 1 2;
+#eval ne 1 2;
+#eval lt 1 2;
+#eval gt 1 2;
+#eval lte 1 2;
+#eval gte 1 2;

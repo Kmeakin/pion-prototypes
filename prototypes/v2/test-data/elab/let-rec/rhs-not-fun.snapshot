@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+
+"""
+
+stderr = """
+error: recursive bindings must be function literals
+  ┌─ test-data/elab/let-rec/rhs-not-fun.pion:1:9
+  │
+1 │ let rec x = 5;
+  │         ^
+"""

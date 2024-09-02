@@ -1,0 +1,23 @@
+[package]
+name = "pion-parser"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-lexer   = { path = "../pion-lexer" }
+pion-surface = { path = "../pion-surface" }
+pion-symbol  = { path = "../pion-symbol" }
+
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+text-size          = { workspace = true }
+
+lalrpop-util = { version = "0.20.2", default-features = false }
+
+
+[build-dependencies]
+lalrpop = { version = "0.20.2", default-features = false }

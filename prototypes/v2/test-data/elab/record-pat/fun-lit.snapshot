@@ -1,0 +1,28 @@
+exit status: 0
+
+stdout = """
+(fun (_ : ()) => ()) : () -> ()
+(fun ({  } : ()) => ()) () ⇝ ()
+(fun (_ : { x : Int }) =>
+    do {
+        let a : Int = _#0.x;
+        { y = a }
+    }) : { x : Int } -> { y : Int }
+(fun ({ x = a } : { x : Int }) => { y = a }) { x = 1 } ⇝ { y = 1 }
+(fun (_ : { x : Int, y : Bool }) =>
+    do {
+        let a : Int = _#0.x;
+        let b : Bool = _#1.y;
+        { x = b, y = a }
+    }) : { x : Int, y : Bool } -> { x : Bool, y : Int }
+(fun ({ x = a, y = b } : { x : Int, y : Bool }) => { x = b, y = a }) {
+    x = 1,
+    y = false,
+}
+⇝
+{ x = false, y = 1 }
+"""
+
+stderr = """
+
+"""

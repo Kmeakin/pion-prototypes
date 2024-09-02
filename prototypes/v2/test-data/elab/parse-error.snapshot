@@ -1,0 +1,13 @@
+exit status: 0
+
+stdout = """
+#error : #error
+"""
+
+stderr = """
+error: expected one of "(", "@", "BinInt", "DecInt", "HexInt", "Ident", "_", "false", "true" or "{"
+  ┌─ test-data/elab/parse-error.pion:1:8
+  │
+1 │ #check fun;
+  │        ^^^
+"""

@@ -1,0 +1,10 @@
+exit status: 0
+
+stdout = """
+((fun (x : Int) => x) 1) : Int
+(fun x => x) 1 ⇝ 1
+"""
+
+stderr = """
+
+"""

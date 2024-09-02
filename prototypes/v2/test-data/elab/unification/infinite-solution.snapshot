@@ -1,0 +1,22 @@
+exit status: 0
+
+stdout = """
+let error : forall (Wrap : Type -> Type) ->
+    (forall (A : Type) -> (A -> Wrap A) -> Type) -> Type
+    = fun (Wrap : Type -> Type) (f : forall (A : Type) ->
+        (A -> Wrap A) -> Type) => f (?1 Wrap f) (fun (a : ?1 Wrap f) => #error);
+"""
+
+stderr = """
+error: application in problem spine was not a local variable
+  ┌─ test-data/elab/unification/infinite-solution.pion:3:40
+  │
+3 │   = fun Wrap => fun f => f _ (fun a => a);
+  │                                        ^
+
+error: Unsolved metavariable: ?1
+  ┌─ test-data/elab/unification/infinite-solution.pion:3:28
+  │
+3 │   = fun Wrap => fun f => f _ (fun a => a);
+  │                            ^ could not infer expression to solve hole
+"""

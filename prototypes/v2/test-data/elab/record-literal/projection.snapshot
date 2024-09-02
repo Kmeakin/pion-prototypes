@@ -1,0 +1,14 @@
+exit status: 0
+
+stdout = """
+{ x = 1, y = false }.x : Int
+{ x = 1, y = false }.y : Bool
+{ A = Int, a = 5 }.a : Int
+{ x = 1, y = false }.x ⇝ 1
+{ x = 1, y = false }.y ⇝ false
+({ A = Int, a = 5 } : { A : Type, a : A }).a ⇝ 5
+"""
+
+stderr = """
+
+"""

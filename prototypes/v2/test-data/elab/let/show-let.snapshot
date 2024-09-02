@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+let f : Int -> Int -> Int = fun (x : Int) (y : Int) => add x y;
+let g : Int -> Int -> Int -> Int
+    = fun (a : Int) (b : Int) (c : Int) => mul a (f b c);
+"""
+
+stderr = """
+
+"""

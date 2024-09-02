@@ -1,0 +1,2 @@
+#check forall (A : Type) -> A -> A;
+#check forall (A : Type) (_ : A) -> A;

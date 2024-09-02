@@ -1,0 +1,14 @@
+[package]
+name = "pion-surface"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-printer = { path = "../pion-printer" }
+pion-symbol  = { path = "../pion-symbol" }
+
+text-size = { workspace = true }

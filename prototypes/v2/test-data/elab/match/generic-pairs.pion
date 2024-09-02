@@ -1,0 +1,25 @@
+let fst1 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => x,
+};
+
+let fst2 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, _) => x,
+};
+
+let snd1 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => y,
+};
+
+let snd2 = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (_, y) => y,
+};
+
+let swap = fun (A: Type) (B: Type) (p: (A, B)) => match p {
+    (x, y) => (y, x),
+};
+
+#show fst1;
+#show fst2;
+#show snd1;
+#show snd2;
+#show swap;

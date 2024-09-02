@@ -1,0 +1,5 @@
+let f = fun (x : Int) (y : Int) => add x y;
+let g = fun (a : Int) (b : Int) (c : Int) => mul a (f b c);
+
+#show f;
+#show g;

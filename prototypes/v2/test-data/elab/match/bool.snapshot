@@ -1,0 +1,29 @@
+exit status: 0
+
+stdout = """
+let not : Bool -> Bool
+    = fun (x : Bool) =>
+        match x {
+            true => false,
+            false => true,
+        };
+let bool-to-int : Bool -> Int
+    = fun (x : Bool) =>
+        match x {
+            true => 1,
+            false => 0,
+        };
+let apply : Bool -> (Bool -> Int) -> Int
+    = fun (x : Bool) (f : Bool -> Int) =>
+        match x {
+            true => 1,
+            false => do {
+                let z : Bool = x;
+                f z
+            },
+        };
+"""
+
+stderr = """
+
+"""

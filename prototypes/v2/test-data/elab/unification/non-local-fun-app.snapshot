@@ -1,0 +1,26 @@
+exit status: 0
+
+stdout = """
+let error : forall (A : Type) -> (forall (_ : A) -> ?0 A _#0) -> A
+    = fun (A : Type) (a : forall (_ : A) -> ?0 A _#0) => #error;
+"""
+
+stderr = """
+error: variable appeared more than once in problem spine
+  ┌─ test-data/elab/unification/non-local-fun-app.pion:2:25
+  │
+2 │     = fun A => fun a => a _;
+  │                         ^^^
+
+error: Unsolved metavariable: ?0
+  ┌─ test-data/elab/unification/non-local-fun-app.pion:1:40
+  │
+1 │ let error : forall (A : Type) -> (A -> _) -> A
+  │                                        ^ could not infer expression to solve hole
+
+error: Unsolved metavariable: ?1
+  ┌─ test-data/elab/unification/non-local-fun-app.pion:2:27
+  │
+2 │     = fun A => fun a => a _;
+  │                           ^ could not infer expression to solve hole
+"""

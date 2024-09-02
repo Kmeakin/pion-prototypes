@@ -1,0 +1,30 @@
+exit status: 0
+
+stdout = """
+let bar : forall (x : ?1) -> ?2 x
+    = fun (x : ?1) =>
+        do {
+            let a : ?2 x = #error;
+            a
+        };
+"""
+
+stderr = """
+error: application in problem spine was not a local variable
+  ┌─ test-data/elab/unification/escaping-local.pion:6:13
+  │
+6 │     let a = x;
+  │             ^
+
+error: Unsolved metavariable: ?1
+  ┌─ test-data/elab/unification/escaping-local.pion:5:15
+  │
+5 │ let bar = fun x => do {
+  │               ^ could not infer type of variable `x`
+
+error: Unsolved metavariable: ?2
+  ┌─ test-data/elab/unification/escaping-local.pion:6:9
+  │
+6 │     let a = x;
+  │         ^ could not infer type of variable `a`
+"""

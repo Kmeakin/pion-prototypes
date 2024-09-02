@@ -1,0 +1,11 @@
+#check fun (r : {}) => do {
+    let {} = r;
+};
+
+#check fun (r : {x : Int }) => do {
+    let {x = a} = r;
+};
+
+#check fun (r : {x : Int,y : Bool }) => do {
+    let {x = a, y = b } = r;
+};

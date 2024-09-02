@@ -1,0 +1,45 @@
+let sym: forall (@A: Type) (@a: A) (@b: A) -> Eq a b -> Eq b a
+    = fun a_eq_b => do {
+        let p = fun x => Eq @A x a;
+        let p_a  : p a = refl a;
+        let goal : p b = subst @A @p a b a_eq_b p_a;
+        goal
+    };
+
+let trans: forall (@A: Type) (@a: A) (@b: A) (@c: A) -> Eq a b -> Eq b c -> Eq a c
+    = fun a_eq_b b_eq_c => do {
+        let p = fun x => Eq @A a x;
+        let p_b  : p b = a_eq_b;
+        let goal : p c = subst @A @p b c b_eq_c p_b;
+        goal
+    };
+
+let cong: forall (@A: Type) (@B: Type) (@a: A) (@b: A) (f: A -> B) -> Eq a b -> Eq (f a) (f b)
+    = fun f a_eq_b => do {
+        let p = fun x => Eq @B (f a) (f x);
+        let p_a:  p a = refl (f a);
+        let goal: p b = subst @A @p a b a_eq_b p_a;
+        goal
+    };
+
+let cong-app: forall (@A: Type) (@B: Type) (@a: A) (f: A -> B) (g: A -> B) -> Eq f g -> Eq (f a) (g a)
+    = fun f g f-eq-g => do {
+        let p = fun (x : A -> B) => Eq @B (f a) (x a);
+        let p_f:  p f = refl (f a);
+        let goal: p g = subst @_ @p f g f-eq-g p_f;
+        goal
+    };
+
+let cast : forall (@T: Type) (@V: Type) -> Eq T V -> T -> V
+    = fun @T @V t-eq-v t => do {
+        let p = fun x => x;
+        let p-t: p T = t;
+        let goal: V = subst @Type @p T V t-eq-v p-t;
+        goal
+    };
+
+#show sym;
+#show trans;
+#show cong;
+#show cong-app;
+#show cast;

@@ -1,0 +1,26 @@
+exit status: 0
+
+stdout = """
+let evenodd : (Int -> Bool, Int -> Bool)
+    = fix2 @Int @Bool @Int @Bool (fun (evenodd : (Int -> Bool, Int -> Bool)) =>
+        (
+            fun (n : Int) =>
+                match (eq n 0) {
+                    true => true,
+                    false => evenodd._1 (sub n 1),
+                },
+            fun (n : Int) =>
+                match (eq n 0) {
+                    true => false,
+                    false => evenodd._0 (sub n 1),
+                },
+        ));
+let even : Int -> Bool = evenodd._0;
+let odd : Int -> Bool = evenodd._1;
+even 1 ⇝ false
+odd 1 ⇝ true
+"""
+
+stderr = """
+
+"""

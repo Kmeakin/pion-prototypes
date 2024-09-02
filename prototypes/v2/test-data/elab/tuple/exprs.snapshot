@@ -1,0 +1,11 @@
+exit status: 0
+
+stdout = """
+() : ()
+(1,) : (Int,)
+(1, true) : (Int, Bool)
+"""
+
+stderr = """
+
+"""

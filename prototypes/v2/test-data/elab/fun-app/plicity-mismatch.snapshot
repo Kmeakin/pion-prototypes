@@ -1,0 +1,24 @@
+exit status: 0
+
+stdout = """
+#error : #error
+#error : #error
+"""
+
+stderr = """
+error: Applied implicit argument when explicit argument was expected
+  ┌─ test-data/elab/fun-app/plicity-mismatch.pion:1:29
+  │
+1 │ #check (fun (x : Int) => x) @5;
+  │        -------------------- ^^ implicit argument
+  │        │                     
+  │        function has type Int -> Int
+
+error: Applied implicit argument when explicit argument was expected
+  ┌─ test-data/elab/fun-app/plicity-mismatch.pion:2:41
+  │
+2 │ #check (fun (x : Int) (y : Int) => x) 5 @6;
+  │        ------------------------------   ^^ implicit argument
+  │        │                                 
+  │        function has type Int -> Int -> Int
+"""
