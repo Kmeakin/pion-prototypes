@@ -1,0 +1,55 @@
+exit status: 0
+
+stdout = """
+def r#def: Int = 1;
+
+def r#else: Int = 2;
+
+def r#false: Int = 3;
+
+def r#fun: Int = 4;
+
+def r#if: Int = 5;
+
+def r#let: Int = 6;
+
+def r#match: Int = 7;
+
+def r#then: Int = 8;
+
+def r#true: Int = 9;
+
+def foo: Int = true;
+
+def bar: Int = foo;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..13 | 1                                        | Int
+28..29 | 2                                        | Int
+45..46 | 3                                        | Int
+60..61 | 4                                        | Int
+74..75 | 5                                        | Int
+89..90 | 6                                        | Int
+106..107 | 7                                        | Int
+122..123 | 8                                        | Int
+138..139 | 9                                        | Int
+152..158 | r#true                                   | Int
+170..175 | r#foo                                    | Int
+metavars:
+?0 = Int
+?1 = Int
+?2 = Int
+?3 = Int
+?4 = Int
+?5 = Int
+?6 = Int
+?7 = Int
+?8 = Int
+?9 = Int
+?10 = Int
+"""
+
+stderr = """
+
+"""

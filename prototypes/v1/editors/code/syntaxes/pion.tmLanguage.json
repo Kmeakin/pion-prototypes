@@ -1,0 +1,167 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Pion",
+	"scopeName": "source.pion",
+	"patterns": [
+		{ "include": "#line-comments" },
+		{ "include": "#block-comments" },
+		{ "include": "#keywords" },
+		{ "include": "#punctuation" },
+		{ "include": "#literals" },
+		{ "include": "#variables" }
+	],
+	"repository": {
+		"line-comments": {
+			"patterns": [
+				{
+					"comment": "line comments",
+					"name": "comment.line.double-slash.pion",
+					"match": "\\s*//.*"
+				}
+			]
+		},
+		"block-comments": {
+			"patterns": [
+				{
+					"comment": "empty block comments",
+					"name": "comment.block.pion",
+					"match": "/\\*\\*/"
+				},
+				{
+					"comment": "block comments",
+					"name": "comment.block.pion",
+					"begin": "/\\*(?!\\*)",
+					"end": "\\*/",
+					"patterns": [{ "include": "#block-comments" }]
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [
+				{
+					"comment": "control flow",
+					"name": "keyword.control.pion",
+					"match": "\\b(else|if|match|then)\\b"
+				},
+				{
+					"comment": "`def`",
+					"name": "keyword.other.def.pion",
+					"match": "\\b(def)\\b"
+				},
+				{
+					"comment": "`fun`",
+					"name": "keyword.other.fun.pion",
+					"match": "\\b(fun)\\b"
+				},
+				{
+					"comment": "`let`",
+					"name": "keyword.other.let.pion",
+					"match": "\\b(let)\\b"
+				},
+				{
+					"comment": "thin arrow",
+					"name": "keyword.operator.arrow.skinny.pion",
+					"match": "->"
+				},
+				{
+					"comment": "fat arrow",
+					"name": "keyword.operator.arrow.fat.pion",
+					"match": "=>"
+				},
+				{
+					"comment": "assignment",
+					"name": "keyword.operator.assignment.pion",
+					"match": "="
+				},
+				{
+					"comment": "field projection",
+					"name": "keyword.operator.access.dot.pion",
+					"match": "\\.(?!\\.)"
+				},
+				{
+					"comment": "colon",
+					"name": "keyword.operator.key-value.pion",
+					"match": ":(?!:)"
+				},
+				{
+					"comment": "at",
+					"name": "keyword.operator.at.pion",
+					"match": "@"
+				}
+			]
+		},
+		"punctuation": {
+			"patterns": [
+				{
+					"comment": "comma",
+					"name": "punctuation.comma.pion",
+					"match": ","
+				},
+				{
+					"comment": "semicolon",
+					"name": "punctuation.semi.pion",
+					"match": ";"
+				},
+				{
+					"comment": "curly brackets",
+					"name": "punctuation.brackets.curly.pion",
+					"match": "[{}]"
+				},
+				{
+					"comment": "round brackets",
+					"name": "punctuation.brackets.round.pion",
+					"match": "[()]"
+				},
+				{
+					"comment": "square brackets",
+					"name": "punctuation.brackets.square.pion",
+					"match": "[\\[\\]]"
+				}
+			]
+		},
+		"literals": {
+			"patterns": [
+				{
+					"comment": "decimal integers",
+					"name": "constant.numeric.decimal.pion",
+					"match": "\\b([0-9][0-9_]*)\\b"
+				},
+				{
+					"comment": "binary integers",
+					"name": "constant.numeric.binary.pion",
+					"match": "\\b(0(b|B)[0-1][0-1_]*)\\b"
+				},
+				{
+					"comment": "hexadecimal integers",
+					"name": "constant.numeric.hexadecimal.pion",
+					"match": "\\b(0(x|X)[0-9a-fA-F][0-9a-f-A_F_]*)\\b"
+				},
+				{
+					"comment": "booleans",
+					"name": "constant.language.bool.pion",
+					"match": "\\b(true|false)\\b"
+				},
+				{
+					"name": "string.quoted.double.pion",
+					"begin": "\"",
+					"end": "\"",
+					"patterns": [
+						{
+							"name": "constant.character.escape.pion",
+							"match": "\\\\."
+						}
+					]
+				}
+			]
+		},
+		"variables": {
+			"patterns": [
+				{
+					"comment": "variables",
+					"name": "variable.other.pion",
+					"match": "\\b((r#)?[a-zA-Z_][a-zA-Z0-9_\\-]*)\\b"
+				}
+			]
+		}
+	}
+}

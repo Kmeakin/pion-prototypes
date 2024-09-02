@@ -1,0 +1,29 @@
+exit status: 0
+
+stdout = """
+def Unit: Type = ();
+
+def Tuple1: Type = (Int,);
+
+def Tuple2: Type = (Int, Bool);
+
+def unit: () = ();
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..14 | Type                                     | Type
+17..19 | ()                                       | Type
+33..37 | Type                                     | Type
+40..46 | (Int,)                                   | Type
+41..44 | Int                                      | Type
+60..64 | Type                                     | Type
+67..77 | (Int,Bool)                               | Type
+68..71 | Int                                      | Type
+72..76 | Bool                                     | Type
+89..91 | ()                                       | Type
+94..96 | ()                                       | ()
+"""
+
+stderr = """
+
+"""

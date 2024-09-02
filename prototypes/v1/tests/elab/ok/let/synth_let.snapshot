@@ -1,0 +1,24 @@
+exit status: 0
+
+stdout = """
+def a: Int =
+    let x: Int = 5;
+    x;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..28 | let x = 5;\n    x                        | Int
+20..21 | 5                                        | Int
+27..28 | x                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+16..17 | x                                        | ?1
+metavars:
+?0 = Int
+?1 = Int
+"""
+
+stderr = """
+
+"""

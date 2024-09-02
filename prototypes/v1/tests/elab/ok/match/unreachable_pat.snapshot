@@ -1,0 +1,37 @@
+exit status: 0
+
+stdout = """
+def foo: Bool -> Int =
+    fun(x: Bool) => match x {
+        true => 1,
+        false => 2,
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..83 | fun(x: Bool) => ma...\n    true => 3,\n} | Bool -> Int
+17..21 | Bool                                     | Type
+26..83 | match x {\n    tru...\n    true => 3,\n} | Int
+32..33 | x                                        | Bool
+48..49 | 1                                        | Int
+64..65 | 2                                        | Int
+79..80 | 3                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..15 | x                                        | Bool
+40..44 | true                                     | Bool
+55..60 | false                                    | Bool
+71..75 | true                                     | Bool
+metavars:
+?0 = Bool -> Int
+?1 = fun(_: #error) => Int
+"""
+
+stderr = """
+warning: unreachable pattern
+  ┌─ tests/elab/ok/match/unreachable_pat.pion:4:5
+  │
+4 │     true => 3,
+  │     ^^^^
+"""

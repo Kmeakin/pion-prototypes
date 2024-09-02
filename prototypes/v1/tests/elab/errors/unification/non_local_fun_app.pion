@@ -1,0 +1,2 @@
+def error: fun(A : _) -> (A -> _) -> A
+  = fun(A) => fun(a) => a(_);

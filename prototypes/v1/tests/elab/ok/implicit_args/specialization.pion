@@ -1,0 +1,11 @@
+def a =
+    let id = fun(@A: Type, a: A) => a;
+    (id : Bool -> Bool);
+
+def b =
+    let always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
+    (always : Bool -> Int -> Bool);
+
+def c =
+    let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+    (apply : ((Bool -> Int) -> Bool -> Int));

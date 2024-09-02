@@ -1,0 +1,3 @@
+def error =
+    let f = fun(x: Int) => x;
+    f();

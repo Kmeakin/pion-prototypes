@@ -1,0 +1,2 @@
+def FstType = fun((A, B): (Type, Type), (a, b): (A, B)) -> A;
+def SndType = fun((A, B): (Type, Type), (a, b): (A, B)) -> B;

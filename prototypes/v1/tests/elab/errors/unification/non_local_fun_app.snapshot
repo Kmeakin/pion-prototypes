@@ -1,0 +1,55 @@
+exit status: 1
+
+stdout = """
+def error: fun(A: Type) -> (fun(_: A) -> ?1(A, _#0)) -> A =
+    fun(A: Type, a: fun(_: A) -> ?1(A, _#0)) => #error;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..38 | fun(A : _) -> (A -> _) -> A              | Type
+19..20 | _                                        | Type
+25..38 | (A -> _) -> A                            | Type
+26..27 | A                                        | Type
+26..32 | A -> _                                   | Type
+31..32 | _                                        | Type
+37..38 | A                                        | Type
+43..67 | fun(A) => fun(a) => a(_)                 | fun(A: Type) -> (fun(_: A) -> ?3(A, _#0)) -> A
+53..67 | fun(a) => a(_)                           | (fun(_: A) -> ?3(A, _#0)) -> A
+63..64 | a                                        | fun(_: A) -> ?3(A, _#0)
+63..67 | a(_)                                     | A
+65..66 | _                                        | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..16 | A                                        | ?2
+47..48 | A                                        | Type
+57..58 | a                                        | fun(_: A) -> ?3(A, _#0)
+metavars:
+?0 = Type
+?1 = <unsolved>
+?2 = Type
+?3 = fun(_: #error, _: #error) => ?1(_#1, _#0)
+?4 = <unsolved>
+"""
+
+stderr = """
+error: application in problem spine was not a local variable
+  ┌─ tests/elab/errors/unification/non_local_fun_app.pion:2:25
+  │
+2 │   = fun(A) => fun(a) => a(_);
+  │                         ^^^^
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/errors/unification/non_local_fun_app.pion:1:32
+  │
+1 │ def error: fun(A : _) -> (A -> _) -> A
+  │                                ^
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/errors/unification/non_local_fun_app.pion:2:27
+  │
+2 │   = fun(A) => fun(a) => a(_);
+  │                           ^
+
+aborting due to 3 previous errors
+"""

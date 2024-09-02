@@ -1,0 +1,18 @@
+exit status: 0
+
+stdout = """
+def a: Array(Int, 3) = [1, 2, 3];
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+8..17 | [1, 2, 3]                                | Array(Int, 3)
+9..10 | 1                                        | Int
+12..13 | 2                                        | Int
+15..16 | 3                                        | Int
+metavars:
+?0 = Array(Int, 3)
+"""
+
+stderr = """
+
+"""

@@ -1,0 +1,22 @@
+exit status: 0
+
+stdout = """
+def a: Int =
+    match true {
+        true => 1,
+        false => 0,
+    };
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+8..29 | if true then 1 else 0                    | Int
+11..15 | true                                     | Bool
+21..22 | 1                                        | Int
+28..29 | 0                                        | Int
+metavars:
+?0 = Int
+"""
+
+stderr = """
+
+"""

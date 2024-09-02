@@ -1,0 +1,12 @@
+def a =
+    let id = fun (@A: Type, a: A) => a;
+    id(false);
+
+def b =
+    let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
+    always(0, false);
+
+def c =
+    let always = fun(@A: Type, @B: Type, a: A, b: B) => a;
+    let apply = fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+    apply(always(false), 0);

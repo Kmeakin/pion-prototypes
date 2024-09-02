@@ -1,0 +1,24 @@
+[package]
+name = "pion-core"
+
+edition.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-hir     = { path = "../pion-hir" }
+pion-utils   = { path = "../pion-utils" }
+
+bumpalo            = { workspace = true }
+codespan-reporting = { workspace = true }
+ecow               = { version = "0.2.0" }
+either             = { workspace = true }
+internal-iterator  = { workspace = true }
+nohash             = { workspace = true }
+pretty             = { version = "0.12.3" }
+smallvec           = { version = "1.11.2", features = ["union"] }
+
+[dev-dependencies]
+expect-test = { version = "1.4.1" }

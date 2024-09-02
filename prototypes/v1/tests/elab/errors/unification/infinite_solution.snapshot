@@ -1,0 +1,62 @@
+exit status: 1
+
+stdout = """
+def error: fun(Wrap: Type -> Type) ->
+    (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type =
+    fun(Wrap: Type -> Type, f: fun(A: Type) -> (A -> Wrap(A)) -> Type) =>
+        f(?2(Wrap, f), fun(a: ?2(Wrap, f)) => #error);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..89 | fun(Wrap: Type -> ...)) -> Type) -> Type | Type
+21..25 | Type                                     | Type
+21..33 | Type -> Type                             | Type
+29..33 | Type                                     | Type
+38..89 | fun(f: fun(A: _) -...)) -> Type) -> Type | Type
+45..80 | fun(A: _) -> (A -> Wrap(A)) -> Type      | Type
+52..53 | _                                        | Type
+58..80 | (A -> Wrap(A)) -> Type                   | Type
+59..60 | A                                        | Type
+59..71 | A -> Wrap(A)                             | Type
+64..68 | Wrap                                     | Type -> Type
+64..71 | Wrap(A)                                  | Type
+69..70 | A                                        | Type
+76..80 | Type                                     | Type
+85..89 | Type                                     | Type
+94..134 | fun(Wrap) => fun(f) => f(_, fun(a) => a) | fun(Wrap: Type -> Type) -> (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
+107..134 | fun(f) => f(_, fun(a) => a)              | (fun(A: Type) -> (A -> Wrap(A)) -> Type) -> Type
+117..118 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
+117..134 | f(_, fun(a) => a)                        | Type
+119..120 | _                                        | Type
+122..133 | fun(a) => a                              | ?2(Wrap, f) -> Wrap(?2(Wrap, f))
+132..133 | a                                        | Wrap(?2(Wrap, f))
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+15..19 | Wrap                                     | Type -> Type
+42..43 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
+49..50 | A                                        | ?1(Wrap)
+98..102 | Wrap                                     | Type -> Type
+111..112 | f                                        | fun(A: Type) -> (A -> Wrap(A)) -> Type
+126..127 | a                                        | ?2(Wrap, f)
+metavars:
+?0 = fun(_: #error) => Type
+?1 = fun(_: #error) => Type
+?2 = <unsolved>
+"""
+
+stderr = """
+error: infinite solution
+  ┌─ tests/elab/errors/unification/infinite_solution.pion:2:43
+  │
+2 │   = fun(Wrap) => fun(f) => f(_, fun(a) => a);
+  │                                           ^
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/errors/unification/infinite_solution.pion:2:30
+  │
+2 │   = fun(Wrap) => fun(f) => f(_, fun(a) => a);
+  │                              ^
+
+aborting due to 2 previous errors
+"""

@@ -1,0 +1,7 @@
+def app1 =
+    let f = fun(x: Int) => x;
+    1.f();
+
+def app2 =
+    let id = fun(@A: Type, x: A) => x;
+    false.id();

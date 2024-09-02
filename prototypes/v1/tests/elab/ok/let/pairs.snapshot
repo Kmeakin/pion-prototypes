@@ -1,0 +1,74 @@
+exit status: 0
+
+stdout = """
+def foo: () =
+    let _: () = ();
+    let x: Bool = (false, true)._0;
+    let y: Bool = (false, true)._1;
+    let a: Bool = (false, true)._0;
+    let b: Bool = (false, true)._1;
+    let _: (Bool, Bool) = (false, true);
+    ();
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+14..201 | let () = ();\n    ... (false, true);\n{} | ()
+23..25 | ()                                       | ()
+31..201 | let _ = ();\n\n   ... (false, true);\n{} | ()
+39..41 | ()                                       | ()
+48..201 | let (x, y) = (fals... (false, true);\n{} | ()
+61..74 | (false, true)                            | (Bool, Bool)
+62..67 | false                                    | Bool
+69..73 | true                                     | Bool
+80..201 | let (a, _) = (fals... (false, true);\n{} | ()
+93..106 | (false, true)                            | (Bool, Bool)
+94..99 | false                                    | Bool
+101..105 | true                                     | Bool
+112..201 | let (_, b) = (fals... (false, true);\n{} | ()
+125..138 | (false, true)                            | (Bool, Bool)
+126..131 | false                                    | Bool
+133..137 | true                                     | Bool
+144..201 | let (_, _) = (fals... (false, true);\n{} | ()
+157..170 | (false, true)                            | (Bool, Bool)
+158..163 | false                                    | Bool
+165..169 | true                                     | Bool
+176..201 | let _ = (false, true);\n{}               | ()
+184..197 | (false, true)                            | (Bool, Bool)
+185..190 | false                                    | Bool
+192..196 | true                                     | Bool
+199..201 | {}                                       | ()
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+18..20 | ()                                       | ()
+35..36 | _                                        | ?1
+52..58 | (x, y)                                   | (?2, ?3)
+53..54 | x                                        | ?2
+56..57 | y                                        | ?3
+84..90 | (a, _)                                   | (?4, ?5)
+85..86 | a                                        | ?4
+88..89 | _                                        | ?5
+116..122 | (_, b)                                   | (?6, ?7)
+117..118 | _                                        | ?6
+120..121 | b                                        | ?7
+148..154 | (_, _)                                   | (?8, ?9)
+149..150 | _                                        | ?8
+152..153 | _                                        | ?9
+180..181 | _                                        | ?10
+metavars:
+?0 = ()
+?1 = ()
+?2 = Bool
+?3 = Bool
+?4 = Bool
+?5 = Bool
+?6 = Bool
+?7 = Bool
+?8 = Bool
+?9 = Bool
+?10 = (Bool, Bool)
+"""
+
+stderr = """
+
+"""

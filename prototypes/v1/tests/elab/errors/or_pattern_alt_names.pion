@@ -1,0 +1,14 @@
+def f0 = match 0 {
+    a | b => false,
+    _ => true,
+};
+
+def f1 = match 0 {
+    a | b | a | b => false,
+    _ => true,
+};
+
+def f2 = match 0 {
+    a | b | a | b => false,
+    _ => true,
+};

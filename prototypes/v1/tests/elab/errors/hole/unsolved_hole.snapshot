@@ -1,0 +1,28 @@
+exit status: 1
+
+stdout = """
+def error: ?0 = ?1;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..13 | _                                        | ?0
+metavars:
+?0 = <unsolved>
+?1 = <unsolved>
+"""
+
+stderr = """
+error: unable to infer type of item
+  ┌─ tests/elab/errors/hole/unsolved_hole.pion:1:5
+  │
+1 │ def error = _;
+  │     ^^^^^
+
+error: unable to infer expression to solve hole
+  ┌─ tests/elab/errors/hole/unsolved_hole.pion:1:13
+  │
+1 │ def error = _;
+  │             ^
+
+aborting due to 2 previous errors
+"""

@@ -1,0 +1,72 @@
+[workspace]
+members  = ["crates/*"]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+
+[workspace.lints.rust]
+unused_qualifications = { level = "warn", priority = 100 }
+
+[workspace.lints.rustdoc]
+all = { level = "warn", priority = 0 }
+
+[workspace.lints.clippy]
+all      = { level = "warn", priority = 0 }
+nursery  = { level = "warn", priority = 0 }
+pedantic = { level = "warn", priority = 0 }
+
+# Use methods from `pion_utils::numeric_conversion` instead
+as_conversions = { level = "deny", priority = 100 }
+
+items_after_statements  = { level = "allow", priority = 100 }
+match_bool              = { level = "allow", priority = 100 }
+missing_const_for_fn    = { level = "allow", priority = 100 }
+missing_errors_doc      = { level = "allow", priority = 100 }
+missing_panics_doc      = { level = "allow", priority = 100 }
+module_name_repetitions = { level = "allow", priority = 100 }
+must_use_candidate      = { level = "allow", priority = 100 }
+option_if_let_else      = { level = "allow", priority = 100 }
+single_match_else       = { level = "allow", priority = 100 }
+too_many_lines          = { level = "allow", priority = 100 }
+wildcard_imports        = { level = "allow", priority = 100 }
+
+[workspace.dependencies]
+anyhow             = { version = "1.0.71" }
+bumpalo            = { version = "3.13.0", features = ["allocator_api"] }
+camino             = { version = "1.1.4" }
+codespan-reporting = { version = "0.11.1" }
+either             = { version = "1.9.0" }
+fxhash             = { version = "0.2.1" }
+internal-iterator  = { version = "0.2.1" }
+lasso              = { version = "0.7.2", features = ["ahasher", "multi-threaded"] }
+nohash             = { version = "0.2.0" }
+
+[profile.dev]
+opt-level = 0
+
+debug            = 0
+debug-assertions = true
+overflow-checks  = true
+panic            = "abort"
+strip            = "debuginfo"
+
+codegen-units = 256
+incremental   = true
+
+lto = false
+
+[profile.release]
+opt-level = 3
+
+debug            = 0
+debug-assertions = false
+overflow-checks  = false
+panic            = "abort"
+strip            = "debuginfo"
+
+codegen-units = 16
+incremental   = false
+
+lto = "thin"

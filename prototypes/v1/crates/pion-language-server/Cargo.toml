@@ -1,0 +1,21 @@
+[package]
+name = "pion-language-server"
+
+edition = { workspace = true }
+version = { workspace = true }
+
+[lints]
+workspace = true
+
+[dependencies]
+pion-lexer   = { path = "../pion-lexer" }
+pion-surface = { path = "../pion-surface" }
+pion-utils   = { path = "../pion-utils" }
+
+anyhow             = { workspace = true }
+bumpalo            = { workspace = true }
+camino             = { workspace = true }
+codespan-reporting = { workspace = true }
+lsp-server         = { version = "0.7.2" }
+lsp-types          = { version = "0.94.0" }
+serde_json         = { version = "1.0.107" }

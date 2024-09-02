@@ -1,0 +1,9 @@
+def app0 =
+    let f = fun() => false;
+    f();
+
+def app1 =
+    let f = fun(x: Int) => x;
+    f(1);
+
+def curried = Array(Int);

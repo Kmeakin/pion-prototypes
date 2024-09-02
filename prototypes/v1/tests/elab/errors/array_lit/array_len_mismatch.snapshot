@@ -1,0 +1,29 @@
+exit status: 1
+
+stdout = """
+def error: Array(Int, 2) = [1];
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..16 | Array                                    | Type -> Int -> Type
+11..22 | Array(_, 2)                              | Type
+17..18 | _                                        | Type
+20..21 | 2                                        | Int
+25..28 | [1]                                      | Array(Int, 2)
+26..27 | 1                                        | Int
+metavars:
+?0 = Int
+?1 = Int
+"""
+
+stderr = """
+error: incorrect length of array literal
+  ┌─ tests/elab/errors/array_lit/array_len_mismatch.pion:1:26
+  │
+1 │ def error: Array(_, 2) = [1];
+  │                          ^^^
+  │
+  = help: the array is expected to have 2 elements, but has 1 elements
+
+aborting due to 1 previous error
+"""

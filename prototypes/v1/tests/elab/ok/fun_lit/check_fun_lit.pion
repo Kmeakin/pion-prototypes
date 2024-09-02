@@ -1,0 +1,3 @@
+def fun0: () -> Int = fun() => 0;
+
+def fun1: Int -> Bool = fun(x) => false;

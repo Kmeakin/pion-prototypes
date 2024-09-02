@@ -1,0 +1,105 @@
+exit status: 0
+
+stdout = """
+def a: Bool =
+    let id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+    id(@Bool, false);
+
+def b: Int =
+    let always: fun(@A: Type, @B: Type) -> A -> B -> A =
+        fun(@A: Type, @B: Type, a: A, b: B) => a;
+    always(@Int, @Bool, 0, false);
+
+def c: Bool =
+    let always: fun(@A: Type, @B: Type) -> A -> B -> A =
+        fun(@A: Type, @B: Type, a: A, b: B) => a;
+    let apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
+        fun(@A: Type, @B: Type, f: A -> B, a: A) => f(a);
+    apply(@Int, @Bool, always(@Bool, @Int, false), 0);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..61 | let id = fun (@A: ...> a;\n    id(false) | Bool
+21..46 | fun (@A: Type, a: A) => a                | fun(@A: Type) -> A -> A
+30..34 | Type                                     | Type
+39..40 | A                                        | Type
+45..46 | a                                        | A
+52..54 | id                                       | fun(@A: Type) -> A -> A
+52..61 | id(false)                                | Bool
+55..60 | false                                    | Bool
+76..151 | let always = fun(@...   always(0, false) | Int
+89..129 | fun(@A: Type, @B: Type, a: A, b: B) => a | fun(@A: Type, @B: Type) -> A -> B -> A
+97..101 | Type                                     | Type
+107..111 | Type                                     | Type
+116..117 | A                                        | Type
+122..123 | B                                        | Type
+128..129 | a                                        | A
+135..141 | always                                   | fun(@A: Type, @B: Type) -> A -> B -> A
+135..151 | always(0, false)                         | Int
+142..143 | 0                                        | Int
+145..150 | false                                    | Bool
+166..314 | let always = fun(@...y(always(false), 0) | Bool
+179..219 | fun(@A: Type, @B: Type, a: A, b: B) => a | fun(@A: Type, @B: Type) -> A -> B -> A
+187..191 | Type                                     | Type
+197..201 | Type                                     | Type
+206..207 | A                                        | Type
+212..213 | B                                        | Type
+218..219 | a                                        | A
+225..314 | let apply = fun(@A...y(always(false), 0) | Bool
+237..285 | fun(@A: Type, @B: ...-> B, a: A) => f(a) | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+245..249 | Type                                     | Type
+255..259 | Type                                     | Type
+264..265 | A                                        | Type
+264..270 | A -> B                                   | Type
+269..270 | B                                        | Type
+275..276 | A                                        | Type
+281..282 | f                                        | A -> B
+281..285 | f(a)                                     | B
+283..284 | a                                        | A
+291..296 | apply                                    | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+291..314 | apply(always(false), 0)                  | Bool
+297..303 | always                                   | fun(@A: Type, @B: Type) -> A -> B -> A
+297..310 | always(false)                            | ?10 -> Bool
+304..309 | false                                    | Bool
+312..313 | 0                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+16..18 | id                                       | ?1
+27..28 | A                                        | Type
+36..37 | a                                        | A
+80..86 | always                                   | ?4
+94..95 | A                                        | Type
+104..105 | B                                        | Type
+113..114 | a                                        | A
+119..120 | b                                        | B
+170..176 | always                                   | ?8
+184..185 | A                                        | Type
+194..195 | B                                        | Type
+203..204 | a                                        | A
+209..210 | b                                        | B
+229..234 | apply                                    | ?9
+242..243 | A                                        | Type
+252..253 | B                                        | Type
+261..262 | f                                        | A -> B
+272..273 | a                                        | A
+metavars:
+?0 = Bool
+?1 = fun(@A: Type) -> A -> A
+?2 = Bool
+?3 = Int
+?4 = fun(@A: Type, @B: Type) -> A -> B -> A
+?5 = Int
+?6 = Bool
+?7 = Bool
+?8 = fun(@A: Type, @B: Type) -> A -> B -> A
+?9 = fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+?10 = Int
+?11 = Bool
+?12 = Bool
+?13 = Int
+"""
+
+stderr = """
+
+"""

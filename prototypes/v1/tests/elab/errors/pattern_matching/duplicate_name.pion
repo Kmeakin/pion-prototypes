@@ -1,0 +1,3 @@
+def f = let(x, y, x) = (1, 2, 3); x;
+
+def g = fun(x: Int, y: Int, x: Int) => y;

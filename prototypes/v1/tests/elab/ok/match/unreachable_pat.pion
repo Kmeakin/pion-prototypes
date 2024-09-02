@@ -1,0 +1,5 @@
+def foo = fun(x: Bool) => match x {
+    true => 1,
+    false => 2,
+    true => 3,
+};

@@ -1,0 +1,19 @@
+def fst1 = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (x, y) => x,
+};
+
+def fst2 = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (x, _) => x,
+};
+
+def snd1 = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (x, y) => y,
+};
+
+def snd2 = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (_, y) => y,
+};
+
+def swap = fun(A: Type, B: Type, p: (A, B)) => match p {
+    (x, y) => (y, x),
+};

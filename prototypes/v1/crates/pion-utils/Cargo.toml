@@ -1,0 +1,18 @@
+[package]
+name = "pion-utils"
+
+edition = { workspace = true }
+version = { workspace = true }
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow             = { workspace = true }
+bumpalo            = { workspace = true }
+camino             = { workspace = true }
+codespan-reporting = { workspace = true }
+fxhash             = { workspace = true }
+lasso              = { workspace = true }
+nohash             = { workspace = true }
+once_cell          = { version = "1.18.0", features = ["parking_lot"] }

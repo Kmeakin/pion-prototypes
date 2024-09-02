@@ -1,0 +1,12 @@
+def r#def = 1;
+def r#else = 2;
+def r#false = 3;
+def r#fun = 4;
+def r#if = 5;
+def r#let = 6;
+def r#match = 7;
+def r#then = 8;
+def r#true = 9;
+
+def foo = r#true;
+def bar = r#foo;

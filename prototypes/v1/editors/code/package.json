@@ -1,0 +1,33 @@
+{
+  "name": "pion",
+  "displayName": "pion",
+  "description": "",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.79.0"
+  },
+	"activationEvents": ["onLanguage:pion"],
+  "keywords": ["pion"],
+  "categories": ["Programming Languages"],
+  "main": "./out/extension",
+  "contributes": {
+    "languages": [{
+        "id": "pion",
+        "aliases": ["Pion", "pion"],
+        "extensions": [".pion"],
+        "configuration": "./language-configuration.json"
+      }],
+    "grammars": [{
+        "language": "pion",
+        "scopeName": "source.pion",
+        "path": "./syntaxes/pion.tmLanguage.json"
+      }]
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "~16.11.7",
+    "@types/vscode": "~1.66.0"
+  }
+}

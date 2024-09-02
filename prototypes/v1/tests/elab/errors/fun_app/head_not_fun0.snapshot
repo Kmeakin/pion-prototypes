@@ -1,0 +1,24 @@
+exit status: 1
+
+stdout = """
+def error: #error = #error;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..15 | Int                                      | Type
+12..17 | Int()                                    | #error
+metavars:
+?0 = #error
+"""
+
+stderr = """
+error: tried to call non-function expression
+  ┌─ tests/elab/errors/fun_app/head_not_fun0.pion:1:13
+  │
+1 │ def error = Int();
+  │             ^^^^^
+  │
+  = help: the type of this expression is `Type`
+
+aborting due to 1 previous error
+"""

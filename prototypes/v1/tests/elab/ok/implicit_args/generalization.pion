@@ -1,0 +1,5 @@
+def id: fun(@A : Type) -> A -> A = fun(a) => a;
+
+def always: fun(@A : Type, @B : Type) -> A -> B -> A = fun(a, b) => a;
+
+def apply: fun(@A : Type, @B : Type) -> (A -> B) -> A -> B = fun(f, x) => f(x);

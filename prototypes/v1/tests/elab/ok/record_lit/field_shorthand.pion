@@ -1,0 +1,1 @@
+def mk_pair = fun(x: Int, y: Int) => {x, y};

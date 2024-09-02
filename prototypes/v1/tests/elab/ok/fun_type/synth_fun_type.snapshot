@@ -1,0 +1,35 @@
+exit status: 0
+
+stdout = """
+def Fun0: Type = () -> Int;
+
+def Fun1: Type = Int -> Int;
+
+def IdType: Type = fun(A: Type) -> A -> A;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+11..23 | fun() -> Int                             | Type
+20..23 | Int                                      | Type
+36..54 | fun(x: Int) -> Int                       | Type
+43..46 | Int                                      | Type
+51..54 | Int                                      | Type
+69..91 | fun(A: Type) -> A -> A                   | Type
+76..80 | Type                                     | Type
+85..86 | A                                        | Type
+85..91 | A -> A                                   | Type
+90..91 | A                                        | Type
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+40..41 | x                                        | Int
+73..74 | A                                        | Type
+metavars:
+?0 = Type
+?1 = Type
+?2 = Type
+"""
+
+stderr = """
+
+"""

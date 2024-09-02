@@ -1,0 +1,15 @@
+exit status: 0
+
+stdout = """
+def foo: Int = 0;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+10..11 | 0                                        | Int
+metavars:
+?0 = Int
+"""
+
+stderr = """
+
+"""

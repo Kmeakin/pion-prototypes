@@ -1,0 +1,339 @@
+exit status: 0
+
+stdout = """
+def fact_nr: (Int -> Int) -> Int -> Int =
+    fun(recur: Int -> Int, x: Int) => match x {
+        0 => 1,
+        _ => mul(x, recur(sub(x, 1))),
+    };
+
+def fact: Int -> Int = fix(@Int, @Int, fact_nr);
+
+def fact5is120: Eq(@Int, 120, 120) = refl(@Int, 120);
+
+def open_evenodd: (Bool -> Int -> Bool) -> Bool -> Int -> Bool =
+    fun(evenodd: Bool -> Int -> Bool, b: Bool) => match b {
+        true =>
+            fun(n: Int) => match n {
+                0 => false,
+                _ => evenodd(false, sub(n, 1)),
+            },
+        false =>
+            fun(n: Int) => match n {
+                0 => true,
+                _ => evenodd(true, sub(n, 1)),
+            },
+    };
+
+def even: Int -> Bool =
+    let open_evenodd: (Bool -> Int -> Bool) -> Bool -> Int -> Bool =
+        fun(evenodd: Bool -> Int -> Bool, b: Bool) => match b {
+            true =>
+                fun(n: Int) => match n {
+                    0 => false,
+                    _ => evenodd(false, sub(n, 1)),
+                },
+            false =>
+                fun(n: Int) => match n {
+                    0 => true,
+                    _ => evenodd(true, sub(n, 1)),
+                },
+        };
+    let evenodd: Bool -> Int -> Bool = fix(@Bool, @Int -> Bool, open_evenodd);
+    evenodd(false);
+
+def odd: Int -> Bool =
+    let open_evenodd: (Bool -> Int -> Bool) -> Bool -> Int -> Bool =
+        fun(evenodd: Bool -> Int -> Bool, b: Bool) => match b {
+            true =>
+                fun(n: Int) => match n {
+                    0 => false,
+                    _ => evenodd(false, sub(n, 1)),
+                },
+            false =>
+                fun(n: Int) => match n {
+                    0 => true,
+                    _ => evenodd(true, sub(n, 1)),
+                },
+        };
+    let evenodd: Bool -> Int -> Bool = fix(@Bool, @Int -> Bool, open_evenodd);
+    evenodd(true);
+
+def four_is_even: Eq(@Bool, true, true) = refl(@Bool, true);
+
+def five_is_odd: Eq(@Bool, true, true) = refl(@Bool, true);
+
+def four_is_not_not: Eq(@Bool, false, false) = refl(@Bool, false);
+
+def five_is_not_even: Eq(@Bool, false, false) = refl(@Bool, false);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+79..105 | (Int -> Int) -> Int -> Int               | Type
+80..83 | Int                                      | Type
+80..90 | Int -> Int                               | Type
+87..90 | Int                                      | Type
+95..98 | Int                                      | Type
+95..105 | Int -> Int                               | Type
+102..105 | Int                                      | Type
+108..183 | fun(recur, x) => m...cur(sub(x, 1))),\n} | (Int -> Int) -> Int -> Int
+125..183 | match x {\n    0 =...cur(sub(x, 1))),\n} | Int
+131..132 | x                                        | Int
+144..145 | 1                                        | Int
+156..159 | mul                                      | Int -> Int -> Int
+156..180 | mul(x, recur(sub(x, 1)))                 | Int
+160..161 | x                                        | Int
+163..168 | recur                                    | Int -> Int
+163..179 | recur(sub(x, 1))                         | Int
+169..172 | sub                                      | Int -> Int -> Int
+169..178 | sub(x, 1)                                | Int
+173..174 | x                                        | Int
+176..177 | 1                                        | Int
+197..200 | fix                                      | fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
+197..209 | fix(fact_nr)                             | Int -> Int
+201..208 | fact_nr                                  | (Int -> Int) -> Int -> Int
+228..230 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+228..250 | Eq(@Int, fact(5), 120)                   | Type
+232..235 | Int                                      | Type
+237..241 | fact                                     | Int -> Int
+237..244 | fact(5)                                  | Int
+242..243 | 5                                        | Int
+246..249 | 120                                      | Int
+253..257 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+253..260 | refl(_)                                  | Eq(@Int, 120, 120)
+258..259 | _                                        | ?3
+281..327 | (Bool -> Int -> Bo...ool -> Int -> Bool) | Type
+282..286 | Bool                                     | Type
+282..301 | Bool -> Int -> Bool                      | Type
+290..293 | Int                                      | Type
+290..301 | Int -> Bool                              | Type
+297..301 | Bool                                     | Type
+307..311 | Bool                                     | Type
+307..326 | Bool -> Int -> Bool                      | Type
+315..318 | Int                                      | Type
+315..326 | Int -> Bool                              | Type
+322..326 | Bool                                     | Type
+330..524 | fun(evenodd) => fu..., sub(n, 1)), },\n} | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+346..524 | fun(b) => match b ..., sub(n, 1)), },\n} | Bool -> Int -> Bool
+356..524 | match b {\n    fal..., sub(n, 1)), },\n} | Int -> Bool
+362..363 | b                                        | Bool
+379..442 | fun(n) => match n ...true, sub(n, 1)), } | Int -> Bool
+389..442 | match n { 0 => tru...true, sub(n, 1)), } | Bool
+395..396 | n                                        | Int
+404..408 | true                                     | Bool
+415..422 | evenodd                                  | Bool -> Int -> Bool
+415..439 | evenodd(true, sub(n, 1))                 | Bool
+423..427 | true                                     | Bool
+429..432 | sub                                      | Int -> Int -> Int
+429..438 | sub(n, 1)                                | Int
+433..434 | n                                        | Int
+436..437 | 1                                        | Int
+456..521 | fun(n) => match n ...alse, sub(n, 1)), } | Int -> Bool
+466..521 | match n { 0 => fal...alse, sub(n, 1)), } | Bool
+472..473 | n                                        | Int
+481..486 | false                                    | Bool
+493..500 | evenodd                                  | Bool -> Int -> Bool
+493..518 | evenodd(false, sub(n, 1))                | Bool
+501..506 | false                                    | Bool
+508..511 | sub                                      | Int -> Int -> Int
+508..517 | sub(n, 1)                                | Int
+512..513 | n                                        | Int
+515..516 | 1                                        | Int
+542..876 | let open_evenodd: ...n    evenodd(false) | Int -> Bool
+560..606 | (Bool -> Int -> Bo...ool -> Int -> Bool) | Type
+561..565 | Bool                                     | Type
+561..580 | Bool -> Int -> Bool                      | Type
+569..572 | Int                                      | Type
+569..580 | Int -> Bool                              | Type
+576..580 | Bool                                     | Type
+586..590 | Bool                                     | Type
+586..605 | Bool -> Int -> Bool                      | Type
+594..597 | Int                                      | Type
+594..605 | Int -> Bool                              | Type
+601..605 | Bool                                     | Type
+613..819 | fun(evenodd) => fu...b(n, 1)), },\n    } | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+629..819 | fun(b) => match b ...b(n, 1)), },\n    } | Bool -> Int -> Bool
+639..819 | match b {\n       ...b(n, 1)), },\n    } | Int -> Bool
+645..646 | b                                        | Bool
+666..729 | fun(n) => match n ...true, sub(n, 1)), } | Int -> Bool
+676..729 | match n { 0 => tru...true, sub(n, 1)), } | Bool
+682..683 | n                                        | Int
+691..695 | true                                     | Bool
+702..709 | evenodd                                  | Bool -> Int -> Bool
+702..726 | evenodd(true, sub(n, 1))                 | Bool
+710..714 | true                                     | Bool
+716..719 | sub                                      | Int -> Int -> Int
+716..725 | sub(n, 1)                                | Int
+720..721 | n                                        | Int
+723..724 | 1                                        | Int
+747..812 | fun(n) => match n ...alse, sub(n, 1)), } | Int -> Bool
+757..812 | match n { 0 => fal...alse, sub(n, 1)), } | Bool
+763..764 | n                                        | Int
+772..777 | false                                    | Bool
+784..791 | evenodd                                  | Bool -> Int -> Bool
+784..809 | evenodd(false, sub(n, 1))                | Bool
+792..797 | false                                    | Bool
+799..802 | sub                                      | Int -> Int -> Int
+799..808 | sub(n, 1)                                | Int
+803..804 | n                                        | Int
+806..807 | 1                                        | Int
+825..876 | let evenodd = fix(...n    evenodd(false) | Int -> Bool
+839..842 | fix                                      | fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
+839..856 | fix(open_evenodd)                        | Bool -> Int -> Bool
+843..855 | open_evenodd                             | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+862..869 | evenodd                                  | Bool -> Int -> Bool
+862..876 | evenodd(false)                           | Int -> Bool
+870..875 | false                                    | Bool
+893..1226 | let open_evenodd: ...\n    evenodd(true) | Int -> Bool
+911..957 | (Bool -> Int -> Bo...ool -> Int -> Bool) | Type
+912..916 | Bool                                     | Type
+912..931 | Bool -> Int -> Bool                      | Type
+920..923 | Int                                      | Type
+920..931 | Int -> Bool                              | Type
+927..931 | Bool                                     | Type
+937..941 | Bool                                     | Type
+937..956 | Bool -> Int -> Bool                      | Type
+945..948 | Int                                      | Type
+945..956 | Int -> Bool                              | Type
+952..956 | Bool                                     | Type
+964..1170 | fun(evenodd) => fu...b(n, 1)), },\n    } | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+980..1170 | fun(b) => match b ...b(n, 1)), },\n    } | Bool -> Int -> Bool
+990..1170 | match b {\n       ...b(n, 1)), },\n    } | Int -> Bool
+996..997 | b                                        | Bool
+1017..1080 | fun(n) => match n ...true, sub(n, 1)), } | Int -> Bool
+1027..1080 | match n { 0 => tru...true, sub(n, 1)), } | Bool
+1033..1034 | n                                        | Int
+1042..1046 | true                                     | Bool
+1053..1060 | evenodd                                  | Bool -> Int -> Bool
+1053..1077 | evenodd(true, sub(n, 1))                 | Bool
+1061..1065 | true                                     | Bool
+1067..1070 | sub                                      | Int -> Int -> Int
+1067..1076 | sub(n, 1)                                | Int
+1071..1072 | n                                        | Int
+1074..1075 | 1                                        | Int
+1098..1163 | fun(n) => match n ...alse, sub(n, 1)), } | Int -> Bool
+1108..1163 | match n { 0 => fal...alse, sub(n, 1)), } | Bool
+1114..1115 | n                                        | Int
+1123..1128 | false                                    | Bool
+1135..1142 | evenodd                                  | Bool -> Int -> Bool
+1135..1160 | evenodd(false, sub(n, 1))                | Bool
+1143..1148 | false                                    | Bool
+1150..1153 | sub                                      | Int -> Int -> Int
+1150..1159 | sub(n, 1)                                | Int
+1154..1155 | n                                        | Int
+1157..1158 | 1                                        | Int
+1176..1226 | let evenodd = fix(...\n    evenodd(true) | Int -> Bool
+1190..1193 | fix                                      | fun(@A: Type, @B: Type) -> ((A -> B) -> A -> B) -> A -> B
+1190..1207 | fix(open_evenodd)                        | Bool -> Int -> Bool
+1194..1206 | open_evenodd                             | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+1213..1220 | evenodd                                  | Bool -> Int -> Bool
+1213..1226 | evenodd(true)                            | Int -> Bool
+1221..1225 | true                                     | Bool
+1247..1249 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+1247..1271 | Eq(@Bool, even(4), true)                 | Type
+1251..1255 | Bool                                     | Type
+1257..1261 | even                                     | Int -> Bool
+1257..1264 | even(4)                                  | Bool
+1262..1263 | 4                                        | Int
+1266..1270 | true                                     | Bool
+1274..1278 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+1274..1281 | refl(_)                                  | Eq(@Bool, true, true)
+1279..1280 | _                                        | ?13
+1300..1302 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+1300..1323 | Eq(@Bool, odd(5), true)                  | Type
+1304..1308 | Bool                                     | Type
+1310..1313 | odd                                      | Int -> Bool
+1310..1316 | odd(5)                                   | Bool
+1314..1315 | 5                                        | Int
+1318..1322 | true                                     | Bool
+1326..1330 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+1326..1333 | refl(_)                                  | Eq(@Bool, true, true)
+1331..1332 | _                                        | ?15
+1357..1359 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+1357..1381 | Eq(@Bool, odd(4), false)                 | Type
+1361..1365 | Bool                                     | Type
+1367..1370 | odd                                      | Int -> Bool
+1367..1373 | odd(4)                                   | Bool
+1371..1372 | 4                                        | Int
+1375..1380 | false                                    | Bool
+1384..1388 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+1384..1391 | refl(_)                                  | Eq(@Bool, false, false)
+1389..1390 | _                                        | ?17
+1415..1417 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+1415..1440 | Eq(@Bool, even(5), false)                | Type
+1419..1423 | Bool                                     | Type
+1425..1429 | even                                     | Int -> Bool
+1425..1432 | even(5)                                  | Bool
+1430..1431 | 5                                        | Int
+1434..1439 | false                                    | Bool
+1443..1447 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+1443..1450 | refl(_)                                  | Eq(@Bool, false, false)
+1448..1449 | _                                        | ?19
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+112..117 | recur                                    | Int -> Int
+119..120 | x                                        | Int
+139..140 | 0                                        | Int
+151..152 | _                                        | Int
+334..341 | evenodd                                  | Bool -> Int -> Bool
+350..351 | b                                        | Bool
+370..375 | false                                    | Bool
+383..384 | n                                        | Int
+399..400 | 0                                        | Int
+410..411 | _                                        | Int
+448..452 | true                                     | Bool
+460..461 | n                                        | Int
+476..477 | 0                                        | Int
+488..489 | _                                        | Int
+546..558 | open_evenodd                             | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+617..624 | evenodd                                  | Bool -> Int -> Bool
+633..634 | b                                        | Bool
+657..662 | false                                    | Bool
+670..671 | n                                        | Int
+686..687 | 0                                        | Int
+697..698 | _                                        | Int
+739..743 | true                                     | Bool
+751..752 | n                                        | Int
+767..768 | 0                                        | Int
+779..780 | _                                        | Int
+829..836 | evenodd                                  | ?6
+897..909 | open_evenodd                             | (Bool -> Int -> Bool) -> Bool -> Int -> Bool
+968..975 | evenodd                                  | Bool -> Int -> Bool
+984..985 | b                                        | Bool
+1008..1013 | false                                    | Bool
+1021..1022 | n                                        | Int
+1037..1038 | 0                                        | Int
+1048..1049 | _                                        | Int
+1090..1094 | true                                     | Bool
+1102..1103 | n                                        | Int
+1118..1119 | 0                                        | Int
+1130..1131 | _                                        | Int
+1180..1187 | evenodd                                  | ?10
+metavars:
+?0 = Int -> Int
+?1 = Int
+?2 = Int
+?3 = Int
+?4 = 120
+?5 = Int -> Bool
+?6 = Bool -> Int -> Bool
+?7 = Bool
+?8 = Int -> Bool
+?9 = Int -> Bool
+?10 = Bool -> Int -> Bool
+?11 = Bool
+?12 = Int -> Bool
+?13 = Bool
+?14 = true
+?15 = Bool
+?16 = true
+?17 = Bool
+?18 = false
+?19 = Bool
+?20 = false
+"""
+
+stderr = """
+
+"""

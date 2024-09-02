@@ -1,0 +1,18 @@
+def two_is_even_proof: Eq(is_even(2), true) = refl(_);
+def two_is_even_bool = is_even(2);
+
+def is_even: Int -> Bool
+= fun(x) => match x {
+    0 => true,
+    _ => is_odd(sub(x, 1)),
+};
+
+def is_odd: Int -> Bool
+= fun(x) => match x {
+    0 => false,
+    _ => is_even(sub(x, 1)),
+};
+
+def five = if is_odd(5) then 5 else 0;
+
+def five_is_odd: Array(Int, five) = [1, 2, 3, 4, 5];

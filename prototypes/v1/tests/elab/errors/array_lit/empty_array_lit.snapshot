@@ -1,0 +1,22 @@
+exit status: 1
+
+stdout = """
+def error: Array(?1, 0) = [];
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+12..14 | []                                       | Array(?1, 0)
+metavars:
+?0 = Array(?1, 0)
+?1 = <unsolved>
+"""
+
+stderr = """
+error: unable to infer element type of empty array literal
+  ┌─ tests/elab/errors/array_lit/empty_array_lit.pion:1:13
+  │
+1 │ def error = [];
+  │             ^^
+
+aborting due to 1 previous error
+"""

@@ -1,0 +1,104 @@
+exit status: 0
+
+stdout = """
+def is_odd: Int -> Bool =
+    fun(x: Int) => match x {
+        0 => false,
+        _ => is_even(sub(x, 1)),
+    };
+
+def is_even: Int -> Bool =
+    fun(x: Int) => match x {
+        0 => true,
+        _ => is_odd(sub(x, 1)),
+    };
+
+def two_is_even_proof: Eq(@Bool, true, true) = refl(@Bool, true);
+
+def two_is_even_bool: Bool = is_even(2);
+
+def five: Int =
+    match is_odd(5) {
+        true => 5,
+        false => 0,
+    };
+
+def five_is_odd: Array(Int, 5) = [1, 2, 3, 4, 5];
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+23..25 | Eq                                       | fun(@A: Type) -> A -> A -> Type
+23..43 | Eq(is_even(2), true)                     | Type
+26..33 | is_even                                  | Int -> Bool
+26..36 | is_even(2)                               | Bool
+34..35 | 2                                        | Int
+38..42 | true                                     | Bool
+46..50 | refl                                     | fun(@A: Type, x: A) -> Eq(@A, x, x)
+46..53 | refl(_)                                  | Eq(@Bool, true, true)
+51..52 | _                                        | ?2
+78..85 | is_even                                  | Int -> Bool
+78..88 | is_even(2)                               | Bool
+86..87 | 2                                        | Int
+104..107 | Int                                      | Type
+104..115 | Int -> Bool                              | Type
+111..115 | Bool                                     | Type
+118..182 | fun(x) => match x ..._odd(sub(x, 1)),\n} | Int -> Bool
+128..182 | match x {\n    0 =..._odd(sub(x, 1)),\n} | Bool
+134..135 | x                                        | Int
+147..151 | true                                     | Bool
+162..168 | is_odd                                   | Int -> Bool
+162..179 | is_odd(sub(x, 1))                        | Bool
+169..172 | sub                                      | Int -> Int -> Int
+169..178 | sub(x, 1)                                | Int
+173..174 | x                                        | Int
+176..177 | 1                                        | Int
+197..200 | Int                                      | Type
+197..208 | Int -> Bool                              | Type
+204..208 | Bool                                     | Type
+211..277 | fun(x) => match x ...even(sub(x, 1)),\n} | Int -> Bool
+221..277 | match x {\n    0 =...even(sub(x, 1)),\n} | Bool
+227..228 | x                                        | Int
+240..245 | false                                    | Bool
+256..263 | is_even                                  | Int -> Bool
+256..274 | is_even(sub(x, 1))                       | Bool
+264..267 | sub                                      | Int -> Int -> Int
+264..273 | sub(x, 1)                                | Int
+268..269 | x                                        | Int
+271..272 | 1                                        | Int
+291..317 | if is_odd(5) then 5 else 0               | Int
+294..300 | is_odd                                   | Int -> Bool
+294..303 | is_odd(5)                                | Bool
+301..302 | 5                                        | Int
+309..310 | 5                                        | Int
+316..317 | 0                                        | Int
+337..342 | Array                                    | Type -> Int -> Type
+337..353 | Array(Int, five)                         | Type
+343..346 | Int                                      | Type
+348..352 | five                                     | Int
+356..371 | [1, 2, 3, 4, 5]                          | Array(Int, 5)
+357..358 | 1                                        | Int
+360..361 | 2                                        | Int
+363..364 | 3                                        | Int
+366..367 | 4                                        | Int
+369..370 | 5                                        | Int
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+122..123 | x                                        | Int
+142..143 | 0                                        | Int
+157..158 | _                                        | Int
+215..216 | x                                        | Int
+235..236 | 0                                        | Int
+251..252 | _                                        | Int
+metavars:
+?0 = Bool
+?1 = Bool
+?2 = Bool
+?3 = true
+?4 = Bool
+?5 = Int
+"""
+
+stderr = """
+
+"""

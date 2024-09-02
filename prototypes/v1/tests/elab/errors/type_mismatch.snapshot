@@ -1,0 +1,24 @@
+exit status: 1
+
+stdout = """
+def x: Int = #error;
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+7..10 | Int                                      | Type
+13..18 | false                                    | Int
+"""
+
+stderr = """
+error: type mismatch
+  ┌─ tests/elab/errors/type_mismatch.pion:1:14
+  │
+1 │ def x: Int = false;
+  │              ^^^^^
+  │
+  = help:
+    expected `Int`
+    found    `Bool`
+
+aborting due to 1 previous error
+"""

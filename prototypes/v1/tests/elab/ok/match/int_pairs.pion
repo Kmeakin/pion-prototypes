@@ -1,0 +1,10 @@
+// FIXME: type annotations required on `y`, otherwise we get an
+// `escaping local variable` error when checking `a`.
+
+def foo = fun (x, y: Int) => match (x, y) {
+    (0, a) => a,
+    (b, 0) => b,
+    (1, c) => c,
+    (d, 1) => d,
+    (xx, yy) => xx,
+};

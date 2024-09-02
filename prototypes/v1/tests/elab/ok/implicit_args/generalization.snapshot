@@ -1,0 +1,62 @@
+exit status: 0
+
+stdout = """
+def id: fun(@A: Type) -> A -> A = fun(@A: Type, a: A) => a;
+
+def always: fun(@A: Type, @B: Type) -> A -> B -> A =
+    fun(@A: Type, @B: Type, a: A, b: B) => a;
+
+def apply: fun(@A: Type, @B: Type) -> (A -> B) -> A -> B =
+    fun(@A: Type, @B: Type, f: A -> B, x: A) => f(x);
+types of expressions:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+8..32 | fun(@A : Type) -> A -> A                 | Type
+17..21 | Type                                     | Type
+26..27 | A                                        | Type
+26..32 | A -> A                                   | Type
+31..32 | A                                        | Type
+35..46 | fun(a) => a                              | fun(@A: Type) -> A -> A
+45..46 | a                                        | A
+61..101 | fun(@A : Type, @B : Type) -> A -> B -> A | Type
+70..74 | Type                                     | Type
+81..85 | Type                                     | Type
+90..91 | A                                        | Type
+90..101 | A -> B -> A                              | Type
+95..96 | B                                        | Type
+95..101 | B -> A                                   | Type
+100..101 | A                                        | Type
+104..118 | fun(a, b) => a                           | fun(@A: Type, @B: Type) -> A -> B -> A
+117..118 | a                                        | A
+132..179 | fun(@A : Type, @B ... (A -> B) -> A -> B | Type
+141..145 | Type                                     | Type
+152..156 | Type                                     | Type
+161..179 | (A -> B) -> A -> B                       | Type
+162..163 | A                                        | Type
+162..168 | A -> B                                   | Type
+167..168 | B                                        | Type
+173..174 | A                                        | Type
+173..179 | A -> B                                   | Type
+178..179 | B                                        | Type
+182..199 | fun(f, x) => f(x)                        | fun(@A: Type, @B: Type) -> (A -> B) -> A -> B
+195..196 | f                                        | A -> B
+195..199 | f(x)                                     | B
+197..198 | x                                        | A
+types of patterns:
+span   | source                                   | type
+-------|------------------------------------------|-----------------------------
+13..14 | A                                        | Type
+39..40 | a                                        | A
+66..67 | A                                        | Type
+77..78 | B                                        | Type
+108..109 | a                                        | A
+111..112 | b                                        | B
+137..138 | A                                        | Type
+148..149 | B                                        | Type
+186..187 | f                                        | A -> B
+189..190 | x                                        | A
+"""
+
+stderr = """
+
+"""
