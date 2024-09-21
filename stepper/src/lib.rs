@@ -1,5 +1,7 @@
-// https://okmij.org/ftp/tagless-final/semantics.html
+#![warn(clippy::all)]
 
 pub mod print;
-pub mod semantics;
 pub mod syntax;
+
+pub mod big_step_semantics;
+pub mod small_step_semantics;

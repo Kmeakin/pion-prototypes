@@ -1,5 +1,6 @@
-use crate::syntax::*;
 use std::fmt;
+
+use crate::syntax::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum Prec {
@@ -14,18 +15,18 @@ impl Prec {
 
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
-            Expr::Int(_) | Expr::Var(_) => Self::Atom,
-            Expr::Fun(_, _) => Self::Fun,
-            Expr::App(_, _) => Self::App,
-            Expr::Let(_, _, _) => Self::Let,
-            Expr::IfZ(_, _, _) => Self::Let,
+            Expr::Int(_) | Expr::Bool(_) | Expr::Var(_) => Self::Atom,
+            Expr::Fun(..) => Self::Fun,
+            Expr::App(..) => Self::App,
+            Expr::Let(..) => Self::Let,
+            Expr::If(..) => Self::Let,
         }
     }
 
     pub fn of_value(value: &Value) -> Self {
         match value {
-            Value::Int(_) => Self::Atom,
-            Value::Fun(_, _, _) => Self::Fun,
+            Value::Int(_) | Value::Bool(_) => Self::Atom,
+            Value::Fun(..) => Self::Fun,
         }
     }
 }
@@ -37,6 +38,7 @@ fn expr_prec(expr: &Expr, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result {
     }
     match expr {
         Expr::Int(n) => write!(f, "{n}")?,
+        Expr::Bool(b) => write!(f, "{b}")?,
         Expr::Var(var) => write!(f, "${var}")?,
         Expr::Fun(name, body) => write!(f, "fun {name} => {body:?}")?,
         Expr::App(fun, arg) => {
@@ -50,8 +52,8 @@ fn expr_prec(expr: &Expr, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result {
             write!(f, " in ")?;
             expr_prec(body, f, Prec::Let)?;
         }
-        Expr::IfZ(cond, then, r#else) => {
-            write!(f, "ifz ")?;
+        Expr::If(cond, then, r#else) => {
+            write!(f, "if ")?;
             expr_prec(cond, f, Prec::App)?;
             write!(f, " then ")?;
             expr_prec(then, f, Prec::Fun)?;
@@ -72,6 +74,7 @@ fn value_prec(value: &Value, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result 
     }
     match value {
         Value::Int(n) => write!(f, "{n}")?,
+        Value::Bool(b) => write!(f, "{b}")?,
         Value::Fun(name, _, body) => write!(f, "fun {name} => {body:?}")?,
     }
     if paren {
@@ -81,25 +84,20 @@ fn value_prec(value: &Value, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result 
 }
 
 impl fmt::Debug for Expr<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        expr_prec(self, f, Prec::MAX)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { expr_prec(self, f, Prec::MAX) }
 }
 
 impl fmt::Debug for Value<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        value_prec(self, f, Prec::MAX)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { value_prec(self, f, Prec::MAX) }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use expect_test::*;
 
-    fn assert_debug(it: impl fmt::Debug, expect: Expect) {
-        expect.assert_eq(&format!("{:?}", it));
-    }
+    use super::*;
+
+    fn assert_debug(it: impl fmt::Debug, expect: Expect) { expect.assert_eq(&format!("{:?}", it)); }
 
     #[test]
     fn test_debug_int() {
@@ -143,8 +141,8 @@ mod tests {
 
     #[test]
     fn test_debug_ifz() {
-        let expr = Expr::IfZ(&(Expr::Var(0)), &(Expr::Int(1)), &(Expr::Int(0)));
-        assert_debug(expr, expect!["ifz $0 then 1 else 0"]);
+        let expr = Expr::If(&(Expr::Var(0)), &(Expr::Int(1)), &(Expr::Int(0)));
+        assert_debug(expr, expect!["if $0 then 1 else 0"]);
     }
 
     #[test]
