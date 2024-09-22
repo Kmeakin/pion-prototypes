@@ -15,7 +15,7 @@ impl Prec {
 
     pub fn of_expr(expr: &Expr) -> Self {
         match expr {
-            Expr::Int(_) | Expr::Bool(_) | Expr::Var(_) => Self::Atom,
+            Expr::Int(_) | Expr::Bool(_) | Expr::Var(..) => Self::Atom,
             Expr::Fun(..) => Self::Fun,
             Expr::App(..) => Self::App,
             Expr::Let(..) => Self::Let,
@@ -39,7 +39,7 @@ fn expr_prec(expr: &Expr, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result {
     match expr {
         Expr::Int(n) => write!(f, "{n}")?,
         Expr::Bool(b) => write!(f, "{b}")?,
-        Expr::Var(var) => write!(f, "${var}")?,
+        Expr::Var(_var, name) => write!(f, "{name}")?,
         Expr::Fun(name, body) => write!(f, "fun {name} => {body:?}")?,
         Expr::App(fun, arg) => {
             expr_prec(fun, f, Prec::Atom)?;
@@ -107,42 +107,45 @@ mod tests {
 
     #[test]
     fn test_debug_var() {
-        let expr = Expr::Var(0);
-        assert_debug(expr, expect!["$0"]);
+        let expr = Expr::Var(0, "x");
+        assert_debug(expr, expect!["x"]);
     }
 
     #[test]
     fn test_debug_fun() {
-        let expr = Expr::Fun("x", &(Expr::Var(0)));
-        assert_debug(expr, expect!["fun x => $0"]);
+        let expr = Expr::Fun("x", &(Expr::Var(0, "x")));
+        assert_debug(expr, expect!["fun x => x"]);
     }
 
     #[test]
     fn test_debug_app() {
-        let expr = Expr::App(&(Expr::Var(0)), &(Expr::Int(42)));
-        assert_debug(expr, expect!["$0 42"]);
+        let expr = Expr::App(&Expr::Var(0, "f"), &Expr::Int(42));
+        assert_debug(expr, expect!["f 42"]);
 
-        let expr = Expr::App(&Expr::Var(0), &Expr::App(&Expr::Var(0), &Expr::Int(99)));
-        assert_debug(expr, expect!["$0 ($0 99)"]);
+        let expr = Expr::App(
+            &Expr::Var(0, "f"),
+            &Expr::App(&Expr::Var(1, "g"), &Expr::Int(99)),
+        );
+        assert_debug(expr, expect!["f (g 99)"]);
     }
 
     #[test]
     fn test_debug_let() {
-        let expr = Expr::Let("x", &Expr::Int(42), &Expr::Var(0));
-        assert_debug(expr, expect!["let x = 42 in $0"]);
+        let expr = Expr::Let("x", &Expr::Int(42), &Expr::Var(0, "x"));
+        assert_debug(expr, expect!["let x = 42 in x"]);
 
         let expr = Expr::Let(
             "x",
             &Expr::Let("y", &Expr::Int(42), &Expr::Int(0)),
-            &Expr::Var(0),
+            &Expr::Var(0, "x"),
         );
-        assert_debug(expr, expect!["let x = (let y = 42 in 0) in $0"]);
+        assert_debug(expr, expect!["let x = (let y = 42 in 0) in x"]);
     }
 
     #[test]
     fn test_debug_ifz() {
-        let expr = Expr::If(&(Expr::Var(0)), &(Expr::Int(1)), &(Expr::Int(0)));
-        assert_debug(expr, expect!["if $0 then 1 else 0"]);
+        let expr = Expr::If(&Expr::Var(0, "b"), &Expr::Int(1), &Expr::Int(0));
+        assert_debug(expr, expect!["if b then 1 else 0"]);
     }
 
     #[test]
@@ -153,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_debug_value_fun() {
-        let value = Value::Fun("x", Env::default(), &(Expr::Var(0)));
-        assert_debug(value, expect!["fun x => $0"]);
+        let value = Value::Fun("x", Env::default(), &Expr::Var(0, "x"));
+        assert_debug(value, expect!["fun x => x"]);
     }
 }

@@ -98,7 +98,7 @@ pub fn step(state: State) -> State {
 
         State::In(Expr::Bool(b),         _,   kont) => State::Out(Value::Bool(b),              kont),
         State::In(Expr::Int(n),          _,   kont) => State::Out(Value::Int(n),               kont),
-        State::In(Expr::Var(var),        env, kont) => State::Out(get_var(&env, var),          kont),
+        State::In(Expr::Var(var, _name),        env, kont) => State::Out(get_var(&env, var),          kont),
         State::In(Expr::Fun(name, body), env, kont) => State::Out(Value::Fun(name, env, body), kont),
 
         State::In(Expr::App(fun, arg), env, kont) => State::In(*fun, env.clone(), push_frame(kont, Frame::App1 { arg: *arg, env })),
@@ -157,12 +157,12 @@ mod tests {
 
     #[test]
     fn test_eval_var() {
-        let expr = Expr::Var(0);
+        let expr = Expr::Var(0, "x");
         assert_eval(
             expr,
             vec![Value::Int(42)],
             expect![[r#"
-                In($0, [42], [])
+                In(x, [42], [])
                 Out(42, [])
             "#]],
         );
@@ -170,13 +170,13 @@ mod tests {
 
     #[test]
     fn test_eval_fun() {
-        let expr = Expr::Fun("x", &Expr::Var(0));
+        let expr = Expr::Fun("x", &Expr::Var(0, "x"));
         assert_eval(
             expr,
             Env::default(),
             expect![[r#"
-                In(fun x => $0, [], [])
-                Out(fun x => $0, [])
+                In(fun x => x, [], [])
+                Out(fun x => x, [])
             "#]],
         );
     }
@@ -184,65 +184,65 @@ mod tests {
     #[test]
     fn test_eval_app() {
         // (fun x => x) 42
-        let fun = Expr::Fun("x", &Expr::Var(0));
+        let fun = Expr::Fun("x", &Expr::Var(0, "x"));
         let app = Expr::App(&fun, &Expr::Int(42));
         assert_eval(
             app,
             Env::default(),
             expect![[r#"
-                In((fun x => $0) 42, [], [])
-                In(fun x => $0, [], [App1 { arg: 42, env: [] }])
-                Out(fun x => $0, [App1 { arg: 42, env: [] }])
-                In(42, [], [App2 { fun: fun x => $0 }])
-                Out(42, [App2 { fun: fun x => $0 }])
-                In($0, [42], [])
+                In((fun x => x) 42, [], [])
+                In(fun x => x, [], [App1 { arg: 42, env: [] }])
+                Out(fun x => x, [App1 { arg: 42, env: [] }])
+                In(42, [], [App2 { fun: fun x => x }])
+                Out(42, [App2 { fun: fun x => x }])
+                In(x, [42], [])
                 Out(42, [])
             "#]],
         );
 
         // (fun x y => x) 42
-        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let app = Expr::App(&fun, &Expr::Int(42));
         assert_eval(
             app,
             Env::default(),
             expect![[r#"
-                In((fun x => fun y => $1) 42, [], [])
-                In(fun x => fun y => $1, [], [App1 { arg: 42, env: [] }])
-                Out(fun x => fun y => $1, [App1 { arg: 42, env: [] }])
-                In(42, [], [App2 { fun: fun x => fun y => $1 }])
-                Out(42, [App2 { fun: fun x => fun y => $1 }])
-                In(fun y => $1, [42], [])
-                Out(fun y => $1, [])
+                In((fun x => fun y => x) 42, [], [])
+                In(fun x => fun y => x, [], [App1 { arg: 42, env: [] }])
+                Out(fun x => fun y => x, [App1 { arg: 42, env: [] }])
+                In(42, [], [App2 { fun: fun x => fun y => x }])
+                Out(42, [App2 { fun: fun x => fun y => x }])
+                In(fun y => x, [42], [])
+                Out(fun y => x, [])
             "#]],
         );
 
         // (fun x y => x) 42 99
-        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let app = Expr::App(&fun, &Expr::Int(42));
         let app = Expr::App(&app, &Expr::Int(99));
         assert_eval(
             app,
             Env::default(),
             expect![[r#"
-                In(((fun x => fun y => $1) 42) 99, [], [])
-                In((fun x => fun y => $1) 42, [], [App1 { arg: 99, env: [] }])
-                In(fun x => fun y => $1, [], [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
-                Out(fun x => fun y => $1, [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
-                In(42, [], [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => $1 }])
-                Out(42, [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => $1 }])
-                In(fun y => $1, [42], [App1 { arg: 99, env: [] }])
-                Out(fun y => $1, [App1 { arg: 99, env: [] }])
-                In(99, [], [App2 { fun: fun y => $1 }])
-                Out(99, [App2 { fun: fun y => $1 }])
-                In($1, [42, 99], [])
+                In(((fun x => fun y => x) 42) 99, [], [])
+                In((fun x => fun y => x) 42, [], [App1 { arg: 99, env: [] }])
+                In(fun x => fun y => x, [], [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
+                Out(fun x => fun y => x, [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
+                In(42, [], [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => x }])
+                Out(42, [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => x }])
+                In(fun y => x, [42], [App1 { arg: 99, env: [] }])
+                Out(fun y => x, [App1 { arg: 99, env: [] }])
+                In(99, [], [App2 { fun: fun y => x }])
+                Out(99, [App2 { fun: fun y => x }])
+                In(x, [42, 99], [])
                 Out(42, [])
             "#]],
         );
 
         // let f = fun x y => x in f 42 99
-        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
-        let app = Expr::App(&Expr::Var(0), &Expr::Int(42));
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
+        let app = Expr::App(&Expr::Var(0, "f"), &Expr::Int(42));
         let app = Expr::App(&app, &Expr::Int(99));
         let expr = Expr::Let("f", &fun, &app);
 
@@ -250,68 +250,68 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(let f = fun x => fun y => $1 in ($0 42) 99, [], [])
-                In(fun x => fun y => $1, [], [Let1 { name: "f", body: ($0 42) 99, env: [] }])
-                Out(fun x => fun y => $1, [Let1 { name: "f", body: ($0 42) 99, env: [] }])
-                In(($0 42) 99, [fun x => fun y => $1], [])
-                In($0 42, [fun x => fun y => $1], [App1 { arg: 99, env: [fun x => fun y => $1] }])
-                In($0, [fun x => fun y => $1], [App1 { arg: 99, env: [fun x => fun y => $1] }, App1 { arg: 42, env: [fun x => fun y => $1] }])
-                Out(fun x => fun y => $1, [App1 { arg: 99, env: [fun x => fun y => $1] }, App1 { arg: 42, env: [fun x => fun y => $1] }])
-                In(42, [fun x => fun y => $1], [App1 { arg: 99, env: [fun x => fun y => $1] }, App2 { fun: fun x => fun y => $1 }])
-                Out(42, [App1 { arg: 99, env: [fun x => fun y => $1] }, App2 { fun: fun x => fun y => $1 }])
-                In(fun y => $1, [42], [App1 { arg: 99, env: [fun x => fun y => $1] }])
-                Out(fun y => $1, [App1 { arg: 99, env: [fun x => fun y => $1] }])
-                In(99, [fun x => fun y => $1], [App2 { fun: fun y => $1 }])
-                Out(99, [App2 { fun: fun y => $1 }])
-                In($1, [42, 99], [])
+                In(let f = fun x => fun y => x in (f 42) 99, [], [])
+                In(fun x => fun y => x, [], [Let1 { name: "f", body: (f 42) 99, env: [] }])
+                Out(fun x => fun y => x, [Let1 { name: "f", body: (f 42) 99, env: [] }])
+                In((f 42) 99, [fun x => fun y => x], [])
+                In(f 42, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }])
+                In(f, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }, App1 { arg: 42, env: [fun x => fun y => x] }])
+                Out(fun x => fun y => x, [App1 { arg: 99, env: [fun x => fun y => x] }, App1 { arg: 42, env: [fun x => fun y => x] }])
+                In(42, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }, App2 { fun: fun x => fun y => x }])
+                Out(42, [App1 { arg: 99, env: [fun x => fun y => x] }, App2 { fun: fun x => fun y => x }])
+                In(fun y => x, [42], [App1 { arg: 99, env: [fun x => fun y => x] }])
+                Out(fun y => x, [App1 { arg: 99, env: [fun x => fun y => x] }])
+                In(99, [fun x => fun y => x], [App2 { fun: fun y => x }])
+                Out(99, [App2 { fun: fun y => x }])
+                In(x, [42, 99], [])
                 Out(42, [])
             "#]],
         );
 
         // (let f = fun x => x in f) 99
-        let fun = Expr::Fun("x", &Expr::Var(0));
-        let r#let = Expr::Let("f", &fun, &Expr::Var(0));
+        let fun = Expr::Fun("x", &Expr::Var(0, "x"));
+        let r#let = Expr::Let("f", &fun, &Expr::Var(0, "f"));
         let expr = Expr::App(&r#let, &Expr::Int(99));
 
         assert_eval(
             expr,
             Env::default(),
             expect![[r#"
-                In((let f = fun x => $0 in $0) 99, [], [])
-                In(let f = fun x => $0 in $0, [], [App1 { arg: 99, env: [] }])
-                In(fun x => $0, [], [App1 { arg: 99, env: [] }, Let1 { name: "f", body: $0, env: [] }])
-                Out(fun x => $0, [App1 { arg: 99, env: [] }, Let1 { name: "f", body: $0, env: [] }])
-                In($0, [fun x => $0], [App1 { arg: 99, env: [] }])
-                Out(fun x => $0, [App1 { arg: 99, env: [] }])
-                In(99, [], [App2 { fun: fun x => $0 }])
-                Out(99, [App2 { fun: fun x => $0 }])
-                In($0, [99], [])
+                In((let f = fun x => x in f) 99, [], [])
+                In(let f = fun x => x in f, [], [App1 { arg: 99, env: [] }])
+                In(fun x => x, [], [App1 { arg: 99, env: [] }, Let1 { name: "f", body: f, env: [] }])
+                Out(fun x => x, [App1 { arg: 99, env: [] }, Let1 { name: "f", body: f, env: [] }])
+                In(f, [fun x => x], [App1 { arg: 99, env: [] }])
+                Out(fun x => x, [App1 { arg: 99, env: [] }])
+                In(99, [], [App2 { fun: fun x => x }])
+                Out(99, [App2 { fun: fun x => x }])
+                In(x, [99], [])
                 Out(99, [])
             "#]],
         );
 
         // (let f = fun x => x in f) (let a = 99 in a)
-        let fun = Expr::Fun("x", &Expr::Var(0));
-        let r#let1 = Expr::Let("f", &fun, &Expr::Var(0));
-        let r#let2 = Expr::Let("a", &Expr::Int(99), &Expr::Var(0));
+        let fun = Expr::Fun("x", &Expr::Var(0, "x"));
+        let r#let1 = Expr::Let("f", &fun, &Expr::Var(0, "f"));
+        let r#let2 = Expr::Let("a", &Expr::Int(99), &Expr::Var(0, "a"));
         let expr = Expr::App(&r#let1, &let2);
 
         assert_eval(
             expr,
             Env::default(),
             expect![[r#"
-                In((let f = fun x => $0 in $0) (let a = 99 in $0), [], [])
-                In(let f = fun x => $0 in $0, [], [App1 { arg: let a = 99 in $0, env: [] }])
-                In(fun x => $0, [], [App1 { arg: let a = 99 in $0, env: [] }, Let1 { name: "f", body: $0, env: [] }])
-                Out(fun x => $0, [App1 { arg: let a = 99 in $0, env: [] }, Let1 { name: "f", body: $0, env: [] }])
-                In($0, [fun x => $0], [App1 { arg: let a = 99 in $0, env: [] }])
-                Out(fun x => $0, [App1 { arg: let a = 99 in $0, env: [] }])
-                In(let a = 99 in $0, [], [App2 { fun: fun x => $0 }])
-                In(99, [], [App2 { fun: fun x => $0 }, Let1 { name: "a", body: $0, env: [] }])
-                Out(99, [App2 { fun: fun x => $0 }, Let1 { name: "a", body: $0, env: [] }])
-                In($0, [99], [App2 { fun: fun x => $0 }])
-                Out(99, [App2 { fun: fun x => $0 }])
-                In($0, [99], [])
+                In((let f = fun x => x in f) (let a = 99 in a), [], [])
+                In(let f = fun x => x in f, [], [App1 { arg: let a = 99 in a, env: [] }])
+                In(fun x => x, [], [App1 { arg: let a = 99 in a, env: [] }, Let1 { name: "f", body: f, env: [] }])
+                Out(fun x => x, [App1 { arg: let a = 99 in a, env: [] }, Let1 { name: "f", body: f, env: [] }])
+                In(f, [fun x => x], [App1 { arg: let a = 99 in a, env: [] }])
+                Out(fun x => x, [App1 { arg: let a = 99 in a, env: [] }])
+                In(let a = 99 in a, [], [App2 { fun: fun x => x }])
+                In(99, [], [App2 { fun: fun x => x }, Let1 { name: "a", body: a, env: [] }])
+                Out(99, [App2 { fun: fun x => x }, Let1 { name: "a", body: a, env: [] }])
+                In(a, [99], [App2 { fun: fun x => x }])
+                Out(99, [App2 { fun: fun x => x }])
+                In(x, [99], [])
                 Out(99, [])
             "#]],
         )
@@ -351,15 +351,15 @@ mod tests {
 
     #[test]
     fn test_eval_let() {
-        let expr = Expr::Let("x", &Expr::Int(42), &Expr::Var(0));
+        let expr = Expr::Let("x", &Expr::Int(42), &Expr::Var(0, "x"));
         assert_eval(
             expr,
             Env::default(),
             expect![[r#"
-                In(let x = 42 in $0, [], [])
-                In(42, [], [Let1 { name: "x", body: $0, env: [] }])
-                Out(42, [Let1 { name: "x", body: $0, env: [] }])
-                In($0, [42], [])
+                In(let x = 42 in x, [], [])
+                In(42, [], [Let1 { name: "x", body: x, env: [] }])
+                Out(42, [Let1 { name: "x", body: x, env: [] }])
+                In(x, [42], [])
                 Out(42, [])
             "#]],
         );

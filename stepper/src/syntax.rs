@@ -4,7 +4,7 @@ pub type Env<'core> = Vec<Value<'core>>;
 pub enum Expr<'core> {
     Int(u32),
     Bool(bool),
-    Var(usize),
+    Var(usize, &'core str),
     Fun(&'core str, &'core Self),
     App(&'core Self, &'core Self),
     Let(&'core str, &'core Self, &'core Self),

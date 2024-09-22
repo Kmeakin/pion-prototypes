@@ -13,7 +13,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
     match expr {
         Expr::Int(n) => Value::Int(*n),
         Expr::Bool(b) => Value::Bool(*b),
-        Expr::Var(var) => get_var(env, *var),
+        Expr::Var(var, _name) => get_var(env, *var),
         Expr::Fun(name, body) => Value::Fun(name, env.clone(), body),
 
         Expr::App(fun, arg) => {
@@ -66,30 +66,30 @@ mod tests {
 
     #[test]
     fn test_eval_var() {
-        let expr = Expr::Var(0);
+        let expr = Expr::Var(0, "x");
         assert_eval(expr, vec![Value::Int(42)], expect![["42"]]);
     }
 
     #[test]
     fn test_eval_fun() {
-        let expr = Expr::Fun("x", &Expr::Var(0));
-        assert_eval(expr, Env::default(), expect![["fun x => $0"]]);
+        let expr = Expr::Fun("x", &Expr::Var(0, "x"));
+        assert_eval(expr, Env::default(), expect!["fun x => x"]);
     }
 
     #[test]
     fn test_eval_app() {
         // (fun x => x) 42
-        let fun = Expr::Fun("x", &Expr::Var(0));
+        let fun = Expr::Fun("x", &Expr::Var(0, "x"));
         let app = Expr::App(&fun, &Expr::Int(42));
         assert_eval(app, Env::default(), expect![["42"]]);
 
         // (fun x y => x) 42
-        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "y")));
         let app = Expr::App(&fun, &Expr::Int(42));
-        assert_eval(app, Env::default(), expect!["fun y => $1"]);
+        assert_eval(app, Env::default(), expect!["fun y => y"]);
 
         // (fun x y => x) 42 99
-        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let fun = Expr::App(&fun, &Expr::Int(42));
         let app = Expr::App(&fun, &Expr::Int(99));
         assert_eval(app, Env::default(), expect!["42"]);
@@ -110,7 +110,7 @@ mod tests {
     #[test]
     fn test_eval_let() {
         let init = Expr::Int(42);
-        let body = Expr::Var(0);
+        let body = Expr::Var(0, "x");
         let expr = Expr::Let("x", &(init), &(body));
         assert_eval(expr, Env::default(), expect![["42"]]);
     }
