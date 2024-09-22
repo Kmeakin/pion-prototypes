@@ -1,4 +1,4 @@
-use crate::syntax::{Env, Expr, Value};
+use crate::syntax::*;
 
 #[derive(Debug, Clone)]
 enum State<'core> {
@@ -39,14 +39,6 @@ impl<'core> State<'core> {
     }
 }
 
-fn get_local<'core>(env: &Env<'core>, var: usize) -> Value<'core> {
-    let index = env.len() - var - 1;
-    match env.get(index) {
-        None => panic!("Unbound local variable: {var:?} in len {}", env.len()),
-        Some(value) => value.clone(),
-    }
-}
-
 fn step<'core>(
     state: State<'core>,
     env: &mut Env<'core>,
@@ -66,7 +58,7 @@ fn step<'core>(
                         env.push(value);
                         State::from_expr(*body)
                     }
-                    _ => panic!("Non-function in application: {value:?}"),
+                    _ => State::Value(Value::Error(Error::CalleeNotFun {})),
                 },
 
                 Frame::Let1(_name, body) => {
@@ -82,13 +74,13 @@ fn step<'core>(
                 Frame::If1(then, r#else) => match value {
                     Value::Bool(true) => State::from_expr(*then),
                     Value::Bool(false) => State::from_expr(*r#else),
-                    _ => panic!("Non-boolean in if condition: {value:?}"),
+                    _ => State::Value(Value::Error(Error::CondNotBool)),
                 },
             },
         },
         State::Int(n) => State::Value(Value::Int(n)),
         State::Bool(b) => State::Value(Value::Bool(b)),
-        State::Var(var, _) => State::Value(get_local(env, var)),
+        State::Var(var, name) => State::Value(get_local(env, name, var)),
         State::Fun(name, body) => State::Value(Value::Fun(name, env.clone(), body)),
         State::App0(fun, arg) => {
             stack.push(Frame::App1(arg));

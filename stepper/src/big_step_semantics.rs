@@ -1,19 +1,11 @@
 use crate::syntax::*;
 
-fn get_var<'core>(env: &Env<'core>, var: usize) -> Value<'core> {
-    let index = env.len() - var - 1;
-    match env.get(index) {
-        None => panic!("Unbound local variable: {var:?} in len {}", env.len()),
-        Some(value) => value.clone(),
-    }
-}
-
 /// Big step semantics
 pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
     match expr {
         Expr::Int(n) => Value::Int(*n),
         Expr::Bool(b) => Value::Bool(*b),
-        Expr::Var(var, _name) => get_var(env, *var),
+        Expr::Var(var, name) => get_local(env, name, *var),
         Expr::Fun(name, body) => Value::Fun(name, env.clone(), body),
 
         Expr::App(fun, arg) => {
@@ -24,7 +16,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
                     new_env.push(arg);
                     eval(body, &mut new_env)
                 }
-                _ => panic!("Invalid function application: {fun:?}"),
+                _ => Value::Error(Error::CalleeNotFun {}),
             }
         }
 
@@ -41,7 +33,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
             match cond {
                 Value::Bool(true) => eval(then, env),
                 Value::Bool(false) => eval(r#else, env),
-                _ => panic!("Invalid if condition: {cond:?}"),
+                _ => Value::Error(Error::CondNotBool),
             }
         }
     }

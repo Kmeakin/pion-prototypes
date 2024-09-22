@@ -25,6 +25,7 @@ impl Prec {
 
     pub fn of_value(value: &Value) -> Self {
         match value {
+            Value::Error(_) => Self::Atom,
             Value::Int(_) | Value::Bool(_) => Self::Atom,
             Value::Fun(..) => Self::Fun,
         }
@@ -73,6 +74,14 @@ fn value_prec(value: &Value, f: &mut fmt::Formatter, prec: Prec) -> fmt::Result 
         write!(f, "(")?;
     }
     match value {
+        Value::Error(error) => match error {
+            Error::LocalVarUnbound { name, var, len } => write!(
+                f,
+                "#<error: unbound local variable {name:?} ({var}:?) in len {len}>"
+            )?,
+            Error::CalleeNotFun => write!(f, "#<error: callee not a function>")?,
+            Error::CondNotBool => write!(f, "#<error: condition not a boolean>")?,
+        },
         Value::Int(n) => write!(f, "{n}")?,
         Value::Bool(b) => write!(f, "{b}")?,
         Value::Fun(name, _, body) => write!(f, "fun {name} => {body:?}")?,

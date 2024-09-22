@@ -3,14 +3,6 @@
 // with the Store removed
 use crate::syntax::{Expr, Value, *};
 
-fn get_var<'core>(env: &Env<'core>, var: usize) -> Value<'core> {
-    let index = env.len() - var - 1;
-    match env.get(index) {
-        None => panic!("Unbound local variable: {var:?} in len {}", env.len()),
-        Some(value) => value.clone(),
-    }
-}
-
 /// A single component of a continuation stack, explaining what to do next after
 /// we finish evaluating the currently focused expression.
 #[derive(Clone, Debug)]
@@ -98,13 +90,13 @@ pub fn step(state: State) -> State {
 
         State::In(Expr::Bool(b),         _,   kont) => State::Out(Value::Bool(b),              kont),
         State::In(Expr::Int(n),          _,   kont) => State::Out(Value::Int(n),               kont),
-        State::In(Expr::Var(var, _name),        env, kont) => State::Out(get_var(&env, var),          kont),
+        State::In(Expr::Var(var, name),        env, kont) => State::Out(get_local(&env, name,var),          kont),
         State::In(Expr::Fun(name, body), env, kont) => State::Out(Value::Fun(name, env, body), kont),
 
         State::In(Expr::App(fun, arg), env, kont) => State::In(*fun, env.clone(), push_frame(kont, Frame::App1 { arg: *arg, env })),
         State::Out(fun, Some((Frame::App1 { arg, env}, kont))) => State::In(arg, env, push_frame(kont, Frame::App2 { fun })),
         State::Out(arg, Some((Frame::App2 { fun: Value::Fun(_, env, body) }, kont))) => State::In(*body, push_value(env, arg), kont),
-        State::Out(_,   Some((Frame::App2 { fun },                          _kont))) => panic!("Non-function in application position: {fun:?}"),
+        State::Out(_,   Some((Frame::App2 { .. },                          kont))) => State::Out(Value::Error(Error::CalleeNotFun {}), kont),
 
         State::In(Expr::Let(name, init, body),              env,   kont)   => State::In(*init, env.clone(),           push_frame(kont, Frame::Let1 { name, body: *body, env })),
         State::Out(init, Some((Frame::Let1 { name: _, body, env }, kont))) => State::In(body,  push_value(env, init), kont),
@@ -112,7 +104,7 @@ pub fn step(state: State) -> State {
         State::In(Expr::If(cond, then, r#else),                            env,   kont)   => State::In(*cond, env.clone(), push_frame(kont, Frame::If1 { then: *then, r#else: *r#else, env })),
         State::Out(Value::Bool(true),  Some((Frame::If1 { then, r#else: _, env }, kont))) => State::In(then,   env, kont),
         State::Out(Value::Bool(false), Some((Frame::If1 { then: _, r#else, env }, kont))) => State::In(r#else, env, kont),
-        State::Out(cond,                                                         _kont)   => panic!("Non-boolean in if condition: {cond:?}"),
+        State::Out(_,       Some((Frame::If1 { .. }, kont)))   => State::Out(Value::Error(Error::CondNotBool), kont),
     }
 }
 
