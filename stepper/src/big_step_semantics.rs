@@ -15,6 +15,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
         Expr::Bool(b) => Value::Bool(*b),
         Expr::Var(var) => get_var(env, *var),
         Expr::Fun(name, body) => Value::Fun(name, env.clone(), body),
+
         Expr::App(fun, arg) => {
             let fun = eval(fun, env);
             let arg = eval(arg, env);
@@ -26,6 +27,15 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
                 _ => panic!("Invalid function application: {fun:?}"),
             }
         }
+
+        Expr::Let(_name, init, body) => {
+            let init = eval(init, env);
+            env.push(init);
+            let body = eval(body, env);
+            env.pop();
+            body
+        }
+
         Expr::If(cond, then, r#else) => {
             let cond = eval(cond, env);
             match cond {
@@ -33,13 +43,6 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
                 Value::Bool(false) => eval(r#else, env),
                 _ => panic!("Invalid if condition: {cond:?}"),
             }
-        }
-        Expr::Let(_name, init, body) => {
-            let init = eval(init, env);
-            env.push(init);
-            let body = eval(body, env);
-            env.pop();
-            body
         }
     }
 }
@@ -75,14 +78,21 @@ mod tests {
 
     #[test]
     fn test_eval_app() {
-        let expr = Expr::App(&Expr::Fun("x", &Expr::Var(0)), &Expr::Int(42));
-        assert_eval(expr, Env::default(), expect![["42"]]);
+        // (fun x => x) 42
+        let fun = Expr::Fun("x", &Expr::Var(0));
+        let app = Expr::App(&fun, &Expr::Int(42));
+        assert_eval(app, Env::default(), expect![["42"]]);
 
-        let expr = Expr::App(
-            &Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1))),
-            &Expr::Int(42),
-        );
-        assert_eval(expr, Env::default(), expect!["fun y => $1"]);
+        // (fun x y => x) 42
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let app = Expr::App(&fun, &Expr::Int(42));
+        assert_eval(app, Env::default(), expect!["fun y => $1"]);
+
+        // (fun x y => x) 42 99
+        let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1)));
+        let fun = Expr::App(&fun, &Expr::Int(42));
+        let app = Expr::App(&fun, &Expr::Int(99));
+        assert_eval(app, Env::default(), expect!["42"]);
     }
 
     #[test]
@@ -92,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eval_ifz_false() {
+    fn test_eval_if_false() {
         let expr = Expr::If(&Expr::Bool(false), &Expr::Int(1), &Expr::Int(2));
         assert_eval(expr, Env::default(), expect![["2"]]);
     }
