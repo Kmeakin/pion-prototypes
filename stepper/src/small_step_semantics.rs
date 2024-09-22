@@ -108,6 +108,18 @@ pub fn step(state: State) -> State {
     }
 }
 
+pub fn eval<'core>(expr: Expr<'core>, env: Env<'core>) -> Value<'core> {
+    let mut state = State::new(expr, env);
+
+    loop {
+        state = step(state);
+        match state {
+            State::Out(value, cont) if cont.is_empty() => return value,
+            _ => continue,
+        }
+    }
+}
+
 pub fn eval_trace<'core>(expr: Expr<'core>, env: Env<'core>) -> (Value<'core>, String) {
     let mut trace = String::new();
     let mut state = State::new(expr, env);
@@ -141,8 +153,8 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(42, [], [])
-                Out(42, [])
+                In(Int(42), [], [])
+                Out(Int(42), [])
             "#]],
         );
     }
@@ -154,8 +166,8 @@ mod tests {
             expr,
             vec![Value::Int(42)],
             expect![[r#"
-                In(x, [42], [])
-                Out(42, [])
+                In(Var(0, "x"), [Int(42)], [])
+                Out(Int(42), [])
             "#]],
         );
     }
@@ -167,8 +179,8 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(fun x => x, [], [])
-                Out(fun x => x, [])
+                In(Fun("x", Var(0, "x")), [], [])
+                Out(Fun("x", [], Var(0, "x")), [])
             "#]],
         );
     }
@@ -182,13 +194,13 @@ mod tests {
             app,
             Env::default(),
             expect![[r#"
-                In((fun x => x) 42, [], [])
-                In(fun x => x, [], [App1 { arg: 42, env: [] }])
-                Out(fun x => x, [App1 { arg: 42, env: [] }])
-                In(42, [], [App2 { fun: fun x => x }])
-                Out(42, [App2 { fun: fun x => x }])
-                In(x, [42], [])
-                Out(42, [])
+                In(App(Fun("x", Var(0, "x")), Int(42)), [], [])
+                In(Fun("x", Var(0, "x")), [], [App1 { arg: Int(42), env: [] }])
+                Out(Fun("x", [], Var(0, "x")), [App1 { arg: Int(42), env: [] }])
+                In(Int(42), [], [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                Out(Int(42), [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                In(Var(0, "x"), [Int(42)], [])
+                Out(Int(42), [])
             "#]],
         );
     }
@@ -202,13 +214,13 @@ mod tests {
             app,
             Env::default(),
             expect![[r#"
-                In((fun x => fun y => x) 42, [], [])
-                In(fun x => fun y => x, [], [App1 { arg: 42, env: [] }])
-                Out(fun x => fun y => x, [App1 { arg: 42, env: [] }])
-                In(42, [], [App2 { fun: fun x => fun y => x }])
-                Out(42, [App2 { fun: fun x => fun y => x }])
-                In(fun y => x, [42], [])
-                Out(fun y => x, [])
+                In(App(Fun("x", Fun("y", Var(1, "x"))), Int(42)), [], [])
+                In(Fun("x", Fun("y", Var(1, "x"))), [], [App1 { arg: Int(42), env: [] }])
+                Out(Fun("x", [], Fun("y", Var(1, "x"))), [App1 { arg: Int(42), env: [] }])
+                In(Int(42), [], [App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                Out(Int(42), [App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                In(Fun("y", Var(1, "x")), [Int(42)], [])
+                Out(Fun("y", [Int(42)], Var(1, "x")), [])
             "#]],
         );
     }
@@ -223,18 +235,18 @@ mod tests {
             app,
             Env::default(),
             expect![[r#"
-                In(((fun x => fun y => x) 42) 99, [], [])
-                In((fun x => fun y => x) 42, [], [App1 { arg: 99, env: [] }])
-                In(fun x => fun y => x, [], [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
-                Out(fun x => fun y => x, [App1 { arg: 99, env: [] }, App1 { arg: 42, env: [] }])
-                In(42, [], [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => x }])
-                Out(42, [App1 { arg: 99, env: [] }, App2 { fun: fun x => fun y => x }])
-                In(fun y => x, [42], [App1 { arg: 99, env: [] }])
-                Out(fun y => x, [App1 { arg: 99, env: [] }])
-                In(99, [], [App2 { fun: fun y => x }])
-                Out(99, [App2 { fun: fun y => x }])
-                In(x, [42, 99], [])
-                Out(42, [])
+                In(App(App(Fun("x", Fun("y", Var(1, "x"))), Int(42)), Int(99)), [], [])
+                In(App(Fun("x", Fun("y", Var(1, "x"))), Int(42)), [], [App1 { arg: Int(99), env: [] }])
+                In(Fun("x", Fun("y", Var(1, "x"))), [], [App1 { arg: Int(99), env: [] }, App1 { arg: Int(42), env: [] }])
+                Out(Fun("x", [], Fun("y", Var(1, "x"))), [App1 { arg: Int(99), env: [] }, App1 { arg: Int(42), env: [] }])
+                In(Int(42), [], [App1 { arg: Int(99), env: [] }, App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                Out(Int(42), [App1 { arg: Int(99), env: [] }, App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                In(Fun("y", Var(1, "x")), [Int(42)], [App1 { arg: Int(99), env: [] }])
+                Out(Fun("y", [Int(42)], Var(1, "x")), [App1 { arg: Int(99), env: [] }])
+                In(Int(99), [], [App2 { fun: Fun("y", [Int(42)], Var(1, "x")) }])
+                Out(Int(99), [App2 { fun: Fun("y", [Int(42)], Var(1, "x")) }])
+                In(Var(1, "x"), [Int(42), Int(99)], [])
+                Out(Int(42), [])
             "#]],
         );
     }
@@ -250,21 +262,21 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(let f = fun x => fun y => x in (f 42) 99, [], [])
-                In(fun x => fun y => x, [], [Let1 { name: "f", body: (f 42) 99, env: [] }])
-                Out(fun x => fun y => x, [Let1 { name: "f", body: (f 42) 99, env: [] }])
-                In((f 42) 99, [fun x => fun y => x], [])
-                In(f 42, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }])
-                In(f, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }, App1 { arg: 42, env: [fun x => fun y => x] }])
-                Out(fun x => fun y => x, [App1 { arg: 99, env: [fun x => fun y => x] }, App1 { arg: 42, env: [fun x => fun y => x] }])
-                In(42, [fun x => fun y => x], [App1 { arg: 99, env: [fun x => fun y => x] }, App2 { fun: fun x => fun y => x }])
-                Out(42, [App1 { arg: 99, env: [fun x => fun y => x] }, App2 { fun: fun x => fun y => x }])
-                In(fun y => x, [42], [App1 { arg: 99, env: [fun x => fun y => x] }])
-                Out(fun y => x, [App1 { arg: 99, env: [fun x => fun y => x] }])
-                In(99, [fun x => fun y => x], [App2 { fun: fun y => x }])
-                Out(99, [App2 { fun: fun y => x }])
-                In(x, [42, 99], [])
-                Out(42, [])
+                In(Let("f", Fun("x", Fun("y", Var(1, "x"))), App(App(Var(0, "f"), Int(42)), Int(99))), [], [])
+                In(Fun("x", Fun("y", Var(1, "x"))), [], [Let1 { name: "f", body: App(App(Var(0, "f"), Int(42)), Int(99)), env: [] }])
+                Out(Fun("x", [], Fun("y", Var(1, "x"))), [Let1 { name: "f", body: App(App(Var(0, "f"), Int(42)), Int(99)), env: [] }])
+                In(App(App(Var(0, "f"), Int(42)), Int(99)), [Fun("x", [], Fun("y", Var(1, "x")))], [])
+                In(App(Var(0, "f"), Int(42)), [Fun("x", [], Fun("y", Var(1, "x")))], [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }])
+                In(Var(0, "f"), [Fun("x", [], Fun("y", Var(1, "x")))], [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }, App1 { arg: Int(42), env: [Fun("x", [], Fun("y", Var(1, "x")))] }])
+                Out(Fun("x", [], Fun("y", Var(1, "x"))), [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }, App1 { arg: Int(42), env: [Fun("x", [], Fun("y", Var(1, "x")))] }])
+                In(Int(42), [Fun("x", [], Fun("y", Var(1, "x")))], [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }, App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                Out(Int(42), [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }, App2 { fun: Fun("x", [], Fun("y", Var(1, "x"))) }])
+                In(Fun("y", Var(1, "x")), [Int(42)], [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }])
+                Out(Fun("y", [Int(42)], Var(1, "x")), [App1 { arg: Int(99), env: [Fun("x", [], Fun("y", Var(1, "x")))] }])
+                In(Int(99), [Fun("x", [], Fun("y", Var(1, "x")))], [App2 { fun: Fun("y", [Int(42)], Var(1, "x")) }])
+                Out(Int(99), [App2 { fun: Fun("y", [Int(42)], Var(1, "x")) }])
+                In(Var(1, "x"), [Int(42), Int(99)], [])
+                Out(Int(42), [])
             "#]],
         );
     }
@@ -280,16 +292,16 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In((let f = fun x => x in f) 99, [], [])
-                In(let f = fun x => x in f, [], [App1 { arg: 99, env: [] }])
-                In(fun x => x, [], [App1 { arg: 99, env: [] }, Let1 { name: "f", body: f, env: [] }])
-                Out(fun x => x, [App1 { arg: 99, env: [] }, Let1 { name: "f", body: f, env: [] }])
-                In(f, [fun x => x], [App1 { arg: 99, env: [] }])
-                Out(fun x => x, [App1 { arg: 99, env: [] }])
-                In(99, [], [App2 { fun: fun x => x }])
-                Out(99, [App2 { fun: fun x => x }])
-                In(x, [99], [])
-                Out(99, [])
+                In(App(Let("f", Fun("x", Var(0, "x")), Var(0, "f")), Int(99)), [], [])
+                In(Let("f", Fun("x", Var(0, "x")), Var(0, "f")), [], [App1 { arg: Int(99), env: [] }])
+                In(Fun("x", Var(0, "x")), [], [App1 { arg: Int(99), env: [] }, Let1 { name: "f", body: Var(0, "f"), env: [] }])
+                Out(Fun("x", [], Var(0, "x")), [App1 { arg: Int(99), env: [] }, Let1 { name: "f", body: Var(0, "f"), env: [] }])
+                In(Var(0, "f"), [Fun("x", [], Var(0, "x"))], [App1 { arg: Int(99), env: [] }])
+                Out(Fun("x", [], Var(0, "x")), [App1 { arg: Int(99), env: [] }])
+                In(Int(99), [], [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                Out(Int(99), [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                In(Var(0, "x"), [Int(99)], [])
+                Out(Int(99), [])
             "#]],
         );
     }
@@ -305,19 +317,19 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In((let f = fun x => x in f) (let a = 99 in a), [], [])
-                In(let f = fun x => x in f, [], [App1 { arg: let a = 99 in a, env: [] }])
-                In(fun x => x, [], [App1 { arg: let a = 99 in a, env: [] }, Let1 { name: "f", body: f, env: [] }])
-                Out(fun x => x, [App1 { arg: let a = 99 in a, env: [] }, Let1 { name: "f", body: f, env: [] }])
-                In(f, [fun x => x], [App1 { arg: let a = 99 in a, env: [] }])
-                Out(fun x => x, [App1 { arg: let a = 99 in a, env: [] }])
-                In(let a = 99 in a, [], [App2 { fun: fun x => x }])
-                In(99, [], [App2 { fun: fun x => x }, Let1 { name: "a", body: a, env: [] }])
-                Out(99, [App2 { fun: fun x => x }, Let1 { name: "a", body: a, env: [] }])
-                In(a, [99], [App2 { fun: fun x => x }])
-                Out(99, [App2 { fun: fun x => x }])
-                In(x, [99], [])
-                Out(99, [])
+                In(App(Let("f", Fun("x", Var(0, "x")), Var(0, "f")), Let("a", Int(99), Var(0, "a"))), [], [])
+                In(Let("f", Fun("x", Var(0, "x")), Var(0, "f")), [], [App1 { arg: Let("a", Int(99), Var(0, "a")), env: [] }])
+                In(Fun("x", Var(0, "x")), [], [App1 { arg: Let("a", Int(99), Var(0, "a")), env: [] }, Let1 { name: "f", body: Var(0, "f"), env: [] }])
+                Out(Fun("x", [], Var(0, "x")), [App1 { arg: Let("a", Int(99), Var(0, "a")), env: [] }, Let1 { name: "f", body: Var(0, "f"), env: [] }])
+                In(Var(0, "f"), [Fun("x", [], Var(0, "x"))], [App1 { arg: Let("a", Int(99), Var(0, "a")), env: [] }])
+                Out(Fun("x", [], Var(0, "x")), [App1 { arg: Let("a", Int(99), Var(0, "a")), env: [] }])
+                In(Let("a", Int(99), Var(0, "a")), [], [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                In(Int(99), [], [App2 { fun: Fun("x", [], Var(0, "x")) }, Let1 { name: "a", body: Var(0, "a"), env: [] }])
+                Out(Int(99), [App2 { fun: Fun("x", [], Var(0, "x")) }, Let1 { name: "a", body: Var(0, "a"), env: [] }])
+                In(Var(0, "a"), [Int(99)], [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                Out(Int(99), [App2 { fun: Fun("x", [], Var(0, "x")) }])
+                In(Var(0, "x"), [Int(99)], [])
+                Out(Int(99), [])
             "#]],
         )
     }
@@ -350,26 +362,26 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-            In(let x = 5 in let y = 10 in let f = fun a => x in let z = f 42 in y, [], [])
-            In(5, [], [Let1 { name: "x", body: let y = 10 in let f = fun a => x in let z = f 42 in y, env: [] }])
-            Out(5, [Let1 { name: "x", body: let y = 10 in let f = fun a => x in let z = f 42 in y, env: [] }])
-            In(let y = 10 in let f = fun a => x in let z = f 42 in y, [5], [])
-            In(10, [5], [Let1 { name: "y", body: let f = fun a => x in let z = f 42 in y, env: [5] }])
-            Out(10, [Let1 { name: "y", body: let f = fun a => x in let z = f 42 in y, env: [5] }])
-            In(let f = fun a => x in let z = f 42 in y, [5, 10], [])
-            In(fun a => x, [5, 10], [Let1 { name: "f", body: let z = f 42 in y, env: [5, 10] }])
-            Out(fun a => x, [Let1 { name: "f", body: let z = f 42 in y, env: [5, 10] }])
-            In(let z = f 42 in y, [5, 10, fun a => x], [])
-            In(f 42, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
-            In(f, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App1 { arg: 42, env: [5, 10, fun a => x] }])
-            Out(fun a => x, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App1 { arg: 42, env: [5, 10, fun a => x] }])
-            In(42, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App2 { fun: fun a => x }])
-            Out(42, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App2 { fun: fun a => x }])
-            In(x, [5, 10, 42], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
-            Out(5, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
-            In(y, [5, 10, fun a => x, 5], [])
-            Out(10, [])
-        "#]],
+                In(Let("x", Int(5), Let("y", Int(10), Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y"))))), [], [])
+                In(Int(5), [], [Let1 { name: "x", body: Let("y", Int(10), Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")))), env: [] }])
+                Out(Int(5), [Let1 { name: "x", body: Let("y", Int(10), Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")))), env: [] }])
+                In(Let("y", Int(10), Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")))), [Int(5)], [])
+                In(Int(10), [Int(5)], [Let1 { name: "y", body: Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y"))), env: [Int(5)] }])
+                Out(Int(10), [Let1 { name: "y", body: Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y"))), env: [Int(5)] }])
+                In(Let("f", Fun("a", Var(2, "x")), Let("z", App(Var(0, "f"), Int(42)), Var(2, "y"))), [Int(5), Int(10)], [])
+                In(Fun("a", Var(2, "x")), [Int(5), Int(10)], [Let1 { name: "f", body: Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")), env: [Int(5), Int(10)] }])
+                Out(Fun("a", [Int(5), Int(10)], Var(2, "x")), [Let1 { name: "f", body: Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")), env: [Int(5), Int(10)] }])
+                In(Let("z", App(Var(0, "f"), Int(42)), Var(2, "y")), [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))], [])
+                In(App(Var(0, "f"), Int(42)), [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))], [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }])
+                In(Var(0, "f"), [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))], [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }, App1 { arg: Int(42), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }])
+                Out(Fun("a", [Int(5), Int(10)], Var(2, "x")), [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }, App1 { arg: Int(42), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }])
+                In(Int(42), [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))], [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }, App2 { fun: Fun("a", [Int(5), Int(10)], Var(2, "x")) }])
+                Out(Int(42), [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }, App2 { fun: Fun("a", [Int(5), Int(10)], Var(2, "x")) }])
+                In(Var(2, "x"), [Int(5), Int(10), Int(42)], [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }])
+                Out(Int(5), [Let1 { name: "z", body: Var(2, "y"), env: [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x"))] }])
+                In(Var(2, "y"), [Int(5), Int(10), Fun("a", [Int(5), Int(10)], Var(2, "x")), Int(5)], [])
+                Out(Int(10), [])
+            "#]],
         )
     }
 
@@ -380,11 +392,11 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(if true then 1 else 2, [], [])
-                In(true, [], [If1 { then: 1, else: 2, env: [] }])
-                Out(true, [If1 { then: 1, else: 2, env: [] }])
-                In(1, [], [])
-                Out(1, [])
+                In(If(Bool(true), Int(1), Int(2)), [], [])
+                In(Bool(true), [], [If1 { then: Int(1), else: Int(2), env: [] }])
+                Out(Bool(true), [If1 { then: Int(1), else: Int(2), env: [] }])
+                In(Int(1), [], [])
+                Out(Int(1), [])
             "#]],
         );
     }
@@ -396,11 +408,11 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(if false then 1 else 2, [], [])
-                In(false, [], [If1 { then: 1, else: 2, env: [] }])
-                Out(false, [If1 { then: 1, else: 2, env: [] }])
-                In(2, [], [])
-                Out(2, [])
+                In(If(Bool(false), Int(1), Int(2)), [], [])
+                In(Bool(false), [], [If1 { then: Int(1), else: Int(2), env: [] }])
+                Out(Bool(false), [If1 { then: Int(1), else: Int(2), env: [] }])
+                In(Int(2), [], [])
+                Out(Int(2), [])
             "#]],
         );
     }
@@ -412,11 +424,11 @@ mod tests {
             expr,
             Env::default(),
             expect![[r#"
-                In(let x = 42 in x, [], [])
-                In(42, [], [Let1 { name: "x", body: x, env: [] }])
-                Out(42, [Let1 { name: "x", body: x, env: [] }])
-                In(x, [42], [])
-                Out(42, [])
+                In(Let("x", Int(42), Var(0, "x")), [], [])
+                In(Int(42), [], [Let1 { name: "x", body: Var(0, "x"), env: [] }])
+                Out(Int(42), [Let1 { name: "x", body: Var(0, "x"), env: [] }])
+                In(Var(0, "x"), [Int(42)], [])
+                Out(Int(42), [])
             "#]],
         );
     }

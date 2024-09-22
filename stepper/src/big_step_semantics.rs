@@ -24,7 +24,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
             let init = eval(init, env);
             env.push(init);
             let body = eval(body, env);
-            env.pop();
+            env.pop().unwrap();
             body
         }
 
@@ -47,7 +47,7 @@ mod tests {
 
     fn assert_eval<'core>(expr: Expr<'core>, mut env: Env<'core>, expect: Expect) {
         let value = eval(&expr, &mut env);
-        expect.assert_eq(&format!("{:?}", value));
+        expect.assert_eq(&format!("{value}"));
     }
 
     #[test]

@@ -67,7 +67,7 @@ fn step<'core>(
                     State::from_expr(*body)
                 }
                 Frame::Let2() => {
-                    env.pop();
+                    env.pop().unwrap();
                     State::Value(value)
                 }
 
@@ -97,7 +97,7 @@ fn step<'core>(
     }
 }
 
-fn eval<'core>(expr: Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
+pub fn eval<'core>(expr: Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
     let mut stack = Vec::new();
     let mut state = State::from_expr(expr);
 
@@ -117,7 +117,7 @@ mod tests {
 
     fn assert_eval<'core>(expr: Expr<'core>, mut env: Env<'core>, expect: Expect) {
         let value = eval(expr, &mut env);
-        expect.assert_eq(&format!("{:?}", value));
+        expect.assert_eq(&format!("{value}"));
     }
 
     #[test]

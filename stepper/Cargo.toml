@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+arbitrary = { version = "1.3.2", features = ["derive"] }
 
 [dev-dependencies]
 expect-test = "1.5.0"
