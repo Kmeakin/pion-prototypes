@@ -40,50 +40,60 @@ impl<'core> State<'core> {
     }
 }
 
+fn step_value<'core>(
+    value: Value<'core>,
+    env: &mut Env<'core>,
+    stack: &mut Vec<Frame<'core>>,
+) -> State<'core> {
+    let frame = match stack.pop() {
+        None => return State::Value(value),
+        Some(frame) => frame,
+    };
+
+    match frame {
+        Frame::App1(arg) => {
+            stack.push(Frame::App2(value));
+            State::from_expr(*arg)
+        }
+        Frame::App2(fun) => match fun {
+            Value::Fun(_name, mut new_env, body) => {
+                std::mem::swap(env, &mut new_env);
+                stack.push(Frame::App3(new_env));
+                env.push(value);
+                State::from_expr(*body)
+            }
+            _ => State::Value(Value::Error(Error::CalleeNotFun)),
+        },
+        Frame::App3(new_env) => {
+            *env = new_env;
+            State::Value(value)
+        }
+
+        Frame::Let1(_name, body) => {
+            stack.push(Frame::Let2());
+            env.push(value);
+            State::from_expr(*body)
+        }
+        Frame::Let2() => {
+            env.pop().unwrap();
+            State::Value(value)
+        }
+
+        Frame::If1(then, r#else) => match value {
+            Value::Bool(true) => State::from_expr(*then),
+            Value::Bool(false) => State::from_expr(*r#else),
+            _ => State::Value(Value::Error(Error::CondNotBool)),
+        },
+    }
+}
+
 fn step<'core>(
     state: State<'core>,
     env: &mut Env<'core>,
     stack: &mut Vec<Frame<'core>>,
 ) -> State<'core> {
     match state {
-        State::Value(value) => match stack.pop() {
-            None => State::Value(value),
-            Some(frame) => match frame {
-                Frame::App1(arg) => {
-                    stack.push(Frame::App2(value));
-                    State::from_expr(*arg)
-                }
-                Frame::App2(fun) => match fun {
-                    Value::Fun(_name, mut new_env, body) => {
-                        std::mem::swap(env, &mut new_env);
-                        stack.push(Frame::App3(new_env));
-                        env.push(value);
-                        State::from_expr(*body)
-                    }
-                    _ => State::Value(Value::Error(Error::CalleeNotFun)),
-                },
-                Frame::App3(new_env) => {
-                    *env = new_env;
-                    State::Value(value)
-                }
-
-                Frame::Let1(_name, body) => {
-                    stack.push(Frame::Let2());
-                    env.push(value);
-                    State::from_expr(*body)
-                }
-                Frame::Let2() => {
-                    env.pop().unwrap();
-                    State::Value(value)
-                }
-
-                Frame::If1(then, r#else) => match value {
-                    Value::Bool(true) => State::from_expr(*then),
-                    Value::Bool(false) => State::from_expr(*r#else),
-                    _ => State::Value(Value::Error(Error::CondNotBool)),
-                },
-            },
-        },
+        State::Value(value) => step_value(value, env, stack),
         State::Int(n) => State::Value(Value::Int(n)),
         State::Bool(b) => State::Value(Value::Bool(b)),
         State::Var(var, name) => State::Value(get_local(env, name, var)),
@@ -117,6 +127,7 @@ pub fn eval<'core>(expr: Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
 
 #[cfg(test)]
 mod tests {
+    use ecow::eco_vec;
     use expect_test::*;
 
     use super::*;
@@ -135,7 +146,7 @@ mod tests {
     #[test]
     fn test_eval_var() {
         let expr = Expr::Var(0, "x");
-        assert_eval(expr, vec![Value::Int(42)], expect!["42"]);
+        assert_eval(expr, eco_vec![Value::Int(42)], expect!["42"]);
     }
 
     #[test]

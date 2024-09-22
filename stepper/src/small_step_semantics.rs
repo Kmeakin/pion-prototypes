@@ -137,6 +137,7 @@ pub fn eval_trace<'core>(expr: Expr<'core>, env: Env<'core>) -> (Value<'core>, S
 
 #[cfg(test)]
 mod tests {
+    use ecow::eco_vec;
     use expect_test::*;
 
     use super::*;
@@ -164,7 +165,7 @@ mod tests {
         let expr = Expr::Var(0, "x");
         assert_eval(
             expr,
-            vec![Value::Int(42)],
+            eco_vec![Value::Int(42)],
             expect![[r#"
                 In(Var(0, "x"), [Int(42)], [])
                 Out(Int(42), [])

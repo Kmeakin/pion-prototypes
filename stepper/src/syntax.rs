@@ -1,4 +1,6 @@
-pub type Env<'core> = Vec<Value<'core>>;
+use ecow::EcoVec;
+
+pub type Env<'core> = EcoVec<Value<'core>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Expr<'core> {

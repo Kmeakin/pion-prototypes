@@ -41,6 +41,7 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
 
 #[cfg(test)]
 mod tests {
+    use ecow::eco_vec;
     use expect_test::*;
 
     use super::*;
@@ -59,7 +60,7 @@ mod tests {
     #[test]
     fn test_eval_var() {
         let expr = Expr::Var(0, "x");
-        assert_eval(expr, vec![Value::Int(42)], expect![["42"]]);
+        assert_eval(expr, eco_vec![Value::Int(42)], expect![["42"]]);
     }
 
     #[test]
