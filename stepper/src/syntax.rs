@@ -84,26 +84,12 @@ impl<'a, 'core> arbitrary::Arbitrary<'a> for Expr<'core> {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value<'core> {
     Error(Error<'core>),
     Int(u32),
     Bool(bool),
     Fun(&'core str, Env<'core>, &'core Expr<'core>),
-}
-
-impl<'core> PartialEq for Value<'core> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Error(l), Self::Error(r)) => l == r,
-            (Self::Int(l), Self::Int(r)) => l == r,
-            (Self::Bool(l), Self::Bool(r)) => l == r,
-            (Self::Fun(lhs_name, lhs_env, lhs_body), Self::Fun(rhs_name, rhs_env, rhs_body)) => {
-                lhs_name == rhs_name && lhs_env == rhs_env && lhs_body == rhs_body
-            }
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
