@@ -18,9 +18,10 @@ enum State<'core> {
 enum Frame<'core> {
     App1(&'core Expr<'core>),
     App2(Value<'core>),
+    App3(Env<'core>),
 
-    Let1(&'core str, &'core Expr<'core>),
-    Let2(),
+    Let1(&'core str, &'core Expr<'core>, Env<'core>),
+    Let2(Env<'core>),
 
     If1(&'core Expr<'core>, &'core Expr<'core>),
 }
@@ -54,20 +55,26 @@ fn step<'core>(
                 }
                 Frame::App2(fun) => match fun {
                     Value::Fun(_name, new_env, body) => {
+                        stack.push(Frame::App3(env.clone()));
                         *env = new_env;
                         env.push(value);
                         State::from_expr(*body)
                     }
                     _ => State::Value(Value::Error(Error::CalleeNotFun {})),
                 },
+                Frame::App3(new_env) => {
+                    *env = new_env;
+                    State::Value(value)
+                }
 
-                Frame::Let1(_name, body) => {
+                Frame::Let1(_name, body, new_env) => {
+                    stack.push(Frame::Let2(env.clone()));
+                    *env = new_env;
                     env.push(value);
-                    stack.push(Frame::Let2());
                     State::from_expr(*body)
                 }
-                Frame::Let2() => {
-                    env.pop().unwrap();
+                Frame::Let2(new_env) => {
+                    *env = new_env;
                     State::Value(value)
                 }
 
@@ -87,7 +94,7 @@ fn step<'core>(
             State::from_expr(*fun)
         }
         State::Let0(name, init, body) => {
-            stack.push(Frame::Let1(name, body));
+            stack.push(Frame::Let1(name, body, env.clone()));
             State::from_expr(*init)
         }
         State::If0(cond, then, r#else) => {
@@ -229,5 +236,22 @@ mod tests {
     fn test_eval_if_false() {
         let expr = Expr::If(&Expr::Bool(false), &Expr::Int(1), &Expr::Int(2));
         assert_eval(expr, Env::default(), expect!["2"]);
+    }
+
+    #[test]
+    fn test_eval_fuzz1() {
+        use Expr::*;
+
+        // if ((fun _ => true) false) then $0 else 0
+        let expr = If(
+            &App(&Fun("_", &Bool(true)), &Bool(false)),
+            &Var(0, "_"),
+            &Int(0),
+        );
+        assert_eval(
+            expr,
+            Env::new(),
+            expect![[r##"#<error: unbound local variable "_" (0:?) in len 0>"##]],
+        );
     }
 }

@@ -133,4 +133,21 @@ mod tests {
         let expr = Expr::Let("x", &(init), &(body));
         assert_eval(expr, Env::default(), expect![["42"]]);
     }
+
+    #[test]
+    fn test_eval_fuzz1() {
+        use Expr::*;
+
+        // if ((fun _ => true) false) then $0 else 0
+        let expr = If(
+            &App(&Fun("_", &Bool(true)), &Bool(false)),
+            &Var(0, "_"),
+            &Int(0),
+        );
+        assert_eval(
+            expr,
+            Env::new(),
+            expect![[r##"#<error: unbound local variable "_" (0:?) in len 0>"##]],
+        );
+    }
 }

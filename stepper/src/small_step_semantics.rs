@@ -432,4 +432,33 @@ mod tests {
             "#]],
         );
     }
+
+    #[test]
+    fn test_eval_fuzz1() {
+        use Expr::*;
+
+        // if ((fun _ => true) false) then $0 else 0
+        let expr = If(
+            &App(&Fun("_", &Bool(true)), &Bool(false)),
+            &Var(0, "_"),
+            &Int(0),
+        );
+
+        assert_eval(
+            expr,
+            Env::new(),
+            expect![[r#"
+                In(If(App(Fun("_", Bool(true)), Bool(false)), Var(0, "_"), Int(0)), [], [])
+                In(App(Fun("_", Bool(true)), Bool(false)), [], [If1 { then: Var(0, "_"), else: Int(0), env: [] }])
+                In(Fun("_", Bool(true)), [], [If1 { then: Var(0, "_"), else: Int(0), env: [] }, App1 { arg: Bool(false), env: [] }])
+                Out(Fun("_", [], Bool(true)), [If1 { then: Var(0, "_"), else: Int(0), env: [] }, App1 { arg: Bool(false), env: [] }])
+                In(Bool(false), [], [If1 { then: Var(0, "_"), else: Int(0), env: [] }, App2 { fun: Fun("_", [], Bool(true)) }])
+                Out(Bool(false), [If1 { then: Var(0, "_"), else: Int(0), env: [] }, App2 { fun: Fun("_", [], Bool(true)) }])
+                In(Bool(true), [Bool(false)], [If1 { then: Var(0, "_"), else: Int(0), env: [] }])
+                Out(Bool(true), [If1 { then: Var(0, "_"), else: Int(0), env: [] }])
+                In(Var(0, "_"), [], [])
+                Out(Error(LocalVarUnbound { name: "_", var: 0, len: 0 }), [])
+            "#]],
+        );
+    }
 }

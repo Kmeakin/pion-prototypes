@@ -83,8 +83,8 @@ impl<'core> PartialEq for Value<'core> {
             (Self::Error(l), Self::Error(r)) => l == r,
             (Self::Int(l), Self::Int(r)) => l == r,
             (Self::Bool(l), Self::Bool(r)) => l == r,
-            (Self::Fun(lhs_name, _lhs_env, lhs_body), Self::Fun(rhs_name, _rhs_env, rhs_body)) => {
-                lhs_name == rhs_name && lhs_body == rhs_body
+            (Self::Fun(lhs_name, lhs_env, lhs_body), Self::Fun(rhs_name, rhs_env, rhs_body)) => {
+                lhs_name == rhs_name && lhs_env == rhs_env && lhs_body == rhs_body
             }
             _ => false,
         }
