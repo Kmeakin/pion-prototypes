@@ -20,8 +20,8 @@ enum Frame<'core> {
     App2(Value<'core>),
     App3(Env<'core>),
 
-    Let1(&'core str, &'core Expr<'core>, Env<'core>),
-    Let2(Env<'core>),
+    Let1(&'core str, &'core Expr<'core>),
+    Let2(),
 
     If1(&'core Expr<'core>, &'core Expr<'core>),
 }
@@ -54,27 +54,26 @@ fn step<'core>(
                     State::from_expr(*arg)
                 }
                 Frame::App2(fun) => match fun {
-                    Value::Fun(_name, new_env, body) => {
-                        stack.push(Frame::App3(env.clone()));
-                        *env = new_env;
+                    Value::Fun(_name, mut new_env, body) => {
+                        std::mem::swap(env, &mut new_env);
+                        stack.push(Frame::App3(new_env));
                         env.push(value);
                         State::from_expr(*body)
                     }
-                    _ => State::Value(Value::Error(Error::CalleeNotFun {})),
+                    _ => State::Value(Value::Error(Error::CalleeNotFun)),
                 },
                 Frame::App3(new_env) => {
                     *env = new_env;
                     State::Value(value)
                 }
 
-                Frame::Let1(_name, body, new_env) => {
-                    stack.push(Frame::Let2(env.clone()));
-                    *env = new_env;
+                Frame::Let1(_name, body) => {
+                    stack.push(Frame::Let2());
                     env.push(value);
                     State::from_expr(*body)
                 }
-                Frame::Let2(new_env) => {
-                    *env = new_env;
+                Frame::Let2() => {
+                    env.pop().unwrap();
                     State::Value(value)
                 }
 
@@ -94,7 +93,7 @@ fn step<'core>(
             State::from_expr(*fun)
         }
         State::Let0(name, init, body) => {
-            stack.push(Frame::Let1(name, body, env.clone()));
+            stack.push(Frame::Let1(name, body));
             State::from_expr(*init)
         }
         State::If0(cond, then, r#else) => {
