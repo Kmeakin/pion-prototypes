@@ -20,9 +20,9 @@ pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
             let fun = eval(fun, env);
             let arg = eval(arg, env);
             match fun {
-                Value::Fun(_, mut env, body) => {
-                    env.push(arg);
-                    eval(body, &mut env)
+                Value::Fun(_, mut new_env, body) => {
+                    new_env.push(arg);
+                    eval(body, &mut new_env)
                 }
                 _ => panic!("Invalid function application: {fun:?}"),
             }
@@ -93,6 +93,33 @@ mod tests {
         let fun = Expr::App(&fun, &Expr::Int(42));
         let app = Expr::App(&fun, &Expr::Int(99));
         assert_eval(app, Env::default(), expect!["42"]);
+    }
+
+    #[test]
+    fn test_eval_app7() {
+        // let x = 5 in
+        // let y = 10 in
+        // let f = fun a => x in
+        // let z = f 42 in
+        // y
+        let expr = Expr::Let(
+            "x",
+            &Expr::Int(5),
+            &Expr::Let(
+                "y",
+                &Expr::Int(10),
+                &Expr::Let(
+                    "f",
+                    &Expr::Fun("a", &Expr::Var(2, "x")),
+                    &Expr::Let(
+                        "z",
+                        &Expr::App(&Expr::Var(0, "f"), &Expr::Int(42)),
+                        &Expr::Var(2, "y"),
+                    ),
+                ),
+            ),
+        );
+        assert_eval(expr, Env::default(), expect!["10"])
     }
 
     #[test]

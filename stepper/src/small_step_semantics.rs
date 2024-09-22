@@ -116,7 +116,7 @@ pub fn step(state: State) -> State {
     }
 }
 
-pub fn eval<'core>(expr: Expr<'core>, env: Env<'core>) -> (Value<'core>, String) {
+pub fn eval_trace<'core>(expr: Expr<'core>, env: Env<'core>) -> (Value<'core>, String) {
     let mut trace = String::new();
     let mut state = State::new(expr, env);
     trace.push_str(&format!("{state:?}\n"));
@@ -138,7 +138,7 @@ mod tests {
     use super::*;
 
     fn assert_eval<'core>(expr: Expr<'core>, env: Env<'core>, expect: Expect) {
-        let (_value, trace) = eval(expr, env);
+        let (_value, trace) = eval_trace(expr, env);
         expect.assert_eq(&trace);
     }
 
@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eval_app() {
+    fn test_eval_app1() {
         // (fun x => x) 42
         let fun = Expr::Fun("x", &Expr::Var(0, "x"));
         let app = Expr::App(&fun, &Expr::Int(42));
@@ -199,7 +199,10 @@ mod tests {
                 Out(42, [])
             "#]],
         );
+    }
 
+    #[test]
+    fn test_eval_app2() {
         // (fun x y => x) 42
         let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let app = Expr::App(&fun, &Expr::Int(42));
@@ -216,7 +219,10 @@ mod tests {
                 Out(fun y => x, [])
             "#]],
         );
+    }
 
+    #[test]
+    fn test_eval_app3() {
         // (fun x y => x) 42 99
         let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let app = Expr::App(&fun, &Expr::Int(42));
@@ -239,13 +245,15 @@ mod tests {
                 Out(42, [])
             "#]],
         );
+    }
 
+    #[test]
+    fn test_eval_app4() {
         // let f = fun x y => x in f 42 99
         let fun = Expr::Fun("x", &Expr::Fun("y", &Expr::Var(1, "x")));
         let app = Expr::App(&Expr::Var(0, "f"), &Expr::Int(42));
         let app = Expr::App(&app, &Expr::Int(99));
         let expr = Expr::Let("f", &fun, &app);
-
         assert_eval(
             expr,
             Env::default(),
@@ -267,7 +275,10 @@ mod tests {
                 Out(42, [])
             "#]],
         );
+    }
 
+    #[test]
+    fn test_eval_app5() {
         // (let f = fun x => x in f) 99
         let fun = Expr::Fun("x", &Expr::Var(0, "x"));
         let r#let = Expr::Let("f", &fun, &Expr::Var(0, "f"));
@@ -289,13 +300,15 @@ mod tests {
                 Out(99, [])
             "#]],
         );
+    }
 
+    #[test]
+    fn test_eval_app6() {
         // (let f = fun x => x in f) (let a = 99 in a)
         let fun = Expr::Fun("x", &Expr::Var(0, "x"));
         let r#let1 = Expr::Let("f", &fun, &Expr::Var(0, "f"));
         let r#let2 = Expr::Let("a", &Expr::Int(99), &Expr::Var(0, "a"));
         let expr = Expr::App(&r#let1, &let2);
-
         assert_eval(
             expr,
             Env::default(),
@@ -314,6 +327,57 @@ mod tests {
                 In(x, [99], [])
                 Out(99, [])
             "#]],
+        )
+    }
+
+    #[test]
+    fn test_eval_app7() {
+        // let x = 5 in
+        // let y = 10 in
+        // let f = fun a => x in
+        // let z = f 42 in
+        // y
+        let expr = Expr::Let(
+            "x",
+            &Expr::Int(5),
+            &Expr::Let(
+                "y",
+                &Expr::Int(10),
+                &Expr::Let(
+                    "f",
+                    &Expr::Fun("a", &Expr::Var(2, "x")),
+                    &Expr::Let(
+                        "z",
+                        &Expr::App(&Expr::Var(0, "f"), &Expr::Int(42)),
+                        &Expr::Var(2, "y"),
+                    ),
+                ),
+            ),
+        );
+        assert_eval(
+            expr,
+            Env::default(),
+            expect![[r#"
+            In(let x = 5 in let y = 10 in let f = fun a => x in let z = f 42 in y, [], [])
+            In(5, [], [Let1 { name: "x", body: let y = 10 in let f = fun a => x in let z = f 42 in y, env: [] }])
+            Out(5, [Let1 { name: "x", body: let y = 10 in let f = fun a => x in let z = f 42 in y, env: [] }])
+            In(let y = 10 in let f = fun a => x in let z = f 42 in y, [5], [])
+            In(10, [5], [Let1 { name: "y", body: let f = fun a => x in let z = f 42 in y, env: [5] }])
+            Out(10, [Let1 { name: "y", body: let f = fun a => x in let z = f 42 in y, env: [5] }])
+            In(let f = fun a => x in let z = f 42 in y, [5, 10], [])
+            In(fun a => x, [5, 10], [Let1 { name: "f", body: let z = f 42 in y, env: [5, 10] }])
+            Out(fun a => x, [Let1 { name: "f", body: let z = f 42 in y, env: [5, 10] }])
+            In(let z = f 42 in y, [5, 10, fun a => x], [])
+            In(f 42, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
+            In(f, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App1 { arg: 42, env: [5, 10, fun a => x] }])
+            Out(fun a => x, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App1 { arg: 42, env: [5, 10, fun a => x] }])
+            In(42, [5, 10, fun a => x], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App2 { fun: fun a => x }])
+            Out(42, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }, App2 { fun: fun a => x }])
+            In(x, [5, 10, 42], [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
+            Out(5, [Let1 { name: "z", body: y, env: [5, 10, fun a => x] }])
+            In(y, [5, 10, fun a => x, 5], [])
+            Out(10, [])
+        "#]],
         )
     }
 
