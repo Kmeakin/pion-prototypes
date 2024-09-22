@@ -1,5 +1,3 @@
-use arbitrary::Arbitrary;
-
 pub type Env<'core> = Vec<Value<'core>>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -13,7 +11,7 @@ pub enum Expr<'core> {
     If(&'core Self, &'core Self, &'core Self),
 }
 
-#[derive(Copy, Clone, Arbitrary)]
+#[derive(Copy, Clone)]
 enum ExprKind {
     Int,
     Bool,
@@ -22,6 +20,21 @@ enum ExprKind {
     App,
     Let,
     If,
+}
+
+impl<'a> arbitrary::Arbitrary<'a> for ExprKind {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        u.choose(&[
+            Self::Int,
+            Self::Bool,
+            Self::Var,
+            Self::Fun,
+            Self::App,
+            Self::Let,
+            Self::If,
+        ])
+        .copied()
+    }
 }
 
 impl<'a, 'core> arbitrary::Arbitrary<'a> for Expr<'core> {
