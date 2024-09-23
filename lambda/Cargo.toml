@@ -1,8 +1,8 @@
 [package]
 name = "lambda"
 
-version = "0.1.0"
 edition = "2021"
+version = "0.1.0"
 
 [lints]
 rust.unused_qualifications = { level = "warn", priority = 100 }
@@ -10,6 +10,8 @@ rustdoc.all                = { level = "warn", priority = 100 }
 
 clippy.all     = { level = "warn", priority = 0 }
 clippy.nursery = { level = "warn", priority = 0 }
+
+clippy.missing_const_for_fn = { level = "allow", priority = 100 }
 
 [dependencies]
 bumpalo = { version = "3.16.0", features = ["allocator_api"] }
