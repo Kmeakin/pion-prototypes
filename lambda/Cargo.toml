@@ -1,0 +1,19 @@
+[package]
+name = "lambda"
+
+version = "0.1.0"
+edition = "2021"
+
+[lints]
+rust.unused_qualifications = { level = "warn", priority = 100 }
+rustdoc.all                = { level = "warn", priority = 100 }
+
+clippy.all     = { level = "warn", priority = 0 }
+clippy.nursery = { level = "warn", priority = 0 }
+
+[dependencies]
+bumpalo = { version = "3.16.0", features = ["allocator_api"] }
+ecow    = { version = "0.2.2" }
+
+[dev-dependencies]
+expect-test = { version = "1.5.0" }
