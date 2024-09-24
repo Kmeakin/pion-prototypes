@@ -12,6 +12,7 @@ clippy.all     = { level = "warn", priority = 0 }
 clippy.nursery = { level = "warn", priority = 0 }
 
 clippy.missing_const_for_fn = { level = "allow", priority = 100 }
+clippy.option_if_let_else   = { level = "allow", priority = 100 }
 
 [dependencies]
 bumpalo = { version = "3.16.0", features = ["allocator_api"] }
