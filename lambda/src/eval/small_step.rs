@@ -197,6 +197,107 @@ pub fn step<'core, V: EvalVisitor<'core>>(
     }
 }
 
+struct TraceVisitor {
+    output: String,
+}
+
+impl<'core> EvalVisitor<'core> for TraceVisitor {
+    fn var_reduced(
+        &mut self,
+        _var: (usize, &'core str),
+        value: Value<'core>,
+        env: Env<'core>,
+        kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
+        let result = plug(&quote(&value), &kont);
+        self.output.push_str(&format!("[var]=> {result}\n"));
+        (Control::Value(value), env, kont)
+    }
+
+    fn app_reduced(
+        &mut self,
+        (_name, new_env, body): (&'core str, Env<'core>, &'core Expr<'core>),
+        arg: Value<'core>,
+        env: Env<'core>,
+        kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
+        let result = plug(body, &kont);
+        self.output.push_str(&format!("[app]=> {result}\n"));
+        (
+            Control::Expr(*body),
+            push_env(new_env, arg),
+            push_kont(kont, Frame::App3(env)),
+        )
+    }
+
+    fn binop_reduced(
+        &mut self,
+        (op, lhs, rhs): (Binop, u32, u32),
+        env: Env<'core>,
+        kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
+        let value = op.apply(lhs, rhs);
+        let result = plug(&quote(&value), &kont);
+        self.output.push_str(&format!("[binop]=> {result}\n"));
+        (Control::Value(value), env, kont)
+    }
+
+    fn let_reduced(
+        &mut self,
+        (_name, init, body): (&'core str, Value<'core>, &'core Expr<'core>),
+        env: Env<'core>,
+        kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
+        let result = plug(body, &kont);
+        self.output.push_str(&format!("[let]=> {result}\n"));
+        (
+            Control::Expr(*body),
+            push_env(env, init),
+            push_kont(kont, Frame::Let2),
+        )
+    }
+
+    fn if_reduced(
+        &mut self,
+        cond: bool,
+        then: &'core Expr<'core>,
+        r#else: &'core Expr<'core>,
+        env: Env<'core>,
+        kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
+        let body = if cond { then } else { r#else };
+        let result = plug(body, &kont);
+        self.output.push_str(&format!("[if]=> {result}\n"));
+        (Control::Expr(*body), env, kont)
+    }
+}
+
+fn plug<'core>(expr: &Expr<'core>, stack: &[Frame<'core>]) -> String {
+    let mut expr = format!("{expr}");
+
+    for frame in stack.iter().rev() {
+        match frame {
+            Frame::App1(arg) => expr = format!("({expr}) ({arg})"),
+            Frame::App2(fun) => expr = format!("({fun}) ({expr})"),
+            Frame::Let1(name, body) => expr = format!("let {name} = {expr} in {body}"),
+            Frame::If1(then, r#else) => expr = format!("if ({expr}) then ({then}) else ({else})"),
+            Frame::Binop2(op, rhs) => expr = format!("{expr} {op} {rhs}"),
+
+            Frame::App3(..) | Frame::Binop1(..) | Frame::Let2 => {}
+        }
+    }
+
+    expr
+}
+
+pub fn trace<'core>(expr: Expr<'core>, env: Env<'core>, kont: Kont<'core>) -> String {
+    let mut visitor = TraceVisitor {
+        output: format!("{expr}\n"),
+    };
+    let _value = eval(&mut visitor, expr, env, kont);
+    visitor.output
+}
+
 pub struct DefaultVisitor;
 impl<'core> EvalVisitor<'core> for DefaultVisitor {}
 
@@ -232,6 +333,69 @@ mod tests {
         assert_eval(
             &Expr::App(&Expr::Fun("x", &Expr::Var(0, "x")), &(Expr::Int(42))),
             expect!["42"],
+        );
+    }
+
+    #[track_caller]
+    fn assert_trace(expr: &Expr, expect: Expect) {
+        let env = Env::new();
+        let kont = Kont::new();
+        let output = trace(*expr, env, kont);
+        expect.assert_eq(output.trim_end());
+    }
+
+    #[test]
+    fn test_trace_bool() {
+        assert_trace(&Expr::Bool(true), expect!["true"]);
+        assert_trace(&Expr::Bool(false), expect!["false"]);
+    }
+
+    #[test]
+    fn test_trace_fun() {
+        assert_trace(&Expr::Fun("x", &Expr::Var(1, "x")), expect!["fun x => x"]);
+    }
+
+    #[test]
+    fn test_trace_app() {
+        assert_trace(
+            &Expr::App(&Expr::Fun("x", &Expr::Var(0, "x")), &(Expr::Int(42))),
+            expect![[r#"
+                (fun x => x) 42
+                [app]=> x
+                [var]=> 42"#]],
+        );
+    }
+
+    #[test]
+    fn if_nested() {
+        let expr = Expr::If(
+            &Expr::If(&Expr::Bool(true), &Expr::Bool(false), &Expr::Bool(true)),
+            &Expr::Int(1),
+            &Expr::Int(0),
+        );
+        assert_trace(
+            &expr,
+            expect![[r#"
+                if (if true then false else true) then 1 else 0
+                [if]=> if (false) then (1) else (0)
+                [if]=> 0"#]],
+        );
+    }
+
+    #[test]
+    fn if_nested2() {
+        let expr = Expr::If(
+            &Expr::If(&Expr::Bool(true), &Expr::Bool(false), &Expr::Bool(true)),
+            &Expr::If(&Expr::Bool(false), &Expr::Int(10), &Expr::Int(20)),
+            &Expr::If(&Expr::Bool(true), &Expr::Int(30), &Expr::Int(40)),
+        );
+        assert_trace(
+            &expr,
+            expect![[r#"
+                if (if true then false else true) then (if false then 10 else 20) else (if true then 30 else 40)
+                [if]=> if (false) then (if false then 10 else 20) else (if true then 30 else 40)
+                [if]=> if true then 30 else 40
+                [if]=> 30"#]],
         );
     }
 }

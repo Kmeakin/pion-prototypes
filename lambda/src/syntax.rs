@@ -23,6 +23,14 @@ pub enum Value<'core> {
     Fun(&'core str, Env<'core>, &'core Expr<'core>),
 }
 
+pub fn quote<'core>(value: &Value<'core>) -> Expr<'core> {
+    match value {
+        Value::Int(n) => Expr::Int(*n),
+        Value::Bool(b) => Expr::Bool(*b),
+        Value::Fun(name, _env, body) => Expr::Fun(name, body),
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Binop {
     Add,
