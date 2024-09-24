@@ -127,67 +127,49 @@ pub mod small_step {
         If1(&'core Expr<'core>, &'core Expr<'core>),
     }
 
+    pub fn push_kont<'core>(mut kont: Kont<'core>, frame: Frame<'core>) -> Kont<'core> {
+        kont.push(frame);
+        kont
+    }
+
+    pub fn push_env<'core>(mut env: Env<'core>, value: Value<'core>) -> Env<'core> {
+        env.push(value);
+        env
+    }
+
+    type Kont<'core> = Vec<Frame<'core>>;
+
+    #[rustfmt::skip]
     pub fn step<'core>(
         control: Control<'core>,
-        env: &mut Env<'core>,
-        kont: &mut Vec<Frame<'core>>,
-    ) -> Control<'core> {
+        mut env: Env<'core>,
+        mut kont: Kont<'core>,
+    ) -> (Control<'core>, Env<'core>, Kont<'core>) {
         match control {
-            Control::Expr(Expr::Int(n)) => Control::Value(Value::Int(n)),
-            Control::Expr(Expr::Bool(b)) => Control::Value(Value::Bool(b)),
-            Control::Expr(Expr::Var(var, name)) => Control::Value(get_local(env, var, name)),
-            Control::Expr(Expr::Fun(name, body)) => {
-                Control::Value(Value::Fun(name, env.clone(), body))
-            }
-            Control::Expr(Expr::App(fun, arg)) => {
-                kont.push(Frame::App1(arg));
-                Control::Expr(*fun)
-            }
-            Control::Expr(Expr::Binop(op, lhs, rhs)) => {
-                kont.push(Frame::Binop1(op, rhs));
-                Control::Expr(*lhs)
-            }
-            Control::Expr(Expr::Let(name, init, body)) => {
-                kont.push(Frame::Let1(name, body));
-                Control::Expr(*init)
-            }
-            Control::Expr(Expr::If(cond, then, r#else)) => {
-                kont.push(Frame::If1(then, r#else));
-                Control::Expr(*cond)
-            }
-
+            Control::Expr(Expr::Int(n)) => (Control::Value(Value::Int(n)), env, kont),
+            Control::Expr(Expr::Bool(b)) => (Control::Value(Value::Bool(b)), env, kont),
+            Control::Expr(Expr::Var(var, name)) => (Control::Value(get_local(&env, var, name)), env, kont),
+            Control::Expr(Expr::Fun(name, body)) => (Control::Value(Value::Fun(name, env.clone(), body)), env, kont),
+            Control::Expr(Expr::App(fun, arg)) => (Control::Expr(*fun), env, push_kont(kont, Frame::App1(arg))),
+            Control::Expr(Expr::Binop(op, lhs, rhs)) => (Control::Expr(*lhs), env, push_kont(kont, Frame::Binop1(op, rhs))),
+            Control::Expr(Expr::Let(name, init, body)) => (Control::Expr(*init), env, push_kont(kont, Frame::Let1(name, body))),
+            Control::Expr(Expr::If(cond, then, r#else)) => (Control::Expr(*cond), env, push_kont(kont, Frame::If1(then, r#else))),
             Control::Value(value) => match kont.pop() {
-                None => Control::Value(value),
-                Some(Frame::App1(arg)) => {
-                    kont.push(Frame::App2(value));
-                    Control::Expr(*arg)
-                }
+                None => (Control::Value(value), env, kont),
+                Some(Frame::App1(arg)) => (Control::Expr(*arg), env, push_kont(kont, Frame::App2(value))),
                 Some(Frame::App2(fun)) => match fun {
-                    Value::Fun(_name, new_env, body) => {
-                        let old_env = std::mem::take(env);
-                        kont.push(Frame::App3(old_env));
-
-                        *env = new_env;
-                        env.push(value);
-                        Control::Expr(*body)
-                    }
+                    Value::Fun(_name, new_env, body) => (Control::Expr(*body), push_env(new_env, value), push_kont(kont, Frame::App3(env))),
                     _ => panic!("Expected function, got {fun}"),
                 },
-                Some(Frame::App3(old_env)) => {
-                    *env = old_env;
-                    Control::Value(value)
-                }
-                Some(Frame::Binop1(op, rhs)) => {
-                    kont.push(Frame::Binop2(op, value));
-                    Control::Expr(*rhs)
-                }
+                Some(Frame::App3(old_env)) => (Control::Value(value), old_env, kont),
+                Some(Frame::Binop1(op, rhs)) => (Control::Expr(*rhs),env, push_kont(kont, Frame::Binop2(op, value))),
                 Some(Frame::Binop2(op, lhs)) => {
                     let rhs = value;
                     let (Value::Int(lhs), Value::Int(rhs)) = (&lhs, &rhs) else {
                         panic!("Expected integers, got {lhs} and {rhs}");
                     };
                     let (lhs, rhs) = (*lhs, *rhs);
-                    Control::Value(match op {
+                    let value = match op {
                         Binop::Add => Value::Int(u32::wrapping_add(lhs, rhs)),
                         Binop::Sub => Value::Int(u32::wrapping_sub(lhs, rhs)),
                         Binop::Mul => Value::Int(u32::wrapping_mul(lhs, rhs)),
@@ -197,36 +179,28 @@ pub mod small_step {
                         Binop::Ge => Value::Bool(u32::ge(&lhs, &rhs)),
                         Binop::Lt => Value::Bool(u32::lt(&lhs, &rhs)),
                         Binop::Gt => Value::Bool(u32::gt(&lhs, &rhs)),
-                    })
+                    };
+                    (Control::Value(value), env, kont)
                 }
-
-                Some(Frame::Let1(_name, body)) => {
-                    env.push(value);
-                    kont.push(Frame::Let2);
-                    Control::Expr(*body)
-                }
-                Some(Frame::Let2) => {
-                    env.pop();
-                    Control::Value(value)
-                }
-
+                Some(Frame::Let1(_name, body)) => (Control::Expr(*body), push_env(env, value), push_kont(kont, Frame::Let2)),
+                Some(Frame::Let2) => { env.pop(); (Control::Value(value), env, kont) }
                 Some(Frame::If1(then, r#else)) => match value {
-                    Value::Bool(true) => Control::Expr(*then),
-                    Value::Bool(false) => Control::Expr(*r#else),
+                    Value::Bool(true) => (Control::Expr(*then), env, kont),
+                    Value::Bool(false) => (Control::Expr(*r#else), env, kont),
                     _ => panic!("Expected boolean, got {value}"),
                 },
             },
         }
     }
 
-    pub fn eval<'core>(expr: &Expr<'core>, env: &mut Env<'core>) -> Value<'core> {
-        let mut control = Control::Expr(*expr);
+    pub fn eval<'core>(expr: Expr<'core>, mut env: Env<'core>) -> Value<'core> {
+        let mut control = Control::Expr(expr);
         let mut kont = Vec::new();
 
         loop {
-            match step(control, env, &mut kont) {
-                Control::Value(value) if kont.is_empty() => return value,
-                c => control = c,
+            match step(control, env, kont) {
+                (Control::Value(value), _, kont) if kont.is_empty() => return value,
+                cek => (control, env, kont) = cek,
             }
         }
     }
@@ -239,8 +213,8 @@ pub mod small_step {
 
         #[track_caller]
         fn assert_eval(expr: &Expr, expect: Expect) {
-            let mut env = Env::new();
-            let value = eval(expr, &mut env);
+            let env = Env::new();
+            let value = eval(*expr, env);
             expect.assert_eq(&format!("{value}"));
         }
 
